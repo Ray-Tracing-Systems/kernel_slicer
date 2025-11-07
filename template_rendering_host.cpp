@@ -1275,11 +1275,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
   data["MainFunctions"] = std::vector<json>();
   bool atLeastOneFullOverride = false;
-
-  ////////////////////////////////////////////////////////////////// local containers override
   bool haveLocalContainers = false;
-  std::unordered_map<std::string, DataLocalVarInfo> localContainers;
-  ////////////////////////////////////////////////////////////////// local containers override
 
   size_t totalBuffersUsed     = 0;
   size_t totalTexCombinedUsed = 0;
@@ -1322,9 +1318,6 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["Type"] = kslicer::CleanTypeName(v.second.type);
       local["TransferDST"] = (v.second.name == "threadFlags"); // rtv thread flags
       data2["LocalVarsBuffersDecl"].push_back(local);
-
-      if(v.second.isContainer)
-        localContainers[v.second.name] = v.second;
     }
 
     uint32_t inOutNum = 0;
@@ -1422,7 +1415,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         if(posBegin != std::string::npos)
         {
           std::string dsArhgName2 = dsArgName.substr(posBegin + 8);
-          if(localContainers.find(dsArhgName2) != localContainers.end())
+          auto pLocalContainer = mainFunc.localContainers.find(dsArhgName2);
+          if(pLocalContainer != mainFunc.localContainers.end())
           {
             dsArgName = "m_vdata.localTemp";
             haveLocalContainers = true;
@@ -1586,8 +1580,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data2["LocalContainers"] = std::vector<json>();
     for(const auto& localContainerName : localContainersPreCFName)
     {
-      auto pContainer = localContainers.find(localContainerName);
-      if(pContainer != localContainers.end()) {
+      auto pContainer = mainFunc.localContainers.find(localContainerName);
+      if(pContainer != mainFunc.localContainers.end()) {
         json offsetData;
         offsetData["Name"]     = pContainer->second.name;
         offsetData["ContType"] = pContainer->second.containerType;

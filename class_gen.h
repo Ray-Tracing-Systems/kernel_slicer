@@ -43,8 +43,8 @@ namespace kslicer
     bool VisitIfStmt(IfStmt* ifExpr);
     bool VisitMemberExpr(MemberExpr* expr);
   
-    std::string                                              mainFuncCmdName;
-    std::unordered_map<std::string, uint32_t>                dsIdBySignature;
+    std::string                               mainFuncCmdName;
+    std::unordered_map<std::string, uint32_t> dsIdBySignature;
 
   private:
 

@@ -139,6 +139,23 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
     call.descriptorSetsInfo = args;
     allDescriptorSetsInfo.push_back(call);
   }
+  
+  // detect localContainers usage
+  //
+  bool kernelUsesLocalContainers = false;
+  for(auto arg : args)
+  {
+    const auto pos = arg.name.find(".data()");
+    if(pos == std::string::npos)
+      continue;
+
+    std::string nameClean = arg.name.substr(0, pos);
+    auto pFoundContainer = m_mainFunc.localContainers.find(nameClean);
+    if(pFoundContainer == m_mainFunc.localContainers.end())
+      continue;
+
+    kernelUsesLocalContainers = true;
+  }
 
   //std::string textOfCall = GetRangeSourceCode(f->getSourceRange(), m_compiler);
   //std::string textOfArgs = textOfCall.substr( textOfCall.find("("));
@@ -195,8 +212,22 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
 
     std::string currStageBits    = pKernel->second.enableRTPipeline ? "VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR" : "VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT";
     std::string currBindingPoint = pKernel->second.enableRTPipeline ? "VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR" : "VK_PIPELINE_BIND_POINT_COMPUTE";
-
-    strOut << "{vkCmdBindDescriptorSets(a_commandBuffer, " << currBindingPoint.c_str() << ", ";
+    
+    strOut << "{";
+    if(kernelUsesLocalContainers)
+    {
+      strOut << "size_t lcOffsets[" << m_mainFunc.localContainers.size()+1 << "] = {0,";
+      for (auto it = m_mainFunc.localContainers.begin(); it != m_mainFunc.localContainers.end(); ++it) 
+      {
+        strOut << it->second.name << ".size()*sizeof(" << it->second.containerDataType << ")";
+        if (std::next(it) != m_mainFunc.localContainers.end()) 
+          strOut << ", ";
+        else
+          strOut << "}; ";
+      }
+      strOut << std::endl << "  ";
+    }
+    strOut << "vkCmdBindDescriptorSets(a_commandBuffer, " << currBindingPoint.c_str() << ", ";
     strOut << kernName.c_str() << "Layout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
     if(m_pCodeInfo->NeedThreadFlags())
       strOut << "  m_currThreadFlags = " << flagsVariableName.c_str() << ";" << std::endl;

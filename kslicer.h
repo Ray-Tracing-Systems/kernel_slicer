@@ -631,6 +631,8 @@ namespace kslicer
     KernelInfo                     megakernel;     ///<! for RTV pattern only, when joing everything to mega-kernel
     std::vector<const KernelInfo*> subkernels;     ///<! for RTV pattern only, when joing everything to mega-kernel this array store pointers to used kernels
     std::vector<KernelInfo>        subkernelsData; ///<! for RTV pattern only
+
+    std::map<std::string, DataLocalVarInfo> localContainers; ///<! currently for IPV only
   };
 
   enum class DECL_IN_CLASS{ DECL_STRUCT, DECL_TYPEDEF, DECL_CONSTANT, DECL_UNKNOWN};

@@ -834,24 +834,25 @@ int main(int argc, const char **argv)
   size_t mainFuncId = 0;
   for(const auto f : cfList)
   {
-    const std::string& mainFuncName = f.first;
+    // init control function struct
+    //
     auto& mainFuncRef = inputCodeInfo.mainFunc[mainFuncId];
-    mainFuncRef.Name  = mainFuncName;
-    mainFuncRef.Node  = firstPassData.rv.mci.funControls[mainFuncName].astNode;
+    mainFuncRef.Name  = f.first;
+    mainFuncRef.Node  = firstPassData.rv.mci.funControls[mainFuncRef.Name].astNode;
 
     // Now process each main function: variables and kernel calls, if()->break and if()->return statements.
     //
     {
-      auto allMatchers = inputCodeInfo.ListMatchers_CF(mainFuncName);
+      auto allMatchers = inputCodeInfo.ListMatchers_CF(mainFuncRef.Name);
       auto pMatcherPrc = inputCodeInfo.MatcherHandler_CF(mainFuncRef, compiler);
 
       clang::ast_matchers::MatchFinder finder;
       for(auto& matcher : allMatchers)
         finder.addMatcher(clang::ast_matchers::traverse(clang::TK_IgnoreUnlessSpelledInSource,matcher), pMatcherPrc.get());
 
-      std::cout << "  process control function: " << mainFuncName.c_str() << "(...)" << std::endl;
+      std::cout << "  process control function: " << mainFuncRef.Name.c_str() << "(...)" << std::endl;
       auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
-      std::cout << "  process control function: " << mainFuncName.c_str() << "(...) --> " << GetClangToolingErrorCodeMessage(res) << std::endl;
+      std::cout << "  process control function: " << mainFuncRef.Name.c_str() << "(...) --> " << GetClangToolingErrorCodeMessage(res) << std::endl;
 
       // filter out unused kernels
       //
@@ -871,6 +872,13 @@ int main(int argc, const char **argv)
         if(ex != mainFuncRef.Locals.end())
           mainFuncRef.Locals.erase(ex);
       }
+
+      // process local containers
+      //
+      mainFuncRef.localContainers.clear();
+      for(const auto& v : mainFuncRef.Locals)
+        if(v.second.isContainer)
+          mainFuncRef.localContainers[v.second.name] = v.second;
     }
 
     mainFuncId++;
