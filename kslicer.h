@@ -1777,14 +1777,15 @@ namespace kslicer
       std::string typeOfElem;
     };
 
-    bool halfFloatTextures = false;
-    bool megakernelRTV     = false;
-    bool persistentRTV     = false; // current implementation for persistent threads on done only for megakernels in RTV
-    bool useComplexNumbers = false;
-    bool genGPUAPI         = false;
-    bool forceAllBufToRefs = false;
-    bool placeVectorsInUBO = false;
-    bool shitIsAlwaysConst = false;
+    bool halfFloatTextures  = false;
+    bool megakernelRTV      = false;
+    bool persistentRTV      = false; // current implementation for persistent threads on done only for megakernels in RTV
+    bool useComplexNumbers  = false;
+    bool genGPUAPI          = false;
+    bool forceAllBufToRefs  = false;
+    bool placeVectorsInUBO  = false;
+    bool shitIsAlwaysConst  = false;
+    bool hasLocalContainers = false;
 
     std::unordered_map<std::string, VFHHierarchy> m_vhierarchy;
     std::vector<BufferReference>                  m_allRefsFromVFH;

@@ -18,8 +18,8 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocateAllDescriptorSets()
   // allocate pool
   //
   VkDescriptorPoolSize buffersSize, combinedImageSamSize, imageStorageSize, accelStorageSize, dynamicBuffersSize;
-  buffersSize.type                     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-  buffersSize.descriptorCount          = {{TotalBuffersUsed}} + 64; // + 64 for reserve
+  buffersSize.type            = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  buffersSize.descriptorCount = {% if HaveLocalContainers %} 16 {% else %} {{TotalBuffersUsed}} + 64 {% endif %}; //
 
   std::vector<VkDescriptorPoolSize> poolSizes = {buffersSize};
   {
@@ -39,7 +39,7 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocateAllDescriptorSets()
     
     {% if HaveLocalContainers %}
     dynamicBuffersSize.type            = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
-    dynamicBuffersSize.descriptorCount = 16;
+    dynamicBuffersSize.descriptorCount = {{TotalBuffersUsed}} + 64; // + 64 for reserve
     poolSizes.push_back(dynamicBuffersSize);
     {% endif %}
   }
@@ -94,7 +94,11 @@ VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::Create{{Kernel.Name}
 ## for KernelARG in Kernel.Args
   // binding for {{KernelARG.Name}}
   dsBindings[{{KernelARG.Id}}].binding            = {{loop.index}};
+  {% if HaveLocalContainers and KernelARG.Type == "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER" %}
+  dsBindings[{{KernelARG.Id}}].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+  {% else %}
   dsBindings[{{KernelARG.Id}}].descriptorType     = {{KernelARG.Type}};
+  {% endif %}
   {% if KernelARG.IsTextureArray %}
   m_vdata.{{KernelARG.Name}}ArrayMaxSize = {{KernelARG.Count}};
   if(m_vdata.{{KernelARG.Name}}ArrayMaxSize == 0)
@@ -107,9 +111,8 @@ VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::Create{{Kernel.Name}
   dsBindings[{{KernelARG.Id}}].pImmutableSamplers = nullptr;
 
 ## endfor
-
   dsBindings[{{Kernel.ArgCount}}].binding            = {{Kernel.ArgCount}};
-  dsBindings[{{Kernel.ArgCount}}].descriptorType     = {% if UniformUBO %} VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER {% else %} VK_DESCRIPTOR_TYPE_STORAGE_BUFFER {% endif %};
+  dsBindings[{{Kernel.ArgCount}}].descriptorType     = {% if UniformUBO %} VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER {% else %} {% if HaveLocalContainers %} VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC {% else %} VK_DESCRIPTOR_TYPE_STORAGE_BUFFER {% endif %} {% endif %};
   dsBindings[{{Kernel.ArgCount}}].descriptorCount    = 1;
   dsBindings[{{Kernel.ArgCount}}].stageFlags         = stageFlags;
   dsBindings[{{Kernel.ArgCount}}].pImmutableSamplers = nullptr;
@@ -119,7 +122,7 @@ VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::Create{{Kernel.Name}
   // binding for {% if UseSeparateUBO%}separate ubo{% else %}m_classDataBuffer {% endif %}
 
   dsBindings[{{Kernel.ArgCount}}+1].binding            = {{Kernel.ArgCount}}+1;
-  dsBindings[{{Kernel.ArgCount}}+1].descriptorType     = {% if UseSeparateUBO %}VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER{% else %}VK_DESCRIPTOR_TYPE_STORAGE_BUFFER{% endif %};
+  dsBindings[{{Kernel.ArgCount}}+1].descriptorType     = {% if UseSeparateUBO %}VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER{% else %} {% if HaveLocalContainers %} VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC {% else %} VK_DESCRIPTOR_TYPE_STORAGE_BUFFER {% endif %} {% endif %};
   dsBindings[{{Kernel.ArgCount}}+1].descriptorCount    = 1;
   dsBindings[{{Kernel.ArgCount}}+1].stageFlags         = stageFlags;
   dsBindings[{{Kernel.ArgCount}}+1].pImmutableSamplers = nullptr;
@@ -303,7 +306,7 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateAllGeneratedDescriptorSets_{{Ma
     writeDescriptorSet[{{Arg.Id}}].descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
     writeDescriptorSet[{{Arg.Id}}].pNext          = &descriptorAccelInfo[{{Arg.Id}}];
     {% else %}
-    {% if Arg.Name == "m_vdata.localTemp" %}
+    {% if HaveLocalContainers %}
     writeDescriptorSet[{{Arg.Id}}].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
     {% else %}
     writeDescriptorSet[{{Arg.Id}}].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -326,7 +329,11 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateAllGeneratedDescriptorSets_{{Ma
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].dstSet           = m_allGeneratedDS[{{DescriptorSet.Id}}];
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].dstBinding       = {{DescriptorSet.ArgNumber}};
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].descriptorCount  = 1;
+    {% if HaveLocalContainers %}
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+    {% else %}
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    {% endif %}
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].pBufferInfo      = &descriptorBufferInfo[{{DescriptorSet.ArgNumber}}];
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].pImageInfo       = nullptr;
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].pTexelBufferView = nullptr;
@@ -341,7 +348,11 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateAllGeneratedDescriptorSets_{{Ma
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}+1].dstSet           = m_allGeneratedDS[{{DescriptorSet.Id}}];
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}+1].dstBinding       = {{DescriptorSet.ArgNumber}}+1;
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}+1].descriptorCount  = 1;
+    {% if HaveLocalContainers %}
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}+1].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+    {% else %}
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}+1].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    {% endif %}
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}+1].pBufferInfo      = &descriptorBufferInfo[{{DescriptorSet.ArgNumber}}+1];
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}+1].pImageInfo       = nullptr;
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}+1].pTexelBufferView = nullptr;
@@ -357,7 +368,7 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateAllGeneratedDescriptorSets_{{Ma
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].dstSet           = m_allGeneratedDS[{{DescriptorSet.Id}}];
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].dstBinding       = {{DescriptorSet.ArgNumber}};
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].descriptorCount  = 1;
-    writeDescriptorSet[{{DescriptorSet.ArgNumber}}].descriptorType   = {% if UniformUBO %} VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER {% else %} VK_DESCRIPTOR_TYPE_STORAGE_BUFFER {% endif %};
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}].descriptorType   = {% if UniformUBO %} VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER {% else %} {% if HaveLocalContainers %} VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC {% else %} VK_DESCRIPTOR_TYPE_STORAGE_BUFFER {% endif %} {% endif %};
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].pBufferInfo      = &descriptorBufferInfo[{{DescriptorSet.ArgNumber}}];
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].pImageInfo       = nullptr;
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].pTexelBufferView = nullptr;

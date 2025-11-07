@@ -879,6 +879,9 @@ int main(int argc, const char **argv)
       for(const auto& v : mainFuncRef.Locals)
         if(v.second.isContainer)
           mainFuncRef.localContainers[v.second.name] = v.second;
+
+      if(mainFuncRef.localContainers.size() != 0)
+        inputCodeInfo.hasLocalContainers = true;
     }
 
     mainFuncId++;

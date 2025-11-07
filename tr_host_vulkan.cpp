@@ -214,23 +214,35 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
     std::string currBindingPoint = pKernel->second.enableRTPipeline ? "VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR" : "VK_PIPELINE_BIND_POINT_COMPUTE";
     
     strOut << "{";
-    if(localContainerOffsets.size() != 0)
+    uint32_t numBuffers = 0;
+    if(m_pCodeInfo->hasLocalContainers)
     {
-      strOut << "uint32_t lcOffsets[" << m_mainFunc.localContainers.size()+1 << "] = {0,";
-      for (auto it = localContainerOffsets.begin(); it != localContainerOffsets.end(); ++it) 
+      strOut << "uint32_t lcOffsets[] = {0, ";
+      for (auto it = pKernel->second.args.begin(); it != pKernel->second.args.end(); ++it) 
       {
-        strOut << "uint32_t(" << it->first << ".size()*sizeof(" << it->second << "))";
-        if (std::next(it) != localContainerOffsets.end()) 
+        if(it->kind == DATA_KIND::KIND_POINTER || it->kind == DATA_KIND::KIND_VECTOR) {
+          strOut << "0";
+          numBuffers++;
+        }
+        if (std::next(it) != pKernel->second.args.end()) // TODO: FIX IT (!!!)
           strOut << ", ";
         else
           strOut << "}; ";
       }
+      //for (auto it = localContainerOffsets.begin(); it != localContainerOffsets.end(); ++it) 
+      //{
+      //  strOut << "uint32_t(" << it->first << ".size()*sizeof(" << it->second << "))";
+      //  if (std::next(it) != localContainerOffsets.end()) 
+      //    strOut << ", ";
+      //  else
+      //    strOut << "}; ";
+      //}
       strOut << std::endl << "  ";
     }
     strOut << "vkCmdBindDescriptorSets(a_commandBuffer, " << currBindingPoint.c_str() << ", ";
     strOut << kernName.c_str() << "Layout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second;
-    if(localContainerOffsets.size() != 0)
-      strOut << "], " << m_mainFunc.localContainers.size() << ", lcOffsets);" << std::endl;
+    if(m_pCodeInfo->hasLocalContainers)
+      strOut << "], " << numBuffers+1 << ", lcOffsets);" << std::endl;
     else
       strOut << "], 0, nullptr);" << std::endl;
     if(m_pCodeInfo->NeedThreadFlags())
