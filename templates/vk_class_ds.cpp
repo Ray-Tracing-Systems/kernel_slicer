@@ -17,7 +17,7 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocateAllDescriptorSets()
 {
   // allocate pool
   //
-  VkDescriptorPoolSize buffersSize, combinedImageSamSize, imageStorageSize, accelStorageSize;
+  VkDescriptorPoolSize buffersSize, combinedImageSamSize, imageStorageSize, accelStorageSize, dynamicBuffersSize;
   buffersSize.type                     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
   buffersSize.descriptorCount          = {{TotalBuffersUsed}} + 64; // + 64 for reserve
 
@@ -29,13 +29,19 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocateAllDescriptorSets()
     imageStorageSize.descriptorCount     = {{TotalTexStorageUsed}};
     accelStorageSize.type                = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
     accelStorageSize.descriptorCount     = {% if TotalAccels > 0 %} {{TotalAccels+1}} {% else %} 0 {% endif %};
-  
+
     if(combinedImageSamSize.descriptorCount > 0)
       poolSizes.push_back(combinedImageSamSize);
     if(imageStorageSize.descriptorCount > 0)
       poolSizes.push_back(imageStorageSize);
     if(accelStorageSize.descriptorCount > 0)
       poolSizes.push_back(accelStorageSize);
+    
+    {% if HaveLocalContainers %}
+    dynamicBuffersSize.type            = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+    dynamicBuffersSize.descriptorCount = 16;
+    poolSizes.push_back(dynamicBuffersSize);
+    {% endif %}
   }
 
   {% if UniformUBO %}
@@ -297,7 +303,11 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateAllGeneratedDescriptorSets_{{Ma
     writeDescriptorSet[{{Arg.Id}}].descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
     writeDescriptorSet[{{Arg.Id}}].pNext          = &descriptorAccelInfo[{{Arg.Id}}];
     {% else %}
+    {% if Arg.Name == "m_vdata.localTemp" %}
+    writeDescriptorSet[{{Arg.Id}}].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+    {% else %}
     writeDescriptorSet[{{Arg.Id}}].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    {% endif %}
     writeDescriptorSet[{{Arg.Id}}].pBufferInfo      = &descriptorBufferInfo[{{Arg.Id}}];
     writeDescriptorSet[{{Arg.Id}}].pImageInfo       = nullptr;
     writeDescriptorSet[{{Arg.Id}}].pTexelBufferView = nullptr;

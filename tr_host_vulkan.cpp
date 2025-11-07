@@ -142,7 +142,7 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
   
   // detect localContainers usage
   //
-  bool kernelUsesLocalContainers = false;
+  std::vector<std::pair<std::string, std::string> > localContainerOffsets;
   for(auto arg : args)
   {
     const auto pos = arg.name.find(".data()");
@@ -154,7 +154,7 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
     if(pFoundContainer == m_mainFunc.localContainers.end())
       continue;
 
-    kernelUsesLocalContainers = true;
+    localContainerOffsets.push_back(std::make_pair(pFoundContainer->second.name, pFoundContainer->second.containerDataType));
   }
 
   //std::string textOfCall = GetRangeSourceCode(f->getSourceRange(), m_compiler);
@@ -214,13 +214,13 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
     std::string currBindingPoint = pKernel->second.enableRTPipeline ? "VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR" : "VK_PIPELINE_BIND_POINT_COMPUTE";
     
     strOut << "{";
-    if(kernelUsesLocalContainers)
+    if(localContainerOffsets.size() != 0)
     {
-      strOut << "size_t lcOffsets[" << m_mainFunc.localContainers.size()+1 << "] = {0,";
-      for (auto it = m_mainFunc.localContainers.begin(); it != m_mainFunc.localContainers.end(); ++it) 
+      strOut << "uint32_t lcOffsets[" << m_mainFunc.localContainers.size()+1 << "] = {0,";
+      for (auto it = localContainerOffsets.begin(); it != localContainerOffsets.end(); ++it) 
       {
-        strOut << it->second.name << ".size()*sizeof(" << it->second.containerDataType << ")";
-        if (std::next(it) != m_mainFunc.localContainers.end()) 
+        strOut << "uint32_t(" << it->first << ".size()*sizeof(" << it->second << "))";
+        if (std::next(it) != localContainerOffsets.end()) 
           strOut << ", ";
         else
           strOut << "}; ";
@@ -228,7 +228,11 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
       strOut << std::endl << "  ";
     }
     strOut << "vkCmdBindDescriptorSets(a_commandBuffer, " << currBindingPoint.c_str() << ", ";
-    strOut << kernName.c_str() << "Layout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second << "], 0, nullptr);" << std::endl;
+    strOut << kernName.c_str() << "Layout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second;
+    if(localContainerOffsets.size() != 0)
+      strOut << "], " << m_mainFunc.localContainers.size() << ", lcOffsets);" << std::endl;
+    else
+      strOut << "], 0, nullptr);" << std::endl;
     if(m_pCodeInfo->NeedThreadFlags())
       strOut << "  m_currThreadFlags = " << flagsVariableName.c_str() << ";" << std::endl;
     if(m_pCodeInfo->m_timestampPoolSize != uint32_t(-1)) // disabled
