@@ -419,6 +419,41 @@
         },
 
         {
+            "name"   : "Launch (app_28/Slang)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/28_filter_bloom_v2/test_class.cpp",
+                        "-mainClass", "ToneMapping", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-reorderLoops", "YX",
+                        "-I${workspaceFolder}/apps/LiteMath", "ignore", 
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore",
+                        "-I${workspaceFolder}/TINYSTL",       "ignore",
+                        "-shaderCC", "slang",
+                        "-suffix", "_GPU",
+                        "-const_ubo", "1",
+                        "-timestamps", "1",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
+            "externalConsole": false,
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
+                {
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        
+
+        {
             "name"   : "Launch (test_007/Slang)",
             "type"   : "cppdbg",
             "request": "launch",
