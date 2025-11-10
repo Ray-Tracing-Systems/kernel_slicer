@@ -142,24 +142,18 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
   
   // detect localContainers usage
   //
-  int32_t currId = 0;
-  int32_t argId  = 0;
-  std::map<int32_t, int32_t >                       localContainerMap;
-  std::vector<std::pair<std::string, std::string> > localContainerOffsets;
-  for(auto arg : args)
+  struct LocalContainerRef
   {
-    argId++;
-    const auto pos = arg.name.find(".data()");
-    if(pos == std::string::npos)
-      continue;
-
-    std::string nameClean = arg.name.substr(0, pos);
-    auto pFoundContainer = m_mainFunc.localContainers.find(nameClean);
-    if(pFoundContainer == m_mainFunc.localContainers.end())
-      continue;
-
-    localContainerOffsets.push_back(std::make_pair(pFoundContainer->second.name, pFoundContainer->second.containerDataType));
-    localContainerMap[argId-1] = currId;
+    std::string name;
+    std::string dataType;
+    int32_t     id;
+  };
+  int32_t currId = 0;
+  std::vector<LocalContainerRef> localContainerOffsets;
+  std::map<std::string, int32_t> localContainerMap;
+  for(auto cont : m_mainFunc.localContainers) {
+    localContainerOffsets.push_back(LocalContainerRef{cont.second.name, cont.second.containerDataType,currId});
+    localContainerMap[cont.second.name] = currId;
     currId++;
   }
 
@@ -226,7 +220,7 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
       strOut << "uint32_t lcSize[] = {";
       for (auto it = localContainerOffsets.begin(); it != localContainerOffsets.end(); ++it) 
       {
-        strOut << "uint32_t(" << it->first << ".size()*sizeof(" << it->second << "))";
+        strOut << "uint32_t(" << it->name << ".size()*sizeof(" << it->dataType << "))";
         if (std::next(it) != localContainerOffsets.end()) 
           strOut << ", ";
         else
@@ -235,23 +229,34 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
       strOut << std::endl << "  " << "PrefixSummAligned(lcSize, " << localContainerOffsets.size()+1 << ");" << std::endl << "  ";
       
       strOut << "uint32_t lcOffsets[] = { ";
-      for (auto it = pKernel->second.args.begin(); it != pKernel->second.args.end(); ++it) 
+      int argId = 0;
+      for(auto argIt = args.begin(); argIt != args.end(); ++argIt)
       {
-        if(it->kind == DATA_KIND::KIND_POINTER || it->kind == DATA_KIND::KIND_VECTOR) {
-          auto pLCID = localContainerMap.find(numBuffers);
-          if(pLCID != localContainerMap.end())
-            strOut << "lcSize[" << pLCID->second << "]";
-          else
-            strOut << "0";
-          numBuffers++;
+        auto it = pKernel->second.args[argId];
+        if(it.kind != DATA_KIND::KIND_POINTER && it.kind != DATA_KIND::KIND_VECTOR) {
+          argId++;
+          continue;
         }
-        if (std::next(it) != pKernel->second.args.end()) // TODO: FIX IT (!!!)
-          strOut << ", ";
-        else
-          strOut << "0 }; ";
-      }
 
-      strOut << std::endl << "  ";
+        const auto pos = argIt->name.find(".data()");
+        if(pos == std::string::npos)
+          strOut << "0";
+        else
+        {
+          std::string nameClean = argIt->name.substr(0, pos);
+          auto pFoundContainer = localContainerMap.find(nameClean);
+          if(pFoundContainer == localContainerMap.end())
+            strOut << "0";
+          else    
+            strOut << "lcSize[" << pFoundContainer->second << "]";
+        }
+
+        if(std::next(argIt) != args.end())
+          strOut << ", ";
+        argId++;
+      }
+      
+      strOut << "0 }; " << std::endl << "  ";
     }
     strOut << "vkCmdBindDescriptorSets(a_commandBuffer, " << currBindingPoint.c_str() << ", ";
     strOut << kernName.c_str() << "Layout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second;

@@ -438,7 +438,6 @@ void {{MainClassName}}{{MainClassSuffix}}::BarriersForSeveralBuffers(VkBuffer* a
   {% endif %}
   {% endif %}
   {% endif %}
-  // {{MainFunc.LocalContainers}}
   {{MainFunc.MainFuncTextCmd}}
   {% endif %} {# /* end of else branch */ #}
 }
