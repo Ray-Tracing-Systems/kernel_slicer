@@ -4,10 +4,6 @@
 #include <cassert>
 #include <chrono>
 #include <array>
-{% if HaveLocalContainers %}
-#include <algorithm>
-#include <numeric>
-{% endif %}
 
 #include "vk_copy.h"
 #include "vk_context.h"
@@ -787,5 +783,23 @@ void {{MainClassName}}{{MainClassSuffix}}::GetExecutionTime(const char* a_funcNa
     a_out[3] = 0.0f;
   }
   {% endif %}
+}
+{% endif %}
+
+{% if HaveLocalContainers %}
+void {{MainClassName}}{{MainClassSuffix}}::PrefixSummAligned(uint32_t* a_array, uint32_t a_num)
+{
+  if(a_array == nullptr || a_num == 0)
+    return;
+  
+  uint32_t sum = 0;
+  for(uint32_t i=0; i<a_num; i++) {
+    uint32_t elem = a_array[i]; // (1) read
+    a_array[i] = sum;           // (2) write curr summ
+                                // (3) perform aligned shift
+    sum += elem;
+    while(sum % m_minStorageBufferOffsetAlignment != 0)
+      sum++;
+  }
 }
 {% endif %}

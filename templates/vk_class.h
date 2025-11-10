@@ -604,5 +604,9 @@ public:
   std::vector<std::string>                          m_tsIdToKernelName;
   {% endif %}
   uint32_t m_subgroupSize = 1; 
+  {% if HaveLocalContainers %}
+  VkDeviceSize m_minStorageBufferOffsetAlignment = 16; 
+  void PrefixSummAligned(uint32_t* a_array, uint32_t a_num);
+  {% endif %}
 };
 

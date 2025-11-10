@@ -92,6 +92,9 @@ void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, 
   physicalDeviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
   physicalDeviceProperties.pNext = &subgroupProperties;
   vkGetPhysicalDeviceProperties2(m_physicalDevice, &physicalDeviceProperties);
+  {% if HaveLocalContainers %}
+  m_minStorageBufferOffsetAlignment = physicalDeviceProperties.properties.limits.minStorageBufferOffsetAlignment; 
+  {% endif %}
   {% if EnableTimeStamps %}
   m_timestampPeriod = float(physicalDeviceProperties.properties.limits.timestampPeriod);
   {% endif %}

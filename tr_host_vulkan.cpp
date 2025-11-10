@@ -232,7 +232,7 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
         else
           strOut << ", 0}; ";
       }
-      strOut << std::endl << "  " << "std::exclusive_scan(lcSize, lcSize + " << localContainerOffsets.size()+1 << ", lcSize, 0);" << std::endl << "  ";
+      strOut << std::endl << "  " << "PrefixSummAligned(lcSize, " << localContainerOffsets.size()+1 << ");" << std::endl << "  ";
       
       strOut << "uint32_t lcOffsets[] = { ";
       for (auto it = pKernel->second.args.begin(); it != pKernel->second.args.end(); ++it) 
