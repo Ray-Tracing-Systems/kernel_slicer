@@ -877,7 +877,7 @@ int main(int argc, const char **argv)
       //
       mainFuncRef.localContainers.clear();
       for(const auto& v : mainFuncRef.Locals)
-        if(v.second.isContainer)
+        if(v.second.isContainer && v.second.kind == kslicer::DATA_KIND::KIND_VECTOR)
           mainFuncRef.localContainers[v.second.name] = v.second;
 
       if(mainFuncRef.localContainers.size() != 0)

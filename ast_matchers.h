@@ -174,6 +174,7 @@ namespace kslicer
         DataLocalVarInfo varInfo;
         varInfo.name        = var->getNameAsString();
         varInfo.type        = qt.getAsString();
+        varInfo.kind        = DATA_KIND::KIND_POD;
         varInfo.sizeInBytes = typeInfo.Width / 8;
         varInfo.isArray     = false;
         varInfo.isConst     = qt.isConstQualified();
@@ -198,6 +199,7 @@ namespace kslicer
         {
           auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl);
           kslicer::SplitContainerTypes(specDecl, varInfo.containerType, varInfo.containerDataType);
+          varInfo.kind = kslicer::GetContainerTypeDataKind(varInfo.containerType);
         }
 
         if(var->isLocalVarDecl() && !var->isConstexpr() && !qt.isConstQualified()) // list only local variables, exclude function arguments and all constants 

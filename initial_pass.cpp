@@ -49,15 +49,7 @@ kslicer::KernelInfo::ArgInfo kslicer::ProcessParameter(const clang::ParmVarDecl 
       arg.isContainer = true;
       auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl);
       kslicer::SplitContainerTypes(specDecl, arg.containerType, arg.containerDataType);
-
-      if(arg.containerType == "Texture2D" || arg.containerType == "Image2D")
-        arg.kind = kslicer::DATA_KIND::KIND_TEXTURE;
-      else if(arg.containerType == "vector" || arg.containerType == "std::vector")
-        arg.kind = kslicer::DATA_KIND::KIND_VECTOR;
-      else if(arg.containerType == "unordered_map" || arg.containerType == "std::unordered_map")
-        arg.kind = kslicer::DATA_KIND::KIND_HASH_TABLE;
-      else if((arg.containerType == "shared_ptr" || arg.containerType == "std::shared_ptr") && kslicer::IsAccelStruct(arg.containerDataType))
-        arg.kind = kslicer::DATA_KIND::KIND_ACCEL_STRUCT;
+      arg.kind = kslicer::GetContainerTypeDataKind(arg.containerType);
     }
   }
 

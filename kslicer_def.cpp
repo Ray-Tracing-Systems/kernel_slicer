@@ -82,3 +82,16 @@ bool kslicer::IsMatrixTypeName(const std::string& a_typeName)
     return false;
 }
 
+kslicer::DATA_KIND kslicer::GetContainerTypeDataKind(const std::string& a_typeName)
+{
+  kslicer::DATA_KIND kind = kslicer::DATA_KIND::KIND_UNKNOWN;
+  if(a_typeName == "Texture2D" || a_typeName == "Image2D")
+    kind = kslicer::DATA_KIND::KIND_TEXTURE;
+  else if(a_typeName == "vector" || a_typeName == "std::vector")
+    kind = kslicer::DATA_KIND::KIND_VECTOR;
+  else if(a_typeName == "unordered_map" || a_typeName == "std::unordered_map")
+    kind = kslicer::DATA_KIND::KIND_HASH_TABLE;
+  else if((a_typeName == "shared_ptr" || a_typeName == "std::shared_ptr") && kslicer::IsAccelStruct(a_typeName))
+    kind = kslicer::DATA_KIND::KIND_ACCEL_STRUCT;
+  return kind;
+}

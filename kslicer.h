@@ -91,6 +91,7 @@ namespace kslicer
   bool  IsSamplerTypeName(const std::string& a_typeName);  ///<! return true for all types of textures
   bool  IsCombinedImageSamplerTypeName(const std::string& a_typeName);  ///<! return true for all types of image combined samplers
   bool  IsMatrixTypeName(const std::string& a_typeName);
+  DATA_KIND GetContainerTypeDataKind(const std::string& a_typeName);
 
   struct ProbablyUsed
   {
@@ -501,6 +502,7 @@ namespace kslicer
   {
     std::string name;
     std::string type;
+    DATA_KIND   kind = DATA_KIND::KIND_UNKNOWN;
     size_t      sizeInBytes;
 
     bool        isArray   = false;

@@ -213,8 +213,8 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
     std::string currStageBits    = pKernel->second.enableRTPipeline ? "VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR" : "VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT";
     std::string currBindingPoint = pKernel->second.enableRTPipeline ? "VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR" : "VK_PIPELINE_BIND_POINT_COMPUTE";
     
+    int lcOffsetSize = 0;
     strOut << "{";
-    uint32_t numBuffers = 0;
     if(m_pCodeInfo->hasLocalContainers)
     {
       strOut << "uint32_t lcSize[] = {";
@@ -228,7 +228,10 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
       }
       strOut << std::endl << "  " << "PrefixSummAligned(lcSize, " << localContainerOffsets.size()+1 << ");" << std::endl << "  ";
       
-      strOut << "uint32_t lcOffsets[] = { ";
+      strOut << "uint32_t lcOffsets[] = {";
+      
+      // (1) list explicit kernel args
+      //
       int argId = 0;
       for(auto argIt = args.begin(); argIt != args.end(); ++argIt)
       {
@@ -240,28 +243,34 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
 
         const auto pos = argIt->name.find(".data()");
         if(pos == std::string::npos)
-          strOut << "0";
+          strOut << "0, ";
         else
         {
           std::string nameClean = argIt->name.substr(0, pos);
           auto pFoundContainer = localContainerMap.find(nameClean);
           if(pFoundContainer == localContainerMap.end())
-            strOut << "0";
+            strOut << "0, ";
           else    
-            strOut << "lcSize[" << pFoundContainer->second << "]";
+            strOut << "lcSize[" << pFoundContainer->second << "], ";
         }
-
-        if(std::next(argIt) != args.end())
-          strOut << ", ";
+        
+        lcOffsetSize++;
         argId++;
       }
       
-      strOut << "0 }; " << std::endl << "  ";
+      // (2) list implicit kernel-used vector members
+      //
+      for(auto cont = pKernelInfo->second.usedContainers.begin(); cont != pKernelInfo->second.usedContainers.end(); ++cont) {
+        strOut << "0, ";
+        lcOffsetSize++;
+      }
+      
+      strOut << "0}; " << std::endl << "  ";
     }
     strOut << "vkCmdBindDescriptorSets(a_commandBuffer, " << currBindingPoint.c_str() << ", ";
     strOut << kernName.c_str() << "Layout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second;
     if(m_pCodeInfo->hasLocalContainers)
-      strOut << "], " << numBuffers+1 << ", lcOffsets);" << std::endl;
+      strOut << "], " << lcOffsetSize+1 << ", lcOffsets);" << std::endl;
     else
       strOut << "], 0, nullptr);" << std::endl;
     if(m_pCodeInfo->NeedThreadFlags())
@@ -659,6 +668,11 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriterVulkan::Ex
     {
       arg.argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_CONST_OR_LITERAL;
       arg.kind    = DATA_KIND::KIND_POD;
+    }
+    else if(q->isPointerType())
+    {
+      arg.argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_UNKNOWN_TYPE;
+      arg.kind    = DATA_KIND::KIND_POINTER;
     }
 
     auto elementId = std::find(predefinedNames.begin(), predefinedNames.end(), text); // exclude predefined names from arguments
