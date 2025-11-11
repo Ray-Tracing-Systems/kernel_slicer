@@ -322,7 +322,6 @@
             ]
         },
 
-
         {
             "name"   : "Launch (app_28/Slang)",
             "type"   : "cppdbg",
@@ -427,8 +426,8 @@
                         "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
                         "-I${workspaceFolder}/TINYSTL",          "ignore", 
                         "-shaderCC", "slang",
-                        "-expand_macro", "1",
                         "-DKERNEL_SLICER",
+                        "-expand_macro", "1",
                         "-v"],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",
