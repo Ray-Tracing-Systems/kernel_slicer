@@ -56,8 +56,9 @@ int main(int argc, const char** argv)
   for(int i=0;i<10;i++)
     std::cout << i << "\t" << D[i] << "\t" << i*(2*i) + 3*i + 3 << std::endl;
 
-  //JSONLog::write("array summ", pImpl->m_summ);
-  //JSONLog::saveToFile("zout_"+backendName+".json");
+  JSONLog::write("array", D);
+  JSONLog::saveToFile("zout_"+backendName+".json");
+
   pImpl = nullptr;
   #ifdef USE_VULKAN
   vk_utils::globalContextDestroy();
