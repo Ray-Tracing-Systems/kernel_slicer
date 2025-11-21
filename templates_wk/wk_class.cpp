@@ -170,9 +170,14 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
 
   #if WGPU_DISTR >= 30
   {% if WGPU_VER > 30 %}
-  const WGPUChainedStruct          tmp1 = {.sType = WGPUSType_ShaderSourceWGSL };
-  const WGPUShaderSourceWGSL       tmp2 = {.chain = tmp1, .code = {shaderSrc.c_str(), WGPU_STRLEN},};
-  const WGPUShaderModuleDescriptor tmp3 = {.nextInChain = (WGPUChainedStruct *)&tmp2, .label = {"{{Kernel.OriginalName}} shader module", WGPU_STRLEN} };
+  WGPUChainedStruct          tmp1 = {};
+  tmp1.sType = WGPUSType_ShaderSourceWGSL;
+  WGPUShaderSourceWGSL       tmp2 = {};
+  tmp2.chain = tmp1;
+  tmp2.code = {shaderSrc.c_str(), WGPU_STRLEN};
+  WGPUShaderModuleDescriptor tmp3 = {};
+  tmp3.nextInChain = (WGPUChainedStruct *)&tmp2;
+  tmp3.label = {"{{Kernel.OriginalName}} shader module", WGPU_STRLEN};
   WGPUShaderModule shaderModule = wgpuDeviceCreateShaderModule(m_device, &tmp3);
   {% else %}
   WGPUShaderModuleWGSLDescriptor wgslDesc = {};
