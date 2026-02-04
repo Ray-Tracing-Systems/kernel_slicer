@@ -132,7 +132,7 @@ int main(int argc, const char **argv)
       defines[param.key()] = param.value().is_string() ? param.value().get<std::string>() : "";
   }
 
-  auto baseProjectPath = std::filesystem::path(optionsPath).parent_path();
+  auto baseProjectPath = std::filesystem::absolute(std::filesystem::path(optionsPath)).parent_path();
   if(inputOptions["baseDirectory"] != nullptr && !emptyConfig)
   {
     const std::string value = inputOptions["baseDirectory"];
