@@ -495,9 +495,8 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
     }
 
     fout.close();
-    fileName = fileNameT;
-
-    std::cout << "[kslicer]: merging finished" << std::endl;
+    fileName = std::filesystem::absolute(fileNameT);
+    std::cout << "[kslicer]: merging finished to '" << fileName.c_str() << "'" << std::endl;
   }
 
   return cmdLineParams;
