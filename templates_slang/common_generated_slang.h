@@ -145,6 +145,27 @@ float4x4 rotate4x4Z(float phi)
                   float4(0.0f,      0.0f,     0.0f, 1.0f));
 }
 
+float3x3 rotate3x3X(float phi)
+{
+  return float3x3(float3(1.0f, 0.0f,  0.0f,         ),
+                  float3(0.0f, +cos(phi),  +sin(phi)),
+                  float3(0.0f, -sin(phi),  +cos(phi)));
+}
+
+float3x3 rotate3x3Y(float phi)
+{
+  return float3x3(float3(+cos(phi), 0.0f, -sin(phi)),
+                  float3(0.0f,      1.0f, 0.0f,    ),
+                  float3(+sin(phi), 0.0f, +cos(phi)));
+}
+
+float3x3 rotate3x3Z(float phi)
+{
+  return float3x3(float3(+cos(phi), sin(phi), 0.0f),
+                  float3(-sin(phi), cos(phi), 0.0f),
+                  float3(0.0f,      0.0f,     1.0f));
+}
+
 float3x3 inverse3x3(float3x3 m)
 {
   float det = determinant(m);

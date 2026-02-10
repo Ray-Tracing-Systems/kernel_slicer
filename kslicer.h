@@ -1621,6 +1621,7 @@ namespace kslicer
     std::vector<DataMemberInfo>                 dataMembers;     ///<! only those member variables which are referenced from kernels
     std::vector<MainFuncInfo>                   mainFunc;        ///<! list of all control functions
   
+    
     std::unordered_map<std::string, ArrayData>      m_threadLocalArrays;
     std::unordered_map<uint64_t, RewrittenFunction> m_functionsDone;
 
@@ -1659,6 +1660,8 @@ namespace kslicer
     std::vector<std::string> cppIncudes;     ///<! additional includes which we need to insert in generated cpp file
     bool NeedToProcessDeclInFile(const std::string a_fileName) const;
     bool IsInExcludedFolder(const std::string& fileName);
+
+    std::unordered_set<std::string> GetExcludedNames() const;
 
     std::unordered_map<std::string, bool> allIncludeFiles; // true if we need to include it in to CL, false otherwise
     std::vector<KernelCallInfo>           allDescriptorSetsInfo;

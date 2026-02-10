@@ -624,11 +624,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
   // (2) declarations of struct, constants and typedefs inside class
   //
-  std::unordered_set<std::string> excludedNames; 
-  {
-    for(auto pair : a_classInfo.m_setterVars)
-      excludedNames.insert(kslicer::CleanTypeName(pair.second));
-  }
+  auto excludedNames = a_classInfo.GetExcludedNames();
 
   std::unordered_set<std::string> excludedConstantsFromVFH;
   {
