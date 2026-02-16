@@ -1453,7 +1453,7 @@
             "name"   : "Launch (test_023/GLSL)",
             "type"   : "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
             "args"   : ["${workspaceFolder}/apps/tests/023_prefix_summ/test_class.cpp",
                         "-mainClass", "PrefSummTest", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
