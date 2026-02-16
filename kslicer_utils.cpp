@@ -404,7 +404,7 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
     if (cmdLineParams.find("-temp_suffix") != cmdLineParams.end())
     {
       std::cout << "[kslicer] Found custom temp file suffix \"" << cmdLineParams["-temp_suffix"] << "\"" << std::endl;
-      fileName2.concat("_temp" + cmdLineParams["-temp_suffix"] + ".cpp");
+      fileName2.concat("_" + cmdLineParams["-temp_suffix"] + "_temp.cpp");
     }
     else {
       fileName2.concat("_temp.cpp");
