@@ -400,7 +400,15 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
     auto folderPath = fileName.parent_path();
     auto fileName2  = fileName.filename();
     fileName2.replace_extension("");
-    fileName2.concat("_temp.cpp");
+    
+    if (cmdLineParams.find("-temp_suffix") != cmdLineParams.end())
+    {
+      std::cout << "[kslicer] Found custom temp file suffix \"" << cmdLineParams["-temp_suffix"] << "\"" << std::endl;
+      fileName2.concat("_temp" + cmdLineParams["-temp_suffix"] + ".cpp");
+    }
+    else {
+      fileName2.concat("_temp.cpp");
+    }
     auto fileNameT  = folderPath / fileName2;
     
     std::cout << "[kslicer]: merging input files to temporary file " << fileName2 << std::endl;
