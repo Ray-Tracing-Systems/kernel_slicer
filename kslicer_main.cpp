@@ -1481,7 +1481,7 @@ int main(int argc, const char **argv)
     }
   }
   
-  std::string rawname = kslicer::CutOffFileExt(allFiles[0]);
+  std::string rawname = (std::filesystem::path(allFiles[0]).parent_path() / mainClassName).string();
   auto jsonCPP = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, generalDecls,
                                       rawname + ToLowerCase(suffix) + ".h", threadsOrder,
                                       composeImplName, jsonUBO, textGenSettings, foundIntersectionShader);
