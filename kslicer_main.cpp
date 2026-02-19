@@ -1480,8 +1480,14 @@ int main(int argc, const char **argv)
       }
     }
   }
-  
-  std::string rawname = (std::filesystem::path(allFiles[0]).parent_path() / mainClassName).string();
+  std::string rawname;
+  if (paramsFromCmdLine.find("-new_rawname") != paramsFromCmdLine.end())
+  {
+    rawname = (std::filesystem::path(allFiles[0]).parent_path() / mainClassName).string();
+  } else {
+    rawname = kslicer::CutOffFileExt(allFiles[0]);
+  }
+   
   auto jsonCPP = PrepareJsonForAllCPP(inputCodeInfo, compiler, inputCodeInfo.mainFunc, generalDecls,
                                       rawname + ToLowerCase(suffix) + ".h", threadsOrder,
                                       composeImplName, jsonUBO, textGenSettings, foundIntersectionShader);
