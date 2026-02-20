@@ -75,6 +75,25 @@ Vulkan is great! But it is time consuming technology, which mean significant inc
 
 8. (optional) If you want to [build it as a part of llvm](doc/README_build_with_llvm.md)
 
+# Test (Linux only currently)
+
+## Test Setup
+
+* cd python_scripts
+* python3 -m venv venv
+* pip3 install commentjson colorama GitPython scikit-image
+* go to apps/volk and execute 'cmake . && make', then go back to python_scripts
+
+## Test Run
+
+1) Take some json config inside .vscode folder and rename it to 'launch.json'. This way you select test 
+
+2) python3 gen_sample_list.py 
+
+3) edit 'sample_names.json', remove anyting you don't need explicitly
+
+4) bash run_tests.bat
+
 # Project overview
 
 kernel_slicer is prototype auto-programming tool which takes C++ code as input and port this code to GPU by generating optimized GPU implemantation automaticly using source-to-source transtation and domain specific knowlege. Please read several short remarks about our project.

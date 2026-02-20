@@ -2488,11 +2488,31 @@
         },
 
         {
-            "name"   : "TestBugs(InverseCAD)",
+            "name"   : "TestBugs(InverseCAD::v1)",
             "type"   : "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
-            "args"   : ["/home/frol/PROG/vg_code/LiteRT/side_projects/inverse_CAD/renderer/slicer_options.json", "-v"],
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/LiteRT/side_projects/inverse_CAD/renderer/slicer_options.json", "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "TestBugs(InverseCAD::v2)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/LiteRT/side_projects/inverse_CAD/calculator/slicer_options_glsl.json", "-v"],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",
             "environment": [],
