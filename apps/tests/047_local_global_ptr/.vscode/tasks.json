@@ -19,9 +19,9 @@
             ]
         },
         {
-            "label": "Build Kernels",
+            "label": "Build Kernels (GLSL)",
             "type": "shell",
-            "command": "bash z_build.sh",
+            "command": "cd shaders_generated && bash build.sh",
             "group": "build",
             "problemMatcher": [
                 "$gcc"

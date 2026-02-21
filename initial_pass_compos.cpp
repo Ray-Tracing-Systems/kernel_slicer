@@ -159,15 +159,18 @@ std::vector<const clang::CXXRecordDecl*> kslicer::ExtractAndSortBaseClasses(cons
   std::vector<const clang::CXXRecordDecl*> result;
   result.reserve(classes.size());
   
-  for(size_t i=0;i<classes.size();i++)
-    if(derived->isDerivedFrom(classes[i]))
-      result.push_back(classes[i]);
+  if(derived != nullptr)
+  {
+    for(size_t i=0;i<classes.size();i++)
+      if(derived->isDerivedFrom(classes[i]))
+        result.push_back(classes[i]);
+    
+    std::unordered_map<const clang::CXXRecordDecl*, int> depth;
+    for(auto node : result)
+      depth[node] = GetClassDepth(node);
   
-  std::unordered_map<const clang::CXXRecordDecl*, int> depth;
-  for(auto node : result)
-    depth[node] = GetClassDepth(node);
-
-  std::sort(result.begin(), result.end(), [&](const clang::CXXRecordDecl* a, const clang::CXXRecordDecl* b) { return depth[a] > depth[b]; });
-
+    std::sort(result.begin(), result.end(), [&](const clang::CXXRecordDecl* a, const clang::CXXRecordDecl* b) { return depth[a] > depth[b]; });
+  }
+  
   return result;
 }

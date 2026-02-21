@@ -81,18 +81,23 @@ Vulkan is great! But it is time consuming technology, which mean significant inc
 
 * cd python_scripts
 * python3 -m venv venv
-* pip3 install commentjson colorama GitPython scikit-image
-* go to apps/volk and execute 'cmake . && make', then go back to python_scripts
+* source venv/bin/activate
+* pip3 install commentjson colorama GitPython scikit-image               
+* go to apps/volk and execute 'cmake . && make', then go back to python_scripts // build vokl
+* sudo apt install libfreeimage-dev // some samples load HDR images
+* sudo apt install libglfw3-dev     // NBody sample uses it in window mode
 
 ## Test Run
 
 1) Take some json config inside .vscode folder and rename it to 'launch.json'. This way you select test 
 
-2) python3 gen_sample_list.py 
+2) source venv/bin/activate
 
-3) edit 'sample_names.json', remove anyting you don't need explicitly
+3) python3 gen_sample_list.py 
 
-4) bash run_tests.bat
+4) edit 'sample_names.json', remove anyting you don't need explicitly
+
+5) bash run_tests.bat
 
 # Project overview
 

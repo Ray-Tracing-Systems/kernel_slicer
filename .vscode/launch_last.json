@@ -1453,7 +1453,7 @@
             "name"   : "Launch (test_023/GLSL)",
             "type"   : "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
             "args"   : ["${workspaceFolder}/apps/tests/023_prefix_summ/test_class.cpp",
                         "-mainClass", "PrefSummTest", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
@@ -2130,7 +2130,7 @@
             "name"   : "Launch (test_046/GLSL_CS_SW)",
             "type"   : "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
             "args"   : ["${workspaceFolder}/apps/tests/046_intersection_shader_v2/kmake_cs.json",
                         "-shaderCC", "glsl",  // needed for slicer test script, not needed in practice
                         ],
@@ -2152,7 +2152,7 @@
             "name"   : "Launch (test_046/GLSL_CS_HW)",
             "type"   : "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
             "args"   : ["${workspaceFolder}/apps/tests/046_intersection_shader_v2/kmake_rq.json",
                          "-shaderCC", "glsl",  // needed for slicer test script, not needed in practice
                         ],
@@ -2171,66 +2171,10 @@
         },
 
         {
-            "name"   : "Launch (test_048/GLSL)",
-            "type"   : "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
-            "args"   : ["${workspaceFolder}/apps/tests/048_saxpy_v1/test_class.cpp",
-                        "-mainClass",    "Numbers", 
-                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
-                        "-pattern",      "ipv",
-                        "-I${workspaceFolder}/apps/LiteMath",    "ignore",
-                        "-I${workspaceFolder}/TINYSTL",          "ignore",
-                        "-shaderCC", "glsl",
-                        "-DKERNEL_SLICER",
-                        "-v"],
-            "stopAtEntry": false,
-            "cwd"    : "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-
-        {
-            "name"   : "Launch (test_049/GLSL)",
-            "type"   : "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
-            "args"   : ["${workspaceFolder}/apps/tests/049_saxpy_v2/test_class.cpp",
-                        "-mainClass",    "Numbers", 
-                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
-                        "-pattern",      "ipv",
-                        "-I${workspaceFolder}/apps/LiteMath",    "ignore",
-                        "-I${workspaceFolder}/TINYSTL",          "ignore",
-                        "-shaderCC", "glsl",
-                        "-DKERNEL_SLICER",
-                        "-v"],
-            "stopAtEntry": false,
-            "cwd"    : "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-
-        {
             "name"   : "Launch (test_050/GLSL)",
             "type"   : "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
             "args"   : ["${workspaceFolder}/apps/tests/050_matrix_rot/test_class.cpp",
                         "-mainClass",    "SimpleTest", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
@@ -2253,6 +2197,392 @@
                 }
             ]
         },
+
+        {
+            "name"   : "Launch (test_050/Slang)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/tests/050_matrix_rot/test_class.cpp",
+                        "-mainClass",    "SimpleTest", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern",      "ipv",
+                        "-I${workspaceFolder}/apps/LiteMath",    "ignore",
+                        "-I${workspaceFolder}/TINYSTL",          "ignore",
+                        "-shaderCC", "slang",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (app_02_benchmark/GLSL)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/vulkan-musa-benckmark/vk_samples/base02_spheres_pt/kmake.json",
+                        "-shaderCC", "glsl",
+                        "-megakernel", "1",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
+            "externalConsole": false,
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
+                {
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (app_03_benchmark/GLSL)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/vulkan-musa-benckmark/vk_samples/base03_reduction1/kmake.json",
+                        "-shaderCC", "glsl",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
+            "externalConsole": false,
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
+                {
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (app_04_nbody/GLSL)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/vulkan-musa-benckmark/vk_samples/base04_nbody_smpl/kmake.json"],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
+            "externalConsole": false,
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
+                {
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (app_05_benchmark/GLSL)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/vulkan-musa-benckmark/vk_samples/base05_append_buf/kmake.json"],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
+            "externalConsole": false,
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
+                {
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (app_07_benchmark/GLSL)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/vulkan-musa-benckmark/vk_samples/base07_sort_uint2/kmake.json"],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
+            "externalConsole": false,
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
+                {
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+
+        {
+            "name"   : "Launch (app_08_benchmark/GLSL)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/vulkan-musa-benckmark/vk_samples/base08_proctex_v1/kmake.json"],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
+            "externalConsole": false,
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
+                {
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (benchmark_app_27/GLSL)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["${workspaceFolder}/apps/27_virtual_func_proctex_2d/render2d.cpp",
+                        "-mainClass", "ProcRender2D", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        //"-force_ray_tracing_pipeline", "1",
+                        //"-enable_callable_shaders", "1",
+                        //"-timestamps", "1",
+                        "-I${workspaceFolder}/apps/LiteMath",    "ignore",
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
+                        "-I${workspaceFolder}/TINYSTL",          "ignore",
+                        "-shaderCC", "glsl",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
+            "externalConsole": false,
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
+                {
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+      
+
+        {
+            "name"   : "Launch (HydraInLiteRT)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["/home/frol/PROG/vg_code/LiteRT/HydraCore3/kmake_mega.json", "-selfdir", "/home/frol/PROG/kernel_slicer", "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "/home/frol/PROG/vg_code/LiteRT/HydraCore3",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (HydraCam/Main)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/vg_code/LiteRT/HydraCore3/kmake_mega.json","-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+
+        {
+            "name"   : "Launch (HydraCam/PinHole)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/vg_code/LiteRT/HydraCore3/cam_plugin/kmake_pinhole.json","-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (HydraCam/Table21)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/vg_code/LiteRT/HydraCore3/cam_plugin/kmake_tablelens.json","-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (HydraCam/Table)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/HydraRepos/HydraCore3/cam_plugin/CamTableLens.cpp",
+                        "-mainClass", "CamTableLens", 
+                        "-shaderFolderPrefix", "cam_plugin/",
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-shaderCC", "glsl",
+                        "-I${workspaceFolder}/TINYSTL",         "ignore",
+                        "-I${workspaceFolder}/apps/LiteMath",   "ignore",
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
+                        "-I/home/frol/PROG/HydraRepos/HydraCore3/external/LiteMath",  "ignore",
+                        "-I/home/frol/PROG/HydraRepos/HydraCore3/external/LiteScene", "ignore",
+                        "-I/home/frol/PROG/HydraRepos/HydraCore3/external/CrossRT",   "process",
+                        "-I/home/frol/PROG/HydraRepos/HydraCore3/cam_plugin",         "process",
+                        "-suffix", "_TABLELENS_GPU",  
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "HeavyRT(CS)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/vg_code/LiteRT/SoftRT/config/rtao_cs.json"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "HeavyRT(RQ)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/vg_code/LiteRT/SoftRT/config/rtao_rq.json"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "TestBugs(InverseCAD::v1)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/LiteRT/side_projects/inverse_CAD/renderer/slicer_options.json", "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "TestBugs(InverseCAD::v2)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/LiteRT/side_projects/inverse_CAD/calculator/slicer_options.json", "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
 
     ]
 }
