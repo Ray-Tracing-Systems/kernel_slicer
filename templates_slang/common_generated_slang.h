@@ -115,55 +115,55 @@ float4x4 make_float4x4_from_rows(float4 a, float4 b, float4 c, float4 d) { retur
 
 float4x4 translate4x4(float3 delta)
 {
-  return float4x4(float4(1.0, 0.0, 0.0, 0.0),
-                  float4(0.0, 1.0, 0.0, 0.0),
-                  float4(0.0, 0.0, 1.0, 0.0),
-                  float4(delta, 1.0));
+  return float4x4(float4(1.0f, 0.0f, 0.0f, delta.x),
+                  float4(0.0f, 1.0f, 0.0f, delta.y),
+                  float4(0.0f, 0.0f, 1.0f, delta.z),
+                  float4(0.0f, 0.0f, 0.0f, 1.0f));
 }
 
 float4x4 rotate4x4X(float phi)
 {
-  return float4x4(float4(1.0f, 0.0f,  0.0f,           0.0f),
-                  float4(0.0f, +cos(phi),  +sin(phi), 0.0f),
-                  float4(0.0f, -sin(phi),  +cos(phi), 0.0f),
+  return float4x4(float4(1.0f, 0.0f,       0.0f,      0.0f),
+                  float4(0.0f, +cos(phi), -sin(phi), 0.0f),
+                  float4(0.0f, +sin(phi), +cos(phi), 0.0f),
                   float4(0.0f, 0.0f,       0.0f,      1.0f));
 }
 
 float4x4 rotate4x4Y(float phi)
 {
-  return float4x4(float4(+cos(phi), 0.0f, -sin(phi), 0.0f),
+  return float4x4(float4(+cos(phi), 0.0f, +sin(phi), 0.0f),
                   float4(0.0f,      1.0f, 0.0f,      0.0f),
-                  float4(+sin(phi), 0.0f, +cos(phi), 0.0f),
+                  float4(-sin(phi), 0.0f, +cos(phi), 0.0f),
                   float4(0.0f,      0.0f, 0.0f,      1.0f));
 }
 
 float4x4 rotate4x4Z(float phi)
 {
-  return float4x4(float4(+cos(phi), sin(phi), 0.0f, 0.0f),
-                  float4(-sin(phi), cos(phi), 0.0f, 0.0f),
-                  float4(0.0f,      0.0f,     1.0f, 0.0f),
-                  float4(0.0f,      0.0f,     0.0f, 1.0f));
+  return float4x4(float4(+cos(phi), -sin(phi), 0.0f, 0.0f),
+                  float4(+sin(phi), +cos(phi), 0.0f, 0.0f),
+                  float4(0.0f,      0.0f,      1.0f, 0.0f),
+                  float4(0.0f,      0.0f,      0.0f, 1.0f));
 }
 
 float3x3 rotate3x3X(float phi)
 {
-  return float3x3(float3(1.0f, 0.0f,  0.0f,         ),
-                  float3(0.0f, +cos(phi),  +sin(phi)),
-                  float3(0.0f, -sin(phi),  +cos(phi)));
+  return float3x3(float3(1.0f, 0.0f,       0.0f),
+                  float3(0.0f, +cos(phi), -sin(phi)),
+                  float3(0.0f, +sin(phi), +cos(phi)));
 }
 
 float3x3 rotate3x3Y(float phi)
 {
-  return float3x3(float3(+cos(phi), 0.0f, -sin(phi)),
-                  float3(0.0f,      1.0f, 0.0f,    ),
-                  float3(+sin(phi), 0.0f, +cos(phi)));
+  return float3x3(float3(+cos(phi), 0.0f, +sin(phi)),
+                  float3(0.0f,      1.0f, 0.0f),
+                  float3(-sin(phi), 0.0f, +cos(phi)));
 }
 
 float3x3 rotate3x3Z(float phi)
 {
-  return float3x3(float3(+cos(phi), sin(phi), 0.0f),
-                  float3(-sin(phi), cos(phi), 0.0f),
-                  float3(0.0f,      0.0f,     1.0f));
+  return float3x3(float3(+cos(phi), -sin(phi), 0.0f),
+                  float3(+sin(phi), +cos(phi), 0.0f),
+                  float3(0.0f,      0.0f,      1.0f));
 }
 
 float3x3 inverse3x3(float3x3 m)

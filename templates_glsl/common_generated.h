@@ -153,7 +153,28 @@ mat4 rotate4x4Z(float phi)
               vec4(0.0f,      0.0f,     0.0f, 1.0f));
 }
 
-mat4 inverse4x4(mat4 m) { return inverse(m); }
+mat3 rotate3x3X(float phi)
+{
+  return mat3(vec3(1.0f, 0.0f, 0.0f),
+              vec3(0.0f, +cos(phi),  +sin(phi)),
+              vec3(0.0f, -sin(phi),  +cos(phi)));
+}
+
+mat3 rotate3x3Y(float phi)
+{
+  return mat3(vec3(+cos(phi), 0.0f, -sin(phi)),
+              vec3(0.0f,      1.0f, 0.0f     ),
+              vec3(+sin(phi), 0.0f, +cos(phi)));
+}
+
+mat3 rotate3x3Z(float phi)
+{
+  return mat3(vec3(+cos(phi), sin(phi), 0.0f),
+              vec3(-sin(phi), cos(phi), 0.0f),
+              vec3(0.0f,      0.0f,     1.0f));
+}
+
+mat4 inverse4x4(mat4 m)     { return inverse(m); }
 vec3 mul4x3(mat4 m, vec3 v) { return (m*vec4(v, 1.0f)).xyz; }
 vec3 mul3x3(mat4 m, vec3 v) { return (m*vec4(v, 0.0f)).xyz; }
 
