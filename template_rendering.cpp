@@ -1497,6 +1497,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   // (5) generate local functions
   //
   data["LocalFunctions"] = std::vector<json>();
+  data["LocalFuncDecls"] = std::vector<json>();
   {
     clang::Rewriter rewrite2;
     rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
@@ -1520,6 +1521,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       }
   
       data["LocalFunctions"].push_back(p->second.funText());
+      if(a_settings.fwdFunDeclarations)
+        data["LocalFuncDecls"].push_back(p->second.funDecl);
+        
       shaderFeatures = shaderFeatures || pVisitorF->GetShaderFeatures();
     }
   }

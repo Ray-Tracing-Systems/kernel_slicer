@@ -301,6 +301,8 @@ int main(int argc, const char **argv)
       textGenSettings.uboIsAlwaysUniform = (atoi(params["-uniform_ubo"].c_str()) != 0);
     if(params.find("-wgpu_ver") != params.end())
       textGenSettings.wgpu_ver = atoi(params["-wgpu_ver"].c_str());
+    if(params.find("-fwdfundecl") != params.end())
+      textGenSettings.fwdFunDeclarations = atoi(params["-fwdfundecl"].c_str());
   }
 
   // include and process folders

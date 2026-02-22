@@ -245,6 +245,10 @@ double3   operator*(double3x3 m,  double3 v) { return mul(m,v); }
 
 static inline uint bitCount(uint x) { return countbits(x); }
 
+## for LocalDecl in LocalFuncDecls
+{{LocalDecl}};
+## endfor
+
 ## for LocalFunc in LocalFunctions  
 {{LocalFunc}}
 

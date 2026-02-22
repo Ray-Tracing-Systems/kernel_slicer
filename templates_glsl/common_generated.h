@@ -205,6 +205,10 @@ struct Box4f
 {{Def}}
 ## endfor
 
+## for LocalDecl in LocalFuncDecls
+{{LocalDecl}};
+## endfor
+
 ## for LocalFunc in LocalFunctions  
 {{LocalFunc}}
 

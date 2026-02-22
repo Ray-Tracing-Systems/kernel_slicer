@@ -47,6 +47,7 @@ namespace kslicer
     bool skipUBORead       = false;
     bool uboIsAlwaysConst  = false;
     bool uboIsAlwaysUniform = false;
+    bool fwdFunDeclarations = false;
   };
 
   struct IShaderCompiler;
