@@ -195,9 +195,9 @@ float3x3 inverse3x3(float3x3 m)
 //float3 mul3x3(float4x4 m, float3 v) { return (m*float4(v, 0.0f)).xyz; }
 
 float3x3 make_float3x3(float3 a, float3 b, float3 c) { // different way than mat3(a,b,c)
-  return float3x3(a.x, b.x, c.x,
-                  a.y, b.y, c.y,
-                  a.z, b.z, c.z);
+  return float3x3(a.x, a.y, a.z,
+                  b.x, b.y, b.z,
+                  c.x, c.y, c.z);
 }
 
 void set_col2f(inout float2x2 m, int col, float2 value) { m[0][col] = value.x; m[1][col] = value.y; }
