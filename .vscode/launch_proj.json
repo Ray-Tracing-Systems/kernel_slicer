@@ -121,10 +121,7 @@
             "type"   : "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/cmake-build-release/kslicer",
-            "args"   : ["-config", "/home/frol/PROG/HydraRepos/HydraCore3/kmake.json",
-                        "-shaderCC", "glsl",
-                        "-uniform_ubo", "0"
-                       ],
+            "args"   : ["-config", "/home/frol/PROG/HydraRepos/HydraCore3/kmake.json"],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",
             "environment": [],
