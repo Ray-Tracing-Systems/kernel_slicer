@@ -1708,8 +1708,9 @@ namespace kslicer
 
     //// Processing Kernel Functions (KF)
     //
-    virtual MList         ListMatchers_KF(const std::string& mainFuncName) = 0;
-    virtual MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler) = 0;
+    virtual MList         ListMatchers_KF(const KernelInfo& a_kernel);
+    virtual MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler);
+
     virtual std::string   VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler,
                                              std::string& a_outLoopInitCode, std::string& a_outLoopFinishCode);
     virtual void          VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler); // additional informational pass, does not rewrite the code!
@@ -1824,8 +1825,7 @@ namespace kslicer
 
   struct RTV_Pattern : public MainClassInfo
   {
-    MList         ListMatchers_KF(const std::string& mainFuncName) override;
-    MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler) override;
+
     void          ProcessCallArs_KF(const KernelCallInfo& a_call) override;
 
     uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;
@@ -1841,8 +1841,6 @@ namespace kslicer
 
   struct IPV_Pattern : public MainClassInfo
   {
-    MList         ListMatchers_KF(const std::string& mainFuncName) override;
-    MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler) override;
     std::string   VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler,
                                      std::string& a_outLoopInitCode, std::string& a_outLoopFinishCode) override;
 

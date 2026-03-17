@@ -66,13 +66,18 @@ kslicer::MainClassInfo::MHandlerCFPtr kslicer::MainClassInfo::MatcherHandler_CF(
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-kslicer::IPV_Pattern::MList kslicer::IPV_Pattern::ListMatchers_KF(const std::string& a_kernelName)
+
+kslicer::MainClassInfo::MList kslicer::MainClassInfo::ListMatchers_KF(const KernelInfo& a_kernel)
 {
+  const std::string& a_kernelName = a_kernel.name;
   std::vector<clang::ast_matchers::StatementMatcher> list;
   list.push_back(kslicer::MakeMatch_MemberVarOfMethod(a_kernelName));
   list.push_back(kslicer::MakeMatch_FunctionCallFromFunction(a_kernelName));
-  list.push_back(kslicer::MakeMatch_ForLoopInsideFunction(a_kernelName));
-  list.push_back(kslicer::MakeMatch_BeforeForLoopInsideFunction(a_kernelName));
+  if(a_kernel.pattern == kslicer::PATTERN_TP::PATTERN_IPV)
+  {
+    list.push_back(kslicer::MakeMatch_ForLoopInsideFunction(a_kernelName));
+    list.push_back(kslicer::MakeMatch_BeforeForLoopInsideFunction(a_kernelName));
+  }
   return list;
 }
 
@@ -242,9 +247,14 @@ public:
 };
 
 
-kslicer::IPV_Pattern::MHandlerKFPtr kslicer::IPV_Pattern::MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compile)
+kslicer::MainClassInfo::MHandlerKFPtr kslicer::MainClassInfo::MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compile)
 {
-  return std::move(std::make_unique<LoopHandlerInsideKernelsIPV>(std::cout, *this, &kernel, a_compile));
+  if(kernel.pattern == kslicer::PATTERN_TP::PATTERN_IPV)
+    return std::move(std::make_unique<LoopHandlerInsideKernelsIPV>(std::cout, *this, &kernel, a_compile));
+  else if(kernel.pattern == kslicer::PATTERN_TP::PATTERN_RTV)
+    return std::move(std::make_unique<kslicer::UsedCodeFilter>(std::cout, *this, &kernel, a_compile));
+  else
+    return nullptr;
 }
 
 std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler, 

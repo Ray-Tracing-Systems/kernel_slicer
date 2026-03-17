@@ -923,7 +923,7 @@ int main(int argc, const char **argv)
     kernel.openMpAndISPC    = (ispcThreadModel == 2);
     kernel.explicitIdISPC   = ispcExplicitIndices;
 
-    auto kernelMatchers = inputCodeInfo.ListMatchers_KF(kernel.name);
+    auto kernelMatchers = inputCodeInfo.ListMatchers_KF(kernel);
     auto pFilter        = inputCodeInfo.MatcherHandler_KF(kernel, compiler);
 
     clang::ast_matchers::MatchFinder finder;

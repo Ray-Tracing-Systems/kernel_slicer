@@ -204,19 +204,18 @@ void kslicer::MainClassInfo::PlugSpecVarsInCalls_CF(const std::vector<MainFuncIn
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-kslicer::RTV_Pattern::MList kslicer::RTV_Pattern::ListMatchers_KF(const std::string& a_kernelName)
-{
-  std::vector<clang::ast_matchers::StatementMatcher> list;
-  list.push_back(kslicer::MakeMatch_MemberVarOfMethod(a_kernelName));
-  list.push_back(kslicer::MakeMatch_FunctionCallFromFunction(a_kernelName));
-  return list;
-}
+//kslicer::RTV_Pattern::MList kslicer::RTV_Pattern::ListMatchers_KF(const std::string& a_kernelName)
+//{
+//  std::vector<clang::ast_matchers::StatementMatcher> list;
+//  list.push_back(kslicer::MakeMatch_MemberVarOfMethod(a_kernelName));
+//  list.push_back(kslicer::MakeMatch_FunctionCallFromFunction(a_kernelName));
+//  return list;
+//}
 
-kslicer::RTV_Pattern::MHandlerKFPtr kslicer::RTV_Pattern::MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler)
-{
-  return std::move(std::make_unique<kslicer::UsedCodeFilter>(std::cout, *this, &kernel, a_compiler));
-}
-
+//kslicer::RTV_Pattern::MHandlerKFPtr kslicer::RTV_Pattern::MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler)
+//{
+//  return std::move(std::make_unique<kslicer::UsedCodeFilter>(std::cout, *this, &kernel, a_compiler));
+//}
 
 void kslicer::RTV_Pattern::ProcessCallArs_KF(const KernelCallInfo& a_call)
 {
