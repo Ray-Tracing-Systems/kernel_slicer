@@ -42,7 +42,7 @@ std::vector<kslicer::ArgFinal> kslicer::IPV_Pattern::GetKernelTIDArgs(const Kern
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-kslicer::IPV_Pattern::MList kslicer::IPV_Pattern::ListMatchers_CF(const std::string& mainFuncName)
+kslicer::MainClassInfo::MList kslicer::MainClassInfo::ListMatchers_CF(const std::string& mainFuncName)
 {
   std::vector<clang::ast_matchers::StatementMatcher> list;
   list.push_back(kslicer::MakeMatch_LocalVarOfMethod(mainFuncName));

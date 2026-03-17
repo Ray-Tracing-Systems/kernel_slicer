@@ -1685,7 +1685,7 @@ namespace kslicer
 
     //// Processing Control Functions (CF)
     //
-    virtual MList         ListMatchers_CF(const std::string& mainFuncName) = 0;
+    virtual MList         ListMatchers_CF(const std::string& mainFuncName);
     virtual MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) = 0;
     virtual void          VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler);
 
@@ -1821,7 +1821,6 @@ namespace kslicer
 
   struct RTV_Pattern : public MainClassInfo
   {
-    MList         ListMatchers_CF(const std::string& mainFuncName) override;
     MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) override;
 
     void AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, std::unordered_map<std::string, KernelInfo>&  a_kernelList) override;
@@ -1847,7 +1846,6 @@ namespace kslicer
 
   struct IPV_Pattern : public MainClassInfo
   {
-    MList         ListMatchers_CF(const std::string& mainFuncName) override;
     MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) override;
 
     MList         ListMatchers_KF(const std::string& mainFuncName) override;

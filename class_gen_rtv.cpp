@@ -201,18 +201,18 @@ void kslicer::RTV_Pattern::PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-kslicer::RTV_Pattern::MList kslicer::RTV_Pattern::ListMatchers_CF(const std::string& mainFuncName)
-{
-  std::vector<clang::ast_matchers::StatementMatcher> list;
-  list.push_back(kslicer::MakeMatch_LocalVarOfMethod(mainFuncName));
-  list.push_back(kslicer::MakeMatch_MemberVarOfMethod(mainFuncName));
-  list.push_back(kslicer::MakeMatch_MethodCallFromMethod(mainFuncName));
-  list.push_back(kslicer::MakeMatch_SingleForLoopInsideFunction(mainFuncName));
-  list.push_back(kslicer::MakeMatch_IfInsideForLoopInsideFunction(mainFuncName));
-  list.push_back(kslicer::MakeMatch_FunctionCallInsideForLoopInsideFunction(mainFuncName));
-  list.push_back(kslicer::MakeMatch_IfReturnFromFunction(mainFuncName));
-  return list;
-}
+//kslicer::RTV_Pattern::MList kslicer::RTV_Pattern::ListMatchers_CF(const std::string& mainFuncName)
+//{
+//  std::vector<clang::ast_matchers::StatementMatcher> list;
+//  list.push_back(kslicer::MakeMatch_LocalVarOfMethod(mainFuncName));
+//  list.push_back(kslicer::MakeMatch_MemberVarOfMethod(mainFuncName));
+//  list.push_back(kslicer::MakeMatch_MethodCallFromMethod(mainFuncName));
+//  list.push_back(kslicer::MakeMatch_SingleForLoopInsideFunction(mainFuncName));
+//  list.push_back(kslicer::MakeMatch_IfInsideForLoopInsideFunction(mainFuncName));
+//  list.push_back(kslicer::MakeMatch_FunctionCallInsideForLoopInsideFunction(mainFuncName));
+//  list.push_back(kslicer::MakeMatch_IfReturnFromFunction(mainFuncName));
+//  return list;
+//}
 
 kslicer::RTV_Pattern::MHandlerCFPtr kslicer::RTV_Pattern::MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler)
 {
