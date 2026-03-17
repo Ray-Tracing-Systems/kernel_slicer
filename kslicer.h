@@ -66,8 +66,9 @@ namespace kslicer
 
   enum class DATA_USAGE { USAGE_USER = 0, USAGE_SLICER_REDUCTION = 1 };
   enum class TEX_ACCESS { TEX_ACCESS_NOTHING = 0, TEX_ACCESS_READ = 1, TEX_ACCESS_WRITE = 2, TEX_ACCESS_SAMPLE = 4 };
-
   enum class CPP11_ATTR { ATTR_UNKNOWN = 0, ATTR_KERNEL = 1, ATTR_SETTER = 2  };
+
+  enum class PATTERN_TP { PATTERN_IPV = 0, PATTERN_RTV = 1 };
 
   /**
   \brief for each kernel we collect list of containes accesed by this kernel
@@ -315,6 +316,7 @@ namespace kslicer
       size_t         GetSizeOfDataType()            const;
     };
 
+    PATTERN_TP            pattern = PATTERN_TP::PATTERN_IPV;
     std::string           return_type;          ///<! func. return type
     std::string           return_class;         ///<! class name of pointer if pointer is returned
     std::string           name;                 ///<! func. name
@@ -600,6 +602,7 @@ namespace kslicer
 
   struct MainFuncInfo
   {
+    PATTERN_TP                                        pattern = PATTERN_TP::PATTERN_IPV;
     std::string                                       Name;
     const clang::CXXMethodDecl*                       Node;
     std::unordered_map<std::string, DataLocalVarInfo> Locals;
@@ -1686,14 +1689,14 @@ namespace kslicer
     //// Processing Control Functions (CF)
     //
     virtual MList         ListMatchers_CF(const std::string& mainFuncName);
-    virtual MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) = 0;
+    virtual MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler);
     virtual void          VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler);
 
-    virtual void AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, std::unordered_map<std::string, KernelInfo>& a_kernelList) {}
+    virtual void AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, std::unordered_map<std::string, KernelInfo>& a_kernelList);
 
     virtual void PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo>&                      a_mainFuncList,
                                         const std::unordered_map<std::string, KernelInfo>&    a_kernelList,
-                                        std::vector<KernelCallInfo>&                          a_kernelCalls) {}
+                                        std::vector<KernelCallInfo>&                          a_kernelCalls);
 
     virtual void ProcessVFH(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler);
     virtual void ExtractVFHConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool);
@@ -1821,14 +1824,6 @@ namespace kslicer
 
   struct RTV_Pattern : public MainClassInfo
   {
-    MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) override;
-
-    void AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, std::unordered_map<std::string, KernelInfo>&  a_kernelList) override;
-
-    void PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo>&                   a_mainFuncList,
-                                const std::unordered_map<std::string, KernelInfo>& a_kernelList,
-                                std::vector<KernelCallInfo>&                       a_kernelCalls) override;
-
     MList         ListMatchers_KF(const std::string& mainFuncName) override;
     MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler) override;
     void          ProcessCallArs_KF(const KernelCallInfo& a_call) override;
@@ -1846,8 +1841,6 @@ namespace kslicer
 
   struct IPV_Pattern : public MainClassInfo
   {
-    MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) override;
-
     MList         ListMatchers_KF(const std::string& mainFuncName) override;
     MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler) override;
     std::string   VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler,

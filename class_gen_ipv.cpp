@@ -55,7 +55,7 @@ kslicer::MainClassInfo::MList kslicer::MainClassInfo::ListMatchers_CF(const std:
   return list;
 }
 
-kslicer::IPV_Pattern::MHandlerCFPtr kslicer::IPV_Pattern::MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler)
+kslicer::MainClassInfo::MHandlerCFPtr kslicer::MainClassInfo::MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler)
 {
   return std::move(std::make_unique<kslicer::MainFuncAnalyzerRT>(std::cout, *this, a_compiler.getASTContext(), a_mainFuncRef));
 }

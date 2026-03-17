@@ -55,7 +55,7 @@ void kslicer::MainClassInfo::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang:
 }
 
 
-void kslicer::RTV_Pattern::AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, std::unordered_map<std::string, KernelInfo>& a_kernelList)
+void kslicer::MainClassInfo::AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, std::unordered_map<std::string, KernelInfo>& a_kernelList)
 {
   // (1) first scan all main functions, if no one needed just exit
   //
@@ -64,6 +64,9 @@ void kslicer::RTV_Pattern::AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncL
 
   for(auto& mainFunc : a_mainFuncList)
   {
+    if(mainFunc.pattern != kslicer::PATTERN_TP::PATTERN_RTV)
+      continue;
+
     if(mainFunc.ExitExprIfCond.size() != 0)
     {
       for(const auto& kernelName : mainFunc.UsedKernels)
@@ -160,7 +163,7 @@ void kslicer::RTV_Pattern::AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncL
   for(auto& mainFunc : a_mainFuncList)
   {
     auto p = mainFunc.Locals.find(tFlagsLocalVar.name);
-    if(p != mainFunc.Locals.end() || !mainFunc.needToAddThreadFlags)
+    if(p != mainFunc.Locals.end() || !mainFunc.needToAddThreadFlags || mainFunc.pattern != kslicer::PATTERN_TP::PATTERN_RTV)
       continue;
 
     mainFunc.Locals[tFlagsLocalVar.name] = tFlagsLocalVar;
@@ -168,9 +171,9 @@ void kslicer::RTV_Pattern::AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncL
 
 }
 
-void kslicer::RTV_Pattern::PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo>&                   a_mainFuncList, 
-                                                  const std::unordered_map<std::string, KernelInfo>& a_kernelList,
-                                                  std::vector<KernelCallInfo>&                       a_kernelCalls)
+void kslicer::MainClassInfo::PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo>&                   a_mainFuncList, 
+                                                    const std::unordered_map<std::string, KernelInfo>& a_kernelList,
+                                                    std::vector<KernelCallInfo>&                       a_kernelCalls)
 {
   // list kernels and main functions
   //
@@ -188,7 +191,7 @@ void kslicer::RTV_Pattern::PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo
   for(auto& call : a_kernelCalls)
   {
     const auto& mainFunc = a_mainFuncList[mainFuncIdByName[call.callerName]];
-    if(!mainFunc.needToAddThreadFlags)
+    if(!mainFunc.needToAddThreadFlags || mainFunc.pattern != kslicer::PATTERN_TP::PATTERN_RTV)
       continue;
 
     auto p2 = a_kernelList.find(call.originKernelName);
@@ -198,30 +201,6 @@ void kslicer::RTV_Pattern::PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo
   
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//kslicer::RTV_Pattern::MList kslicer::RTV_Pattern::ListMatchers_CF(const std::string& mainFuncName)
-//{
-//  std::vector<clang::ast_matchers::StatementMatcher> list;
-//  list.push_back(kslicer::MakeMatch_LocalVarOfMethod(mainFuncName));
-//  list.push_back(kslicer::MakeMatch_MemberVarOfMethod(mainFuncName));
-//  list.push_back(kslicer::MakeMatch_MethodCallFromMethod(mainFuncName));
-//  list.push_back(kslicer::MakeMatch_SingleForLoopInsideFunction(mainFuncName));
-//  list.push_back(kslicer::MakeMatch_IfInsideForLoopInsideFunction(mainFuncName));
-//  list.push_back(kslicer::MakeMatch_FunctionCallInsideForLoopInsideFunction(mainFuncName));
-//  list.push_back(kslicer::MakeMatch_IfReturnFromFunction(mainFuncName));
-//  return list;
-//}
-
-kslicer::RTV_Pattern::MHandlerCFPtr kslicer::RTV_Pattern::MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler)
-{
-  return std::move(std::make_unique<kslicer::MainFuncAnalyzerRT>(std::cout, *this, a_compiler.getASTContext(), a_mainFuncRef));
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
