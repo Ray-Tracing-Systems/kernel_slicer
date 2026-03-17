@@ -722,6 +722,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   }
 
   bool haveReduceAdd = false;
+  bool atLeastOneKernelIsRTV = false;
 
   data["Kernels"] = std::vector<json>();
   for (const auto& nk : kernels)
@@ -734,6 +735,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     uint VArgsSize  = 0;
     uint MArgsSize  = 0;
     bool isTextureArrayUsedInThisKernel = false;
+    atLeastOneKernelIsRTV = atLeastOneKernelIsRTV || (k.pattern == kslicer::PATTERN_TP::PATTERN_RTV);
 
     json args = std::vector<json>();
     for(auto commonArg : commonArgs)
@@ -1528,7 +1530,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     }
   }
 
-  if(a_classInfo.NeedFakeOffset())
+  if(atLeastOneKernelIsRTV)
   {
     data["LocalFunctions"].push_back("uint fakeOffset(uint x, uint y, uint pitch) { return y*pitch + x; }  // RTV pattern, for 2D threading"); // todo: ckeck if RTV pattern is used here!
     //data["LocalFunctions"].push_back("uint fakeOffset3(uint x, uint y, uint z, uint sizeY, uint sizeX) { return z*sizeY*sizeX + y*sizeX + x; } // for 3D threading");

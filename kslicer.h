@@ -1684,7 +1684,6 @@ namespace kslicer
     virtual bool        IsKernel(const std::string& a_funcName) const;                                    ///<! return true if function is a kernel
     virtual void        ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const;     ///<!
     virtual bool        IsIndirect(const KernelInfo& a_kernel) const;
-    virtual bool        IsRTV() const { return false; }
 
     //// Processing Control Functions (CF)
     //
@@ -1727,8 +1726,6 @@ namespace kslicer
     virtual void        GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler, bool a_megakernelRTV);
     virtual std::string GetCFDeclFromSource(const std::string& sourceCode);
 
-    virtual bool NeedThreadFlags() const { return false; }
-    virtual bool NeedFakeOffset() const { return false; }
     virtual void AddTempBufferToKernel(const std::string a_buffName, const std::string a_elemTypeName, KernelInfo& a_kernel); ///<! if kernel need some additional buffers (for reduction for example) use this function
 
     struct DImplFunc
@@ -1825,12 +1822,7 @@ namespace kslicer
 
   struct RTV_Pattern : public MainClassInfo
   {
-    bool NeedThreadFlags() const override { return true; }
-    bool NeedFakeOffset () const override { return true; }
-    bool IsRTV          () const override { return true; }
-
-  private:
-
+    
   };
 
   struct IPV_Pattern : public MainClassInfo
@@ -1839,7 +1831,6 @@ namespace kslicer
                                      std::string& a_outLoopInitCode, std::string& a_outLoopFinishCode) override;
 
     std::vector<ArgFinal> GetKernelTIDArgs(const KernelInfo& a_kernel) const override;
-    bool NeedThreadFlags() const override { return false; }
   };
 
 

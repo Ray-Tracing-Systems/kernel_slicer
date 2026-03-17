@@ -1671,7 +1671,7 @@ bool GLSLKernelRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     ReplaceTextOrWorkAround(call->getSourceRange(), rewrittenRes);
     MarkRewritten(call);
   }
-  else if (m_codeInfo->IsRTV() && rewriteDueToFakeOffset)
+  else if (m_currKernel.pattern == kslicer::PATTERN_TP::PATTERN_RTV && rewriteDueToFakeOffset)
   {
     std::string fname        = fDecl->getNameInfo().getName().getAsString();
     std::string rewrittenRes = fname + "(";

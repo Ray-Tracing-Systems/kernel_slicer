@@ -273,7 +273,9 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
       strOut << "], " << lcOffsetSize+1 << ", lcOffsets);" << std::endl;
     else
       strOut << "], 0, nullptr);" << std::endl;
-    if(m_pCodeInfo->NeedThreadFlags())
+
+    const bool needThreadFlags = (pKernelInfo->second.pattern == kslicer::PATTERN_TP::PATTERN_RTV);
+    if(needThreadFlags)
       strOut << "  m_currThreadFlags = " << flagsVariableName.c_str() << ";" << std::endl;
     if(m_pCodeInfo->m_timestampPoolSize != uint32_t(-1)) // disabled
       strOut << "  " << " vkCmdWriteTimestamp(a_commandBuffer, " << currStageBits.c_str() << ", m_queryPoolTimestamps, " <<  m_pCodeInfo->m_timestampPoolSize*2+0 << ");" << std::endl;

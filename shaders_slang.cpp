@@ -654,7 +654,7 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
       //m_rewriter.ReplaceText(call->getSourceRange(), rewrittenRes);
       MarkRewritten(call);
     }
-    else if (m_codeInfo->IsRTV() && rewriteDueToFakeOffset)
+    else if ((m_pCurrKernel != nullptr) && (m_pCurrKernel->pattern == kslicer::PATTERN_TP::PATTERN_RTV) && rewriteDueToFakeOffset)
     {
       std::string fname        = fDecl->getNameInfo().getName().getAsString();
       std::string rewrittenRes = fname + "(";

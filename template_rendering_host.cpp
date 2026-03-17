@@ -209,7 +209,7 @@ static bool IsZeroStartLoopStatement(const clang::Stmt* a_stmt, const clang::Com
 static bool HaveToBeOverriden(const kslicer::MainFuncInfo& a_func, const kslicer::MainClassInfo& a_classInfo)
 {
   assert(a_func.Node != nullptr);
-  if(!a_func.Node->isVirtual() && !a_classInfo.IsRTV())
+  if(!a_func.Node->isVirtual() && a_func.pattern != kslicer::PATTERN_TP::PATTERN_RTV)
   {
     for(const auto& var : a_func.InOuts)
     {
@@ -236,7 +236,7 @@ static bool HaveToBeOverriden(const kslicer::MainFuncInfo& a_func, const kslicer
     }
   }
 
-  if(a_classInfo.IsRTV())
+  if(a_func.pattern == kslicer::PATTERN_TP::PATTERN_RTV)
   {
     auto p = a_classInfo.allMemberFunctions.find(a_func.Name + "Block");
     if(p == a_classInfo.allMemberFunctions.end())
@@ -435,6 +435,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   std::filesystem::path mainIncludeGeneratedAPI   = mainIncludeGenerated;
   mainIncludeGeneratedAPI.replace_extension("");
   mainIncludeGeneratedAPI.concat("_api.h");
+  
+  bool atLeastOneCFIsRTV = false; 
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -546,8 +548,6 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     }
   }
 
-  data["IsRTV"]              = a_classInfo.IsRTV();
-  data["IsMega"]             = a_classInfo.megakernelRTV;
   data["HasPrefixData"]      = (a_classInfo.composPrefix.size() != 0);
   data["PrefixDataName"]     = prefixDataName;
   data["PrefixDataClass"]    = a_composImplName;
@@ -1281,6 +1281,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   size_t totalTexArrayUsed    = 0;
   size_t totalAccels          = 0;
   
+  // for impl, ds bindings
+  //
+
   for(const auto& mainFunc : a_methodsToGenerate)
   {
     json data2;
@@ -1300,6 +1303,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       data2["TS_SIZE"]            = mainFunc.endTSNumber - mainFunc.startTSNumber;
     }
 
+    atLeastOneCFIsRTV = atLeastOneCFIsRTV || (mainFunc.pattern == kslicer::PATTERN_TP::PATTERN_RTV);
+
     bool HasCPUOverride = HaveToBeOverriden(mainFunc, a_classInfo);
     data2["OverrideMe"] = HasCPUOverride;
     if(HasCPUOverride)
@@ -1307,7 +1312,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       data2["FullImpl"] = GetJsonForFullCFImpl(mainFunc, a_classInfo, compiler);
       atLeastOneFullOverride = true;
     }
-    data2["IsRTV"] = a_classInfo.IsRTV();
+    data2["IsRTV"] = (mainFunc.pattern == kslicer::PATTERN_TP::PATTERN_RTV);
 
     for(const auto& v : mainFunc.Locals)
     {
@@ -1367,8 +1372,6 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     std::vector<std::string> localContainersPreCFName;
     std::set<std::string>    localContainersPreCFNameSet;
 
-    // for impl, ds bindings
-    //
     for(size_t i=mainFunc.startDSNumber; i<mainFunc.endDSNumber; i++)
     {
       auto& dsArgs = a_classInfo.allDescriptorSetsInfo[i];
@@ -1395,7 +1398,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       {
         if(!internalKernel && !isServeceKernel && !a_classInfo.pShaderCC->IsISPC() && pFoundKernel != a_classInfo.megakernelsByName.end())
         {
-          const bool ignoreArg = IgnoreArgForDS(j, dsArgs.descriptorSetsInfo, pFoundKernel->second.args, pFoundKernel->second.name, a_classInfo.IsRTV());
+          const bool ignoreArg = IgnoreArgForDS(j, dsArgs.descriptorSetsInfo, pFoundKernel->second.args, pFoundKernel->second.name, (pFoundKernel->second.pattern == kslicer::PATTERN_TP::PATTERN_RTV));
           if(ignoreArg && !isMegaKernel)
             continue;
         }
@@ -1592,9 +1595,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data2["MainFuncTextCmd"]      = mainFunc.CodeGenerated;
     data2["ReturnType"]           = mainFunc.ReturnType;
     data2["IsVoid"]               = (mainFunc.ReturnType == "void");
-    data2["IsRTV"]                = a_classInfo.IsRTV();
+    data2["IsRTV"]                = (mainFunc.pattern == kslicer::PATTERN_TP::PATTERN_RTV);
     data2["IsMega"]               = a_classInfo.megakernelRTV;
-    data2["NeedThreadFlags"]      = a_classInfo.NeedThreadFlags();
+    data2["NeedThreadFlags"]      = (mainFunc.pattern == kslicer::PATTERN_TP::PATTERN_RTV); // a_classInfo.NeedThreadFlags();
     data2["NeedToAddThreadFlags"] = mainFunc.needToAddThreadFlags;
     data2["DSId"]                 = mainFunc.startDSNumber;
     if(mainFunc.megakernel.isMega)
@@ -1613,6 +1616,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data2["UsePersistentThreads"] = mainFunc.usePersistentThreads;
     data["MainFunctions"].push_back(data2);
   }
+  
+  data["IsRTV"]  = atLeastOneCFIsRTV;
+  data["IsMega"] = a_classInfo.megakernelRTV;
 
   data["TotalBuffersUsed"]     = totalBuffersUsed;
   data["TotalTexCombinedUsed"] = totalTexCombinedUsed;
@@ -1760,7 +1766,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         std::cout << "  [kslicer]: warning, function 'UpdateMembersTextureData' should be virtual" << std::endl;
     }
 
-    if(pScnRstr == a_classInfo.allMemberFunctions.end() && a_classInfo.IsRTV())
+    if(pScnRstr == a_classInfo.allMemberFunctions.end() && atLeastOneCFIsRTV)
     {
       std::cout << "  [kslicer]: warning, function 'SceneRestrictions' is not found. It would be generated by kernel_slicer." << std::endl;
       std::cout << "  [kslicer]: you may add this function in base class or override it in derived class (derived from generated class)." << std::endl;

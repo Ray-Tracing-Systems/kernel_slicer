@@ -142,7 +142,7 @@ void kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang:
 
   a_mainFunc.ReturnType    = a_node->getReturnType().getAsString();
   a_mainFunc.startDSNumber = allDescriptorSetsInfo.size();
-  a_mainFunc.OriginalDecl  = GetOriginalDeclText(a_node, compiler, IsRTV());
+  a_mainFunc.OriginalDecl  = GetOriginalDeclText(a_node, compiler, (a_mainFunc.pattern == kslicer::PATTERN_TP::PATTERN_RTV));
   
   if(a_megakernelRTV)
   {
