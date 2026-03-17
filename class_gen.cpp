@@ -1,6 +1,7 @@
 #include "kslicer.h"
 #include "class_gen.h"
 #include "ast_matchers.h"
+#include "extractor.h"
 
 #include <sstream>
 #include <algorithm>
@@ -296,42 +297,134 @@ std::vector<kslicer::InOutVarInfo> kslicer::ListParamsOfMainFunc(const CXXMethod
 
 std::string kslicer::MainClassInfo::VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler, std::string& a_outLoopInitCode, std::string& a_outLoopFinishCode)
 {
-  const clang::CXXMethodDecl* a_node = a_funcInfo.astNode;
-  std::string fakeOffsetExpr = pShaderCC->RTVGetFakeOffsetExpression(a_funcInfo, GetKernelTIDArgs(a_funcInfo));
-
-  Rewriter rewrite2;
-  rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
+  if(a_funcInfo.pattern == kslicer::PATTERN_TP::PATTERN_RTV)
+  {
+    const clang::CXXMethodDecl* a_node = a_funcInfo.astNode;
+    std::string fakeOffsetExpr = pShaderCC->RTVGetFakeOffsetExpression(a_funcInfo, GetKernelTIDArgs(a_funcInfo));
   
-  auto pVisitor = pShaderCC->MakeKernRewriter(rewrite2, compiler, this, a_funcInfo, fakeOffsetExpr);
-  pVisitor->SetCurrKernelInfo(&a_funcInfo);
-  pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
-  pVisitor->ApplyDefferedWorkArounds();
-  pVisitor->ResetCurrKernelInfo();
-
-  a_funcInfo.shaderFeatures = a_funcInfo.shaderFeatures || pVisitor->GetKernelShaderFeatures();
-
-  clang::SourceLocation b(a_node->getBeginLoc()), _e(a_node->getEndLoc());
-  clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, compiler.getSourceManager(), compiler.getLangOpts()));
-  return rewrite2.getRewrittenText(clang::SourceRange(b,e));
+    Rewriter rewrite2;
+    rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
+    
+    auto pVisitor = pShaderCC->MakeKernRewriter(rewrite2, compiler, this, a_funcInfo, fakeOffsetExpr);
+    pVisitor->SetCurrKernelInfo(&a_funcInfo);
+    pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
+    pVisitor->ApplyDefferedWorkArounds();
+    pVisitor->ResetCurrKernelInfo();
+  
+    a_funcInfo.shaderFeatures = a_funcInfo.shaderFeatures || pVisitor->GetKernelShaderFeatures();
+  
+    clang::SourceLocation b(a_node->getBeginLoc()), _e(a_node->getEndLoc());
+    clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, compiler.getSourceManager(), compiler.getLangOpts()));
+    return rewrite2.getRewrittenText(clang::SourceRange(b,e));
+  }
+  else if(a_funcInfo.pattern == kslicer::PATTERN_TP::PATTERN_IPV)
+  {
+    //if(a_funcInfo.name == "kernel2D_ExtractBrightPixels")
+    //  a_funcInfo.astNode->dump();
+    
+    Rewriter rewrite2;
+    rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
+    
+    auto pVisitor = pShaderCC->MakeKernRewriter(rewrite2, compiler, this, a_funcInfo, "");
+    pVisitor->SetCurrKernelInfo(&a_funcInfo);
+  
+    auto kernelNodes = kslicer::ExtractKernelForLoops(a_funcInfo.astNode->getBody(), int(a_funcInfo.loopIters.size()), compiler);
+    
+    std::string funcBodyText = ""; // SOME REPLACEMENT DOES NOT WORKS 
+    //{
+    //if(kernelNodes.loopBody != nullptr)
+    //{
+    //  funcBodyText = pVisitor->RecursiveRewrite(kernelNodes.loopBody);
+    //  if(!clang::isa<clang::CompoundStmt>(kernelNodes.loopBody))
+    //    funcBodyText += ";";
+    //}
+  
+    //if(kernelNodes.beforeLoop != nullptr)                                      // beforeLoop does not works, removed
+    //  a_outLoopInitCode = pVisitor->RecursiveRewrite(kernelNodes.beforeLoop);
+    //else
+    //  a_outLoopInitCode = "";
+    //
+    //if(kernelNodes.afterLoop != nullptr)
+    //  a_outLoopFinishCode = pVisitor->RecursiveRewrite(kernelNodes.afterLoop); // afterLoop does not works in this way, removed
+    //else
+    //  a_outLoopFinishCode = "";
+    //
+    //if(kernelNodes.loopBody != nullptr)
+    //  return funcBodyText;
+    //else
+    //  return "//empty kernel body is found";
+    //}
+    
+    // old way
+    //
+    pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
+    //pVisitor->TraverseStmt(const_cast<clang::Stmt*>(a_funcInfo.astNode->getBody()));
+    pVisitor->ApplyDefferedWorkArounds();
+    pVisitor->ResetCurrKernelInfo();
+    
+    a_funcInfo.shaderFeatures = a_funcInfo.shaderFeatures || pVisitor->GetKernelShaderFeatures(); // TODO: don't work !!!
+  
+    if(a_funcInfo.loopOutsidesInit.isValid())
+    {
+      auto brokenEnd = a_funcInfo.loopOutsidesInit.getEnd().getRawEncoding();
+      auto nextBegin = a_funcInfo.loopInsides.getBegin().getRawEncoding();
+      if(brokenEnd + 1 < nextBegin)
+      {
+        auto repairedEnd = clang::SourceLocation::getFromRawEncoding(brokenEnd+1);
+        a_funcInfo.loopOutsidesInit.setEnd(repairedEnd);
+        a_outLoopInitCode = rewrite2.getRewrittenText(a_funcInfo.loopOutsidesInit)   + ";";
+      }
+    }
+  
+    if(a_funcInfo.loopOutsidesFinish.isValid())  
+      a_outLoopFinishCode = rewrite2.getRewrittenText(a_funcInfo.loopOutsidesFinish) + ";";
+    
+    // new way
+    //
+    if(funcBodyText != "")
+      return funcBodyText;
+    else
+      return rewrite2.getRewrittenText(a_funcInfo.loopInsides) + ";"; // old way works
+  }
 }
 
-std::vector<kslicer::ArgFinal> kslicer::MainClassInfo::GetKernelTIDArgs(const KernelInfo& a_kernel) const
+std::vector<kslicer::ArgFinal> kslicer::MainClassInfo::GetKernelTIDArgs(const KernelInfo& a_kernel) const 
 {
   std::vector<kslicer::ArgFinal> args;
-  for (const auto& arg : a_kernel.args) 
-  {   
-    if(arg.isThreadID)
-    { 
+
+  if(a_kernel.pattern == kslicer::PATTERN_TP::PATTERN_IPV)
+  {
+    for (uint32_t i = 0; i < a_kernel.loopIters.size(); i++) 
+    {    
+      const auto& arg = a_kernel.loopIters[i];
       ArgFinal arg2;
-      arg2.type = pShaderFuncRewriter->RewriteStdVectorTypeStr(arg.type);
-      arg2.name = arg.name;
-      arg2.loopIter.sizeText = arg.name;
-      arg2.loopIter.id       = 0;
+      arg2.name        = arg.name;
+      arg2.type        = pShaderFuncRewriter->RewriteStdVectorTypeStr(arg.type);
+      arg2.loopIter    = arg;
+      arg2.loopIter.id = i;
+  
       args.push_back(arg2);
     }
+  
+    std::sort(args.begin(), args.end(), [](const auto& a, const auto & b) { return a.loopIter.id < b.loopIter.id; });
   }
-
-  std::sort(args.begin(), args.end(), [](const auto& a, const auto & b) { return a.name < b.name; });
+  else if(a_kernel.pattern == kslicer::PATTERN_TP::PATTERN_RTV)
+  {
+    for (const auto& arg : a_kernel.args) 
+    {   
+      if(arg.isThreadID)
+      { 
+        ArgFinal arg2;
+        arg2.type = pShaderFuncRewriter->RewriteStdVectorTypeStr(arg.type);
+        arg2.name = arg.name;
+        arg2.loopIter.sizeText = arg.name;
+        arg2.loopIter.id       = 0;
+        args.push_back(arg2);
+      }
+    }
+  
+    std::sort(args.begin(), args.end(), [](const auto& a, const auto & b) { return a.name < b.name; });
+  }
 
   return args;
 }

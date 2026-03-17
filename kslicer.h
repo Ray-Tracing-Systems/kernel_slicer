@@ -1820,20 +1820,6 @@ namespace kslicer
   };
 
 
-  struct RTV_Pattern : public MainClassInfo
-  {
-    
-  };
-
-  struct IPV_Pattern : public MainClassInfo
-  {
-    std::string   VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler,
-                                     std::string& a_outLoopInitCode, std::string& a_outLoopFinishCode) override;
-
-    std::vector<ArgFinal> GetKernelTIDArgs(const KernelInfo& a_kernel) const override;
-  };
-
-
   /**
   \brief select local variables of main class that can be placed in auxilary buffer
   */

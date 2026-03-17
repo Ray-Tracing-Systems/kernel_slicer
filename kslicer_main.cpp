@@ -378,16 +378,11 @@ int main(int argc, const char **argv)
   kslicer::PATTERN_TP globalPatternOverride = kslicer::PATTERN_TP::PATTERN_IPV;
   std::shared_ptr<kslicer::MainClassInfo> pImplPattern = nullptr;
   {
+    pImplPattern = std::make_shared<kslicer::MainClassInfo>();
     if(patternName == "rtv")
-    {
-      pImplPattern    = std::make_shared<kslicer::RTV_Pattern>();
       globalPatternOverride = kslicer::PATTERN_TP::PATTERN_RTV;
-    }
     else if(patternName == "ipv")
-    {
-      pImplPattern = std::make_shared<kslicer::IPV_Pattern>();
       globalPatternOverride = kslicer::PATTERN_TP::PATTERN_IPV;
-    }
     else
     {
       std::cout << "[main]: wrong pattern name '" << patternName.c_str() << "' " << std::endl;
