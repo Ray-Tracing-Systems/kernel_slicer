@@ -26,7 +26,7 @@ struct Camera
   {
     if (a_upAngle != 0.0f)  // rotate vertical
     {
-      float3 direction = normalize(forward() * cosf(-DEG_TO_RAD*a_upAngle) + up * sinf(-DEG_TO_RAD*a_upAngle));
+      float3 direction = normalize(forward() * std::cos(-DEG_TO_RAD*a_upAngle) + up * std::sin(-DEG_TO_RAD*a_upAngle));
 
       up     = normalize(cross(right(), direction));
       lookAt = pos + tdist*direction;
@@ -36,12 +36,12 @@ struct Camera
     {
       float4x4 rot;
 
-      rot[0][0] = rot[2][2] = cosf(DEG_TO_RAD * rightAngle);
-      rot[0][2] = -sinf(DEG_TO_RAD * rightAngle);
-      rot[2][0] = +sinf(DEG_TO_RAD * rightAngle);
+      rot[0][0] = rot[2][2] = std::cos(DEG_TO_RAD * rightAngle);
+      rot[0][2] = -std::sin(DEG_TO_RAD * rightAngle);
+      rot[2][0] = +std::sin(DEG_TO_RAD * rightAngle);
 
-      float3 direction2 = LiteMath::normalize(mul(rot, forward()));
-      up     = normalize(mul(rot, up));
+      float3 direction2 = to_float3(LiteMath::normalize(mul(rot, to_float4(forward(),1.0f))));
+      up     = to_float3(normalize(mul(rot, to_float4(up,1.0f))));
       lookAt = pos + tdist*direction2;
     }
   }
