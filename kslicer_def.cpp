@@ -21,22 +21,31 @@ std::string kslicer::MainClassInfo::RemoveKernelPrefix(const std::string& a_func
   return a_funcName;
 }
 
-uint32_t kslicer::IPV_Pattern::GetKernelDim(const kslicer::KernelInfo& a_kernel) const
+uint32_t kslicer::MainClassInfo::GetKernelDim(const kslicer::KernelInfo& a_kernel) const
 {
   const std::string& a_funcName = a_kernel.name;
-  auto pos1 = a_funcName.find("1D_");
-  auto pos2 = a_funcName.find("2D_");
-  auto pos3 = a_funcName.find("3D_");
 
+  if(a_kernel.pattern == kslicer::PATTERN_TP::PATTERN_IPV)
+  {
+    auto pos1 = a_funcName.find("1D_");
+    auto pos2 = a_funcName.find("2D_");
+    auto pos3 = a_funcName.find("3D_");
+  
+    if(pos1 != std::string::npos )
+      return 1;
+    else if(pos2 != std::string::npos) 
+      return 2;
+    else if(pos3 != std::string::npos)
+      return 3;
+    else
+      return 0;
+  }
+  else if (a_kernel.pattern == kslicer::PATTERN_TP::PATTERN_RTV)
+  {
+    return uint32_t(GetKernelTIDArgs(a_kernel).size());
+  }
 
-  if(pos1 != std::string::npos )
-    return 1;
-  else if(pos2 != std::string::npos) 
-    return 2;
-  else if(pos3 != std::string::npos)
-    return 3;
-  else
-    return 0;
+  return 1;
 } 
 
 bool kslicer::IsTextureContainer(const std::string& a_typeName)

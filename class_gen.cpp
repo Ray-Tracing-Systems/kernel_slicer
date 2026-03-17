@@ -431,6 +431,17 @@ void kslicer::MainClassInfo::ProcessCallArs_KF(const KernelCallInfo& a_call)
       
     pDataMember->second.tmask = kslicer::TEX_ACCESS( int(pDataMember->second.tmask) | int(pMask->second) );
   }
+
+  if(pKernel->second.pattern == kslicer::PATTERN_TP::PATTERN_RTV)
+  {
+    auto& actualParameters = a_call.descriptorSetsInfo;
+    for(size_t argId = 0; argId<actualParameters.size(); argId++)
+    {
+      if(actualParameters[argId].argType == kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_LOCAL)
+        pKernel->second.args[argId].needFakeOffset = true; 
+    }
+  }
+
 }
 
 

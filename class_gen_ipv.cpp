@@ -12,12 +12,12 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void kslicer::IPV_Pattern::ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const 
-{
-  auto found = std::find_if(a_kernel.loopIters.begin(), a_kernel.loopIters.end(), 
-                           [&](const auto& val){ return arg.name == val.sizeText; });
-  arg.isLoopSize = (found != a_kernel.loopIters.end());
-}
+//void kslicer::IPV_Pattern::ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const 
+//{
+//  auto found = std::find_if(a_kernel.loopIters.begin(), a_kernel.loopIters.end(), 
+//                           [&](const auto& val){ return arg.name == val.sizeText; });
+//  arg.isLoopSize = (found != a_kernel.loopIters.end());
+//}
 
 std::vector<kslicer::ArgFinal> kslicer::IPV_Pattern::GetKernelTIDArgs(const KernelInfo& a_kernel) const 
 {

@@ -1682,7 +1682,7 @@ namespace kslicer
 
     virtual std::string RemoveKernelPrefix(const std::string& a_funcName) const;                          ///<! "kernel_XXX" --> "XXX";
     virtual bool        IsKernel(const std::string& a_funcName) const;                                    ///<! return true if function is a kernel
-    virtual void        ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const { }  ///<!
+    virtual void        ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const;     ///<!
     virtual bool        IsIndirect(const KernelInfo& a_kernel) const;
     virtual bool        IsRTV() const { return false; }
 
@@ -1719,7 +1719,7 @@ namespace kslicer
 
     //// These methods used for final template text rendering
     //
-    virtual uint32_t GetKernelDim(const KernelInfo& a_kernel) const = 0;
+    virtual uint32_t GetKernelDim(const KernelInfo& a_kernel) const;
 
     virtual std::vector<ArgFinal> GetKernelTIDArgs(const KernelInfo& a_kernel) const;
     virtual std::vector<ArgFinal> GetKernelCommonArgs(const KernelInfo& a_kernel) const;
@@ -1825,12 +1825,6 @@ namespace kslicer
 
   struct RTV_Pattern : public MainClassInfo
   {
-
-    void          ProcessCallArs_KF(const KernelCallInfo& a_call) override;
-
-    uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;
-    void          ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const override;
-
     bool NeedThreadFlags() const override { return true; }
     bool NeedFakeOffset () const override { return true; }
     bool IsRTV          () const override { return true; }
@@ -1843,9 +1837,6 @@ namespace kslicer
   {
     std::string   VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler,
                                      std::string& a_outLoopInitCode, std::string& a_outLoopFinishCode) override;
-
-    uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;
-    void          ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const override;
 
     std::vector<ArgFinal> GetKernelTIDArgs(const KernelInfo& a_kernel) const override;
     bool NeedThreadFlags() const override { return false; }
