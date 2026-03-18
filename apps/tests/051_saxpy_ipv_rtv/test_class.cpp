@@ -42,7 +42,6 @@ void Numbers::SAXPY2Block(const float* a_adata, const float* a_bdata, const floa
     SAXPY2(a_adata, a_bdata, a_cdata, a_result, tid);
 }
 
-
 void Numbers::SAXPY2(const float* a_adata, const float* a_bdata, const float* a_cdata, float* a_result, unsigned int tid)
 {
   float temp;
