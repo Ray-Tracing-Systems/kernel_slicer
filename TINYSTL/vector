@@ -52,6 +52,7 @@ namespace std {
 		vector& operator=(vector&& other);
 
 		void assign(const T* first, const T* last);
+		void assign(size_t __n, const T& __val);
 
 		const T* data() const;
 		T* data();

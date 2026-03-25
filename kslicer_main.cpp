@@ -179,7 +179,7 @@ int main(int argc, const char **argv)
   std::string mainClassName   = "TestClass";
   std::string selfFolder      = "";
   std::string stdlibFolder    = "";
-  std::string patternName     = "rtv";
+  std::string patternName     = "ipv";
   std::string shaderCCName    = "clspv";
   std::string suffix          = "_Generated";
   std::string shaderFolderPrefix    = "";
