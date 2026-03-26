@@ -368,7 +368,7 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateAllGeneratedDescriptorSets_{{Ma
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].dstSet           = m_allGeneratedDS[{{DescriptorSet.Id}}];
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].dstBinding       = {{DescriptorSet.ArgNumber}};
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].descriptorCount  = 1;
-    writeDescriptorSet[{{DescriptorSet.ArgNumber}}].descriptorType   = {% if UniformUBO %} VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER {% else %} {% if HaveLocalContainers %} VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC {% else %} VK_DESCRIPTOR_TYPE_STORAGE_BUFFER {% endif %} {% endif %};
+    writeDescriptorSet[{{DescriptorSet.ArgNumber}}].descriptorType   = {% if UniformUBO %} VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER {% else %} {% if HaveLocalContainers and not MainFunc.IsRTV %} VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC {% else %} VK_DESCRIPTOR_TYPE_STORAGE_BUFFER {% endif %} {% endif %};
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].pBufferInfo      = &descriptorBufferInfo[{{DescriptorSet.ArgNumber}}];
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].pImageInfo       = nullptr;
     writeDescriptorSet[{{DescriptorSet.ArgNumber}}].pTexelBufferView = nullptr;
