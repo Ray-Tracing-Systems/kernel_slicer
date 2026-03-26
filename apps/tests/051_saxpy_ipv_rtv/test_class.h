@@ -21,13 +21,14 @@ public:
                     const float* a_input1, 
                     const float* a_input2, size_t a_dataSize);
 
-  void SAXPY2Block(const float* a_adata, const float* a_bdata, const float* a_cdata, float* a_result, unsigned int a_size, unsigned int a_passesNum);
-
+  virtual void SAXPY2Block(const float* a_adata, const float* a_bdata, const float* a_cdata, float* a_result, unsigned int a_size, unsigned int a_passesNum);
+  
 
   void SAXPY2(const float* a_adata  [[size("a_dataSize")]], 
               const float* a_bdata  [[size("a_dataSize")]],
               const float* a_cdata  [[size("a_dataSize")]],
-                    float* a_result [[size("a_dataSize")]], unsigned int a_size);                   
+                    float* a_result [[size("a_dataSize")]], unsigned int a_size);       
+                              
 
   void kernel_Mult2(float* a_res, const float* a_input1, const float* a_input2, unsigned int tid);
 

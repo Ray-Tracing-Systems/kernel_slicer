@@ -375,20 +375,7 @@ int main(int argc, const char **argv)
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  kslicer::PATTERN_TP globalPatternOverride = kslicer::PATTERN_TP::PATTERN_IPV;
-  std::shared_ptr<kslicer::MainClassInfo> pImplPattern = nullptr;
-  {
-    pImplPattern = std::make_shared<kslicer::MainClassInfo>();
-    if(patternName == "rtv")
-      globalPatternOverride = kslicer::PATTERN_TP::PATTERN_RTV;
-    else if(patternName == "ipv")
-      globalPatternOverride = kslicer::PATTERN_TP::PATTERN_IPV;
-    else
-    {
-      std::cout << "[main]: wrong pattern name '" << patternName.c_str() << "' " << std::endl;
-      exit(0);
-    }
-  }
+  std::shared_ptr<kslicer::MainClassInfo> pImplPattern = std::make_shared<kslicer::MainClassInfo>();
 
   kslicer::MainClassInfo& inputCodeInfo = *pImplPattern;
 
@@ -838,12 +825,6 @@ int main(int argc, const char **argv)
   std::cout << "(2) Process control functions; extract local variables, known calls like memcpy, sort, std::fill and other " << std::endl;
   std::cout << "{" << std::endl;
 
-  // override architectural pattern for all CF and KF untill we can define it from CF/KF during the very first pass // TODO: fix this!
-  {
-    for(auto& k : inputCodeInfo.allKernels)
-      k.second.pattern = globalPatternOverride; 
-  }
-
   size_t mainFuncId = 0;
   for(const auto f : cfList)
   {
@@ -852,9 +833,6 @@ int main(int argc, const char **argv)
     auto& mainFuncRef = inputCodeInfo.mainFunc[mainFuncId];
     mainFuncRef.Name  = f.first;
     mainFuncRef.Node  = firstPassData.rv.mci.funControls[mainFuncRef.Name].astNode;
-
-    // override architectural pattern for all CF and KF untill we can define it from CF/KF during the very first pass // TODO: fix this!
-    mainFuncRef.pattern = globalPatternOverride;                                                                      // TODO: fix this!
 
     // Now process each main function: variables and kernel calls, if()->break and if()->return statements.
     //
