@@ -105,17 +105,21 @@ namespace kslicer
       const BreakStmt * brkExp = result.Nodes.getNodeAs<BreakStmt>("breakLoop");
       const ReturnStmt* extExp = result.Nodes.getNodeAs<ReturnStmt>("exitFunction"); 
 
-
       if(func_decl && kern_call && kern) // found kernel call in MainFunc
       {
         std::string kName = kern->getNameAsString();
         if(m_allInfo.IsKernel(kName))
         {
           auto pKernel = m_allInfo.allKernels.find(kName);  
-          if(pKernel != m_allInfo.allKernels.end()) 
+          auto pattern = m_allInfo.PatternByKernelName(kName);
+
+          if(pKernel != m_allInfo.allKernels.end()) {
             pKernel->second.usedInMainFunc = true;  // mark this kernel is used
+            pKernel->second.pattern = pattern;
+          }
           
           CurrMainFunc().UsedKernels.insert(kName); // add  this kernel to list of used kernels by MainFunc 
+          CurrMainFunc().pattern = pattern;
         }
       }
       else if(func_decl && l_var2 && var2)

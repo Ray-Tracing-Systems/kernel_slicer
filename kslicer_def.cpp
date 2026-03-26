@@ -12,6 +12,14 @@ bool kslicer::MainClassInfo::IsKernel(const std::string& a_funcName) const
   return false;
 }
 
+kslicer::PATTERN_TP  kslicer::MainClassInfo::PatternByKernelName(const std::string& a_kernelName)
+{
+  if(a_kernelName.find("kernel_") == 0)
+    return PATTERN_TP::PATTERN_RTV;
+  else
+    return PATTERN_TP::PATTERN_IPV;
+}
+
 std::string kslicer::MainClassInfo::RemoveKernelPrefix(const std::string& a_funcName) const
 {
   std::string name = a_funcName;

@@ -1684,6 +1684,7 @@ namespace kslicer
     virtual bool        IsKernel(const std::string& a_funcName) const;                                    ///<! return true if function is a kernel
     virtual void        ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const;     ///<!
     virtual bool        IsIndirect(const KernelInfo& a_kernel) const;
+    virtual PATTERN_TP  PatternByKernelName(const std::string& a_kernelName);
 
     //// Processing Control Functions (CF)
     //

@@ -7,7 +7,6 @@
         "default"         : {"wgSize": [32, 8,  1]}
     },
     "options" : {
-        "-pattern"    : "rtv",
         "-shaderCC"   : "slang",
         "-megakernel" : 1
     },

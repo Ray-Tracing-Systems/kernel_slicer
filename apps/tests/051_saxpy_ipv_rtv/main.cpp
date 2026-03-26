@@ -68,6 +68,7 @@ int main(int argc, const char** argv)
   }
 
   JSONLog::write("array", D);
+  JSONLog::write("array", D2);
   JSONLog::saveToFile("zout_"+backendName+".json");
 
   pImpl = nullptr;
