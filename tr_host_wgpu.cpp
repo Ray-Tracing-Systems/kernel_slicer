@@ -115,7 +115,7 @@ std::string kslicer::MainFunctionRewriterWGPU::MakeKernelCallCmdString(CXXMember
 
   // extract arguments to form correct descriptor set
   //
-  const auto args     = ExtractArgumentsOfAKernelCall(f, m_mainFunc.ExcludeList);
+  const auto args     = ExtractArgumentsOfAKernelCall(f, m_mainFunc);
   const auto callSign = MakeKernellCallSignature(m_mainFuncName, args, pKernelInfo->second.usedContainers); // + strOut1.str();
   auto p2 = dsIdBySignature.find(callSign);
   if(p2 == dsIdBySignature.end())
@@ -175,7 +175,7 @@ std::string kslicer::MainFunctionRewriterWGPU::MakeKernelCallCmdString(CXXMember
 std::string kslicer::MainFunctionRewriterWGPU::MakeServiceKernelCallCmdString(CallExpr* call, const std::string& a_name)
 {
   std::string kernName = "copyKernelFloat"; // extract from 'call' exact name of service function;
-  auto originArgs = ExtractArgumentsOfAKernelCall(call, m_mainFunc.ExcludeList);
+  auto originArgs = ExtractArgumentsOfAKernelCall(call, m_mainFunc);
   const std::string memBarCode = "vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr)";
 
   if(a_name == "memcpy")
@@ -446,8 +446,9 @@ bool kslicer::MainFunctionRewriterWGPU::VisitMemberExpr(MemberExpr* expr)
   return true;
 }
 
-std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriterWGPU::ExtractArgumentsOfAKernelCall(CallExpr* f, const std::unordered_set<std::string>& a_excludeList)
+std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriterWGPU::ExtractArgumentsOfAKernelCall(CallExpr* f, const MainFuncInfo& a_controlFunc)
 {
+  const std::unordered_set<std::string>& a_excludeList = a_controlFunc.ExcludeList;
   std::vector<kslicer::ArgReferenceOnCall> args;
   args.reserve(20);
 

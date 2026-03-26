@@ -125,7 +125,7 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
 
   // extract arguments to form correct descriptor set
   //
-  const auto args     = ExtractArgumentsOfAKernelCall(f, m_mainFunc.ExcludeList);
+  const auto args     = ExtractArgumentsOfAKernelCall(f, m_mainFunc);
   const auto callSign = MakeKernellCallSignature(m_mainFuncName, args, pKernelInfo->second.usedContainers); // + strOut1.str();
   auto p2 = dsIdBySignature.find(callSign);
   if(p2 == dsIdBySignature.end())
@@ -296,7 +296,7 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
 std::string kslicer::MainFunctionRewriterVulkan::MakeServiceKernelCallCmdString(CallExpr* call, const std::string& a_name)
 {
   std::string kernName = "copyKernelFloat"; // extract from 'call' exact name of service function;
-  auto originArgs = ExtractArgumentsOfAKernelCall(call, m_mainFunc.ExcludeList);
+  auto originArgs = ExtractArgumentsOfAKernelCall(call, m_mainFunc);
   const std::string memBarCode = "vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr)";
 
   if(a_name == "memcpy")
@@ -596,8 +596,10 @@ bool kslicer::MainFunctionRewriterVulkan::VisitMemberExpr(MemberExpr* expr)
   return true;
 }
 
-std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriterVulkan::ExtractArgumentsOfAKernelCall(CallExpr* f, const std::unordered_set<std::string>& a_excludeList)
+std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriterVulkan::ExtractArgumentsOfAKernelCall(CallExpr* f, const MainFuncInfo& a_controlFunc)
 {
+  const std::unordered_set<std::string>& a_excludeList = a_controlFunc.ExcludeList;
+
   std::vector<kslicer::ArgReferenceOnCall> args;
   args.reserve(20);
 
@@ -651,10 +653,15 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriterVulkan::Ex
     {
       std::string varName = text.substr(0, text.find(".data()"));
       auto pClassVar = m_allClassMembers.find(varName);
-      if(pClassVar == m_allClassMembers.end())
-        std::cout << "[KernelCallError]: vector<...> variable '" << varName.c_str() << "' was not found in class!" << std::endl;
-      else
+      auto pLocalContainer = a_controlFunc.localContainers.find(varName);
+      if(pClassVar == m_allClassMembers.end() && pLocalContainer == a_controlFunc.localContainers.end())
+      {
+        std::cout << "  [KernelCallError]: vector<...> variable '" << varName.c_str() << "' was not found in class, neither in local members!" << std::endl;
+      }
+      else if(pClassVar != m_allClassMembers.end())
         pClassVar->second.usedInMainFn = true;
+      //else if(pLocalContainer != a_controlFunc.localContainers.end())
+      //  pLocalContainer->second.usedInMainFn = true;
 
       arg.argType = KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_VECTOR;
       arg.kind    = DATA_KIND::KIND_VECTOR;

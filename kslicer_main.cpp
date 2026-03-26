@@ -706,8 +706,7 @@ int main(int argc, const char **argv)
   
   // Parse code, initial pass
   //
-  std::cout << "(1) Processing class '" << mainClassName.c_str() << "' with initial pass" << std::endl;
-  std::cout << "{" << std::endl;
+  std::cout << "(1) Processing class '" << mainClassName.c_str() << "' with initial pass" << std::endl << "{"; // << std::endl;
 
   std::vector<std::string> composClassNames;
   {
