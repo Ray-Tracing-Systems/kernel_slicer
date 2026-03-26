@@ -1160,12 +1160,17 @@ int main(int argc, const char **argv)
   if(inputCodeInfo.megakernelRTV)
   {
     inputCodeInfo.megakernelRTV = false;
+    
     auto auxDecriptorSets = inputCodeInfo.allDescriptorSetsInfo;
     for(auto& mainFunc : inputCodeInfo.mainFunc)
     {
-      std::cout << "  process CF as megakernel " << mainFunc.Name.c_str() << std::endl;
-      inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);           // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
+      if(mainFunc.pattern == kslicer::PATTERN_TP::PATTERN_RTV)
+      {
+        std::cout << "  process CF as megakernel " << mainFunc.Name.c_str() << std::endl;
+        inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);           // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
+      }
     }
+
     inputCodeInfo.PlugSpecVarsInCalls_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels, inputCodeInfo.allDescriptorSetsInfo);
     for(const auto& call : inputCodeInfo.allDescriptorSetsInfo)
       inputCodeInfo.ProcessCallArs_KF(call);
@@ -1177,6 +1182,7 @@ int main(int argc, const char **argv)
     //
     for(const auto& call : auxDecriptorSets)
       inputCodeInfo.ProcessCallArs_KF(call);
+
     inputCodeInfo.megakernelRTV = true;
   }
   
@@ -1303,6 +1309,9 @@ int main(int argc, const char **argv)
   {
     for(auto& cf : inputCodeInfo.mainFunc)
     {
+      if(cf.pattern != kslicer::PATTERN_TP::PATTERN_RTV)
+        continue;
+
       cf.subkernels = kslicer::extractUsedKernelsByName(cf.UsedKernels, inputCodeInfo.kernels);
       cf.megakernel = kslicer::joinToMegaKernel(cf.subkernels, cf);
       cf.megakernel.isMega = true;
@@ -1332,8 +1341,11 @@ int main(int argc, const char **argv)
 
     ObtainKernelsDecl(megakernelsByName, compiler, inputCodeInfo.mainClassName, inputCodeInfo);
     for(auto& cf : inputCodeInfo.mainFunc)
-      cf.megakernel.DeclCmd = megakernelsByName[cf.megakernel.name].DeclCmd;
-
+    {
+      if(cf.pattern == kslicer::PATTERN_TP::PATTERN_RTV)
+        cf.megakernel.DeclCmd = megakernelsByName[cf.megakernel.name].DeclCmd;
+    }
+    
     // fix megakernels descriptor sets
     //
     for(auto& dsInfo : inputCodeInfo.allDescriptorSetsInfo)
@@ -1412,7 +1424,7 @@ int main(int argc, const char **argv)
   }
   
   ///////////////////////////////////////////////////////////////////////////// fix code for seperate kernel with RT pipeline
-  if(!inputCodeInfo.megakernelRTV) // && textGenSettings.enableRayGen 
+  //if(!inputCodeInfo.megakernelRTV) // && textGenSettings.enableRayGen 
   { 
     // save correct info
     //
@@ -1422,8 +1434,12 @@ int main(int argc, const char **argv)
     inputCodeInfo.allDescriptorSetsInfo.clear();           // clear(1)
     if(inputCodeInfo.m_timestampPoolSize != uint32_t(-1))  // clear(2)
       inputCodeInfo.m_timestampPoolSize = 0;
+
     for(auto& mainFunc : inputCodeInfo.mainFunc)
     {
+      if(inputCodeInfo.megakernelRTV && mainFunc.pattern == kslicer::PATTERN_TP::PATTERN_RTV)
+        continue;
+
       std::cout << "  process " << mainFunc.Name.c_str() << std::endl;
       inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);           // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
     }
@@ -1434,10 +1450,13 @@ int main(int argc, const char **argv)
     inputCodeInfo.mainFunc = copy;
     inputCodeInfo.allDescriptorSetsInfo = tmp;
      
-    // exctract fixed text
+    // extract fixed text
     //
-    for(size_t i=0;i<inputCodeInfo.mainFunc.size();i++)
+    for(size_t i=0;i<inputCodeInfo.mainFunc.size();i++) {
+      if(inputCodeInfo.megakernelRTV && inputCodeInfo.mainFunc[i].pattern == kslicer::PATTERN_TP::PATTERN_RTV)
+        continue;
       inputCodeInfo.mainFunc[i].CodeGenerated = copy2[i].CodeGenerated;
+    }
   }
   /////////////////////////////////////////////////////////////////////////////
 
@@ -1504,6 +1523,9 @@ int main(int argc, const char **argv)
 
     for(auto& cf : inputCodeInfo.mainFunc)
     {
+      if(cf.pattern != kslicer::PATTERN_TP::PATTERN_RTV)
+        continue;
+
       cf.subkernels = kslicer::extractUsedKernelsByName(cf.UsedKernels, inputCodeInfo.kernels);
       cf.megakernel = kslicer::joinToMegaKernel(cf.subkernels, cf);
       cf.megakernel.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(cf.megakernel, compiler, cf.megakernel.rewrittenInit, cf.megakernel.rewrittenFinish);

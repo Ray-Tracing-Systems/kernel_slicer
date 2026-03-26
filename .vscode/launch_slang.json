@@ -883,6 +883,7 @@
                         "-I${workspaceFolder}/apps/LiteMath",    "ignore",
                         "-I${workspaceFolder}/TINYSTL",          "ignore",
                         "-shaderCC", "slang",
+                        "-megakernel", "1",
                         "-v"],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",

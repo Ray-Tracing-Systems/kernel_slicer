@@ -887,7 +887,12 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   if(a_classInfo.megakernelRTV)
   {
     for(auto& cf : a_classInfo.mainFunc)
-      currKernels.push_back(cf.megakernel);
+      if(cf.pattern == kslicer::PATTERN_TP::PATTERN_RTV)
+        currKernels.push_back(cf.megakernel);
+
+    for(const auto& nk : a_classInfo.kernels)
+      if(nk.second.pattern != kslicer::PATTERN_TP::PATTERN_RTV)
+        currKernels.push_back(nk.second);
   }
   else
   {
