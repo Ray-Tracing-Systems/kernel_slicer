@@ -386,6 +386,8 @@ std::string kslicer::MainClassInfo::VisitAndRewrite_KF(KernelInfo& a_funcInfo, c
     else
       return rewrite2.getRewrittenText(a_funcInfo.loopInsides) + ";"; // old way works
   }
+
+  return "[MainClassInfo::VisitAndRewrite_KF]::UNREACHED_CODE!";
 }
 
 std::vector<kslicer::ArgFinal> kslicer::MainClassInfo::GetKernelTIDArgs(const KernelInfo& a_kernel) const 
@@ -476,6 +478,41 @@ std::unordered_set<std::string> kslicer::MainClassInfo::GetExcludedNames() const
   return excludedNames;
 }
 
+std::string remove_space_before_paren(const std::string& src) ///< remove spaces after function name and between '(': "f (...)" --> "f(...)"
+{
+    std::string result;
+    result.reserve(src.size());
+
+    for (size_t i = 0; i < src.size(); ++i)
+    {
+        // Если текущий символ — пробел/таб, смотрим вперёд:
+        // есть ли за ним (возможно, ещё пробелами) '('
+        // и перед ним — часть идентификатора (буква, цифра, '_', ':')
+        if ((src[i] == ' ' || src[i] == '\t') && !result.empty())
+        {
+            char prev = result.back();
+            if (std::isalnum((unsigned char)prev) || prev == '_' || prev == ':')
+            {
+                // Пропускаем все пробелы вперёд
+                size_t j = i;
+                while (j < src.size() && (src[j] == ' ' || src[j] == '\t'))
+                    ++j;
+
+                // Если сразу за пробелами стоит '(' — не добавляем пробелы
+                if (j < src.size() && src[j] == '(')
+                {
+                    i = j - 1; // внешний цикл сделает ++i -> j
+                    continue;
+                }
+            }
+        }
+
+        result += src[i];
+    }
+
+    return result;
+}
+
 void kslicer::ObtainKernelsDecl(std::unordered_map<std::string, KernelInfo>& a_kernelsData, const clang::CompilerInstance& compiler, const std::string& a_mainClassName, const MainClassInfo& a_codeInfo)
 {
   for (auto& k : a_kernelsData)  
@@ -489,7 +526,7 @@ void kslicer::ObtainKernelsDecl(std::unordered_map<std::string, KernelInfo>& a_k
     auto posBeg      = kernelSourceCode.find(funcName);
     auto posEndBrace = kernelSourceCode.find(")");
 
-    std::string kernelCmdDecl = kernelSourceCode.substr(posBeg, posEndBrace+1-posBeg);   
+    std::string kernelCmdDecl = remove_space_before_paren(kernelSourceCode.substr(posBeg, posEndBrace+1-posBeg));   
     kernelCmdDecl = a_codeInfo.RemoveKernelPrefix(kernelCmdDecl);
     
     if(k.second.isMega)

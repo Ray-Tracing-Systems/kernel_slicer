@@ -23,7 +23,7 @@ int main(int argc, const char** argv)
   bool enableValidationLayers = false;
   #endif
 
-  std::vector<float> A(1024), B(1024), C(1024), D(1024), D2(1024);
+  std::vector<float> A(512), B(512), C(512), D(512), D2(512);
   for(size_t i=0;i<A.size();i++)
   {
     A[i] = float(i);
