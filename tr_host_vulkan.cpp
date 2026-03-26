@@ -215,7 +215,7 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
     
     int lcOffsetSize = 0;
     strOut << "{";
-    if(m_pCodeInfo->hasLocalContainers)
+    if(m_pCodeInfo->hasLocalContainers && pKernelInfo->second.pattern != PATTERN_TP::PATTERN_RTV)
     {
       strOut << "uint32_t lcSize[] = {";
       for (auto it = localContainerOffsets.begin(); it != localContainerOffsets.end(); ++it) 
@@ -269,7 +269,7 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
     }
     strOut << "vkCmdBindDescriptorSets(a_commandBuffer, " << currBindingPoint.c_str() << ", ";
     strOut << kernName.c_str() << "Layout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second;
-    if(m_pCodeInfo->hasLocalContainers)
+    if(m_pCodeInfo->hasLocalContainers && pKernelInfo->second.pattern != PATTERN_TP::PATTERN_RTV)
       strOut << "], " << lcOffsetSize+1 << ", lcOffsets);" << std::endl;
     else
       strOut << "], 0, nullptr);" << std::endl;

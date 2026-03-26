@@ -967,6 +967,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     kernelJson["HasLoopInit"]    = k.hasInitPass;
     kernelJson["HasLoopFinish"]  = k.hasFinishPassSelf;
     kernelJson["Decl"]           = kernelDeclByName[kernName];
+    kernelJson["IsRTV"]          = (k.pattern == PATTERN_TP::PATTERN_RTV);
 
     std::string originalSourceCode = kslicer::GetRangeSourceCode(k.astNode->getSourceRange(), compiler);
     ReplaceFirst(originalSourceCode, "\n", "");
