@@ -1426,40 +1426,40 @@ int main(int argc, const char **argv)
   }
   
   ///////////////////////////////////////////////////////////////////////////// fix code for seperate kernel with RT pipeline
-  //if(!inputCodeInfo.megakernelRTV) // && textGenSettings.enableRayGen 
-  //{ 
-  //  // save correct info
-  //  //
-  //  auto copy = inputCodeInfo.mainFunc;
-  //  auto tmp  = inputCodeInfo.allDescriptorSetsInfo;
-  //  
-  //  inputCodeInfo.allDescriptorSetsInfo.clear();           // clear(1)
-  //  if(inputCodeInfo.m_timestampPoolSize != uint32_t(-1))  // clear(2)
-  //    inputCodeInfo.m_timestampPoolSize = 0;
-  //
-  //  for(auto& mainFunc : inputCodeInfo.mainFunc)
-  //  {
-  //    if(inputCodeInfo.megakernelRTV && mainFunc.pattern == kslicer::PATTERN_TP::PATTERN_RTV)
-  //      continue;
-  //
-  //    std::cout << "  process " << mainFunc.Name.c_str() << std::endl;
-  //    inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);           // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
-  //  }
-  //  
-  //  // restore correct info
-  //  //
-  //  auto copy2 = inputCodeInfo.mainFunc;
-  //  inputCodeInfo.mainFunc = copy;
-  //  inputCodeInfo.allDescriptorSetsInfo = tmp;
-  //   
-  //  // extract fixed text
-  //  //
-  //  for(size_t i=0;i<inputCodeInfo.mainFunc.size();i++) {
-  //    if(inputCodeInfo.megakernelRTV && inputCodeInfo.mainFunc[i].pattern == kslicer::PATTERN_TP::PATTERN_RTV)
-  //      continue;
-  //    inputCodeInfo.mainFunc[i].CodeGenerated = copy2[i].CodeGenerated;
-  //  }
-  //}
+  if(!inputCodeInfo.megakernelRTV && textGenSettings.enableRayGen ) 
+  { 
+    // save correct info
+    //
+    auto copy = inputCodeInfo.mainFunc;
+    auto tmp  = inputCodeInfo.allDescriptorSetsInfo;
+    
+    inputCodeInfo.allDescriptorSetsInfo.clear();           // clear(1)
+    if(inputCodeInfo.m_timestampPoolSize != uint32_t(-1))  // clear(2)
+      inputCodeInfo.m_timestampPoolSize = 0;
+  
+    for(auto& mainFunc : inputCodeInfo.mainFunc)
+    {
+      if(inputCodeInfo.megakernelRTV && mainFunc.pattern == kslicer::PATTERN_TP::PATTERN_RTV)
+        continue;
+  
+      std::cout << "  process " << mainFunc.Name.c_str() << std::endl;
+      inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);           // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
+    }
+    
+    // restore correct info
+    //
+    auto copy2 = inputCodeInfo.mainFunc;
+    inputCodeInfo.mainFunc = copy;
+    inputCodeInfo.allDescriptorSetsInfo = tmp;
+     
+    // extract fixed text
+    //
+    for(size_t i=0;i<inputCodeInfo.mainFunc.size();i++) {
+      if(inputCodeInfo.megakernelRTV && inputCodeInfo.mainFunc[i].pattern == kslicer::PATTERN_TP::PATTERN_RTV)
+        continue;
+      inputCodeInfo.mainFunc[i].CodeGenerated = copy2[i].CodeGenerated;
+    }
+  }
   /////////////////////////////////////////////////////////////////////////////
 
   
