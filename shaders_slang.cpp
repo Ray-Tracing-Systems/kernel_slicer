@@ -1252,6 +1252,8 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
     buildSH << "slangc " << outFileName.c_str() << targetString.c_str() << kernelName.c_str() << targetSuffix.c_str() << " -I.. ";
     for(auto folder : ignoreFolders)
       buildSH << "-I" << folder.u8string().c_str() << " ";
+    if(a_settings.auxShaderCCOptions != "")
+      buildSH << " " << a_settings.auxShaderCCOptions.c_str();
     buildSH << std::endl;
   
     if(kernel.value()["IsIndirect"])

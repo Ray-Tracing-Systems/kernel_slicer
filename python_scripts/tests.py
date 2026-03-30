@@ -82,6 +82,7 @@ def run_kslicer(sample_config: SampleConfig, test_config: TestsConfig, megakerne
                ("\tsubgroups : {}\n".format(subgroups)  if sample_config.has_subgroups_key  else "") + "]")
 
     kslicer_args = sample_config.get_kernel_slicer_args(megakernel=megakernel, subgroups=subgroups)
+    #kslicer_args.extend(["-auxshadercc","-profile glsl_460 -target spirv -D__SPIRV=1"])
     #print(kslicer_args)
     res = subprocess.run(["./cmake-build-release/kslicer", *kslicer_args], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if res.returncode != 0:

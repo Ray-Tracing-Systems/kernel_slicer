@@ -303,6 +303,8 @@ int main(int argc, const char **argv)
       textGenSettings.wgpu_ver = atoi(params["-wgpu_ver"].c_str());
     if(params.find("-fwdfundecl") != params.end())
       textGenSettings.fwdFunDeclarations = atoi(params["-fwdfundecl"].c_str());
+    if(params.find("-auxshadercc") != params.end())
+      textGenSettings.auxShaderCCOptions = params["-auxshadercc"];
   }
 
   // include and process folders

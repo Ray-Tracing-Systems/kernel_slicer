@@ -35,6 +35,7 @@ namespace kslicer
   struct TextGenSettings
   {
     std::string interfaceName;
+    std::string auxShaderCCOptions;
     uint32_t wgpu_ver = 30;
     bool enableRayGen      = false;
     bool enableRayGenForce = false;
