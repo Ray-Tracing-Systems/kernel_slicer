@@ -898,6 +898,26 @@
                 }
             ]
         },
+
+        {
+            "name"   : "Launch (HydraInLiteRT, Debug)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["/home/frol/PROG/vg_code/LiteRT/HydraCore3/kmake_mega.json", "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
         
     ]
 }

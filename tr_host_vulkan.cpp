@@ -125,8 +125,12 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
 
   // extract arguments to form correct descriptor set
   //
-  const auto args     = ExtractArgumentsOfAKernelCall(f, m_mainFunc);
-  const auto callSign = MakeKernellCallSignature(m_mainFuncName, args, pKernelInfo->second.usedContainers); // + strOut1.str();
+  auto args     = ExtractArgumentsOfAKernelCall(f, m_mainFunc);
+  auto callSign = MakeKernellCallSignature(m_mainFuncName, args, pKernelInfo->second.usedContainers); // + strOut1.str();
+
+  //if(m_pCodeInfo->megakernelRTV && pKernelInfo->second.pattern == PATTERN_TP::PATTERN_RTV)
+  //  callSign += "_Mega";
+
   auto p2 = dsIdBySignature.find(callSign);
   if(p2 == dsIdBySignature.end())
   {
