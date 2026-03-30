@@ -700,9 +700,16 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     {
       for(const auto& cf : a_classInfo.mainFunc)
       {
-        kernels[cf.megakernel.name]            = cf.megakernel;
-        kernels[cf.megakernel.name].subkernels = cf.subkernels;
+        if(cf.pattern == PATTERN_TP::PATTERN_RTV)
+        {
+          kernels[cf.megakernel.name]            = cf.megakernel;
+          kernels[cf.megakernel.name].subkernels = cf.subkernels;
+        }
       }
+      
+      for(const auto k : a_classInfo.kernels)
+        if(k.second.pattern != PATTERN_TP::PATTERN_RTV)
+          kernels[k.first] = k.second;
     }
     else
       kernels = a_classInfo.kernels;

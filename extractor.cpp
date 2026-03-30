@@ -385,6 +385,9 @@ std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(kslicer::MainClassI
   {
     for(auto& m : a_codeInfo.mainFunc) 
     {
+       if(m.pattern != PATTERN_TP::PATTERN_RTV)
+         continue;
+
        std::queue<FuncData>                            functionsToProcess; 
        std::unordered_map<uint64_t, kslicer::FuncData> usedFunctions;
        kslicer::FuncData func; // FuncDataFromControlFunction

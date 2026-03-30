@@ -145,7 +145,7 @@ void kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang:
   a_mainFunc.startDSNumber = allDescriptorSetsInfo.size();
   a_mainFunc.OriginalDecl  = GetOriginalDeclText(a_node, compiler, (a_mainFunc.pattern == kslicer::PATTERN_TP::PATTERN_RTV));
   
-  if(a_megakernelRTV)
+  if(a_megakernelRTV && a_mainFunc.pattern == PATTERN_TP::PATTERN_RTV)
   {
     // (1) just add allDescriptorSetsInfo for current megakernel 
     //

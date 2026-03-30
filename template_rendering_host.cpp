@@ -594,7 +594,12 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   if(a_classInfo.megakernelRTV)
   {
     for(const auto& cf: a_classInfo.mainFunc)
-      data["KernelsDecls"].push_back("virtual void " + cf.megakernel.DeclCmd + ";");
+      if(cf.pattern == PATTERN_TP::PATTERN_RTV)
+        data["KernelsDecls"].push_back("virtual void " + cf.megakernel.DeclCmd + ";");
+
+    for(const auto& k : a_classInfo.kernels)
+      if(k.second.pattern != PATTERN_TP::PATTERN_RTV)
+        data["KernelsDecls"].push_back("virtual void " + k.second.DeclCmd + ";");
   }
   else
   {
@@ -1417,7 +1422,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         if(accesedWithBufferRef)
           continue;
 
-        std::string dsArgName   = kslicer::GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j], a_classInfo.megakernelRTV);
+        std::string dsArgName  = kslicer::GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j], a_classInfo.megakernelRTV && (mainFunc.pattern == PATTERN_TP::PATTERN_RTV));
         auto posBegin = dsArgName.find("m_vdata.");
         if(posBegin != std::string::npos)
         {
@@ -1602,7 +1607,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data2["ReturnType"]           = mainFunc.ReturnType;
     data2["IsVoid"]               = (mainFunc.ReturnType == "void");
     data2["IsRTV"]                = (mainFunc.pattern == kslicer::PATTERN_TP::PATTERN_RTV);
-    data2["IsMega"]               = a_classInfo.megakernelRTV;
+    data2["IsMega"]               = a_classInfo.megakernelRTV && (mainFunc.pattern == kslicer::PATTERN_TP::PATTERN_RTV);
     data2["NeedThreadFlags"]      = (mainFunc.pattern == kslicer::PATTERN_TP::PATTERN_RTV); // a_classInfo.NeedThreadFlags();
     data2["NeedToAddThreadFlags"] = mainFunc.needToAddThreadFlags;
     data2["DSId"]                 = mainFunc.startDSNumber;
