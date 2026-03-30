@@ -128,9 +128,6 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
   auto args     = ExtractArgumentsOfAKernelCall(f, m_mainFunc);
   auto callSign = MakeKernellCallSignature(m_mainFuncName, args, pKernelInfo->second.usedContainers); // + strOut1.str();
 
-  //if(m_pCodeInfo->megakernelRTV && pKernelInfo->second.pattern == PATTERN_TP::PATTERN_RTV)
-  //  callSign += "_Mega";
-
   auto p2 = dsIdBySignature.find(callSign);
   if(p2 == dsIdBySignature.end())
   {
@@ -144,6 +141,8 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
     allDescriptorSetsInfo.push_back(call);
   }
   
+  const auto DSBegin = 0; // m_pCodeInfo->megakernelRTV ? m_mainFunc.startDSNumber : 0;
+
   // detect localContainers usage
   //
   struct LocalContainerRef
@@ -272,7 +271,7 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
       strOut << "0}; " << std::endl << "  ";
     }
     strOut << "vkCmdBindDescriptorSets(a_commandBuffer, " << currBindingPoint.c_str() << ", ";
-    strOut << kernName.c_str() << "Layout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second;
+    strOut << kernName.c_str() << "Layout," << " 0, 1, " << "&m_allGeneratedDS[" << p2->second + DSBegin;
     if(m_pCodeInfo->hasLocalContainers && pKernelInfo->second.pattern != PATTERN_TP::PATTERN_RTV)
       strOut << "], " << lcOffsetSize+1 << ", lcOffsets);" << std::endl;
     else
