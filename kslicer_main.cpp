@@ -74,6 +74,8 @@ std::vector<std::string> ListProcessedFiles(nlohmann::json a_filesArray, std::fi
   return allFiles;
 }
 
+int parseVersionString(const std::string& s);
+
 int main(int argc, const char **argv) 
 {
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -305,6 +307,10 @@ int main(int argc, const char **argv)
       textGenSettings.fwdFunDeclarations = atoi(params["-fwdfundecl"].c_str());
     if(params.find("-auxshadercc") != params.end())
       textGenSettings.auxShaderCCOptions = params["-auxshadercc"];
+    if(params.find("-cc") != params.end())
+      textGenSettings.spirv_ver = parseVersionString(params["-cc"].c_str());
+    else if(params.find("-spirv_ver") != params.end())
+      textGenSettings.spirv_ver = parseVersionString(params["-spirv_ver"].c_str());
   }
 
   // include and process folders

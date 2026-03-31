@@ -413,6 +413,7 @@
                         "-I${workspaceFolder}/apps/LiteMathAux", "ignore", 
                         "-I${workspaceFolder}/TINYSTL",          "ignore", 
                         "-shaderCC", "slang",
+                        "-spirv_ver", "spirv_1_3",
                         "-DKERNEL_SLICER",
                         "-expand_macro", "1",
                         "-v"],

@@ -600,3 +600,49 @@ void ReadThreadsOrderFromStr(const std::string& threadsOrderStr, uint32_t  threa
 }
 
 
+// Парсит строку: либо число ("13"), либо "spirv_X_Y" -> X*10+Y
+// Возвращает 0, если результат не двузначное число [10..99]
+int parseVersionString(const std::string& s) 
+{
+    // Попытка распарсить формат spirv_X_Y
+    const std::string prefix = "spirv_";
+    if (s.size() > prefix.size() && s.compare(0, prefix.size(), prefix) == 0) {
+        size_t underscore = s.find('_', prefix.size());
+        if (underscore == std::string::npos)
+            return 0;
+
+        std::string majorStr = s.substr(prefix.size(), underscore - prefix.size());
+        std::string minorStr = s.substr(underscore + 1);
+
+        if (majorStr.empty() || minorStr.empty())
+            return 0;
+
+        for (char c : majorStr) if (!std::isdigit((unsigned char)c)) return 0;
+        for (char c : minorStr) if (!std::isdigit((unsigned char)c)) return 0;
+
+        int major = std::stoi(majorStr);
+        int minor = std::stoi(minorStr);
+        int result = major * 10 + minor;
+        return (result >= 10 && result <= 99) ? result : 0;
+    }
+
+    // Попытка распарсить как просто число
+    if (s.empty()) return 0;
+    for (char c : s) if (!std::isdigit((unsigned char)c)) return 0;
+
+    int result = std::stoi(s);
+    return (result >= 10 && result <= 99) ? result : 0;
+}
+
+// Преобразует двузначное число в формат "spirv_X_Y"
+// Возвращает пустую строку если число == 0 или не двузначное
+std::string toSpirvString(int n) 
+{
+    if (n < 10 || n > 99)
+        return "";
+
+    int major = n / 10;
+    int minor = n % 10;
+    return "spirv_" + std::to_string(major) + "_" + std::to_string(minor);
+}
+
