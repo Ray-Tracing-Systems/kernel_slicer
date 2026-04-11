@@ -165,8 +165,9 @@ bool kslicer::FunctionRewriter2::NeedToRewriteMemberExpr(const clang::MemberExpr
   // (2) put ubo->var instead of var, leave containers as they are
   // process arrays and large data structures because small can be read once in the beggining of kernel
   // // m_currKernel.hasInitPass &&
-  const bool isInLoopInitPart   = !m_codeInfo->IsRTV() && (expr->getSourceRange().getEnd()   < m_pCurrKernel->loopInsides.getBegin());
-  const bool isInLoopFinishPart = !m_codeInfo->IsRTV() && (expr->getSourceRange().getBegin() > m_pCurrKernel->loopInsides.getEnd());
+
+  const bool isInLoopInitPart   = (m_pCurrKernel->pattern != kslicer::PATTERN_TP::PATTERN_RTV) && (expr->getSourceRange().getEnd()   < m_pCurrKernel->loopInsides.getBegin());
+  const bool isInLoopFinishPart = (m_pCurrKernel->pattern != kslicer::PATTERN_TP::PATTERN_RTV) && (expr->getSourceRange().getBegin() > m_pCurrKernel->loopInsides.getEnd());
   const bool hasLargeSize   = true; // (pMember->second.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD);
   const bool inMegaKernel   = m_codeInfo->megakernelRTV;
   const bool subjectedToRed = m_pCurrKernel->subjectedToReduction.find(fieldName) != m_pCurrKernel->subjectedToReduction.end();
@@ -447,8 +448,8 @@ bool kslicer::FunctionRewriter2::VisitBinaryOperator_Impl(clang::BinaryOperator*
   if(m_kernelMode)
   {
     auto opRange = expr->getSourceRange();
-    if(!m_codeInfo->IsRTV() && (opRange.getEnd()   <= m_pCurrKernel->loopInsides.getBegin() || 
-                                opRange.getBegin() >= m_pCurrKernel->loopInsides.getEnd())) // not inside loop
+
+    if((m_pCurrKernel->pattern != kslicer::PATTERN_TP::PATTERN_RTV) && (opRange.getEnd()<= m_pCurrKernel->loopInsides.getBegin() || opRange.getBegin() >= m_pCurrKernel->loopInsides.getEnd())) // not inside loop
       return true;  
   
     const auto op = expr->getOpcodeStr();

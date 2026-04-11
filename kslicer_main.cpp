@@ -74,6 +74,8 @@ std::vector<std::string> ListProcessedFiles(nlohmann::json a_filesArray, std::fi
   return allFiles;
 }
 
+int parseVersionString(const std::string& s);
+
 int main(int argc, const char **argv) 
 {
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -179,7 +181,7 @@ int main(int argc, const char **argv)
   std::string mainClassName   = "TestClass";
   std::string selfFolder      = "";
   std::string stdlibFolder    = "";
-  std::string patternName     = "rtv";
+  std::string patternName     = "ipv";
   std::string shaderCCName    = "clspv";
   std::string suffix          = "_Generated";
   std::string shaderFolderPrefix    = "";
@@ -303,6 +305,12 @@ int main(int argc, const char **argv)
       textGenSettings.wgpu_ver = atoi(params["-wgpu_ver"].c_str());
     if(params.find("-fwdfundecl") != params.end())
       textGenSettings.fwdFunDeclarations = atoi(params["-fwdfundecl"].c_str());
+    if(params.find("-auxshadercc") != params.end())
+      textGenSettings.auxShaderCCOptions = params["-auxshadercc"];
+    if(params.find("-cc") != params.end())
+      textGenSettings.spirv_ver = parseVersionString(params["-cc"].c_str());
+    else if(params.find("-spirv_ver") != params.end())
+      textGenSettings.spirv_ver = parseVersionString(params["-spirv_ver"].c_str());
   }
 
   // include and process folders
@@ -375,16 +383,8 @@ int main(int argc, const char **argv)
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<kslicer::MainClassInfo> pImplPattern = nullptr;
-  if(patternName == "rtv")
-    pImplPattern = std::make_shared<kslicer::RTV_Pattern>();
-  else if(patternName == "ipv")
-    pImplPattern = std::make_shared<kslicer::IPV_Pattern>();
-  else
-  {
-    std::cout << "[main]: wrong pattern name '" << patternName.c_str() << "' " << std::endl;
-    exit(0);
-  }
+  std::shared_ptr<kslicer::MainClassInfo> pImplPattern = std::make_shared<kslicer::MainClassInfo>();
+
   kslicer::MainClassInfo& inputCodeInfo = *pImplPattern;
 
   inputCodeInfo.ignoreFolders  = ignoreFolders;  // set shader folders
@@ -714,8 +714,7 @@ int main(int argc, const char **argv)
   
   // Parse code, initial pass
   //
-  std::cout << "(1) Processing class '" << mainClassName.c_str() << "' with initial pass" << std::endl;
-  std::cout << "{" << std::endl;
+  std::cout << "(1) Processing class '" << mainClassName.c_str() << "' with initial pass" << std::endl << "{"; // << std::endl;
 
   std::vector<std::string> composClassNames;
   {
@@ -904,7 +903,7 @@ int main(int argc, const char **argv)
     kernel.openMpAndISPC    = (ispcThreadModel == 2);
     kernel.explicitIdISPC   = ispcExplicitIndices;
 
-    auto kernelMatchers = inputCodeInfo.ListMatchers_KF(kernel.name);
+    auto kernelMatchers = inputCodeInfo.ListMatchers_KF(kernel);
     auto pFilter        = inputCodeInfo.MatcherHandler_KF(kernel, compiler);
 
     clang::ast_matchers::MatchFinder finder;
@@ -1169,12 +1168,17 @@ int main(int argc, const char **argv)
   if(inputCodeInfo.megakernelRTV)
   {
     inputCodeInfo.megakernelRTV = false;
+    
     auto auxDecriptorSets = inputCodeInfo.allDescriptorSetsInfo;
     for(auto& mainFunc : inputCodeInfo.mainFunc)
     {
-      std::cout << "  process CF as megakernel " << mainFunc.Name.c_str() << std::endl;
-      inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);           // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
+      if(mainFunc.pattern == kslicer::PATTERN_TP::PATTERN_RTV)
+      {
+        std::cout << "  process CF as megakernel " << mainFunc.Name.c_str() << std::endl;
+        inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);           // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
+      }
     }
+
     inputCodeInfo.PlugSpecVarsInCalls_CF(inputCodeInfo.mainFunc, inputCodeInfo.kernels, inputCodeInfo.allDescriptorSetsInfo);
     for(const auto& call : inputCodeInfo.allDescriptorSetsInfo)
       inputCodeInfo.ProcessCallArs_KF(call);
@@ -1186,6 +1190,7 @@ int main(int argc, const char **argv)
     //
     for(const auto& call : auxDecriptorSets)
       inputCodeInfo.ProcessCallArs_KF(call);
+
     inputCodeInfo.megakernelRTV = true;
   }
   
@@ -1312,6 +1317,9 @@ int main(int argc, const char **argv)
   {
     for(auto& cf : inputCodeInfo.mainFunc)
     {
+      if(cf.pattern != kslicer::PATTERN_TP::PATTERN_RTV)
+        continue;
+
       cf.subkernels = kslicer::extractUsedKernelsByName(cf.UsedKernels, inputCodeInfo.kernels);
       cf.megakernel = kslicer::joinToMegaKernel(cf.subkernels, cf);
       cf.megakernel.isMega = true;
@@ -1341,8 +1349,11 @@ int main(int argc, const char **argv)
 
     ObtainKernelsDecl(megakernelsByName, compiler, inputCodeInfo.mainClassName, inputCodeInfo);
     for(auto& cf : inputCodeInfo.mainFunc)
-      cf.megakernel.DeclCmd = megakernelsByName[cf.megakernel.name].DeclCmd;
-
+    {
+      if(cf.pattern == kslicer::PATTERN_TP::PATTERN_RTV)
+        cf.megakernel.DeclCmd = megakernelsByName[cf.megakernel.name].DeclCmd;
+    }
+    
     // fix megakernels descriptor sets
     //
     for(auto& dsInfo : inputCodeInfo.allDescriptorSetsInfo)
@@ -1421,7 +1432,7 @@ int main(int argc, const char **argv)
   }
   
   ///////////////////////////////////////////////////////////////////////////// fix code for seperate kernel with RT pipeline
-  if(!inputCodeInfo.megakernelRTV) // && textGenSettings.enableRayGen 
+  if(!inputCodeInfo.megakernelRTV && textGenSettings.enableRayGen ) 
   { 
     // save correct info
     //
@@ -1431,8 +1442,12 @@ int main(int argc, const char **argv)
     inputCodeInfo.allDescriptorSetsInfo.clear();           // clear(1)
     if(inputCodeInfo.m_timestampPoolSize != uint32_t(-1))  // clear(2)
       inputCodeInfo.m_timestampPoolSize = 0;
+  
     for(auto& mainFunc : inputCodeInfo.mainFunc)
     {
+      if(inputCodeInfo.megakernelRTV && mainFunc.pattern == kslicer::PATTERN_TP::PATTERN_RTV)
+        continue;
+  
       std::cout << "  process " << mainFunc.Name.c_str() << std::endl;
       inputCodeInfo.VisitAndRewrite_CF(mainFunc, compiler);           // ==> output to mainFunc and inputCodeInfo.allDescriptorSetsInfo
     }
@@ -1443,10 +1458,13 @@ int main(int argc, const char **argv)
     inputCodeInfo.mainFunc = copy;
     inputCodeInfo.allDescriptorSetsInfo = tmp;
      
-    // exctract fixed text
+    // extract fixed text
     //
-    for(size_t i=0;i<inputCodeInfo.mainFunc.size();i++)
+    for(size_t i=0;i<inputCodeInfo.mainFunc.size();i++) {
+      if(inputCodeInfo.megakernelRTV && inputCodeInfo.mainFunc[i].pattern == kslicer::PATTERN_TP::PATTERN_RTV)
+        continue;
       inputCodeInfo.mainFunc[i].CodeGenerated = copy2[i].CodeGenerated;
+    }
   }
   /////////////////////////////////////////////////////////////////////////////
 
@@ -1513,6 +1531,9 @@ int main(int argc, const char **argv)
 
     for(auto& cf : inputCodeInfo.mainFunc)
     {
+      if(cf.pattern != kslicer::PATTERN_TP::PATTERN_RTV)
+        continue;
+
       cf.subkernels = kslicer::extractUsedKernelsByName(cf.UsedKernels, inputCodeInfo.kernels);
       cf.megakernel = kslicer::joinToMegaKernel(cf.subkernels, cf);
       cf.megakernel.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(cf.megakernel, compiler, cf.megakernel.rewrittenInit, cf.megakernel.rewrittenFinish);

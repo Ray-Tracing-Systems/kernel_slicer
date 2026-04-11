@@ -1671,7 +1671,7 @@ bool GLSLKernelRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     ReplaceTextOrWorkAround(call->getSourceRange(), rewrittenRes);
     MarkRewritten(call);
   }
-  else if (m_codeInfo->IsRTV() && rewriteDueToFakeOffset)
+  else if (m_currKernel.pattern == kslicer::PATTERN_TP::PATTERN_RTV && rewriteDueToFakeOffset)
   {
     std::string fname        = fDecl->getNameInfo().getName().getAsString();
     std::string rewrittenRes = fname + "(";
@@ -1922,6 +1922,22 @@ bool kslicer::NeedRewriteTextureArray(clang::CXXMemberCallExpr* a_call, std::str
   return needRewrite;
 }
 
+bool ProcessTexArrayAccessGLSL(std::string& s)
+{
+    auto open  = s.find('[');
+    auto close = s.rfind(']');
+
+    if (open == std::string::npos || close == std::string::npos || close < open)
+        return false;
+
+    std::string inner = s.substr(open + 1, close - open - 1);
+    s = s.substr(0, open + 1)
+      + "nonuniformEXT(" + inner + ")"
+      + s.substr(close);
+
+    return true;
+}
+
 bool GLSLKernelRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* call)
 {
   clang::CXXMethodDecl* fDecl = call->getMethodDecl();
@@ -1967,6 +1983,7 @@ bool GLSLKernelRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* c
 
       if(needRewrite)
       {
+        ProcessTexArrayAccessGLSL(objName); // "m_textures[...]" --> "m_textures[nonuniformEXT(...)]"
         const std::string texCoord = RecursiveRewrite(call->getArg(texCoordId));
         const std::string lastRewrittenText = std::string("textureLod") + "(" + objName + ", " + texCoord + ", 0)";
         ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);

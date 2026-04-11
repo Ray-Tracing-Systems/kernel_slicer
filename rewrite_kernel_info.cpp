@@ -518,7 +518,7 @@ bool kslicer::KernelInfoVisitor::VisitBinaryOperator(clang::BinaryOperator* expr
     return true;
     
   auto opRange = expr->getSourceRange();
-  if(!m_codeInfo->IsRTV() && (opRange.getEnd() <= m_currKernel.loopInsides.getBegin() || opRange.getBegin() >= m_currKernel.loopInsides.getEnd())) // not inside loop
+  if((m_currKernel.pattern != kslicer::PATTERN_TP::PATTERN_RTV) && (opRange.getEnd() <= m_currKernel.loopInsides.getBegin() || opRange.getBegin() >= m_currKernel.loopInsides.getEnd())) // not inside loop
     return true;  
 
   const auto op = expr->getOpcodeStr();

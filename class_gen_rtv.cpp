@@ -40,10 +40,10 @@ std::vector<std::string> kslicer::GetAllPredefinedThreadIdNamesRTV()
   return {"tid", "tidX", "tidY", "tidZ"};
 }
 
-uint32_t kslicer::RTV_Pattern::GetKernelDim(const kslicer::KernelInfo& a_kernel) const
-{
-  return uint32_t(GetKernelTIDArgs(a_kernel).size());
-} 
+//uint32_t kslicer::RTV_Pattern::GetKernelDim(const kslicer::KernelInfo& a_kernel) const
+//{
+//  return uint32_t(GetKernelTIDArgs(a_kernel).size());
+//} 
 
 void kslicer::MainClassInfo::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler)
 {
@@ -55,7 +55,7 @@ void kslicer::MainClassInfo::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang:
 }
 
 
-void kslicer::RTV_Pattern::AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, std::unordered_map<std::string, KernelInfo>& a_kernelList)
+void kslicer::MainClassInfo::AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, std::unordered_map<std::string, KernelInfo>& a_kernelList)
 {
   // (1) first scan all main functions, if no one needed just exit
   //
@@ -64,6 +64,9 @@ void kslicer::RTV_Pattern::AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncL
 
   for(auto& mainFunc : a_mainFuncList)
   {
+    if(mainFunc.pattern != kslicer::PATTERN_TP::PATTERN_RTV)
+      continue;
+
     if(mainFunc.ExitExprIfCond.size() != 0)
     {
       for(const auto& kernelName : mainFunc.UsedKernels)
@@ -160,7 +163,7 @@ void kslicer::RTV_Pattern::AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncL
   for(auto& mainFunc : a_mainFuncList)
   {
     auto p = mainFunc.Locals.find(tFlagsLocalVar.name);
-    if(p != mainFunc.Locals.end() || !mainFunc.needToAddThreadFlags)
+    if(p != mainFunc.Locals.end() || !mainFunc.needToAddThreadFlags || mainFunc.pattern != kslicer::PATTERN_TP::PATTERN_RTV)
       continue;
 
     mainFunc.Locals[tFlagsLocalVar.name] = tFlagsLocalVar;
@@ -168,9 +171,9 @@ void kslicer::RTV_Pattern::AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncL
 
 }
 
-void kslicer::RTV_Pattern::PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo>&                   a_mainFuncList, 
-                                                  const std::unordered_map<std::string, KernelInfo>& a_kernelList,
-                                                  std::vector<KernelCallInfo>&                       a_kernelCalls)
+void kslicer::MainClassInfo::PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo>&                   a_mainFuncList, 
+                                                    const std::unordered_map<std::string, KernelInfo>& a_kernelList,
+                                                    std::vector<KernelCallInfo>&                       a_kernelCalls)
 {
   // list kernels and main functions
   //
@@ -188,7 +191,7 @@ void kslicer::RTV_Pattern::PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo
   for(auto& call : a_kernelCalls)
   {
     const auto& mainFunc = a_mainFuncList[mainFuncIdByName[call.callerName]];
-    if(!mainFunc.needToAddThreadFlags)
+    if(!mainFunc.needToAddThreadFlags || mainFunc.pattern != kslicer::PATTERN_TP::PATTERN_RTV)
       continue;
 
     auto p2 = a_kernelList.find(call.originKernelName);
@@ -201,69 +204,20 @@ void kslicer::RTV_Pattern::PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-kslicer::RTV_Pattern::MList kslicer::RTV_Pattern::ListMatchers_CF(const std::string& mainFuncName)
+void kslicer::MainClassInfo::ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const 
 {
-  std::vector<clang::ast_matchers::StatementMatcher> list;
-  list.push_back(kslicer::MakeMatch_LocalVarOfMethod(mainFuncName));
-  list.push_back(kslicer::MakeMatch_MemberVarOfMethod(mainFuncName));
-  list.push_back(kslicer::MakeMatch_MethodCallFromMethod(mainFuncName));
-  list.push_back(kslicer::MakeMatch_SingleForLoopInsideFunction(mainFuncName));
-  list.push_back(kslicer::MakeMatch_IfInsideForLoopInsideFunction(mainFuncName));
-  list.push_back(kslicer::MakeMatch_FunctionCallInsideForLoopInsideFunction(mainFuncName));
-  list.push_back(kslicer::MakeMatch_IfReturnFromFunction(mainFuncName));
-  return list;
-}
-
-kslicer::RTV_Pattern::MHandlerCFPtr kslicer::RTV_Pattern::MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler)
-{
-  return std::move(std::make_unique<kslicer::MainFuncAnalyzerRT>(std::cout, *this, a_compiler.getASTContext(), a_mainFuncRef));
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-kslicer::RTV_Pattern::MList kslicer::RTV_Pattern::ListMatchers_KF(const std::string& a_kernelName)
-{
-  std::vector<clang::ast_matchers::StatementMatcher> list;
-  list.push_back(kslicer::MakeMatch_MemberVarOfMethod(a_kernelName));
-  list.push_back(kslicer::MakeMatch_FunctionCallFromFunction(a_kernelName));
-  return list;
-}
-
-kslicer::RTV_Pattern::MHandlerKFPtr kslicer::RTV_Pattern::MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler)
-{
-  return std::move(std::make_unique<kslicer::UsedCodeFilter>(std::cout, *this, &kernel, a_compiler));
-}
-
-
-void kslicer::RTV_Pattern::ProcessCallArs_KF(const KernelCallInfo& a_call)
-{
-  // (1) call from base class
-  //
-  MainClassInfo::ProcessCallArs_KF(a_call); 
-
-  // (2) add ray tracing specific
-  //
-  auto pFoundKernel = kernels.find(a_call.originKernelName);
-  if(pFoundKernel != kernels.end()) 
+  if(a_kernel.pattern == kslicer::PATTERN_TP::PATTERN_IPV)
   {
-    auto& actualParameters = a_call.descriptorSetsInfo;
-    for(size_t argId = 0; argId<actualParameters.size(); argId++)
-    {
-      if(actualParameters[argId].argType == kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_LOCAL)
-        pFoundKernel->second.args[argId].needFakeOffset = true; 
-    }
+    auto found = std::find_if(a_kernel.loopIters.begin(), a_kernel.loopIters.end(), 
+                           [&](const auto& val){ return arg.name == val.sizeText; });
+    arg.isLoopSize = (found != a_kernel.loopIters.end());
   }
-}
-
-void kslicer::RTV_Pattern::ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const 
-{
-  auto pdef = GetAllPredefinedThreadIdNamesRTV();
-  auto id   = std::find(pdef.begin(), pdef.end(), arg.name);
-  arg.isThreadID = (id != pdef.end()); 
+  else if(a_kernel.pattern == kslicer::PATTERN_TP::PATTERN_RTV)
+  {
+    auto pdef = GetAllPredefinedThreadIdNamesRTV();
+    auto id   = std::find(pdef.begin(), pdef.end(), arg.name);
+    arg.isThreadID = (id != pdef.end()); 
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -282,6 +236,7 @@ kslicer::KernelInfo kslicer::joinToMegaKernel(const std::vector<const KernelInfo
   res.name      = cf.Name + "Mega";
   res.className = a_kernels[0]->className;
   res.astNode   = cf.Node; 
+  res.pattern   = cf.pattern;
   
   // (1) Add CF arguments as megakernel arguments
   //

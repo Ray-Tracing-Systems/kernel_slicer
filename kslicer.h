@@ -35,7 +35,9 @@ namespace kslicer
   struct TextGenSettings
   {
     std::string interfaceName;
-    uint32_t wgpu_ver = 30;
+    std::string auxShaderCCOptions;
+    uint32_t wgpu_ver  = 30;
+    uint32_t spirv_ver = 0; // default version by the shader compiler use '10' for 'spirv_1_0', '13' for 'spirv_1_3' and e.t.c
     bool enableRayGen      = false;
     bool enableRayGenForce = false;
     bool enableMotionBlur  = false;
@@ -66,8 +68,9 @@ namespace kslicer
 
   enum class DATA_USAGE { USAGE_USER = 0, USAGE_SLICER_REDUCTION = 1 };
   enum class TEX_ACCESS { TEX_ACCESS_NOTHING = 0, TEX_ACCESS_READ = 1, TEX_ACCESS_WRITE = 2, TEX_ACCESS_SAMPLE = 4 };
-
   enum class CPP11_ATTR { ATTR_UNKNOWN = 0, ATTR_KERNEL = 1, ATTR_SETTER = 2  };
+
+  enum class PATTERN_TP { PATTERN_IPV = 0, PATTERN_RTV = 1 };
 
   /**
   \brief for each kernel we collect list of containes accesed by this kernel
@@ -315,6 +318,7 @@ namespace kslicer
       size_t         GetSizeOfDataType()            const;
     };
 
+    PATTERN_TP            pattern = PATTERN_TP::PATTERN_IPV;
     std::string           return_type;          ///<! func. return type
     std::string           return_class;         ///<! class name of pointer if pointer is returned
     std::string           name;                 ///<! func. name
@@ -600,6 +604,7 @@ namespace kslicer
 
   struct MainFuncInfo
   {
+    PATTERN_TP                                        pattern = PATTERN_TP::PATTERN_IPV;
     std::string                                       Name;
     const clang::CXXMethodDecl*                       Node;
     std::unordered_map<std::string, DataLocalVarInfo> Locals;
@@ -1679,21 +1684,21 @@ namespace kslicer
 
     virtual std::string RemoveKernelPrefix(const std::string& a_funcName) const;                          ///<! "kernel_XXX" --> "XXX";
     virtual bool        IsKernel(const std::string& a_funcName) const;                                    ///<! return true if function is a kernel
-    virtual void        ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const { }  ///<!
+    virtual void        ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const;     ///<!
     virtual bool        IsIndirect(const KernelInfo& a_kernel) const;
-    virtual bool        IsRTV() const { return false; }
+    virtual PATTERN_TP  PatternByKernelName(const std::string& a_kernelName);
 
     //// Processing Control Functions (CF)
     //
-    virtual MList         ListMatchers_CF(const std::string& mainFuncName) = 0;
-    virtual MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) = 0;
+    virtual MList         ListMatchers_CF(const std::string& mainFuncName);
+    virtual MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler);
     virtual void          VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler);
 
-    virtual void AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, std::unordered_map<std::string, KernelInfo>& a_kernelList) {}
+    virtual void AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, std::unordered_map<std::string, KernelInfo>& a_kernelList);
 
     virtual void PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo>&                      a_mainFuncList,
                                         const std::unordered_map<std::string, KernelInfo>&    a_kernelList,
-                                        std::vector<KernelCallInfo>&                          a_kernelCalls) {}
+                                        std::vector<KernelCallInfo>&                          a_kernelCalls);
 
     virtual void ProcessVFH(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler);
     virtual void ExtractVFHConstants(const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool);
@@ -1705,8 +1710,9 @@ namespace kslicer
 
     //// Processing Kernel Functions (KF)
     //
-    virtual MList         ListMatchers_KF(const std::string& mainFuncName) = 0;
-    virtual MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler) = 0;
+    virtual MList         ListMatchers_KF(const KernelInfo& a_kernel);
+    virtual MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler);
+
     virtual std::string   VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler,
                                              std::string& a_outLoopInitCode, std::string& a_outLoopFinishCode);
     virtual void          VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler); // additional informational pass, does not rewrite the code!
@@ -1715,7 +1721,7 @@ namespace kslicer
 
     //// These methods used for final template text rendering
     //
-    virtual uint32_t GetKernelDim(const KernelInfo& a_kernel) const = 0;
+    virtual uint32_t GetKernelDim(const KernelInfo& a_kernel) const;
 
     virtual std::vector<ArgFinal> GetKernelTIDArgs(const KernelInfo& a_kernel) const;
     virtual std::vector<ArgFinal> GetKernelCommonArgs(const KernelInfo& a_kernel) const;
@@ -1723,8 +1729,6 @@ namespace kslicer
     virtual void        GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler, bool a_megakernelRTV);
     virtual std::string GetCFDeclFromSource(const std::string& sourceCode);
 
-    virtual bool NeedThreadFlags() const { return false; }
-    virtual bool NeedFakeOffset() const { return false; }
     virtual void AddTempBufferToKernel(const std::string a_buffName, const std::string a_elemTypeName, KernelInfo& a_kernel); ///<! if kernel need some additional buffers (for reduction for example) use this function
 
     struct DImplFunc
@@ -1816,50 +1820,6 @@ namespace kslicer
 
     std::vector< std::pair<std::string, std::string> > GetFieldsFromStruct(const clang::CXXRecordDecl* recordDecl, size_t* pSummOfFiledsSize = nullptr) const;
     bool HasBufferReferenceBind() const;
-  };
-
-
-  struct RTV_Pattern : public MainClassInfo
-  {
-    MList         ListMatchers_CF(const std::string& mainFuncName) override;
-    MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) override;
-
-    void AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, std::unordered_map<std::string, KernelInfo>&  a_kernelList) override;
-
-    void PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo>&                   a_mainFuncList,
-                                const std::unordered_map<std::string, KernelInfo>& a_kernelList,
-                                std::vector<KernelCallInfo>&                       a_kernelCalls) override;
-
-    MList         ListMatchers_KF(const std::string& mainFuncName) override;
-    MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler) override;
-    void          ProcessCallArs_KF(const KernelCallInfo& a_call) override;
-
-    uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;
-    void          ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const override;
-
-    bool NeedThreadFlags() const override { return true; }
-    bool NeedFakeOffset () const override { return true; }
-    bool IsRTV          () const override { return true; }
-
-  private:
-
-  };
-
-  struct IPV_Pattern : public MainClassInfo
-  {
-    MList         ListMatchers_CF(const std::string& mainFuncName) override;
-    MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler) override;
-
-    MList         ListMatchers_KF(const std::string& mainFuncName) override;
-    MHandlerKFPtr MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compiler) override;
-    std::string   VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler,
-                                     std::string& a_outLoopInitCode, std::string& a_outLoopFinishCode) override;
-
-    uint32_t      GetKernelDim(const KernelInfo& a_kernel) const override;
-    void          ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const override;
-
-    std::vector<ArgFinal> GetKernelTIDArgs(const KernelInfo& a_kernel) const override;
-    bool NeedThreadFlags() const override { return false; }
   };
 
 

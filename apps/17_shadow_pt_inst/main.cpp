@@ -109,6 +109,9 @@ int main(int argc, const char** argv)
   std::cout << "ShadowPathTraceBlock(exec) = " << timings[0]              << " ms " << std::endl;
   std::cout << "ShadowPathTraceBlock(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
   std::cout << "ShadowPathTraceBlock(ovrh) = " << timings[3]              << " ms " << std::endl;
+
+  pImpl = nullptr;
+  vk_utils::globalContextDestroy();  
   return 0;
 }
 

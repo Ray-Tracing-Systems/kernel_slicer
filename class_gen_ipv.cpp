@@ -12,37 +12,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void kslicer::IPV_Pattern::ProcessKernelArg(KernelInfo::ArgInfo& arg, const KernelInfo& a_kernel) const 
-{
-  auto found = std::find_if(a_kernel.loopIters.begin(), a_kernel.loopIters.end(), 
-                           [&](const auto& val){ return arg.name == val.sizeText; });
-  arg.isLoopSize = (found != a_kernel.loopIters.end());
-}
-
-std::vector<kslicer::ArgFinal> kslicer::IPV_Pattern::GetKernelTIDArgs(const KernelInfo& a_kernel) const 
-{
-  std::vector<kslicer::ArgFinal> args;
-  for (uint32_t i = 0; i < a_kernel.loopIters.size(); i++) 
-  {    
-    const auto& arg = a_kernel.loopIters[i];
-    ArgFinal arg2;
-    arg2.name        = arg.name;
-    arg2.type        = pShaderFuncRewriter->RewriteStdVectorTypeStr(arg.type);
-    arg2.loopIter    = arg;
-    arg2.loopIter.id = i;
-
-    args.push_back(arg2);
-  }
-
-  std::sort(args.begin(), args.end(), [](const auto& a, const auto & b) { return a.loopIter.id < b.loopIter.id; });
-
-  return args;
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-kslicer::IPV_Pattern::MList kslicer::IPV_Pattern::ListMatchers_CF(const std::string& mainFuncName)
+kslicer::MainClassInfo::MList kslicer::MainClassInfo::ListMatchers_CF(const std::string& mainFuncName)
 {
   std::vector<clang::ast_matchers::StatementMatcher> list;
   list.push_back(kslicer::MakeMatch_LocalVarOfMethod(mainFuncName));
@@ -55,7 +25,7 @@ kslicer::IPV_Pattern::MList kslicer::IPV_Pattern::ListMatchers_CF(const std::str
   return list;
 }
 
-kslicer::IPV_Pattern::MHandlerCFPtr kslicer::IPV_Pattern::MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler)
+kslicer::MainClassInfo::MHandlerCFPtr kslicer::MainClassInfo::MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler)
 {
   return std::move(std::make_unique<kslicer::MainFuncAnalyzerRT>(std::cout, *this, a_compiler.getASTContext(), a_mainFuncRef));
 }
@@ -66,13 +36,18 @@ kslicer::IPV_Pattern::MHandlerCFPtr kslicer::IPV_Pattern::MatcherHandler_CF(ksli
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-kslicer::IPV_Pattern::MList kslicer::IPV_Pattern::ListMatchers_KF(const std::string& a_kernelName)
+
+kslicer::MainClassInfo::MList kslicer::MainClassInfo::ListMatchers_KF(const KernelInfo& a_kernel)
 {
+  const std::string& a_kernelName = a_kernel.name;
   std::vector<clang::ast_matchers::StatementMatcher> list;
   list.push_back(kslicer::MakeMatch_MemberVarOfMethod(a_kernelName));
   list.push_back(kslicer::MakeMatch_FunctionCallFromFunction(a_kernelName));
-  list.push_back(kslicer::MakeMatch_ForLoopInsideFunction(a_kernelName));
-  list.push_back(kslicer::MakeMatch_BeforeForLoopInsideFunction(a_kernelName));
+  if(a_kernel.pattern == kslicer::PATTERN_TP::PATTERN_IPV)
+  {
+    list.push_back(kslicer::MakeMatch_ForLoopInsideFunction(a_kernelName));
+    list.push_back(kslicer::MakeMatch_BeforeForLoopInsideFunction(a_kernelName));
+  }
   return list;
 }
 
@@ -242,80 +217,14 @@ public:
 };
 
 
-kslicer::IPV_Pattern::MHandlerKFPtr kslicer::IPV_Pattern::MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compile)
+kslicer::MainClassInfo::MHandlerKFPtr kslicer::MainClassInfo::MatcherHandler_KF(KernelInfo& kernel, const clang::CompilerInstance& a_compile)
 {
-  return std::move(std::make_unique<LoopHandlerInsideKernelsIPV>(std::cout, *this, &kernel, a_compile));
-}
-
-std::string kslicer::IPV_Pattern::VisitAndRewrite_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler, 
-                                                     std::string& a_outLoopInitCode, std::string& a_outLoopFinishCode)
-{
-  //if(a_funcInfo.name == "kernel2D_ExtractBrightPixels")
-  //  a_funcInfo.astNode->dump();
-  
-  Rewriter rewrite2;
-  rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
-  
-  auto pVisitor = pShaderCC->MakeKernRewriter(rewrite2, compiler, this, a_funcInfo, "");
-  pVisitor->SetCurrKernelInfo(&a_funcInfo);
-
-  auto kernelNodes = kslicer::ExtractKernelForLoops(a_funcInfo.astNode->getBody(), int(a_funcInfo.loopIters.size()), compiler);
-  
-  std::string funcBodyText = ""; // SOME REPLACEMENT DOES NOT WORKS 
-  //{
-  //if(kernelNodes.loopBody != nullptr)
-  //{
-  //  funcBodyText = pVisitor->RecursiveRewrite(kernelNodes.loopBody);
-  //  if(!clang::isa<clang::CompoundStmt>(kernelNodes.loopBody))
-  //    funcBodyText += ";";
-  //}
-
-  //if(kernelNodes.beforeLoop != nullptr)                                      // beforeLoop does not works, removed
-  //  a_outLoopInitCode = pVisitor->RecursiveRewrite(kernelNodes.beforeLoop);
-  //else
-  //  a_outLoopInitCode = "";
-  //
-  //if(kernelNodes.afterLoop != nullptr)
-  //  a_outLoopFinishCode = pVisitor->RecursiveRewrite(kernelNodes.afterLoop); // afterLoop does not works in this way, removed
-  //else
-  //  a_outLoopFinishCode = "";
-  //
-  //if(kernelNodes.loopBody != nullptr)
-  //  return funcBodyText;
-  //else
-  //  return "//empty kernel body is found";
-  //}
-  
-  // old way
-  //
-  pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
-  //pVisitor->TraverseStmt(const_cast<clang::Stmt*>(a_funcInfo.astNode->getBody()));
-  pVisitor->ApplyDefferedWorkArounds();
-  pVisitor->ResetCurrKernelInfo();
-  
-  a_funcInfo.shaderFeatures = a_funcInfo.shaderFeatures || pVisitor->GetKernelShaderFeatures(); // TODO: don't work !!!
-
-  if(a_funcInfo.loopOutsidesInit.isValid())
-  {
-    auto brokenEnd = a_funcInfo.loopOutsidesInit.getEnd().getRawEncoding();
-    auto nextBegin = a_funcInfo.loopInsides.getBegin().getRawEncoding();
-    if(brokenEnd + 1 < nextBegin)
-    {
-      auto repairedEnd = clang::SourceLocation::getFromRawEncoding(brokenEnd+1);
-      a_funcInfo.loopOutsidesInit.setEnd(repairedEnd);
-      a_outLoopInitCode = rewrite2.getRewrittenText(a_funcInfo.loopOutsidesInit)   + ";";
-    }
-  }
-
-  if(a_funcInfo.loopOutsidesFinish.isValid())  
-    a_outLoopFinishCode = rewrite2.getRewrittenText(a_funcInfo.loopOutsidesFinish) + ";";
-  
-  // new way
-  //
-  if(funcBodyText != "")
-    return funcBodyText;
+  if(kernel.pattern == kslicer::PATTERN_TP::PATTERN_IPV)
+    return std::move(std::make_unique<LoopHandlerInsideKernelsIPV>(std::cout, *this, &kernel, a_compile));
+  else if(kernel.pattern == kslicer::PATTERN_TP::PATTERN_RTV)
+    return std::move(std::make_unique<kslicer::UsedCodeFilter>(std::cout, *this, &kernel, a_compile));
   else
-    return rewrite2.getRewrittenText(a_funcInfo.loopInsides) + ";"; // old way works
+    return nullptr;
 }
 
 void kslicer::MainClassInfo::VisitAndPrepare_KF(KernelInfo& a_funcInfo, const clang::CompilerInstance& compiler)

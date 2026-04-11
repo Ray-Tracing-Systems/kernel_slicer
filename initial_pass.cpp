@@ -486,7 +486,7 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
     }
     else if(m_mainFuncts.find(fname) != m_mainFuncts.end())
     {
-      std::cout << "  control function has found: "; 
+      std::cout << std::endl << "  control function has found: "; 
       const clang::CXXRecordDecl* parentClass = f->getParent();
       if(parentClass != nullptr)
       {

@@ -654,7 +654,7 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
       //m_rewriter.ReplaceText(call->getSourceRange(), rewrittenRes);
       MarkRewritten(call);
     }
-    else if (m_codeInfo->IsRTV() && rewriteDueToFakeOffset)
+    else if ((m_pCurrKernel != nullptr) && (m_pCurrKernel->pattern == kslicer::PATTERN_TP::PATTERN_RTV) && rewriteDueToFakeOffset)
     {
       std::string fname        = fDecl->getNameInfo().getName().getAsString();
       std::string rewrittenRes = fname + "(";
@@ -1180,6 +1180,7 @@ std::shared_ptr<kslicer::KernelRewriter> kslicer::SlangCompiler::MakeKernRewrite
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+std::string toSpirvString(int n);
 
 void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings)
 {
@@ -1252,6 +1253,13 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
     buildSH << "slangc " << outFileName.c_str() << targetString.c_str() << kernelName.c_str() << targetSuffix.c_str() << " -I.. ";
     for(auto folder : ignoreFolders)
       buildSH << "-I" << folder.u8string().c_str() << " ";
+    if(a_settings.auxShaderCCOptions != "")
+      buildSH << " " << a_settings.auxShaderCCOptions.c_str();
+    if(a_settings.spirv_ver != 0)
+    {
+      const std::string ver = toSpirvString(a_settings.spirv_ver);
+      buildSH << " -profile " << ver.c_str() << " ";
+    }
     buildSH << std::endl;
   
     if(kernel.value()["IsIndirect"])

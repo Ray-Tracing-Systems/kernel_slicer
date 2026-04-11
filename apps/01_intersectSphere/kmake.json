@@ -9,7 +9,6 @@
         "default3D"       : {"wgSize": [4,   4,  4]}
     },
     "options" : {
-        "-pattern"    : "rtv",
         "-shaderCC"   : "slang",
         "-megakernel" : 0
     },

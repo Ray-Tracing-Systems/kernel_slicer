@@ -7,7 +7,6 @@
         "kernel2D_BlurY" : {"nonConstantData": {"a_dataOut" : 1} }
     },
     "options" : {
-        "-pattern"      : "ipv",
         "-reorderLoops" : "YX",
         "-shaderCC"     : "slang",
         "-suffix"       : "_GPU",

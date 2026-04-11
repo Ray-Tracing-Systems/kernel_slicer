@@ -193,8 +193,9 @@ bool kslicer::KernelRewriter::NeedToRewriteMemberExpr(const clang::MemberExpr* e
   // (2) put ubo->var instead of var, leave containers as they are
   // process arrays and large data structures because small can be read once in the beggining of kernel
   // // m_currKernel.hasInitPass &&
-  const bool isInLoopInitPart   = !m_codeInfo->IsRTV() && (expr->getSourceRange().getEnd()   < m_currKernel.loopInsides.getBegin());
-  const bool isInLoopFinishPart = !m_codeInfo->IsRTV() && (expr->getSourceRange().getBegin() > m_currKernel.loopInsides.getEnd());
+
+  const bool isInLoopInitPart   = (m_currKernel.pattern != kslicer::PATTERN_TP::PATTERN_RTV) && (expr->getSourceRange().getEnd()   < m_currKernel.loopInsides.getBegin());
+  const bool isInLoopFinishPart = (m_currKernel.pattern != kslicer::PATTERN_TP::PATTERN_RTV) && (expr->getSourceRange().getBegin() > m_currKernel.loopInsides.getEnd());
   const bool hasLargeSize     = true; // (pMember->second.sizeInBytes > kslicer::READ_BEFORE_USE_THRESHOLD);
   const bool inMegaKernel     = m_codeInfo->megakernelRTV;
   const bool subjectedToRed   = m_currKernel.subjectedToReduction.find(fieldName) != m_currKernel.subjectedToReduction.end();
@@ -1005,7 +1006,7 @@ void kslicer::KernelRewriter::DetectFuncReductionAccess(const clang::Expr* lhs, 
 bool kslicer::KernelRewriter::VisitBinaryOperator_Impl(BinaryOperator* expr) // detect reduction like m_var = F(m_var,expr)
 {
   auto opRange = expr->getSourceRange();
-  if(!m_codeInfo->IsRTV() && (opRange.getEnd() <= m_currKernel.loopInsides.getBegin() || opRange.getBegin() >= m_currKernel.loopInsides.getEnd())) // not inside loop
+  if((m_currKernel.pattern != kslicer::PATTERN_TP::PATTERN_RTV) && (opRange.getEnd() <= m_currKernel.loopInsides.getBegin() || opRange.getBegin() >= m_currKernel.loopInsides.getEnd())) // not inside loop
     return true;  
 
   const auto op = expr->getOpcodeStr();
