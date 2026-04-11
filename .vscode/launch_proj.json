@@ -769,5 +769,26 @@
             ]
         },
 
+
+        {
+            "name"   : "Launch (HydraInLiteRT/WAVE_SW2)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["/home/frol/PROG/LiteRT/HydraCore3/kmake_wave_swrt_v2.json", "-v", "-new_rawname", "1"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
     ]
 }
