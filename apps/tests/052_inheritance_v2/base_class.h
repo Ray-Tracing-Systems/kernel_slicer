@@ -15,6 +15,13 @@ public:
   virtual void Test_OnlyBase(float* a_data [[size("a_size")]], unsigned int a_size);
   virtual void kernel1D_OnlyBase(float* a_data, unsigned int a_size);
   
+  float f1();
+  float f2();
+  float f3();
+
+  static constexpr float C1 = 1.0f;
+  struct S1 { float x; };
+
   float dataInBaseClass;
   std::vector<float> vInBase;
   std::vector<float> vInBase2;

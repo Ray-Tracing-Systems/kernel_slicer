@@ -27,10 +27,16 @@ void Base::kernel1D_Test(float* a_data, unsigned int a_size)
   }
 }
 
+float f0() { return 1.0f;}
+
+float Base::f1() { return 1.0f + f0() + C1; };
+float Base::f2() { S1 temp; temp.x = 1.0f; return 1.0f + f1() + temp.x; };
+float Base::f3() { return 1.0f + f2(); };
+
 void Base::kernel1D_OnlyBase(float* a_data, unsigned int a_size)
 {
   for(int i=0; i<a_size; i++)
-    a_data[i] += dataInBaseClass + vInBase2[i];
+    a_data[i] += dataInBaseClass + vInBase2[i]; // + f3()
 }
 
 void Base::Test_OnlyBase(float* a_data, unsigned int a_size)
@@ -60,6 +66,6 @@ void Derived::kernel1D_Test(float* a_data, unsigned int a_size)
 {
   for(int i=0; i<a_size; i++)
   {
-    a_data[i] = dataInBaseClass*vInBase[i] + dataInDerivedClass*vInDerived[i];
+    a_data[i] = dataInBaseClass*vInBase[i] + dataInDerivedClass*vInDerived[i] + f3();
   }
 }
