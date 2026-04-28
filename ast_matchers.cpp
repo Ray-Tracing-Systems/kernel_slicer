@@ -199,7 +199,8 @@ public:
       std::string kName = kern->getNameAsString();
       assert(pClass != nullptr);
       //std::cout << "MainFuncSeeker: " << kName.c_str() << "\t class name = " << m_mainClassName.c_str() << " | " << pClass->getName().str() << std::endl;
-      if(pClass->getName().str() == m_mainClassName && m_codeInfo.IsKernel(kName))
+      const bool found = (pClass->getName().str() == m_mainClassName || m_baseClassInfo.find(pClass->getName().str()) != m_baseClassInfo.end());
+      if(found && m_codeInfo.IsKernel(kName))
       {
         //std::cout << func_decl->getNameAsString() << " --> " << kern->getNameAsString() << std::endl;
         auto p = m_mainFunctions.find(func_decl->getNameAsString());
@@ -251,24 +252,28 @@ public:
     return;
   }  // run
   
-  std::ostream&                 m_out;
-  const std::string&            m_mainClassName;
+  std::ostream&                   m_out;
+  const std::string&              m_mainClassName;
+  std::unordered_set<std::string> m_baseClassInfo;
+
   const clang::ASTContext&      m_astContext;
         kslicer::MainClassInfo& m_codeInfo;
   std::unordered_map<std::string, kslicer::CFNameInfo> m_mainFunctions;
 }; 
 
 std::unordered_map<std::string, kslicer::CFNameInfo> kslicer::ListAllMainRTFunctions(clang::tooling::ClangTool& Tool, 
-                                                                                     const std::string& a_mainClassName, 
-                                                                                     const clang::ASTContext& a_astContext,
-                                                                                     MainClassInfo& a_codeInfo)
+                                                                                     const std::string& a_mainClassName, std::vector<std::string> baseClases,
+                                                                                     const clang::ASTContext& a_astContext, MainClassInfo& a_codeInfo)
 {
   auto kernelCallMatcher  = kslicer::MakeMatch_MethodCallFromMethod();
   //auto kernelBlockMatcher = kslicer::MakeMatch_Kernel1DBlockExpansion();
   
   MainFuncSeeker printer(std::cout, a_mainClassName, a_astContext, a_codeInfo);
+  for(size_t i=0;i<baseClases.size();i++)          // TODO: move this inside constructor ...  
+    printer.m_baseClassInfo.insert(baseClases[i]); // TODO: move this inside constructor ... 
+
   clang::ast_matchers::MatchFinder finder;
-  finder.addMatcher(kernelCallMatcher,  &printer);
+  finder.addMatcher(kernelCallMatcher, &printer);
   //finder.addMatcher(kernelBlockMatcher,  &printer);
 
   auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());

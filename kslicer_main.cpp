@@ -691,7 +691,7 @@ int main(int argc, const char **argv)
   cfNames.reserve(20);
 
   std::cout << "(0) Listing main functions of " << mainClassName.c_str() << std::endl;
-  auto cfList = kslicer::ListAllMainRTFunctions(Tool, mainClassName, compiler.getASTContext(), inputCodeInfo);
+  auto cfList = kslicer::ListAllMainRTFunctions(Tool, mainClassName, baseClases, compiler.getASTContext(), inputCodeInfo);
 
   std::cout << "{" << std::endl;
   for(const auto& f : cfList)

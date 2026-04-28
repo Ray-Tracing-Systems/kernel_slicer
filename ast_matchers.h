@@ -44,9 +44,8 @@ namespace kslicer
   clang::ast_matchers::DeclarationMatcher MakeMatch_TypedefInsideClass(std::string const& className);
 
   std::unordered_map<std::string, CFNameInfo> ListAllMainRTFunctions(clang::tooling::ClangTool& Tool, 
-                                                                     const std::string& a_mainClassName, 
-                                                                     const clang::ASTContext& a_astContext,
-                                                                     kslicer::MainClassInfo& a_codeInfo);
+                                                                     const std::string& a_mainClassName, std::vector<std::string> baseClases,
+                                                                     const clang::ASTContext& a_astContext, kslicer::MainClassInfo& a_codeInfo);
 
   clang::ast_matchers::DeclarationMatcher MakeMatch_Kernel1DBlockExpansion();
 
