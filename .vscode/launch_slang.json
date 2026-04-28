@@ -583,6 +583,28 @@
         },
 
         {
+            "name"   : "Launch (test_034/Slang)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/tests/034_inheritance_v1/kmake.json",
+                        "-shaderCC", "slang", 
+                        ],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
             "name"   : "Launch (test_040/Slang)",
             "type"   : "cppdbg",
             "request": "launch",
@@ -885,6 +907,26 @@
                         "-shaderCC", "slang",
                         "-megakernel", "1",
                         "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (test_052/Slang)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/tests/052_inheritance_v2/kmake.json", "-shaderCC", "slang"],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",
             "environment": [],

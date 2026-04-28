@@ -1,0 +1,13 @@
+{
+    "mainClass"     : "Derived",   // must explicitly specify main class as main process 'unit' for slicer
+    "baseClasses"   : ["Base"],    // specify all base clases in  reverse order from leaf to root
+    "composClasses" : {},          // specify all classes for composition pattern 
+    "options" : {
+        "-pattern"    : "ipv",
+        "end" : ""
+    },
+    "source" : ["test_class.cpp"],
+    "includeProcess" : [],
+    "includeIgnore"  : ["../../LiteMath"],
+    "end" : ""
+}
