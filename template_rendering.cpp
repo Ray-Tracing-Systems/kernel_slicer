@@ -645,6 +645,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   std::map<std::string, kslicer::DeclInClass> specConsts;
   for(const auto decl : usedDecl)
   {
+    //if(decl.name == "GBuffElem" || decl.name == "PackedVertex")
+    //{
+    //  int a = 2;
+    //}
+
     if(!decl.extracted)
       continue;
     if(excludedNames.find(decl.type) != excludedNames.end())
@@ -1012,11 +1017,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernelJson["RedLoop2"].push_back(c);
 
     kernelJson["UseSubGroups"] = k.enableSubGroups;
-    
-    //if(k.name == "kernel2D_BlurX")
-    //{
-    //  int a = 2;
-    //}
 
     // explicitly override const flags for all args
     //

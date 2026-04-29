@@ -808,11 +808,6 @@ std::string kslicer::GLSLFunctionRewriter::RewriteFuncDecl(clang::FunctionDecl* 
 {
   std::string retT   = RewriteStdVectorTypeStr(fDecl->getReturnType().getAsString());
   std::string fname  = fDecl->getNameInfo().getName().getAsString();
-  
-  if(fname == "NextState")
-  {
-    int a = 2;
-  }
 
   if(m_pCurrFuncInfo != nullptr && m_pCurrFuncInfo->hasPrefix)          // alter function name if it has any prefix
   { 
@@ -1836,11 +1831,6 @@ bool GLSLKernelRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExp
 {
   std::string op = kslicer::GetRangeSourceCode(clang::SourceRange(expr->getOperatorLoc()), m_compiler);
   std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
-
-  //if(debugText.find("m_bodies") != std::string::npos)
-  //{
-  //  int a = 2;
-  //}
 
   if(op == "+=" || op == "-=" || op == "*=") // detect reduction access
   {

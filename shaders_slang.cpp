@@ -291,10 +291,6 @@ bool kslicer::SlangRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExp
         std::string fname              = dn.getAsString();
 
   std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler); 
-  if(debugText.find("ReduceAdd") != std::string::npos)
-  {
-    int a = 2;
-  }
 
   // Get name of "this" type; we should check wherther this member is std::vector<T>  
   //
@@ -992,10 +988,6 @@ bool  kslicer::SlangRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
   if(m_kernelMode)
   { 
     std::string originalText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
-    if(originalText == "scale")
-    {
-      int a = 2;
-    }
     
     std::string rewrittenText;
     if(NeedToRewriteDeclRefExpr(expr,rewrittenText) && WasNotRewrittenYet(expr))

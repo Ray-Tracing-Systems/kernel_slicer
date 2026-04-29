@@ -45,10 +45,7 @@ bool kslicer::FunctionRewriter2::NeedToRewriteMemberExpr(const clang::MemberExpr
     return false;
   
   std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
-  if(debugText == "m_SdfSBSDataF")
-  {
-    int a = 2;
-  }
+
 
   // (1) setter access
   //

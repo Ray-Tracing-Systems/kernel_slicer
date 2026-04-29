@@ -76,6 +76,24 @@ std::vector<std::string> ListProcessedFiles(nlohmann::json a_filesArray, std::fi
 
 int parseVersionString(const std::string& s);
 
+void debugPrintToFile(const std::vector<kslicer::FuncData>& a_functions, const char* a_filename)
+{
+  std::ofstream fout(a_filename);
+  for(size_t i=0;i<a_functions.size(); i++)
+  {
+    fout << i << "\t" << a_functions[i].name.c_str() << " = " << a_functions[i].astNode << std::endl; 
+  }
+}
+
+void debugPrintToFile(const std::vector<kslicer::DeclInClass>& a_decls, const char* a_filename)
+{
+  std::ofstream fout(a_filename);
+  for(size_t i=0;i<a_decls.size(); i++)
+  {
+    fout << i << "\t" << a_decls[i].name.c_str() << " = " << a_decls[i].astNode << std::endl; 
+  }
+}
+
 int main(int argc, const char **argv) 
 {
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -820,6 +838,7 @@ int main(int argc, const char **argv)
   inputCodeInfo.ProcessAllSetters(firstPassData.rv.mci.m_setters, compiler);
 
   std::vector<kslicer::DeclInClass> generalDecls = firstPassData.rv.GetExtractedDecls();
+  //debugPrintToFile(generalDecls, "zud_after_extracted.txt");
   if(inputCodeInfo.mainClassASTNode == nullptr)
   {
     std::cout << "[main]: ERROR, main class " << mainClassName.c_str() << " not found" << std::endl;
@@ -951,6 +970,7 @@ int main(int argc, const char **argv)
   std::cout << "{" << std::endl;
 
   std::vector<kslicer::FuncData> usedFunctions = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler); // recursive processing of functions used by kernel, extracting all needed functions
+  //debugPrintToFile(usedFunctions, "zuf_after_extract.txt");
   std::vector<kslicer::DeclInClass> usedDecls;
   for(auto name : inputCodeInfo.mainClassNames)
   {

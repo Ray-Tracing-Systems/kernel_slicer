@@ -233,7 +233,7 @@ public:
           func.prefixName  = pPrefix->second;
         }
       }
-      else if(func.isVirtual && typeName != m_patternImpl.mainClassName) // --------------------------------------------------------------- HERE(!!!)
+      else if(func.isVirtual && typeName != m_patternImpl.mainClassName && m_patternImpl.mainClassNames.find(typeName) == m_patternImpl.mainClassNames.end()) 
       {
         if(isRTX)
           return true;  // do not process HW accelerated 'RayQuery_' calls

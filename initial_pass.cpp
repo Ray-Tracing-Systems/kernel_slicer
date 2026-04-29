@@ -245,7 +245,11 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
     decl.kind      = kslicer::DECL_IN_CLASS::DECL_STRUCT;
     decl.extracted = true;
     decl.astNode   = type;
-
+    
+    //if(decl.name == "GBuffElem" || decl.name == "PackedVertex")
+    //{
+    //  int a = 2;
+    //}
 
     if(decl.name != m_codeInfo.mainClassName &&
        decl.name != std::string("class ") + m_codeInfo.mainClassName &&
@@ -310,12 +314,6 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitVarDecl(VarDecl* pTargetVar)
   const FileEntry* Entry = m_sourceManager.getFileEntryForID(m_sourceManager.getFileID(pTargetVar->getLocation()));
   if(Entry == nullptr)
     return true;
-
-  //std::string debugText = kslicer::GetRangeSourceCode(pTargetVar->getSourceRange(), m_compiler);
-  //if(debugText.find("TAG_") != std::string::npos)
-  //{
-  //  int a = 2;
-  //}
 
   std::string FileName = Entry->getName().str();
   if(!m_codeInfo.NeedToProcessDeclInFile(FileName))

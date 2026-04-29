@@ -540,10 +540,6 @@ std::string kslicer::CudaCompiler::PrintHeaderDecl(const DeclInClass& a_decl, co
     if(originalText == "")
       originalText = a_decl.lostValue;
     result = "static " + typeInCL + " " + a_decl.name + " = " + originalText + ";";
-    //if(a_decl.name.find("CRT_GEOM_MASK_AABB_BIT") != std::string::npos)
-    //{
-    //  int a = 2;
-    //}
     break;
     case kslicer::DECL_IN_CLASS::DECL_TYPEDEF:
     for(const auto& pair : m_typesReplacement)
