@@ -518,6 +518,24 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
     MarkRewritten(call);
   }
+  else if((fname == "all_of")  && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
+  {
+    const std::string text  = RecursiveRewrite(call->getArg(0));
+    const auto qtOfArg      = call->getArg(0)->getType();
+    const std::string tname = kslicer::CleanTypeName(qtOfArg.getAsString());
+    std::string lastRewrittenText = "all(" + text + ")";
+    ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
+    MarkRewritten(call);
+  }
+  else if((fname == "any_of")  && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
+  {
+    const std::string text  = RecursiveRewrite(call->getArg(0));
+    const auto qtOfArg      = call->getArg(0)->getType();
+    const std::string tname = kslicer::CleanTypeName(qtOfArg.getAsString());
+    std::string lastRewrittenText = "any(" + text + ")";
+    ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
+    MarkRewritten(call);
+  }
   else if((fname == "inverse4x4") && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
   {
     const std::string text = RecursiveRewrite(call->getArg(0));
