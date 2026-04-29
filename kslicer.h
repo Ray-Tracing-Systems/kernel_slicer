@@ -50,6 +50,7 @@ namespace kslicer
     bool uboIsAlwaysConst  = false;
     bool uboIsAlwaysUniform = false;
     bool fwdFunDeclarations = false;
+    bool forceRTXProxy      = false;
   };
 
   struct IShaderCompiler;

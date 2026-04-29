@@ -325,10 +325,14 @@ int main(int argc, const char **argv)
       textGenSettings.fwdFunDeclarations = atoi(params["-fwdfundecl"].c_str());
     if(params.find("-auxshadercc") != params.end())
       textGenSettings.auxShaderCCOptions = params["-auxshadercc"];
+
     if(params.find("-cc") != params.end())
       textGenSettings.spirv_ver = parseVersionString(params["-cc"].c_str());
     else if(params.find("-spirv_ver") != params.end())
       textGenSettings.spirv_ver = parseVersionString(params["-spirv_ver"].c_str());
+
+    if(params.find("-bothrt") != params.end())
+      textGenSettings.forceRTXProxy = (atoi(params["-bothrt"].c_str()) != 0);
   }
 
   // include and process folders
