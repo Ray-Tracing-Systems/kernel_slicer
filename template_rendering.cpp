@@ -1020,19 +1020,29 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
     // explicitly override const flags for all args
     //
-    if(kernelOptions != nullptr) {
-      if(kernelOptions.find(k.name) != kernelOptions.end()) {
-        
-        auto thisKernelOptions = kernelOptions[k.name];
-        if(thisKernelOptions == nullptr && pDefaultOpts != kernelOptions.end())
-          thisKernelOptions = (*pDefaultOpts);
 
+    if(k.name == "kernel2D_LightPass")
+    {
+      int a = 2;
+    }
+
+    if(kernelOptions != nullptr) 
+    {
+      auto pThiskernelOptions = kernelOptions.find(k.name);
+      if(pThiskernelOptions == kernelOptions.end()) 
+         pThiskernelOptions = pDefaultOpts;
+
+      if(pThiskernelOptions != kernelOptions.end()) 
+      {  
+        auto thisKernelOptions = (*pThiskernelOptions);
         if(thisKernelOptions["nonConstantData"] != nullptr) {
           auto nonConstData = thisKernelOptions["nonConstantData"];
           for(auto& arg : args) {
             if(arg["Name"] == nullptr)
               continue;
+            
             std::string name = arg["Name"].get<std::string>();
+
             if(nonConstData[name.c_str()] != nullptr) {
               bool isConst = (nonConstData[name.c_str()].get<int>() == 0);
               arg["IsConst"] = isConst;
