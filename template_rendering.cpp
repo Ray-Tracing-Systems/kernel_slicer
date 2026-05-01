@@ -1026,15 +1026,13 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       int a = 2;
     }
 
-    if(kernelOptions != nullptr) 
-    {
-      auto pThiskernelOptions = kernelOptions.find(k.name);
-      if(pThiskernelOptions == kernelOptions.end()) 
-         pThiskernelOptions = pDefaultOpts;
+    if(kernelOptions != nullptr) {
+      if(kernelOptions.find(k.name) != kernelOptions.end()) {
+        
+        auto thisKernelOptions = kernelOptions[k.name];
+        if(thisKernelOptions == nullptr && pDefaultOpts != kernelOptions.end())
+          thisKernelOptions = (*pDefaultOpts);
 
-      if(pThiskernelOptions != kernelOptions.end()) 
-      {  
-        auto thisKernelOptions = (*pThiskernelOptions);
         if(thisKernelOptions["nonConstantData"] != nullptr) {
           auto nonConstData = thisKernelOptions["nonConstantData"];
           for(auto& arg : args) {
