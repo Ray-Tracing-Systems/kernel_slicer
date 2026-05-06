@@ -785,7 +785,8 @@ int main(int argc, const char **argv)
     for(auto intersectionPlace : composeIntersections)
       inputCodeInfo.composIntersection.insert(intersectionPlace);
   }
-  else if(baseClases.size() != 0)
+  
+  if(baseClases.size() != 0)
   { 
     std::vector<const clang::CXXRecordDecl*> aux_classes;
     aux_classes.reserve(firstPassData.rv.m_composedClassInfo.size());

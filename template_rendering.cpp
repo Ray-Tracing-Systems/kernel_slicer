@@ -203,6 +203,11 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::VFHHier
     currImpl["IsEmpty"]         = impl.isEmpty;
     for(const auto& member : impl.memberFunctions)
     {
+      if(member.srcRewritten == "") {
+        std::cout << "  [PutHierarchyToJson, WARNING]: func.Member " << member.name.c_str() << " has empty body" << std::endl;
+        continue;
+      }
+
       json local;
       local["Name"]           = member.name;
       local["NameRewritten"]  = member.nameRewritten;
@@ -1360,6 +1365,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         if(excludedMemberFunctions.find(f.second.name) != excludedMemberFunctions.end())
           continue;
 
+
         auto funcNode    = const_cast<clang::FunctionDecl*>(f.second.astNode);
         auto funcDataPtr = const_cast<kslicer::FuncData*>  (&f.second);
 
@@ -1369,7 +1375,12 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         const std::string funcBodyText = pVisitorK->RecursiveRewrite(funcNode->getBody());
         pVisitorF->ResetCurrFuncInfo();
         pVisitorK->ResetCurrFuncInfo();
-        
+
+        if(funcNode->getBody() == nullptr || funcBodyText == "") {
+          std::cout << "  [PrepareJsonForKernels, WARNING]: func.Member " << f.second.name.c_str() << " has empty body" << std::endl;
+          continue;
+        }
+
         json funData;
         funData["Decl"]       = funcDeclText;
         funData["Text"]       = funcDeclText + funcBodyText;
