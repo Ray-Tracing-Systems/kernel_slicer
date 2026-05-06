@@ -771,21 +771,9 @@ int main(int argc, const char **argv)
   // обеспечивает корректное завершение обработки диагностических сообщений 
   // для текущего исходного файла в процессе компиляции с использованием Clang.
   compiler.getDiagnosticClient().EndSourceFile(); 
-
-  auto pComposAPI  = firstPassData.rv.m_composedClassInfo.find(composeAPIName);
-  auto pComposImpl = firstPassData.rv.m_composedClassInfo.find(composeImplName);
-
-  if(pComposAPI != firstPassData.rv.m_composedClassInfo.end() && pComposImpl != firstPassData.rv.m_composedClassInfo.end()) // if compos classes are found
-  {
-    std::string composMemberName = kslicer::PerformClassComposition(firstPassData.rv.mci, pComposAPI->second, pComposImpl->second);     // perform class composition
-    for(const auto& name : composClassNames)
-      inputCodeInfo.composPrefix[name] = composMemberName;
-    
-    inputCodeInfo.composClassNames.insert(composeImplName);
-    for(auto intersectionPlace : composeIntersections)
-      inputCodeInfo.composIntersection.insert(intersectionPlace);
-  }
   
+  // Process Inheritance
+  //
   if(baseClases.size() != 0)
   { 
     std::vector<const clang::CXXRecordDecl*> aux_classes;
@@ -805,6 +793,23 @@ int main(int argc, const char **argv)
     }
   }
   
+  // Process Composition
+  //
+  auto pComposAPI  = firstPassData.rv.m_composedClassInfo.find(composeAPIName);
+  auto pComposImpl = firstPassData.rv.m_composedClassInfo.find(composeImplName);
+  std::unordered_set<std::string> myComposClassNames; 
+
+  if(pComposAPI != firstPassData.rv.m_composedClassInfo.end() && pComposImpl != firstPassData.rv.m_composedClassInfo.end()) // if compos classes are found
+  {
+    std::string composMemberName = kslicer::PerformClassComposition(firstPassData.rv.mci, pComposAPI->second, pComposImpl->second);     // perform class composition
+    for(const auto& name : composClassNames)
+      inputCodeInfo.composPrefix[name] = composMemberName;
+    
+    myComposClassNames.insert(composeImplName);
+    for(auto intersectionPlace : composeIntersections)
+      inputCodeInfo.composIntersection.insert(intersectionPlace);
+  }
+  
   inputCodeInfo.mainClassNames[inputCodeInfo.mainClassName] = 0; // put main (derived) class name in this hash-set, use 'mainClassNames' instead of 'mainClassName' later
   
   // merge mainClassNames and composClassNames in single array, add 'const Type' names to it; TODO: merge to single function
@@ -813,7 +818,7 @@ int main(int argc, const char **argv)
     //inputCodeInfo.dataClassNames.insert(inputCodeInfo.mainClassNames.begin(),   inputCodeInfo.mainClassNames.end());
     for(auto c : inputCodeInfo.mainClassNames)
       inputCodeInfo.dataClassNames.insert(c.first);
-    inputCodeInfo.dataClassNames.insert(inputCodeInfo.composClassNames.begin(), inputCodeInfo.composClassNames.end());
+    inputCodeInfo.dataClassNames.insert(myComposClassNames.begin(), myComposClassNames.end());
     inputCodeInfo.dataClassNames.insert("ISceneObject");  // TODO: list all base classes for compose classes 
     inputCodeInfo.dataClassNames.insert("ISceneObject2"); // TODO: list all base classes for compose classes 
     
