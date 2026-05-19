@@ -924,7 +924,11 @@
             "type"   : "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/cmake-build-release/kslicer",
+<<<<<<< HEAD
             "args"   : ["/home/frol/PROG/vg_code/LiteRT/HydraCore3/kmake_mega.json", "-v", "-new_rawname", "1"],
+=======
+            "args"   : ["/home/frol/PROG/LiteRT/HydraCore3/kmake_mega.json", "-v", "-new_rawname", "1"],
+>>>>>>> b82545a8dc8b654a7734d083861004f80a7112be
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",
             "environment": [],

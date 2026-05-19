@@ -203,6 +203,11 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::VFHHier
     currImpl["IsEmpty"]         = impl.isEmpty;
     for(const auto& member : impl.memberFunctions)
     {
+      if(member.srcRewritten == "") {
+        std::cout << "  [PutHierarchyToJson, WARNING]: func.Member " << member.name.c_str() << " has empty body" << std::endl;
+        continue;
+      }
+
       json local;
       local["Name"]           = member.name;
       local["NameRewritten"]  = member.nameRewritten;
@@ -1020,6 +1025,12 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
     // explicitly override const flags for all args
     //
+
+    if(k.name == "kernel2D_LightPass")
+    {
+      int a = 2;
+    }
+
     if(kernelOptions != nullptr) {
       if(kernelOptions.find(k.name) != kernelOptions.end()) {
         
@@ -1032,7 +1043,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
           for(auto& arg : args) {
             if(arg["Name"] == nullptr)
               continue;
+            
             std::string name = arg["Name"].get<std::string>();
+
             if(nonConstData[name.c_str()] != nullptr) {
               bool isConst = (nonConstData[name.c_str()].get<int>() == 0);
               arg["IsConst"] = isConst;
@@ -1352,6 +1365,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         if(excludedMemberFunctions.find(f.second.name) != excludedMemberFunctions.end())
           continue;
 
+
         auto funcNode    = const_cast<clang::FunctionDecl*>(f.second.astNode);
         auto funcDataPtr = const_cast<kslicer::FuncData*>  (&f.second);
 
@@ -1361,7 +1375,12 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         const std::string funcBodyText = pVisitorK->RecursiveRewrite(funcNode->getBody());
         pVisitorF->ResetCurrFuncInfo();
         pVisitorK->ResetCurrFuncInfo();
-        
+
+        if(funcNode->getBody() == nullptr || funcBodyText == "") {
+          std::cout << "  [PrepareJsonForKernels, WARNING]: func.Member " << f.second.name.c_str() << " has empty body" << std::endl;
+          continue;
+        }
+
         json funData;
         funData["Decl"]       = funcDeclText;
         funData["Text"]       = funcDeclText + funcBodyText;

@@ -1,6 +1,9 @@
 #pragma once
 #include <vector>
 
+static constexpr float C1 = 1.0f;
+struct S1 { float x; };
+
 class Base
 {
 public:
@@ -19,12 +22,10 @@ public:
   float f2();
   float f3();
 
-  static constexpr float C1 = 1.0f;
-  struct S1 { float x; };
-
   float dataInBaseClass;
   std::vector<float> vInBase;
   std::vector<float> vInBase2;
+  std::vector<S1>    vInBase3;
 
   virtual void CommitDeviceData() {}                                       // will be overriden in generated class
   virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) {} // will be overriden in generated class

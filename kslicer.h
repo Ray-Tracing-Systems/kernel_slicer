@@ -50,6 +50,7 @@ namespace kslicer
     bool uboIsAlwaysConst  = false;
     bool uboIsAlwaysUniform = false;
     bool fwdFunDeclarations = false;
+    bool forceRTXProxy      = false;
   };
 
   struct IShaderCompiler;
@@ -1632,8 +1633,7 @@ namespace kslicer
     std::unordered_map<uint64_t, RewrittenFunction> m_functionsDone;
 
     std::string                                        mainClassName;         ///<! Current main class (derived)
-    std::unordered_map<std::string, int>               mainClassNames;        ///<! All main classes (derived + base)
-    std::unordered_set<std::string>                    composClassNames; 
+    std::unordered_map<std::string, int>               mainClassNames;        ///<! All main classes (derived + base) 
     std::unordered_set<std::string>                    dataClassNames; 
 
     std::vector< std::pair<std::string, std::string> > intersectionShaders;

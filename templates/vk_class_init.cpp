@@ -17,6 +17,9 @@
 
 {% if length(SceneMembers) > 0 %}
 #include "CrossRT.h"
+{% if ForceProxy %}
+#include "VulkanRTX.h"
+{% endif %}
 ISceneObject* CreateVulkanRTX(VkDevice a_device, VkPhysicalDevice a_physDevice, uint32_t a_graphicsQId, std::shared_ptr<vk_utils::ICopyEngine> a_pCopyHelper,
                               uint32_t a_maxMeshes, uint32_t a_maxTotalVertices, uint32_t a_maxTotalPrimitives, uint32_t a_maxPrimitivesPerMesh,
                               bool build_as_add, bool has_aabb);
@@ -109,13 +112,13 @@ void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, 
   uint32_t maxTotalVertices     = userRestrictions[1];
   uint32_t maxTotalPrimitives   = userRestrictions[2];
   uint32_t maxPrimitivesPerMesh = userRestrictions[3];
-  {% if ScnObj.HasIntersectionShader %}
+  {% if ScnObj.HasIntersectionShader or ForceProxy %}
   auto {{ScnObj.Name}}Old = {{ScnObj.Name}}; // save user implementation
   {% endif %}
   {{ScnObj.Name}} = std::shared_ptr<ISceneObject>(CreateVulkanRTX(a_device, a_physicalDevice, queueAllFID, m_ctx.pCopyHelper,
                                                              maxMeshes, maxTotalVertices, maxTotalPrimitives, maxPrimitivesPerMesh, true, {{ScnObj.HasIntersectionShader}}),
                                                              [](ISceneObject *p) { DeleteSceneRT(p); } );
-  {% if ScnObj.HasIntersectionShader %}
+  {% if ScnObj.HasIntersectionShader or ForceProxy %}
   {{ScnObj.Name}} = std::make_shared<RTX_Proxy>({{ScnObj.Name}}Old, {{ScnObj.Name}}{% if ScnObj.HasIntersectionShader2 %}, true{% endif %}); // wrap both user and RTX implementation with proxy object 
   {% endif %}
   {% endfor %}

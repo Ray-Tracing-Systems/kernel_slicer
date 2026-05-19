@@ -483,6 +483,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["WGPU_VER"]    = a_settings.wgpu_ver;
   data["VecUBO"] = a_classInfo.placeVectorsInUBO;
   data["cuda"]   = a_classInfo.pHostCC->Name();
+  data["ForceProxy"] = a_settings.forceRTXProxy;
 
   const bool hasBufferReferenceBind = a_classInfo.HasBufferReferenceBind();
   
