@@ -52,7 +52,7 @@ vk_utils::VulkanDeviceFeatures {{MainClassName}}{{MainClassSuffix}}_ListRequired
 {
   vk_utils::VulkanDeviceFeatures res;
   res.features2 = {{MainClassName}}{{MainClassSuffix}}::ListRequiredDeviceFeatures(res.extensionNames);
-  {% if SlangShaders %}
+  {% if SlangShaders and not UseVulkan11 %}
   res.apiVersion = VK_API_VERSION_1_2;
   {% else %}
   res.apiVersion = VK_API_VERSION_1_1;

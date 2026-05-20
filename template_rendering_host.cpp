@@ -484,6 +484,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["VecUBO"] = a_classInfo.placeVectorsInUBO;
   data["cuda"]   = a_classInfo.pHostCC->Name();
   data["ForceProxy"] = a_settings.forceRTXProxy;
+  data["UseVulkan11"]= (a_settings.vulkan_ver == 11);
 
   const bool hasBufferReferenceBind = a_classInfo.HasBufferReferenceBind();
   

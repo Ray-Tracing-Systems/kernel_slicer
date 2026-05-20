@@ -330,6 +330,10 @@ int main(int argc, const char **argv)
       textGenSettings.spirv_ver = parseVersionString(params["-cc"].c_str());
     else if(params.find("-spirv_ver") != params.end())
       textGenSettings.spirv_ver = parseVersionString(params["-spirv_ver"].c_str());
+      
+    if(params.find("-vulkan_ver") != params.end()) {
+      textGenSettings.vulkan_ver = parseVersionString(params["-vulkan_ver"].c_str());
+    }
 
     if(params.find("-bothrt") != params.end())
       textGenSettings.forceRTXProxy = (atoi(params["-bothrt"].c_str()) != 0);

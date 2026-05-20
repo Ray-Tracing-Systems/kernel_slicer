@@ -1265,9 +1265,15 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
       buildSH << "-I" << folder.u8string().c_str() << " ";
     if(a_settings.auxShaderCCOptions != "")
       buildSH << " " << a_settings.auxShaderCCOptions.c_str();
-    if(a_settings.spirv_ver != 0)
+    
+    
+    auto spirv_ver = a_settings.spirv_ver;
+    if(a_settings.vulkan_ver == 11)
+      spirv_ver = 13;
+
+    if(spirv_ver != 0)
     {
-      const std::string ver = toSpirvString(a_settings.spirv_ver);
+      const std::string ver = toSpirvString(spirv_ver);
       buildSH << " -profile " << ver.c_str() << " ";
     }
     buildSH << std::endl;

@@ -36,8 +36,9 @@ namespace kslicer
   {
     std::string interfaceName;
     std::string auxShaderCCOptions;
-    uint32_t wgpu_ver  = 30;
-    uint32_t spirv_ver = 0; // default version by the shader compiler use '10' for 'spirv_1_0', '13' for 'spirv_1_3' and e.t.c
+    uint32_t wgpu_ver   = 30;
+    uint32_t spirv_ver  = 0; // default version by the shader compiler use '10' for 'spirv_1_0', '13' for 'spirv_1_3' and e.t.c
+    uint32_t vulkan_ver = 12;
     bool enableRayGen      = false;
     bool enableRayGenForce = false;
     bool enableMotionBlur  = false;
