@@ -1,10 +1,252 @@
 #pragma once
+
+#include <cstddef>
+#include <cstdint>
+#include <chrono>
 #include <string>
 
-namespace std
-{
-  namespace filesystem
-  {
-    typedef string path;
-  };
+namespace std {
+
+class error_category;
+
+class error_code {
+public:
+    error_code() noexcept;
+    error_code(int, const error_category&) noexcept;
+
+    void clear() noexcept;
+    int value() const noexcept;
+    explicit operator bool() const noexcept;
 };
+
+class error_category {
+public:
+    constexpr error_category() noexcept = default;
+};
+
+namespace filesystem {
+
+using uintmax_t = unsigned long long;
+using file_time_type = std::chrono::time_point<std::chrono::system_clock>;
+
+enum class file_type : int {
+    none = 0,
+    not_found = -1,
+    regular = 1,
+    directory = 2,
+    symlink = 3,
+    block = 4,
+    character = 5,
+    fifo = 6,
+    socket = 7,
+    unknown = 8
+};
+
+enum class perms : unsigned {
+    none = 0,
+    owner_read = 0400,
+    owner_write = 0200,
+    owner_exec = 0100,
+    owner_all = 0700,
+    group_read = 0040,
+    group_write = 0020,
+    group_exec = 0010,
+    group_all = 0070,
+    others_read = 0004,
+    others_write = 0002,
+    others_exec = 0001,
+    others_all = 0007,
+    all = 0777,
+    unknown = 0xFFFF
+};
+
+class file_status {
+public:
+    file_status() noexcept;
+    explicit file_status(file_type) noexcept;
+
+    file_type type() const noexcept;
+    perms permissions() const noexcept;
+};
+
+class path {
+public:
+    using value_type = char;
+    using string_type = std::string;
+
+    enum format {
+        native_format,
+        generic_format,
+        auto_format
+    };
+
+    class iterator;
+
+    static constexpr value_type preferred_separator = '/';
+
+    path() noexcept;
+    path(const path&);
+    path(path&&) noexcept;
+    path(const value_type*);
+    path(const string_type&);
+    path(string_type&&);
+    ~path();
+
+    operator std::string() const;
+
+    path& operator=(const path&);
+    path& operator=(path&&) noexcept;
+
+    path& operator/=(const path&);
+    path& operator+=(const path&);
+    path& operator+=(const string_type&);
+    path& operator+=(const value_type*);
+    path& operator+=(value_type);
+
+    void clear() noexcept;
+    path& make_preferred();
+    path& remove_filename();
+    path& replace_filename(const path&);
+    path& replace_extension(const path& = path());
+    void swap(path&) noexcept;
+
+    const value_type* c_str() const noexcept;
+    const string_type& native() const noexcept;
+    string_type string() const;
+    string_type generic_string() const;
+
+    int compare(const path&) const noexcept;
+
+    path root_name() const;
+    path root_directory() const;
+    path root_path() const;
+    path relative_path() const;
+    path parent_path() const;
+    path filename() const;
+    path stem() const;
+    path extension() const;
+
+    bool empty() const noexcept;
+    bool has_root_path() const;
+    bool has_parent_path() const;
+    bool has_filename() const;
+    bool has_stem() const;
+    bool has_extension() const;
+    bool is_absolute() const;
+    bool is_relative() const;
+
+    path lexically_normal() const;
+    path lexically_relative(const path&) const;
+    path lexically_proximate(const path&) const;
+
+    iterator begin() const;
+    iterator end() const;
+};
+
+bool operator==(const path&, const path&) noexcept;
+bool operator!=(const path&, const path&) noexcept;
+bool operator<(const path&, const path&) noexcept;
+path operator/(const path&, const path&);
+void swap(path&, path&) noexcept;
+
+class filesystem_error {
+public:
+    filesystem_error(const std::string&, error_code);
+    filesystem_error(const std::string&, const path&, error_code);
+    filesystem_error(const std::string&, const path&, const path&, error_code);
+
+    const path& path1() const noexcept;
+    const path& path2() const noexcept;
+    const char* what() const noexcept;
+};
+
+class directory_entry {
+public:
+    directory_entry();
+    explicit directory_entry(const path&);
+
+    void assign(const path&);
+    void replace_filename(const path&);
+    void refresh();
+
+    const path& path() const noexcept;
+
+    bool exists() const;
+    bool is_directory() const;
+    bool is_regular_file() const;
+    file_status status() const;
+};
+
+class directory_iterator {
+public:
+    directory_iterator() noexcept;
+    explicit directory_iterator(const path&);
+    directory_iterator(const path&, error_code&) noexcept;
+
+    const directory_entry& operator*() const;
+    const directory_entry* operator->() const;
+    directory_iterator& operator++();
+};
+
+class recursive_directory_iterator {
+public:
+    recursive_directory_iterator() noexcept;
+    explicit recursive_directory_iterator(const path&);
+    recursive_directory_iterator(const path&, error_code&) noexcept;
+
+    const directory_entry& operator*() const;
+    const directory_entry* operator->() const;
+    recursive_directory_iterator& operator++();
+
+    int depth() const noexcept;
+    void pop();
+};
+
+path absolute(const path&);
+path absolute(const path&, error_code&) noexcept;
+
+path canonical(const path&);
+path canonical(const path&, error_code&) noexcept;
+
+path current_path();
+path current_path(error_code&) noexcept;
+void current_path(const path&);
+void current_path(const path&, error_code&) noexcept;
+
+bool exists(const path&);
+bool exists(const path&, error_code&) noexcept;
+
+bool is_directory(const path&);
+bool is_directory(const path&, error_code&) noexcept;
+
+bool is_regular_file(const path&);
+bool is_regular_file(const path&, error_code&) noexcept;
+
+bool create_directory(const path&);
+bool create_directory(const path&, error_code&) noexcept;
+
+bool create_directories(const path&);
+bool create_directories(const path&, error_code&) noexcept;
+
+bool remove(const path&);
+bool remove(const path&, error_code&) noexcept;
+
+uintmax_t remove_all(const path&);
+uintmax_t remove_all(const path&, error_code&) noexcept;
+
+void rename(const path&, const path&);
+void rename(const path&, const path&, error_code&) noexcept;
+
+uintmax_t file_size(const path&);
+uintmax_t file_size(const path&, error_code&) noexcept;
+
+file_status status(const path&);
+file_status status(const path&, error_code&) noexcept;
+
+file_time_type last_write_time(const path&);
+file_time_type last_write_time(const path&, error_code&) noexcept;
+void last_write_time(const path&, file_time_type);
+void last_write_time(const path&, file_time_type, error_code&) noexcept;
+
+} // namespace filesystem
+} // namespace std
