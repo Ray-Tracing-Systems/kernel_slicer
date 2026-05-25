@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <sstream>
 #include <filesystem>
+#include <optional>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsuggest-override"
@@ -1622,9 +1623,8 @@ namespace kslicer
     std::unordered_map<std::string, KernelInfo> kernels;            ///<! only those kernels which are called from 'Main'/'Control' functions
     std::unordered_map<std::string, KernelInfo> megakernelsByName;  ///<! megakernels for RTV pattern
 
-    std::unordered_map<std::string, KernelInfo>::iterator       FindKernelByName(const std::string& a_name);
-    std::unordered_map<std::string, KernelInfo>::const_iterator FindKernelByName(const std::string& a_name) const;
-
+    std::optional<std::pair<std::string, kslicer::KernelInfo>> FindKernelByName(const std::string& a_name) const;
+    
     std::vector<std::string>                    indirectKernels; ///<! list of all kernel names which require indirect dispatch; The order is essential because it is used for indirect buffer offsets
     std::vector<DataMemberInfo>                 dataMembers;     ///<! only those member variables which are referenced from kernels
     std::vector<MainFuncInfo>                   mainFunc;        ///<! list of all control functions
