@@ -5,6 +5,9 @@
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Rewrite/Frontend/Rewriters.h"
 #include "clang/Rewrite/Core/Rewriter.h"
+#include <clang/AST/ASTContext.h>
+#include <clang/AST/Decl.h>
+#include <clang/AST/TypeBase.h>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsuggest-override"
@@ -404,7 +407,9 @@ nlohmann::json kslicer::ListCallableStructures(const std::unordered_map<std::str
       //
       if(f.second.retTypeDecl != nullptr)
       {
-        const clang::Type* type = f.second.retTypeDecl->getTypeForDecl();
+        const clang::ASTContext &ctx = f.second.retTypeDecl->getASTContext();
+        const QualType rqt = ctx.getTagType(clang::ElaboratedTypeKeyword::None, std::nullopt, f.second.retTypeDecl, false);
+        const clang::Type* type = rqt.getTypePtr();
         if (const auto* recordType = clang::dyn_cast<clang::RecordType>(type)) {
           std::string retTypeName = recordType->getDecl()->getQualifiedNameAsString();
           nlohmann::json arg;
@@ -1541,6 +1546,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       //f.astNode->dump();
       pVisitorF->TraverseDecl(const_cast<clang::FunctionDecl*>(f.astNode));
       
+      const clang::FunctionDecl *fDecl = clang::cast<clang::FunctionDecl>(f.astNode);
+      if(!fDecl->isThisDeclarationADefinition()) continue;
       auto p = a_classInfo.m_functionsDone.find(GetHashOfSourceRange(f.astNode->getBody()->getSourceRange()));
       if(p == a_classInfo.m_functionsDone.end())
       {

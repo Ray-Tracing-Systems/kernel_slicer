@@ -1,4 +1,5 @@
 #include "kslicer.h"
+#include "shaders_cuda.h"
 #include "template_rendering.h"
 
 #ifdef _WIN32
@@ -382,7 +383,7 @@ kslicer::CudaCompiler::CudaCompiler(const std::string& a_prefix) : m_suffix(a_pr
   m_typesReplacement.clear(); 
 }
 
-std::string kslicer::CudaCompiler::LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const
+std::string kslicer::CudaCompiler::LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const 
 {
   if(a_kernelDim == 1)
     return "threadIdx.x";

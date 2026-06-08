@@ -1,6 +1,7 @@
 #include "kslicer_warnings.h"
 
 #include <clang/AST/ASTContext.h>
+#include <clang/AST/TypeBase.h>
 
 void CheckUnalignedStructInsideVector(const kslicer::MainClassInfo& a_classInfo)
 {
@@ -9,7 +10,7 @@ void CheckUnalignedStructInsideVector(const kslicer::MainClassInfo& a_classInfo)
     if(member.isContainer && (member.containerType == "vector" || member.containerType == "std::vector") && member.containerDataType.find("struct") != std::string::npos) // member.pTypeDeclIfRecord != nullptr
     {
       auto dataTypeName = member.containerDataType;
-      auto dataTypeDecl = member.pContainerDataTypeDeclIfRecord;
+      const clang::TypeDecl *dataTypeDecl = member.pContainerDataTypeDeclIfRecord;
       if(dataTypeDecl != nullptr && clang::isa<clang::RecordDecl>(dataTypeDecl))
       {
         const clang::ASTContext& context    = dataTypeDecl->getASTContext();
@@ -30,7 +31,9 @@ void CheckUnalignedStructInsideVector(const kslicer::MainClassInfo& a_classInfo)
         }
         
         // Get the size of the entire record
-        const uint64_t recordSize = context.getTypeSizeInChars(recordDecl->getTypeForDecl()).getQuantity();
+
+        const clang::QualType dqt = context.getTypeDeclType(dataTypeDecl);
+        const uint64_t recordSize = context.getTypeSizeInChars(dqt.getTypePtr()).getQuantity();
         
         uint64_t problem = 0;
         {

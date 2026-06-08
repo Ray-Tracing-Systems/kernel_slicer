@@ -1,6 +1,7 @@
 #include "kslicer.h"
 #include "template_rendering.h"
 #include "class_gen.h"
+#include "shaders_cuda.h"
 
 void kslicer::CudaCodeGen::GenerateHost(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings)
 {

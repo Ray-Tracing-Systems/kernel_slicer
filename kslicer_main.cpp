@@ -1,3 +1,4 @@
+#include <llvm/Support/Error.h>
 #include <stdio.h>
 #include <vector>
 #include <system_error>
@@ -44,6 +45,11 @@
 #include "ast_matchers.h"
 #include "class_gen.h"
 #include "extractor.h"
+
+#include "shaders_slang.h"
+#include "shaders_glsl.h"
+#include "shaders_cuda.h"
+#include "shaders_ispc.h"
 
 //using namespace clang;
 #include "template_rendering.h"
@@ -610,19 +616,22 @@ int main(int argc, const char **argv)
 
   std::unique_ptr<kslicer::MainClassInfo> pInputCodeInfoImpl = nullptr;
 
-  clang::CompilerInstance compiler;
   clang::DiagnosticOptions diagnosticOptions;
-  compiler.createDiagnostics();  //compiler.createDiagnostics(argc, argv); //
+  auto fs = llvm::vfs::getRealFileSystem();
+  auto diagEngine = clang::CompilerInstance::createDiagnostics(*fs, diagnosticOptions);
+  //compiler.createDiagnostics();  //compiler.createDiagnostics(argc, argv); //
 
   // Create an invocation that passes any flags to preprocessor
   std::shared_ptr<clang::CompilerInvocation> Invocation = std::make_shared<clang::CompilerInvocation>(); //
-  clang::CompilerInvocation::CreateFromArgs(*Invocation, args, compiler.getDiagnostics());
-  compiler.setInvocation(Invocation);
+  clang::CompilerInvocation::CreateFromArgs(*Invocation, args, *diagEngine);
+  clang::CompilerInstance compiler(Invocation);
+  compiler.createDiagnostics();
+
 
   // Set default target triple
   std::shared_ptr<clang::TargetOptions> pto = std::make_shared<clang::TargetOptions>();
   pto->Triple     = llvm::sys::getDefaultTargetTriple();
-  clang::TargetInfo *pti = clang::TargetInfo::CreateTargetInfo(compiler.getDiagnostics(), pto);
+  clang::TargetInfo *pti = clang::TargetInfo::CreateTargetInfo(compiler.getDiagnostics(), *pto);
   compiler.setTarget(pti);
   compiler.getLangOpts().GNUMode = 1;
   compiler.getLangOpts().CXXExceptions = 1;
@@ -633,7 +642,7 @@ int main(int argc, const char **argv)
   compiler.getLangOpts().CPlusPlus17 = 1;
   compiler.getLangOpts().CPlusPlus11 = 1;
   compiler.createFileManager();
-  compiler.createSourceManager(compiler.getFileManager());
+  compiler.createSourceManager(/*compiler.getFileManager()*/);
   
   /////////////////////////////////////////////////////////////////////////////////////////////////// -stdlibFolder
   if(selfFolder != "")
@@ -674,8 +683,13 @@ int main(int argc, const char **argv)
   compiler.getPreprocessor().addPPCallbacks(std::make_unique<HeaderLister>(headerLister));
   compiler.createASTContext();
 
-  const clang::FileEntry *pFile = compiler.getFileManager().getFile(fileName.u8string()).get();
-  compiler.getSourceManager().setMainFileID( compiler.getSourceManager().createFileID( pFile, clang::SourceLocation(), clang::SrcMgr::C_User));
+  auto fileRef = compiler.getFileManager().getFileRef(fileName.u8string());
+  if(!fileRef) {
+    llvm::logAllUnhandledErrors(fileRef.takeError(), llvm::errs(), "[main] ");
+    return 1;
+  }
+
+  compiler.getSourceManager().setMainFileID( compiler.getSourceManager().createFileID(*fileRef, clang::SourceLocation(), clang::SrcMgr::C_User));
   compiler.getDiagnosticClient().BeginSourceFile(compiler.getLangOpts(), &compiler.getPreprocessor());
 
   // init clang tooling
