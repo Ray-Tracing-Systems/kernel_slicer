@@ -40,14 +40,14 @@ set(KSLICER_SOURCE_FILES
 
 option(KSLICER_LLVM_BUILD "Build kernel_slicer as a LLVM project module" OFF)
 
+set(LLVM_LIB "LLVM")
 
-find_package(LLVM  REQUIRED CONFIG)
-find_package(Clang CONFIG REQUIRED)
+find_package(LLVM 22.1...<23 REQUIRED CONFIG)
+find_package(Clang 22.1...<23 CONFIG REQUIRED)
 set(LLVM_LINK_COMPONENTS support)
 
 if(NOT KSLICER_LLVM_BUILD)
-  set(LLVM_VER "17")
-  set(LLVM_LIB "LLVM")
+
 
   if(WIN32)
     if(MSVC)
