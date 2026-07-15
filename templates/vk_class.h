@@ -149,7 +149,6 @@ public:
   {% for SetterFunc in SetterFuncs %}
   {{SetterFunc}}
   {% endfor %}
-
   {% if not GenGpuApi %} virtual {% endif %} void InitDeviceData() {% if GenGpuApi %} override {% endif %};
   {% if not GenGpuApi %} virtual {% endif %} void UpdateDeviceData(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine) {% if GenGpuApi %} override {% endif %}
   {
@@ -210,8 +209,7 @@ public:
   {% endif %}
   {% if UpdateMembersTextureData %}
   void UpdateMembersTextureData() override { UpdateTextureMembers(m_ctx.pCopyHelper); }
-  {% endif %}
-  
+  {% endif %}  
   virtual void ReserveEmptyVectors();
   virtual void UpdatePlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
   virtual void UpdateVectorMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
@@ -219,6 +217,9 @@ public:
   {% if HasFullImpl %}
   virtual void ReadPlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
   {% endif %}
+  void UpdatePlainMembersInternal();
+  void UpdatePlainMembersCmd(VkCommandBuffer a_cmdBuff);
+
   static VkPhysicalDeviceFeatures2 ListRequiredDeviceFeatures(std::vector<const char*>& deviceExtensions);
 
   {% for MainFunc in MainFunctions %}

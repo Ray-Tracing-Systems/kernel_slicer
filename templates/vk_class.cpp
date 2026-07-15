@@ -35,7 +35,7 @@ constexpr uint32_t KGEN_REDUCTION_LAST_STEP    = 16;
 template<typename T> inline size_t ReduceAddInit(std::vector<T>& a_vec, size_t a_targetSize) { return a_vec.size(); } 
 template<typename T> inline void   ReduceAddComplete(std::vector<T>& a_vec) { }
 
-void {{MainClassName}}{{MainClassSuffix}}::UpdatePlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
+void {{MainClassName}}{{MainClassSuffix}}::UpdatePlainMembersInternal()
 {
   const size_t maxAllowedSize = std::numeric_limits<uint32_t>::max();
   {% if HasPrefixData %}
@@ -60,7 +60,47 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdatePlainMembers(std::shared_ptr<vk
   m_uboData.{{Var.Name}}_size     = uint32_t( {{Var.Name}}{{Var.AccessSymb}}size() );     assert( {{Var.Name}}{{Var.AccessSymb}}size() < maxAllowedSize );
   m_uboData.{{Var.Name}}_capacity = uint32_t( {{Var.Name}}{{Var.AccessSymb}}capacity() ); assert( {{Var.Name}}{{Var.AccessSymb}}capacity() < maxAllowedSize );
 ## endfor
+}
+
+void {{MainClassName}}{{MainClassSuffix}}::UpdatePlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine)
+{
+  UpdatePlainMembersInternal();
   a_pCopyEngine->UpdateBuffer(m_classDataBuffer, 0, &m_uboData, sizeof(m_uboData));
+}
+
+void {{MainClassName}}{{MainClassSuffix}}::UpdatePlainMembersCmd(VkCommandBuffer a_cmdBuff)
+{
+  UpdatePlainMembersInternal();
+
+  //size_t currSize = sizeof(m_uboData);
+  //if(currSize > 65536)
+  //  currSize = 65536;
+  //vkCmdUpdateBuffer(a_cmdBuff, m_classDataBuffer, 0, currSize, &m_uboData);
+
+  constexpr VkDeviceSize kMaxUpdateSize = 65536;
+  const auto* srcData          = reinterpret_cast<const unsigned char*>(&m_uboData);
+  const VkDeviceSize totalSize = sizeof(m_uboData);
+
+  VkDeviceSize offset = 0;
+  size_t updateCallCount = 0;
+
+  while (offset < totalSize)
+  {
+    const VkDeviceSize remaining  = totalSize - offset;
+    const VkDeviceSize updateSize = std::min(remaining, kMaxUpdateSize);
+
+    // vkCmdUpdateBuffer требует, чтобы offset и updateSize были кратны 4.
+    assert((offset % 4) == 0);
+    assert((updateSize % 4) == 0);
+
+    vkCmdUpdateBuffer(a_cmdBuff, m_classDataBuffer, offset, updateSize, srcData + offset);
+
+    ++updateCallCount;
+    offset += updateSize;
+  }
+
+  if (updateCallCount > 16)
+    std::cout << "[{{MainClassName}}{{MainClassSuffix}}::UpdatePlainMembersCmd]: warning, ubo was updated using " << updateCallCount << " vkCmdUpdateBuffer calls!" << std::endl;
 }
 
 {% if HasFullImpl %}

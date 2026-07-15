@@ -1,6 +1,16 @@
 #include "test_class.h"
 #include <cstdint>
 
+#include "LiteMath.h"
+using LiteMath::as_float;
+
+//float testFun()
+//{
+//  int x = 3;
+//  float y = as_float(x);
+//  return y;
+//}
+
 void Numbers::CalcArraySumm(const double* a_data, unsigned int a_dataSize)
 {
   kernel1D_ArraySumm(a_data, a_dataSize);
@@ -12,6 +22,7 @@ void Numbers::kernel1D_ArraySumm(const double* a_data, size_t a_dataSize)
   for(int i=0; i<a_dataSize; i++)
   {
     double number = 2.0*a_data[i] + a_data[i]*3.0 + 1.0;
+    //testFun();
     if(number > 0.0)
       m_summ += number;
   }
