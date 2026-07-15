@@ -68,7 +68,7 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdatePlainMembers(std::shared_ptr<vk
   a_pCopyEngine->UpdateBuffer(m_classDataBuffer, 0, &m_uboData, sizeof(m_uboData));
 }
 
-void {{MainClassName}}{{MainClassSuffix}}::UpdatePlainMembersCmd(VkCommandBuffer a_cmdBuff)
+void {{MainClassName}}{{MainClassSuffix}}::UpdatePlainMembersCmd(VkCommandBuffer a_cmdBuff, VkPipelineStageFlags a_nextStegeFlags)
 {
   UpdatePlainMembersInternal();
 
@@ -101,6 +101,19 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdatePlainMembersCmd(VkCommandBuffer
 
   if (updateCallCount > 16)
     std::cout << "[{{MainClassName}}{{MainClassSuffix}}::UpdatePlainMembersCmd]: warning, ubo was updated using " << updateCallCount << " vkCmdUpdateBuffer calls!" << std::endl;
+  
+  VkBufferMemoryBarrier bar = {};
+  bar.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+  bar.pNext               = NULL;
+  bar.srcAccessMask       = VK_ACCESS_TRANSFER_WRITE_BIT; 
+  bar.dstAccessMask       = {% if UniformUBO %}VK_ACCESS_UNIFORM_READ_BIT{% else %}VK_ACCESS_SHADER_READ_BIT{% endif %};
+  bar.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  bar.buffer              = m_classDataBuffer;
+  bar.offset              = 0;
+  bar.size                = totalSize;
+  
+  vkCmdPipelineBarrier(a_cmdBuff, VK_PIPELINE_STAGE_TRANSFER_BIT, a_nextStegeFlags, 0, 0, nullptr, 1, &bar, 0, nullptr);
 }
 
 {% if HasFullImpl %}

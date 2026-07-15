@@ -218,7 +218,7 @@ public:
   virtual void ReadPlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
   {% endif %}
   void UpdatePlainMembersInternal();
-  void UpdatePlainMembersCmd(VkCommandBuffer a_cmdBuff);
+  void UpdatePlainMembersCmd(VkCommandBuffer a_cmdBuff, VkPipelineStageFlags a_nextStegeFlags = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
   static VkPhysicalDeviceFeatures2 ListRequiredDeviceFeatures(std::vector<const char*>& deviceExtensions);
 
