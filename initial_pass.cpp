@@ -1,5 +1,7 @@
 #include "initial_pass.h"
+#include <clang/AST/ASTContext.h>
 #include <iostream>
+#include <stdexcept>
 #include <vector>
 #include <string>
 
@@ -124,7 +126,11 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXRecordDecl(CXXRecordDecl* 
   if(!record->hasDefinition())
     return true;
 
-  const auto pType = record->getTypeForDecl();
+  clang::ASTContext &ctx = record->getASTContext();
+
+  const QualType rqt = ctx.getTagType(clang::ElaboratedTypeKeyword::None, std::nullopt, record, false);
+
+  const auto pType = rqt.getTypePtr();
   if(pType == nullptr)
     return true;
 
@@ -208,11 +214,16 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
 {
   static const auto excludedTypes = ListExcludedTypes();
 
-  const FileEntry* Entry = m_sourceManager.getFileEntryForID(m_sourceManager.getFileID(type->getLocation()));
-  if(Entry == nullptr)
+  auto entryRefOpt = m_sourceManager.getFileEntryRefForID(m_sourceManager.getFileID(type->getLocation()));
+  if(!entryRefOpt) {
     return true;
+  }
 
-  std::string FileName  = Entry->getName().str();
+  //const FileEntry* Entry = m_sourceManager.getFileEntryForID(m_sourceManager.getFileID(type->getLocation()));
+  //if(Entry == nullptr)
+  //  return true;
+
+  std::string FileName  = entryRefOpt->getName().str();// Entry->getName().str();
   const bool isDefinitelyInsideShaders = m_codeInfo.NeedToProcessDeclInFile(FileName);
 
   if(clang::isa<clang::CXXRecordDecl>(type))
@@ -311,11 +322,14 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
 
 bool kslicer::InitialPassRecursiveASTVisitor::VisitVarDecl(VarDecl* pTargetVar)
 {
-  const FileEntry* Entry = m_sourceManager.getFileEntryForID(m_sourceManager.getFileID(pTargetVar->getLocation()));
-  if(Entry == nullptr)
-    return true;
+  //const FileEntry* Entry = m_sourceManager.getFileEntryForID(m_sourceManager.getFileID(pTargetVar->getLocation()));
+  //if(Entry == nullptr)
+  //  return true;
 
-  std::string FileName = Entry->getName().str();
+  const auto entryRefOpt =  m_sourceManager.getFileEntryRefForID(m_sourceManager.getFileID(pTargetVar->getLocation()));
+  if(!entryRefOpt) return true;
+
+  std::string FileName = entryRefOpt->getName().str();
   if(!m_codeInfo.NeedToProcessDeclInFile(FileName))
     return true;
 

@@ -6,6 +6,9 @@
 #include "clang/AST/ASTTypeTraits.h"
 #include "clang/AST/DeclTemplate.h"
 
+#include <clang/AST/ASTContext.h>
+#include <clang/AST/TypeBase.h>
+#include <optional>
 #include <vector>
 #include <queue>
 #include <stack>
@@ -170,7 +173,11 @@ public:
       else if (clang::isa<clang::CXXMemberCallExpr>(call)) // try to find composed functions
       {
         clang::CXXRecordDecl* recordDecl = clang::dyn_cast<clang::CXXMemberCallExpr>(call)->getRecordDecl();
-        const auto pType    = recordDecl->getTypeForDecl();
+
+        const clang::ASTContext &ctx = recordDecl->getASTContext();
+        const clang::QualType rqt = ctx.getTagType(clang::ElaboratedTypeKeyword::None, std::nullopt, recordDecl, false);
+
+        const auto pType    = rqt.getTypePtr();// recordDecl->getTypeForDecl();
         const auto qt       = pType->getLocallyUnqualifiedSingleStepDesugaredType();
         const auto typeName = kslicer::CleanTypeName(qt.getAsString());
 
@@ -218,7 +225,9 @@ public:
     if(func.isMember && clang::isa<clang::CXXMemberCallExpr>(call)) // currently we support export for members of current class only
     {
       clang::CXXRecordDecl* recordDecl = clang::dyn_cast<clang::CXXMemberCallExpr>(call)->getRecordDecl();
-      const auto pType    = recordDecl->getTypeForDecl();
+      const clang::ASTContext &ctx = recordDecl->getASTContext();
+      const clang::QualType rqt = ctx.getTagType(clang::ElaboratedTypeKeyword::None, std::nullopt, recordDecl, false);
+      const auto pType    = rqt.getTypePtr();// recordDecl->getTypeForDecl();
       const auto qt       = pType->getLocallyUnqualifiedSingleStepDesugaredType();
       const auto typeName = kslicer::CleanTypeName(qt.getAsString());
       const auto pPrefix  = m_patternImpl.composPrefix.find(typeName);
@@ -791,7 +800,9 @@ public:
 
   bool VisitCXXRecordDecl(clang::CXXRecordDecl* record)
   {
-    const auto pType = record->getTypeForDecl();
+    const clang::ASTContext &ctx = record->getASTContext();
+    const clang::QualType rqt = ctx.getTagType(clang::ElaboratedTypeKeyword::None, std::nullopt, record, false);
+    const auto pType = rqt.getTypePtr();//record->getTypeForDecl();
     const auto qt    = pType->getLocallyUnqualifiedSingleStepDesugaredType();
     const std::string typeName = qt.getAsString();
 
@@ -1192,8 +1203,8 @@ void kslicer::MainClassInfo::ProcessMemberTypes(const std::unordered_map<std::st
       tdecl.extracted = true;
       tdecl.astNode   = const_cast<clang::TypeDecl*>(elem.node);
       declsByName[elem.typeName] = tdecl;
-      const clang::FileEntry* Entry = a_srcMgr.getFileEntryForID(a_srcMgr.getFileID(elem.node->getLocation()));
-      const std::string fileName    = std::string(Entry->getName());
+      const auto entryOpt = a_srcMgr.getFileEntryRefForID(a_srcMgr.getFileID(elem.node->getLocation())); //check if empty
+      const std::string fileName    = std::string(entryOpt->getName().str());
       const bool        exclude     = IsInExcludedFolder(fileName);
       if(!exclude)
         auxDecls.push_back(tdecl);
@@ -1375,7 +1386,9 @@ void kslicer::MainClassInfo::ProcessMemberTypesAligment(std::vector<DataMemberIn
     type.second.aligment = GetBaseAligmentForGLSL(&type.second, typesToProcess, endTypes, 0);
     if(type.second.node == nullptr)
       continue;
-    auto clangType = type.second.node->getTypeForDecl();
+    const clang::ASTContext &ctx = type.second.node->getASTContext();
+    const clang::QualType rqt = ctx.getTypeDeclType(type.second.node);
+    auto clangType = rqt.getTypePtr(); //type.second.node->getTypeForDecl();
     if(clangType == nullptr)
       continue;
 

@@ -1,6 +1,7 @@
 #ifndef KSLICER_H
 #define KSLICER_H
 
+#include <clang/Basic/LLVM.h>
 #include <string>
 #include <vector>
 #include <map>
@@ -10,9 +11,11 @@
 #include <sstream>
 #include <filesystem>
 #include <optional>
+#include <iostream>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsuggest-override"
+#include <nlohmann/json.hpp>
 #include <inja.hpp>
 #pragma GCC diagnostic pop
 
@@ -868,8 +871,8 @@ namespace kslicer
     virtual std::string CompleteFunctionCallRewrite(clang::CallExpr* call);
     virtual std::string KGenArgsName() const { return "kgenArgs."; }
 
-    RewrittenFunction RewriteFunction(clang::FunctionDecl* fDecl);
-    std::string       RewriteFuncDecl(clang::FunctionDecl* fDecl);
+    RewrittenFunction RewriteFunction(clang::FunctionDecl* fDecl) override;
+    std::string       RewriteFuncDecl(clang::FunctionDecl* fDecl) override;
 
     virtual bool IsISPC() const { return false; }
   };
@@ -881,204 +884,6 @@ namespace kslicer
     virtual std::unordered_set<uint64_t> GetVisitedNodes() const = 0;
   };
 
-  /**
-  \brief process local functions
-  */
-  class GLSLFunctionRewriter : public FunctionRewriter //
-  {
-  public:
-  
-    GLSLFunctionRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit);
-    ~GLSLFunctionRewriter(){}
-  
-    bool VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl) override;
-    bool VisitCallExpr_Impl(clang::CallExpr* f)             override;
-    bool VisitVarDecl_Impl(clang::VarDecl* decl)            override;
-    bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast) override;
-    bool VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast) override;
-    bool VisitMemberExpr_Impl(clang::MemberExpr* expr)         override;
-    bool VisitUnaryOperator_Impl(clang::UnaryOperator* expr)   override;
-    bool VisitDeclStmt_Impl(clang::DeclStmt* decl)             override;
-    bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)  override;
-    bool VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr) override;
-  
-    bool VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f) override;
-    bool VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr) override;
-  
-    std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
-    IRecursiveRewriteOverride* m_pKernelRewriter = nullptr;
-  
-    std::string RewriteStdVectorTypeStr(const std::string& a_str) const override;
-    std::string RewriteStdVectorTypeStr(const std::string& a_typeName, std::string& varName) const override;
-    std::string RewriteImageType(const std::string& a_containerType, const std::string& a_containerDataType, kslicer::TEX_ACCESS a_accessType, std::string& outImageFormat) const override;
-  
-    std::unordered_map<std::string, std::string> m_vecReplacements;
-    std::unordered_map<std::string, std::string> m_funReplacements;
-    std::vector<std::pair<std::string, std::string> > m_vecReplacements2;
-
-  
-    std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) override;
-    std::string RecursiveRewrite(const clang::Stmt* expr) override;
-    void        ApplyDefferedWorkArounds();
-    
-    struct BadRewqriteResult
-    {
-      std::string text;
-      bool        isSingle;
-      bool        isRewritten;
-    };
-
-    void        Get2DIndicesOfFloat4x4(const clang::CXXOperatorCallExpr* expr, const clang::Expr* out[3]);
-  
-    bool        NeedsVectorTypeRewrite(const std::string& a_str) override;
-    std::string CompleteFunctionCallRewrite(clang::CallExpr* call);  
-  };
-
-  class SlangRewriter : public FunctionRewriter2 ///!< BASE CLASS FOR ALL NEW BACKENDS
-  {
-  public:
-    SlangRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo) : FunctionRewriter2(R,a_compiler,a_codeInfo) { Init();}
-    ~SlangRewriter(){ }
-
-    bool VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl)   override;
-    bool VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl) override;
-
-    bool VisitVarDecl_Impl(clang::VarDecl* decl)                  override;
-    bool VisitDeclStmt_Impl(clang::DeclStmt* decl)                override;
-    bool VisitFloatingLiteral_Impl(clang::FloatingLiteral* expr)  override;
-
-    bool VisitMemberExpr_Impl(clang::MemberExpr* expr)             override;
-    bool VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f)  override; 
-    bool VisitFieldDecl_Impl(clang::FieldDecl* decl)               override;
-    bool VisitUnaryOperator_Impl(clang::UnaryOperator* op)         override;
-    bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)     override;
-    bool VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast) override;
-    bool VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) override; 
-    bool VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr) override;
-
-    bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)            override;
-    bool VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr) override;
-    bool VisitCallExpr_Impl(clang::CallExpr* f)                                        override;
-
-    bool VisitCompoundAssignOperator_Impl(clang::CompoundAssignOperator* expr) override;
-    bool VisitBinaryOperator_Impl(clang::BinaryOperator* expr)                 override;
-    bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)                       override;
-
-    // Also important functions to use(!)
-    //
-    bool        NeedsVectorTypeRewrite(const std::string& a_str) override;
-    std::string RewriteStdVectorTypeStr(const std::string& a_str) const override;
-    std::string RewriteStdVectorTypeStr(const std::string& a_typeName, std::string& varName) const override;
-    
-    //
-    //
-    std::string RecursiveRewrite(const clang::Stmt* expr) override;
-    std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) override;
-    //void MarkRewritten(const clang::Stmt* expr);
-    //bool WasNotRewrittenYet(const clang::Stmt* expr);
-
-    std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
-  private:
-    void Init();
-    std::unordered_map<std::string, std::string> m_typesReplacement;
-    std::unordered_map<std::string, std::string> m_funReplacements;
-  };
-
-  class CudaRewriter : public FunctionRewriter2 ///!< BASE CLASS FOR ALL NEW BACKENDS
-  {
-  public:
-    CudaRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo) : FunctionRewriter2(R,a_compiler,a_codeInfo) { Init();}
-    ~CudaRewriter(){ }
-
-    bool VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl)   override;
-    bool VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl) override;
-
-    bool VisitVarDecl_Impl(clang::VarDecl* decl)                  override;
-    bool VisitDeclStmt_Impl(clang::DeclStmt* decl)                override;
-    bool VisitFloatingLiteral_Impl(clang::FloatingLiteral* expr)  override;
-
-    bool VisitMemberExpr_Impl(clang::MemberExpr* expr)             override;
-    bool VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f)  override; 
-    bool VisitFieldDecl_Impl(clang::FieldDecl* decl)               override;
-    bool VisitUnaryOperator_Impl(clang::UnaryOperator* op)         override;
-    bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)     override;
-    bool VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast) override;
-    bool VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) override; 
-    bool VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr) override;
-
-    bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)            override;
-    bool VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr) override;
-    bool VisitCallExpr_Impl(clang::CallExpr* f)                                        override;
-
-    bool VisitCompoundAssignOperator_Impl(clang::CompoundAssignOperator* expr) override;
-    bool VisitBinaryOperator_Impl(clang::BinaryOperator* expr)                 override;
-    bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)                       override;
-
-    // Also important functions to use(!)
-    //
-    bool        NeedsVectorTypeRewrite(const std::string& a_str) override;
-    std::string RewriteStdVectorTypeStr(const std::string& a_str) const override;
-    std::string RewriteStdVectorTypeStr(const std::string& a_typeName, std::string& varName) const override;
-    
-    //
-    //
-    std::string RecursiveRewrite(const clang::Stmt* expr) override;
-    std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) override;
-
-    std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
-  private:
-    void Init();
-    std::unordered_map<std::string, std::string> m_typesReplacement;
-    std::unordered_map<std::string, std::string> m_funReplacements;
-  };
-
-  class ISPCRewriter : public FunctionRewriter2 ///!< BASE CLASS FOR ALL NEW BACKENDS
-  {
-  public:
-    ISPCRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo) : FunctionRewriter2(R,a_compiler,a_codeInfo) { Init();}
-    ~ISPCRewriter(){ }
-
-    bool VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl)   override;
-    bool VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl) override;
-
-    bool VisitVarDecl_Impl(clang::VarDecl* decl)                  override;
-    bool VisitDeclStmt_Impl(clang::DeclStmt* decl)                override;
-    bool VisitFloatingLiteral_Impl(clang::FloatingLiteral* expr)  override;
-
-    bool VisitMemberExpr_Impl(clang::MemberExpr* expr)             override;
-    bool VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f)  override; 
-    bool VisitFieldDecl_Impl(clang::FieldDecl* decl)               override;
-    bool VisitUnaryOperator_Impl(clang::UnaryOperator* op)         override;
-    bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)     override;
-    bool VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast) override;
-    bool VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) override; 
-    bool VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr) override;
-
-    bool VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)            override;
-    bool VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr) override;
-    bool VisitCallExpr_Impl(clang::CallExpr* f)                                        override;
-
-    bool VisitCompoundAssignOperator_Impl(clang::CompoundAssignOperator* expr) override;
-    bool VisitBinaryOperator_Impl(clang::BinaryOperator* expr)                 override;
-    bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)                       override;
-
-    // Also important functions to use(!)
-    //
-    bool        NeedsVectorTypeRewrite(const std::string& a_str) override;
-    std::string RewriteStdVectorTypeStr(const std::string& a_str) const override;
-    std::string RewriteStdVectorTypeStr(const std::string& a_typeName, std::string& varName) const override;
-    
-    std::string RecursiveRewrite(const clang::Stmt* expr) override;
-    std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) override;
-
-    std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
-  private:
-    void Init();
-    std::unordered_map<std::string, std::string> m_typesReplacement;
-    std::unordered_map<std::string, std::string> m_funReplacements;
-  };
-
-  std::unordered_map<std::string, std::string> ListSlangStandartTypeReplacements(bool a_NeedConstCopy = true);
   
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////  KernelRewriter  //////////////////////////////////////////////////////////
@@ -1135,23 +940,23 @@ namespace kslicer
     virtual ~KernelRewriter() {}
 
     bool VisitVarDecl(clang::VarDecl* decl)                    { return VisitVarDecl_Impl(decl); }
-    bool VisitMemberExpr(clang::MemberExpr* expr)              { if(WasRewritten(expr)) return true; else return VisitMemberExpr_Impl(expr); }
-    bool VisitCXXMemberCallExpr(clang::CXXMemberCallExpr* f)   { if(WasRewritten(f))    return true; else return VisitCXXMemberCallExpr_Impl(f); }
-    bool VisitCallExpr(clang::CallExpr* f)                     { if(WasRewritten(f))    return true; else return VisitCallExpr_Impl(f); }
-    bool VisitCXXConstructExpr(clang::CXXConstructExpr* call)  { if(WasRewritten(call)) return true; else return VisitCXXConstructExpr_Impl(call); }
-    bool VisitReturnStmt(clang::ReturnStmt* ret)               { if(WasRewritten(ret))  return true; else return VisitReturnStmt_Impl(ret); }
-    bool VisitUnaryOperator(clang::UnaryOperator* expr)        { if(WasRewritten(expr)) return true; else return VisitUnaryOperator_Impl(expr);  }
-    bool VisitBinaryOperator(clang::BinaryOperator* expr)      { if(WasRewritten(expr)) return true; else return VisitBinaryOperator_Impl(expr); }
+    bool VisitMemberExpr(clang::MemberExpr* expr)              { if(WasRewritten(clang::cast<clang::Stmt>(expr))) return true; else return VisitMemberExpr_Impl(expr); }
+    bool VisitCXXMemberCallExpr(clang::CXXMemberCallExpr* f)   { if(WasRewritten(clang::cast<clang::Stmt>(f)))    return true; else return VisitCXXMemberCallExpr_Impl(f); }
+    bool VisitCallExpr(clang::CallExpr* f)                     { if(WasRewritten(clang::cast<clang::Stmt>(f)))    return true; else return VisitCallExpr_Impl(f); }
+    bool VisitCXXConstructExpr(clang::CXXConstructExpr* call)  { if(WasRewritten(clang::cast<clang::Stmt>(call))) return true; else return VisitCXXConstructExpr_Impl(call); }
+    bool VisitReturnStmt(clang::ReturnStmt* ret)               { if(WasRewritten(clang::cast<clang::Stmt>(ret)))  return true; else return VisitReturnStmt_Impl(ret); }
+    bool VisitUnaryOperator(clang::UnaryOperator* expr)        { if(WasRewritten(clang::cast<clang::Stmt>(expr))) return true; else return VisitUnaryOperator_Impl(expr);  }
+    bool VisitBinaryOperator(clang::BinaryOperator* expr)      { if(WasRewritten(clang::cast<clang::Stmt>(expr))) return true; else return VisitBinaryOperator_Impl(expr); }
 
-    bool VisitCompoundAssignOperator(clang::CompoundAssignOperator* expr) { if(WasRewritten(expr)) return true; else return VisitCompoundAssignOperator_Impl(expr); }
-    bool VisitCXXOperatorCallExpr   (clang::CXXOperatorCallExpr* expr)    { if(WasRewritten(expr)) return true; else return VisitCXXOperatorCallExpr_Impl(expr); }
-    bool VisitCStyleCastExpr(clang::CStyleCastExpr* cast)                 { if(WasRewritten(cast)) return true; else return VisitCStyleCastExpr_Impl(cast); }
-    bool VisitImplicitCastExpr(clang::ImplicitCastExpr* cast)             { if(WasRewritten(cast)) return true; else return VisitImplicitCastExpr_Impl(cast); }
-    bool VisitDeclRefExpr(clang::DeclRefExpr* expr)                       { if(WasRewritten(expr)) return true; else return VisitDeclRefExpr_Impl(expr); }
-    bool VisitFloatingLiteral(clang::FloatingLiteral* expr)               { if(WasRewritten(expr)) return true; else return VisitFloatingLiteral_Impl(expr); }
+    bool VisitCompoundAssignOperator(clang::CompoundAssignOperator* expr) { if(WasRewritten(clang::cast<clang::Stmt>(expr))) return true; else return VisitCompoundAssignOperator_Impl(expr); }
+    bool VisitCXXOperatorCallExpr   (clang::CXXOperatorCallExpr* expr)    { if(WasRewritten(clang::cast<clang::Stmt>(expr))) return true; else return VisitCXXOperatorCallExpr_Impl(expr); }
+    bool VisitCStyleCastExpr(clang::CStyleCastExpr* cast)                 { if(WasRewritten(clang::cast<clang::Stmt>(cast))) return true; else return VisitCStyleCastExpr_Impl(cast); }
+    bool VisitImplicitCastExpr(clang::ImplicitCastExpr* cast)             { if(WasRewritten(clang::cast<clang::Stmt>(cast))) return true; else return VisitImplicitCastExpr_Impl(cast); }
+    bool VisitDeclRefExpr(clang::DeclRefExpr* expr)                       { if(WasRewritten(clang::cast<clang::Stmt>(expr))) return true; else return VisitDeclRefExpr_Impl(expr); }
+    bool VisitFloatingLiteral(clang::FloatingLiteral* expr)               { if(WasRewritten(clang::cast<clang::Stmt>(expr))) return true; else return VisitFloatingLiteral_Impl(expr); }
     bool VisitDeclStmt(clang::DeclStmt* stmt)                             { if(WasRewritten(stmt)) return true; else return VisitDeclStmt_Impl(stmt); }
-    bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr* arrayExpr)    { if(WasRewritten(arrayExpr))        return true; else return VisitArraySubscriptExpr_Impl(arrayExpr);  }
-    bool VisitUnaryExprOrTypeTraitExpr(clang::UnaryExprOrTypeTraitExpr* szOfExpr) { if(WasRewritten(szOfExpr)) return true; else return VisitUnaryExprOrTypeTraitExpr_Impl(szOfExpr); }
+    bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr* arrayExpr)    { if(WasRewritten(clang::cast<clang::Stmt>(arrayExpr)))        return true; else return VisitArraySubscriptExpr_Impl(arrayExpr);  }
+    bool VisitUnaryExprOrTypeTraitExpr(clang::UnaryExprOrTypeTraitExpr* szOfExpr) { if(WasRewritten(clang::cast<clang::Stmt>(szOfExpr))) return true; else return VisitUnaryExprOrTypeTraitExpr_Impl(szOfExpr); }
 
     std::shared_ptr<std::unordered_set<uint64_t> > m_pRewrittenNodes = nullptr;
     virtual std::string RecursiveRewrite (const clang::Stmt* expr);
@@ -1309,7 +1114,50 @@ namespace kslicer
 
   std::string CleanTypeName(const std::string& a_str);
 
-  struct IShaderCompiler
+
+  struct IHostCodeGen
+  {
+    IHostCodeGen(){}
+    virtual ~IHostCodeGen(){}
+
+    virtual std::string Name() const { return ""; } 
+    virtual void GenerateHost(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) {}
+    virtual void GenerateHostDevFeatures(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) {}
+    virtual bool IsCUDA() const { return false; }
+    virtual bool IsWGPU() const { return false; }
+    virtual bool HasSpecConstants() const { return false; }
+  };
+
+  struct VulkanCodeGen : public IHostCodeGen
+  {
+    std::string Name() const override { return "Vulkan"; }
+    void GenerateHost(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
+    void GenerateHostDevFeatures(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
+    bool HasSpecConstants() const override { return true; }
+  };
+
+  struct WGPUCodeGen : public IHostCodeGen
+  {
+    std::string Name() const override { return "WebGPU"; }
+    bool IsWGPU()      const override { return true; }
+    void GenerateHost(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
+    void GenerateHostDevFeatures(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
+  };
+
+
+  struct ServiceCall
+  {
+    std::string opName;
+    std::string dataTypeName;
+    std::string lambdaSource;
+    std::string key() const { return opName + "_" + dataTypeName; }
+  };
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct IShaderCompiler
   {
     IShaderCompiler(){}
     virtual ~IShaderCompiler(){}
@@ -1370,237 +1218,9 @@ namespace kslicer
     virtual std::string RTVGetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::ArgFinal>& threadIds); 
   };
 
-  struct ClspvCompiler : IShaderCompiler
-  {
-    ClspvCompiler(bool a_useCPP, const std::string& a_prefix);
-    std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo->") + a_name; };
-    bool        IsSingleShader()   const override { return true; }
-    std::string ShaderFolder()     const override { return "clspv_shaders_aux"; }
-    std::string ShaderSingleFile() const override { return "z_generated.cl"; }
-    bool        BuffersAsPointersInShaders() const override { return true; }
 
-    void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings) override;
 
-    bool        UseSeparateUBOForArguments() const override { return m_useCpp; }
-    bool        UseSpecConstForWgSize()      const override { return m_useCpp; }
 
-    std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3])                               const override;
-    std::string ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const override;
-    void        GetThreadSizeNames(std::string a_strs[3])                                             const override;
-    std::string GetSubgroupOpCode(const kslicer::KernelInfo::ReductionAccess& a_access) const override;
-    std::string GetAtomicImplCode(const kslicer::KernelInfo::ReductionAccess& a_access) const override;
-
-    std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit) override;
-    std::shared_ptr<KernelRewriter>            MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,
-                                                                kslicer::KernelInfo& a_kernel, const std::string& fakeOffs) override;
-
-    std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler, std::shared_ptr<kslicer::FunctionRewriter> a_pRewriter) override;
-    std::string Name() const override { return "OpenCL"; }
-
-    std::string RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const override;
-
-  protected:
-    virtual std::string BuildCommand(const std::string& a_inputFile = "") const;
-    bool m_useCpp;
-    const std::string& m_suffix;
-  };
-
-  struct ISPCCompiler : ClspvCompiler
-  {
-    ISPCCompiler(bool a_useCPP, const std::string& a_prefix);
-    std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo[0].") + a_name; };
-    std::string Name() const override { return "ISPC"; }
-    void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings) override;
-    bool        IsISPC() const override { return true; }
-    std::string BuildCommand(const std::string& a_inputFile) const override;
-    std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler, std::shared_ptr<kslicer::FunctionRewriter> a_pRewriter) override;
-    std::string ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const override;
-    bool        BuffersAsPointersInShaders() const override { return false; }
-    bool        SupportAtomicGlobal(const KernelInfo::ReductionAccess& acc) const override { return true; }
-
-    std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit) override;
-    std::shared_ptr<KernelRewriter>            MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,
-                                                                kslicer::KernelInfo& a_kernel, const std::string& fakeOffs) override;
-  };
-
-  struct GLSLCompiler : IShaderCompiler
-  {
-    GLSLCompiler(const std::string& a_prefix);
-    std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo.") + a_name; };
-    std::string ProcessBufferType(const std::string& a_typeName) const override;
-    
-    bool        IsSingleShader()                     const override { return false;}
-    bool        MemberFunctionsAreSupported()        const override { return true; }
-    std::string ShaderFolder()                       const override { return std::string("shaders") + ToLowerCase(m_suffix); }
-    std::string ShaderSingleFile()                   const override { return ""; }
-
-    void GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings) override;
-
-    std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const override;
-    void        GetThreadSizeNames(std::string a_strs[3])               const override;
-    std::string GetSubgroupOpCode(const kslicer::KernelInfo::ReductionAccess& a_access) const override;
-    std::string GetAtomicImplCode(const kslicer::KernelInfo::ReductionAccess& a_access) const override;
-
-    std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit) override;
-    std::shared_ptr<KernelRewriter>            MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,
-                                                                kslicer::KernelInfo& a_kernel, const std::string& fakeOffs) override;
-
-    std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler, std::shared_ptr<kslicer::FunctionRewriter> a_pRewriter) override;
-    std::string Name() const override { return "GLSL"; }
-
-    std::string RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const override;
-    std::string RTVGetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::ArgFinal>& threadIds) override; 
-    
-    std::string IndirectBufferDataType() const override { return "uvec4 "; }
-
-  private:
-    const std::string& m_suffix;
-    void ProcessVectorTypesString(std::string& a_str);
-  };
-
-  struct SlangCompiler : IShaderCompiler
-  {
-    SlangCompiler(const std::string& a_prefix, bool a_wgpuEnabled = false);
-    std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo[0].") + a_name; };
-    std::string ProcessBufferType(const std::string& a_typeName) const override;
-
-    bool        IsSingleShader()                     const override { return false; }
-    bool        MemberFunctionsAreSupported()        const override { return true; }
-    std::string ShaderFolder()                       const override { return std::string("shaders") + ToLowerCase(m_suffix); }
-    std::string ShaderSingleFile()                   const override { return ""; }
-    
-    bool        IsGLSL() const override { return false; }
-    bool        IsISPC() const override { return false; }
-    bool        IsWGPU() const override { return m_wgpuEnabled; }
-
-    void GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings) override;
-
-    std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const override;
-    void        GetThreadSizeNames(std::string a_strs[3])               const override;
-    std::string GetSubgroupOpCode(const kslicer::KernelInfo::ReductionAccess& a_access) const override;
-    std::string GetAtomicImplCode(const kslicer::KernelInfo::ReductionAccess& a_access) const override;
-
-    std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit) override;
-    std::shared_ptr<KernelRewriter>            MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,
-                                                                kslicer::KernelInfo& a_kernel, const std::string& fakeOffs) override;
-
-    std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler, std::shared_ptr<kslicer::FunctionRewriter> a_pRewriter) override;
-    std::string Name() const override { return "Slang"; }
-
-    std::string RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const override;
-    std::string RTVGetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::ArgFinal>& threadIds) override; 
-
-    std::string IndirectBufferDataType() const override { return "uint4 "; }
-
-  private:
-    void ProcessVectorTypesString(std::string& a_str);
-    const std::string& m_suffix;
-    std::unordered_map<std::string, std::string> m_typesReplacement;
-    bool m_wgpuEnabled;
-  };
-
-  struct CudaCompiler : IShaderCompiler
-  {
-    CudaCompiler(const std::string& a_prefix);
-    std::string UBOAccess(const std::string& a_name) const override 
-    {
-      if(a_name.find(".size()") != std::string::npos) // kernelJson["IndirectSizeX"]  = a_classInfo.pShaderCC->UBOAccess(exprContent);
-        return a_name;
-      else
-        return std::string("ubo.") + a_name; 
-    } //  { return a_name; }
-    std::string ReplaceSizeCapacityExpr(const std::string& a_str) const override { return a_str; }
-    std::string ProcessBufferType(const std::string& a_typeName) const override;
-
-    bool        IsSingleShader()                     const override { return true; }
-    bool        MemberFunctionsAreSupported()        const override { return true; }
-    std::string ShaderFolder()                       const override { return ""; }
-    std::string ShaderSingleFile()                   const override { return ""; }
-    
-    bool        IsGLSL() const override { return false; }
-    bool        IsISPC() const override { return false; }
-    bool        IsCUDA() const override { return true;  }
-
-    void GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings) override;
-
-    std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const override;
-    void        GetThreadSizeNames(std::string a_strs[3])               const override;
-    std::string GetSubgroupOpCode(const kslicer::KernelInfo::ReductionAccess& a_access) const override;
-    std::string GetAtomicImplCode(const kslicer::KernelInfo::ReductionAccess& a_access) const override;
-    bool        SupportAtomicGlobal(const KernelInfo::ReductionAccess& acc) const override { return true; }
-
-    std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit) override;
-    std::shared_ptr<KernelRewriter>            MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,
-                                                                kslicer::KernelInfo& a_kernel, const std::string& fakeOffs) override;
-
-    std::string PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler, std::shared_ptr<kslicer::FunctionRewriter> a_pRewriter) override;
-    std::string Name() const override { return "CUDA"; }
-
-    std::string RewritePushBack(const std::string& memberNameA, const std::string& memberNameB, const std::string& newElemValue) const override;
-    std::string RTVGetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::ArgFinal>& threadIds) override; 
-
-    std::string IndirectBufferDataType() const override { return "uint4 "; }
-
-  private:
-    const std::string& m_suffix;
-    std::unordered_map<std::string, std::string> m_typesReplacement;
-  };
-
-  struct IHostCodeGen
-  {
-    IHostCodeGen(){}
-    virtual ~IHostCodeGen(){}
-
-    virtual std::string Name() const { return ""; } 
-    virtual void GenerateHost(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) {}
-    virtual void GenerateHostDevFeatures(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) {}
-    virtual bool IsCUDA() const { return false; }
-    virtual bool IsWGPU() const { return false; }
-    virtual bool HasSpecConstants() const { return false; }
-  };
-
-  struct VulkanCodeGen : public IHostCodeGen
-  {
-    std::string Name() const override { return "Vulkan"; }
-    void GenerateHost(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
-    void GenerateHostDevFeatures(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
-    bool HasSpecConstants() const override { return true; }
-  };
-
-  struct WGPUCodeGen : public IHostCodeGen
-  {
-    std::string Name() const override { return "WebGPU"; }
-    bool IsWGPU()      const override { return true; }
-    void GenerateHost(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
-    void GenerateHostDevFeatures(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
-  };
-
-  struct CudaCodeGen : public IHostCodeGen
-  {
-    CudaCodeGen(const std::string& a_actualCUDAImpl) : m_actualCUDAImpl(a_actualCUDAImpl) {}
-    std::string Name() const override { return m_actualCUDAImpl; }
-    void GenerateHost(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
-    bool IsCUDA() const override { return true; }
-    std::string m_actualCUDAImpl;
-  };
-
-  struct ISPCCodeGen : public IHostCodeGen
-  {
-    std::string Name() const override { return "ISPC"; }
-    void GenerateHost(std::string fullSuffix, nlohmann::json jsonHost, kslicer::MainClassInfo& a_mainClass, const kslicer::TextGenSettings& a_settings) override;
-  };
-
-  struct ServiceCall
-  {
-    std::string opName;
-    std::string dataTypeName;
-    std::string lambdaSource;
-    std::string key() const { return opName + "_" + dataTypeName; }
-  };
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   class UsedCodeFilter;
 

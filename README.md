@@ -31,14 +31,14 @@ Vulkan is great! But it is time consuming technology, which mean significant inc
   * git submodule update
 
 ## Linux:
-2. install llvm-17 (both dev and not dev)
+2. install llvm-22 (both dev and not dev)
  * wget https://apt.llvm.org/llvm.sh
  * chmod +x llvm.sh
- * sudo ./llvm.sh 17
- * sudo apt-get install llvm-17-dev
- * sudo touch /usr/lib/llvm-17/bin/yaml-bench 
- * sudo apt-get install libclang-17-dev 
- * sudo apt install clang-17
+ * sudo ./llvm.sh 22
+ * sudo apt-get install llvm-22-dev
+ * sudo touch /usr/lib/llvm-22/bin/yaml-bench 
+ * sudo apt-get install libclang-22-dev 
+ * sudo apt install clang-22
 
 3. use Cmake and make:
   * cd kernel_slicer
@@ -51,7 +51,7 @@ Vulkan is great! But it is time consuming technology, which mean significant inc
  * Follow these instructions: https://llvm.org/docs/GettingStarted.html#getting-the-source-code-and-building-llvm
  * Be sure to add clang to the configuration: -DLLVM_ENABLE_PROJECTS="clang"
  * Example:
-   * git clone --branch release/17.x --depth=1 https://github.com/llvm/llvm-project.git
+   * git clone --branch release/22.x --depth=1 https://github.com/llvm/llvm-project.git
    * cd llvm-project
    * cmake -S llvm -B build -G "Visual Studio 17 2022" -DLLVM_ENABLE_PROJECTS="clang" -DCMAKE_BUILD_TYPE=Release
    * Open the solution "llvm-project\build\LLVM.sln" and compile the release.

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.12)
 project(kernel_slicer)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -38,13 +38,16 @@ set(KSLICER_SOURCE_FILES
     tr_host_ispc.cpp
     tr_host_wgpu.cpp)
 
-include_directories("include")
-
 option(KSLICER_LLVM_BUILD "Build kernel_slicer as a LLVM project module" OFF)
 
+set(LLVM_LIB "LLVM")
+
+find_package(LLVM 22.1...<23 REQUIRED CONFIG)
+find_package(Clang 22.1...<23 CONFIG REQUIRED)
+set(LLVM_LINK_COMPONENTS support)
+
 if(NOT KSLICER_LLVM_BUILD)
-  set(LLVM_VER "17")
-  set(LLVM_LIB "LLVM-${LLVM_VER}")
+
 
   if(WIN32)
     if(MSVC)
@@ -54,17 +57,11 @@ if(NOT KSLICER_LLVM_BUILD)
     set(PLATFORM_DEPENDENT_LIBS clang ${LLVM_LIB})
   endif()
 
-  find_package(LLVM ${LLVM_VER} REQUIRED CONFIG)
-  find_package(Clang ${LLVM_VER} REQUIRED)
 
   message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
   message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
-  include_directories(${LLVM_INCLUDE_DIRS})
-  include_directories(${CLANG_INCLUDE_DIRS})
-  link_directories(${LLVM_LIBRARY_DIRS})
-  add_definitions(${LLVM_DEFINITIONS})
-  add_definitions(${CLANG_DEFINITIONS})
+
 
   message("LLVM_INCLUDE_DIRS = ${LLVM_INCLUDE_DIRS}")
   message("LLVM_LIBRARY_DIRS = ${LLVM_LIBRARY_DIRS}")
@@ -74,35 +71,23 @@ if(NOT KSLICER_LLVM_BUILD)
 
   add_executable(kslicer ${KSLICER_SOURCE_FILES})
 
-  target_link_libraries(
-    kslicer
-    PRIVATE ${PLATFORM_DEPENDENT_LIBS}
-            clangAST
-            clangTooling
-            clangBasic
-            clangASTMatchers
-            clangFrontendTool
-            clangFrontend
-            clangDriver
-            clangSerialization
-            clangCodeGen
-            clangParse
-            clangSema
-            clangStaticAnalyzerFrontend
-            clangStaticAnalyzerCheckers
-            clangStaticAnalyzerCore
-            clangAnalysis
-            clangIndex
-            clangARCMigrate
-            clangRewrite
-            clangLex
-            clangEdit)
+  target_include_directories(kslicer PUBLIC ${LLVM_INCLUDE_DIRS} ${CLANG_INCLUDE_DIRS})
+  target_include_directories(kslicer PRIVATE include)
+  target_link_directories(kslicer PUBLIC ${LLVM_LIBRARY_DIRS})
+  add_definitions(${LLVM_DEFINITIONS})
+  add_definitions(${CLANG_DEFINITIONS})
+
+  target_link_libraries(kslicer
+    PRIVATE
+    clang-cpp
+    ${PLATFORM_DEPENDENT_LIBS})
+
 else() # NOT DEFINED KSLICER_LLVM_BUILD
   message(STATUS "kernel_slicer build with LLVM")
 
   # file(GLOB_RECURSE SRC_DIR "include/*.h" "include/nlohmann/*.h" )
   # set_source_files_properties(${SRC_DIR} PROPERTIES COMPILE_FLAGS "-w")
-
+  set(LLVM_LINK_COMPONENTS support)
   add_clang_executable(kslicer ${KSLICER_SOURCE_FILES})
 
   target_compile_options(kslicer PRIVATE -fexceptions)

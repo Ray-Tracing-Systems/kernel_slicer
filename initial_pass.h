@@ -6,6 +6,7 @@
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/DeclTemplate.h"
+#include "clang/AST/Decl.h"
 #include "clang/Parse/ParseAST.h"
 
 #include <unordered_set>
@@ -55,9 +56,9 @@ namespace kslicer
     std::string MAIN_CLASS_NAME;
     std::string MAIN_FILE_INCLUDE;
 
-    InitialPassRecursiveASTVisitor(std::vector<std::string>& a_mainFunctionNames,
-                                   std::string main_class,
-                                   std::vector<std::string> compos_classes,
+    InitialPassRecursiveASTVisitor(const std::vector<std::string>& a_mainFunctionNames,
+                                   const std::string &main_class,
+                                   const std::vector<std::string> &compos_classes,
                                    CompilerInstance& a_compiler, MainClassInfo& a_codeInfo) :
                                    MAIN_CLASS_NAME(main_class), m_compiler(a_compiler), m_astContext(a_compiler.getASTContext()), m_sourceManager(a_compiler.getSourceManager()), m_codeInfo(a_codeInfo)
     {
@@ -104,9 +105,9 @@ namespace kslicer
   {
    public:
 
-    InitialPassASTConsumer (std::vector<std::string>& a_mainFunctionNames,
-                            std::string main_class,
-                            std::vector<std::string> compos_classes,
+    InitialPassASTConsumer (const std::vector<std::string> &a_mainFunctionNames,
+                            const std::string &main_class,
+                            const std::vector<std::string> &compos_classes,
                             CompilerInstance& a_compiler, MainClassInfo& a_codeInfo) :
                             rv(a_mainFunctionNames, main_class, compos_classes, a_compiler, a_codeInfo)
                             //rv0(main_class, a_compiler, a_codeInfo, rv.m_composedClassInfo) 

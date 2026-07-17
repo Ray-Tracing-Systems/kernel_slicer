@@ -3,6 +3,7 @@
 #include "ast_matchers.h"
 #include "extractor.h"
 #include "initial_pass.h"
+#include "shaders_glsl.h"
 
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/AST/ASTConsumer.h"
@@ -11,6 +12,7 @@
 
 #include <sstream>
 #include <algorithm>
+
 
 
 /**

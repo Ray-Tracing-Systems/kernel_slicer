@@ -1,6 +1,7 @@
 #include "kslicer.h"
 #include "template_rendering.h"
 #include <iostream>
+#include "shaders_glsl.h"
 
 #ifdef _WIN32
   #include <sys/types.h>
@@ -922,7 +923,7 @@ bool kslicer::GLSLFunctionRewriter::VisitFunctionDecl_Impl(clang::FunctionDecl* 
   if(clang::isa<clang::CXXMethodDecl>(fDecl)) // ignore methods here, for a while ...
     return true;
 
-  if(WasNotRewrittenYet(fDecl->getBody()))
+  if(fDecl->isThisDeclarationADefinition() && WasNotRewrittenYet(fDecl->getBody()))
   {
     RewrittenFunction done = RewriteFunction(fDecl);
     const auto hash = GetHashOfSourceRange(fDecl->getBody()->getSourceRange());

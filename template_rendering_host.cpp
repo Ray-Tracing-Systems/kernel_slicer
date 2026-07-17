@@ -4,6 +4,7 @@
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Rewrite/Frontend/Rewriters.h"
 #include "clang/Rewrite/Core/Rewriter.h"
+#include "shaders_clspv.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsuggest-override"
