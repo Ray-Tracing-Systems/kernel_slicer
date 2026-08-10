@@ -22,8 +22,8 @@ public:
 
 protected:
 
-  void kernel1D_MemSet(const int a_size, int a_offset, int a_val, int* outData1ui);
-  void kernel2D_MemSet(const int a_width, int a_height, int a_pitch, int a_val, int* outData1ui);
+  void kernel1D_MemSet1(const int a_size, int a_offset, int a_val, int* outData1ui);
+  void kernel2D_MemSet2(const int a_width, int a_height, int a_pitch, int a_val, int* outData1ui);
 };
 
 #endif
