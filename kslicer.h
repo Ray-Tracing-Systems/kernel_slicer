@@ -1461,7 +1461,7 @@ namespace kslicer
   struct SlangCompiler : IShaderCompiler
   {
     SlangCompiler(const std::string& a_prefix, bool a_wgpuEnabled = false);
-    std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo[0].") + a_name; };
+    std::string UBOAccess(const std::string& a_name) const override;
     std::string ProcessBufferType(const std::string& a_typeName) const override;
 
     bool        IsSingleShader()                     const override { return false; }

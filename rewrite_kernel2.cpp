@@ -201,13 +201,11 @@ bool kslicer::FunctionRewriter2::NeedToRewriteDeclRefExpr(const clang::DeclRefEx
     return false;
 
   const std::string textOri = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); //
-  if(m_kernelUserArgs.find(textOri) != m_kernelUserArgs.end())
+
+  if(m_kernelUserArgs.find(textOri) != m_kernelUserArgs.end() && ((m_pCurrKernel->pattern != PATTERN_TP::PATTERN_RTV) || !m_codeInfo->megakernelRTV || m_pCurrKernel->isMega))
   {
-    if(!m_codeInfo->megakernelRTV || m_pCurrKernel->isMega)
-    {
-      out_text = this->KGenArgsName() + textOri;
-      return true;
-    }
+    out_text = this->KGenArgsName() + textOri;
+    return true;
   }
 
   return false;

@@ -110,8 +110,9 @@ int main(int argc, const char **argv)
   for(int i=0;i<argc;i++)
      std::cout << i << ": " << argv[i] << std::endl;
   std::cout << std::endl;
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// config
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// config
   
   // try to find config file
   //
@@ -131,6 +132,7 @@ int main(int argc, const char **argv)
   }
   
   std::unordered_map<std::string, std::string> defines;
+  std::unordered_set<std::string>              excludedCFSet;
   nlohmann::json inputOptions;
   bool emptyConfig = true; // need this because inputOptions["sms"] actually creates empty node and thing are not working
   std::ifstream ifs(optionsPath);
@@ -146,10 +148,17 @@ int main(int argc, const char **argv)
 
   auto paramsFromConfig = inputOptions["options"];
   auto inputDefines     = inputOptions["defines"];
-  if(inputDefines != nullptr && !emptyConfig)
-  {
-     for(const auto& param : inputDefines.items()) 
+  auto excludedCF       = inputOptions["excludedControlFunctions"];
+
+  if(inputDefines != nullptr && !emptyConfig) {
+    for(const auto& param : inputDefines.items()) 
       defines[param.key()] = param.value().is_string() ? param.value().get<std::string>() : "";
+  }
+
+  if (excludedCF.is_array() && !excludedCF.empty()) {
+    for (const auto& param : excludedCF)
+      if (param.is_string())
+        excludedCFSet.insert(param.get<std::string>());
   }
 
   auto baseProjectPath = (optionsPath == "") ? std::filesystem::path(".") : std::filesystem::absolute(std::filesystem::path(optionsPath)).parent_path();
@@ -158,6 +167,7 @@ int main(int argc, const char **argv)
     const std::string value = inputOptions["baseDirectory"];
     baseProjectPath = std::filesystem::absolute(baseProjectPath / value).lexically_normal();
   }
+
   std::vector<std::string> allFiles = ListProcessedFiles(inputOptions["source"], baseProjectPath);
 
   std::vector<std::string> ignoreFiles;
@@ -194,6 +204,9 @@ int main(int argc, const char **argv)
       break; // currently support only single composition
     }
   }
+  
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// config
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// config
 
   std::filesystem::path mainFolderPath  = fileName.parent_path();
   std::string mainClassName   = "TestClass";
@@ -718,6 +731,17 @@ int main(int argc, const char **argv)
 
   std::cout << "(0) Listing main functions of " << mainClassName.c_str() << std::endl;
   auto cfList = kslicer::ListAllMainRTFunctions(Tool, mainClassName, baseClases, compiler.getASTContext(), inputCodeInfo);
+  
+  // exclude some functions from cfList in we do not want to process them 
+
+  for (auto it = cfList.begin(); it != cfList.end(); ) 
+  {
+    auto found = excludedCFSet.find(it->first);
+    if (found != excludedCFSet.end())
+      it = cfList.erase(it); 
+    else
+      ++it;
+  }
 
   std::cout << "{" << std::endl;
   for(const auto& f : cfList)
