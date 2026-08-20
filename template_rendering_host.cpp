@@ -1823,6 +1823,13 @@ nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo,
   data["UseRayGen"]       = a_settings.enableRayGen;
   data["UseMotionBlur"]   = a_settings.enableMotionBlur;
 
+  std::sort(podMembers.begin(), podMembers.end(), [](const auto& a, const auto & b) { 
+    if(a.sizeInBytes == b.sizeInBytes)
+      return a.type < b.type; // sort second order by name
+    else
+      return a.sizeInBytes > b.sizeInBytes; // sort first order by size
+  });
+
   for(auto member : podMembers)
   {
     std::string typeStr = member.type;
