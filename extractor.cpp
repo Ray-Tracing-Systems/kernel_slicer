@@ -367,6 +367,11 @@ std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(kslicer::MainClassI
     std::unordered_map<uint64_t, kslicer::FuncData> usedFunctions;
     functionsToProcess.push(FuncDataFromKernel(k.second));
 
+    //if(k.first == "kernel_ContributeToImagePM")
+    //{
+    //  int a = 2;
+    //}
+
     kslicer::ProcessFunctionsInQueueBFS(a_codeInfo, a_compiler, functionsToProcess, // functionsToProcess => usedFunctions
                                         usedFunctions);
 

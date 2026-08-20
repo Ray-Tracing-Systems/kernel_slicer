@@ -985,6 +985,7 @@ int main(int argc, const char **argv)
 
   std::vector<kslicer::FuncData> usedFunctions = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler); // recursive processing of functions used by kernel, extracting all needed functions
   //debugPrintToFile(usedFunctions, "zuf_after_extract.txt");
+  
   std::vector<kslicer::DeclInClass> usedDecls;
   for(auto name : inputCodeInfo.mainClassNames)
   {
