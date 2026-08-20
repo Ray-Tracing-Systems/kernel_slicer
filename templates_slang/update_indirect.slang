@@ -1,4 +1,5 @@
-{% include "inc_ubo.slang" %}
+#include "common{{MainClassSuffixLowerCase}}_slang.h"
+
 RWStructuredBuffer<{{MainClassName}}{{MainClassSuffix}}_UBO_Data> ubo;
 RWStructuredBuffer<uint4> indirectBuffer;
 

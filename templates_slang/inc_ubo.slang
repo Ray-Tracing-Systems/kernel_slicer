@@ -15,5 +15,3 @@ struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data
   {% endfor %}
   uint dummy_last;
 };
-
-
