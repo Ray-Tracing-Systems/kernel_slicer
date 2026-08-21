@@ -350,6 +350,9 @@ int main(int argc, const char **argv)
 
     if(params.find("-bothrt") != params.end())
       textGenSettings.forceRTXProxy = (atoi(params["-bothrt"].c_str()) != 0);
+
+    if(params.find("-sortubo") != params.end())
+      textGenSettings.sortUBOMode = uint32_t(atoi(params["-sortubo"].c_str()));
   }
 
   // include and process folders
