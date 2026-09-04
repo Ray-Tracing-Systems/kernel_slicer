@@ -25,8 +25,8 @@ int main(int argc, const char** argv)
   bool enableValidationLayers = false;
   #endif
   
-  const size_t size = 256;
-  std::vector<int> color(size);
+  const size_t size = 32;
+  std::vector<float4> color(size);
  
   ArgParser args(argc, argv);
   bool onGPU = args.hasOption("--gpu"); 
@@ -48,8 +48,12 @@ int main(int argc, const char** argv)
 
   pImpl->Run(size, color.data());
   
+
+  std::vector<float> outData(color.size()*4);
+  memcpy(outData.data(), color.data(), outData.size()*sizeof(float));
+
   std::string backendName = onGPU ? "gpu" : "cpu";
-  JSONLog::write("array", color);
+  JSONLog::write("array", outData);
   JSONLog::saveToFile("zout_"+backendName+".json");
 
   pImpl = nullptr;
