@@ -11,9 +11,9 @@
 #include "render2d.h"
 #include "Image2d.h"
 
-#include "vk_context.h"
-std::shared_ptr<ProcRender2D> CreateProcRender2D_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
-#include "render2d_generated.h"
+//#include "vk_context.h"
+//std::shared_ptr<ProcRender2D> CreateProcRender2D_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
+//#include "render2d_generated.h"
 
 int main(int argc, const char** argv)
 {
@@ -31,16 +31,16 @@ int main(int argc, const char** argv)
 
   std::shared_ptr<ProcRender2D> pImpl = nullptr;
 
-  if(onGPU)
-  {
-    unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
-    std::vector<const char*> requiredExtensions;
-    auto deviceFeatures = ProcRender2D_Generated::ListRequiredDeviceFeatures(requiredExtensions);
-    auto ctx            = vk_utils::globalContextInit(requiredExtensions, enableValidationLayers, a_preferredDeviceId, &deviceFeatures);
-    //auto ctx = vk_utils::globalContextGet(false, 0);
-    pImpl = CreateProcRender2D_Generated(ctx, w*h);
-  }
-  else
+  //if(onGPU)
+  //{
+  //  unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
+  //  std::vector<const char*> requiredExtensions;
+  //  auto deviceFeatures = ProcRender2D_Generated::ListRequiredDeviceFeatures(requiredExtensions);
+  //  auto ctx            = vk_utils::globalContextInit(requiredExtensions, enableValidationLayers, a_preferredDeviceId, &deviceFeatures);
+  //  //auto ctx = vk_utils::globalContextGet(false, 0);
+  //  pImpl = CreateProcRender2D_Generated(ctx, w*h);
+  //}
+  //else
     pImpl = std::make_shared<ProcRender2D>();
 
   pImpl->CommitDeviceData();
@@ -61,7 +61,7 @@ int main(int argc, const char** argv)
   
   int implNum = ProcRender2D::TOTAL_IMPLEMANTATIONS;
   int i = int(ProcRender2D::BRANCHING_LITE);
-  //for(int i=0;i<3;i++) 
+  for(int i=0;i<3;i++) 
   //for(int implNum = 1; implNum <= ProcRender2D::TOTAL_IMPLEMANTATIONS; implNum++)
   {
     pImpl->SetImplementationCount(implNum);
@@ -97,6 +97,6 @@ int main(int argc, const char** argv)
   } 
   
   pImpl = nullptr;
-  vk_utils::globalContextDestroy();
+  //vk_utils::globalContextDestroy();
   return 0;
 }
