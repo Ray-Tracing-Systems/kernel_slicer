@@ -158,6 +158,7 @@ namespace kslicer
       useFloatAtomicAdd  = useFloatAtomicAdd  || rhs.useFloatAtomicAdd;
       useDoubleAtomicAdd = useDoubleAtomicAdd || rhs.useDoubleAtomicAdd;
       use8BitStorage     = use8BitStorage     || rhs.use8BitStorage;
+      use16BitStorage    = use16BitStorage    || rhs.use16BitStorage;
 
       return *this;
     }
@@ -171,6 +172,7 @@ namespace kslicer
     bool useFloatAtomicAdd  = false;
     bool useDoubleAtomicAdd = false;
     bool use8BitStorage     = false;
+    bool use16BitStorage    = false;
   };
 
   /**

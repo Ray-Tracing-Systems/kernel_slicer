@@ -2212,6 +2212,15 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
   (*ppNext) = &storage8BitFeatures; ppNext = &storage8BitFeatures.pNext;
 
   {% endif %}
+  {% if GlobalUse16BitStorage %}
+  static VkPhysicalDevice16BitStorageFeatures storage16BitFeatures = {};
+  storage16BitFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES;
+  storage16BitFeatures.storageBuffer16BitAccess           = VK_TRUE;
+  storage16BitFeatures.uniformAndStorageBuffer16BitAccess = VK_TRUE;
+  storage16BitFeatures.storagePushConstant16              = VK_FALSE;
+  (*ppNext) = &storage16BitFeatures; ppNext = &storage16BitFeatures.pNext;
+
+  {% endif %}
   return features2;
 }
 

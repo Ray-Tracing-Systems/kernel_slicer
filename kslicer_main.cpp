@@ -300,6 +300,10 @@ int main(int argc, const char **argv)
       forcedFeatures.useShortType = (atoi(params["-forceEnableInt16"].c_str()) == 1);
     if(params.find("-forceEnableInt64") != params.end())
       forcedFeatures.useInt64Type = (atoi(params["-forceEnableInt64"].c_str()) == 1);
+    if(params.find("-force16bitStorage") != params.end())
+      forcedFeatures.use16BitStorage = (atoi(params["-force16bitStorage"].c_str()) == 1);
+    if(params.find("-force8bitStorage") != params.end())
+      forcedFeatures.use8BitStorage = (atoi(params["-force8bitStorage"].c_str()) == 1);
   }
 
   kslicer::TextGenSettings textGenSettings;

@@ -3,6 +3,9 @@
     "baseClasses"   : [],       // specify all base clases in  reverse order from leaf to root
     "composClasses" : {},       // specify all classes for composition pattern 
     "options" : {
+        "-forceEnableHalf" : 1,
+        "-forceEnableInt16" : 1,
+        "-force16bitStorage" : 1,
         "end" : ""
     },
     "source" : ["test_class.cpp"],
