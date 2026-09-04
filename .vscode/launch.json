@@ -953,7 +953,7 @@
             "type"   : "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/cmake-build-release/kslicer",
-            "args"   : ["${workspaceFolder}/apps/tests/053_kernel2d/kmake.json", "-shaderCC", "slang"],
+            "args"   : ["${workspaceFolder}/apps/tests/053_ashalf/kmake.json", "-shaderCC", "slang"],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",
             "environment": [],

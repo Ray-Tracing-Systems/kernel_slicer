@@ -509,6 +509,12 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     ReplaceTextOrWorkAround(call->getSourceRange(), "asuint(" + text + ")");
     MarkRewritten(call);
   }
+  else if((fname == "as_ushort" || fname == "as_uint16") && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
+  {
+    const std::string text = RecursiveRewrite(call->getArg(0));
+    ReplaceTextOrWorkAround(call->getSourceRange(), "bit_cast<uint16_t>(" + text + ")");
+    MarkRewritten(call);
+  }
   else if((fname == "as_float" || fname == "as_float32")  && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
   {
     const std::string text  = RecursiveRewrite(call->getArg(0));

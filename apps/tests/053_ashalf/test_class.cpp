@@ -1,7 +1,7 @@
 #include "test_class.h"
 
 using LiteMath::as_half;
-using LiteMath::as_ushort;
+using LiteMath::as_uint16;
 using LiteMath::as_uint;
 using LiteMath::as_int;
 
@@ -28,7 +28,7 @@ void Test2D::kernel1D_Eval(const int a_size, float4* outData4f)
     half4 test2  = m_testPixels2[i];
 
     float4  val  = float4(test.color[0], test.color[1], test.color[2], float(test.index));
-    float4  val2 = -float4(test2.x, test2.y, test2.z, float(as_int(test2.w)));
+    float4  val2 = -float4(test2.x, test2.y, test2.z, float(as_uint16(test2.w)));
 
     if(i < a_size/2)    
       outData4f[i] = val*2.0f;
