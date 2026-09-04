@@ -25,7 +25,7 @@ int main(int argc, const char** argv)
   bool enableValidationLayers = false;
   #endif
   
-  const size_t size = 32;
+  const size_t size = 8;
   std::vector<float4> color(size);
  
   ArgParser args(argc, argv);

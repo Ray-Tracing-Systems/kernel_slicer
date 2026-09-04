@@ -9,7 +9,10 @@
 #include "LiteMath.h"
 
 using LiteMath::half;
+using LiteMath::half4;
+using LiteMath::uint2;
 using LiteMath::float4;
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -32,10 +35,11 @@ public:
   virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) {} // will be overriden in generated class    
 
   std::vector<LBPixel> m_testPixels;
+  std::vector<half4>   m_testPixels2;
 
 protected:
 
-  void kernel1D_MemSet1(int a_size, float4* outData4f);
+  void kernel1D_Eval(int a_size, float4* outData4f);
 };
 
 #endif
