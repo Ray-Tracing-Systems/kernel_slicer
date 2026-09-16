@@ -994,6 +994,8 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
     auto pProxyObj = dynamic_cast<RTX_Proxy*>({{buff.IS2_AccObjName}}.get());
     auto tablePtrs = pProxyObj->GetAABBToPrimTable();
     {{buff.IS2_AccObjName}}_remap = std::vector(tablePtrs.table, tablePtrs.table + tablePtrs.tableSize);
+    if({{buff.IS2_AccObjName}}_remap.capacity() == 0)
+      {{buff.IS2_AccObjName}}_remap.reserve(4);
   }
   {% endfor %}
   {% if HasAllRefs %}
