@@ -5,7 +5,7 @@ void SimpleTest::CalcAndAccum(uint32_t a_threadsNum, float* a_out)
   kernel1D_CalcAndAccum(a_threadsNum, a_out);
 }
 
-float SimpleTest::memberFunction(int i) { return float(i) + 1.0f; }
+float SimpleTest::memberFunction(uint32_t a_threadsNum) { return float(a_threadsNum) + 1.0f; }
 
 float SimpleTest::memberFunction2(float x, float y, float z) { return x*x + y*y + z*z + x*y + y*z + x*z + z + y + z + 1.0f; }
 

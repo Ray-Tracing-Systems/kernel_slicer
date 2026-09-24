@@ -202,7 +202,11 @@ bool kslicer::FunctionRewriter2::NeedToRewriteDeclRefExpr(const clang::DeclRefEx
 
   const std::string textOri = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); //
 
-  if(m_kernelUserArgs.find(textOri) != m_kernelUserArgs.end() && ((m_pCurrKernel->pattern != PATTERN_TP::PATTERN_RTV) || !m_codeInfo->megakernelRTV || m_pCurrKernel->isMega))
+  bool insideKernel = true;
+  if(m_pCurrFuncInfo != nullptr)
+    insideKernel = m_pCurrFuncInfo->isKernel;
+
+  if(insideKernel && m_kernelUserArgs.find(textOri) != m_kernelUserArgs.end() && ((m_pCurrKernel->pattern != PATTERN_TP::PATTERN_RTV) || !m_codeInfo->megakernelRTV || m_pCurrKernel->isMega))
   {
     out_text = this->KGenArgsName() + textOri;
     return true;

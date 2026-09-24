@@ -8,7 +8,7 @@ class SimpleTest
 public:
   SimpleTest() : m_valX(1.0f), m_valY(2.0f), m_valZ(3.0f) {}
   
-  float memberFunction(int i);
+  float memberFunction(uint32_t a_threadsNum);
   float memberFunction2(float x, float y, float z);
   
   virtual void CalcAndAccum(uint32_t a_threadsNum, float* a_out [[size("a_threadsNum")]]);
