@@ -789,7 +789,11 @@ void {{MainClassName}}{{MainClassSuffix}}::AccumTimeStampMeasurements(uint32_t a
                         a_size * sizeof(uint64_t), time_stamps.data() + a_start, 
                         sizeof(uint64_t), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT);
   
-  for(size_t id=a_start; id < a_size; id++) 
+  // a_start and a_size count timestamp QUERIES (2 per kernel call: begin, end);
+  // 'id' below is a KERNEL index into m_tsIdToKernelName, so convert the range
+  const size_t firstKernelId = a_start/2;
+  const size_t endKernelId   = (a_start + a_size)/2;
+  for(size_t id=firstKernelId; id < endKernelId; id++) 
   {
     float deltaInMs = float(time_stamps[id*2+1] - time_stamps[id*2+0]) * m_timestampPeriod / 1000000.0f;
     if(id >= m_tsIdToKernelName.size())

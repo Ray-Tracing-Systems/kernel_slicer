@@ -26,6 +26,9 @@ void MyClass::kernel2D_Name(int w, int h, const float4* a_in, float4* a_out)
 ```
 
 Rules:
+- For 2D kernels write `y` outer and `x` inner, and translate with `-reorderLoops YX` so that `x`
+  becomes the fastest GPU thread index (coalesced memory access; 2–5× faster for memory-bound
+  kernels). Without the option the outer loop variable is the fast index.
 - The prefix fixes the grid dimension: `kernel1D_` has 1 thread loop, `kernel2D_` has 2 nested
   loops, `kernel3D_` has 3. Loop variable names are free (`i`, `x`, `y`, `tidX`...).
 - Loops must be perfectly nested: no statements between the outer `for` and the inner `for`.

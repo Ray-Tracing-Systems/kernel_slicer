@@ -40,6 +40,21 @@ The pattern is chosen **per kernel by its name prefix**; one class may mix both.
   per-thread state*, often inside a loop that threads leave at different times (`break`/`return`):
   path tracing, per-ray or per-particle multi-stage processing.
 
+**2D loop order and `-reorderLoops YX` (always for IPV images).** Write 2D kernels with `y` as the
+outer loop and `x` as the inner loop, as for a row-major image on the CPU, and **always** pass the
+translator option `-reorderLoops YX` (`"-reorderLoops": "YX"` in `kmake.json`). Without it the
+first (outer) loop variable becomes the fastest-varying GPU thread index, so neighbouring threads
+walk down a column and memory accesses are not coalesced. With it, `x` is the fast index.
+Measured kernel-only GPU time on RTX 4090, 1536×2048 image (`apps/29_conv2d`):
+
+| Kernel | without YX | with YX |
+|--------|-----------|---------|
+| `kernel2D_Convolve` 7×7 | 0.47 ms | 0.12 ms |
+| `kernel2D_ToLDR` | 0.098 ms | 0.018 ms |
+
+Compute-bound kernels (the ray tracer in `apps/30_metaballs`) do not change; 1D kernels are not
+affected. There is no downside, so use the option in every program with 2D IPV kernels.
+
 A bounded per-pixel loop does **not** require RTV. Ray marching or ray tracing with a fixed maximum
 number of reflections fits into one IPV kernel: the bounces are an ordinary loop inside the
 kernel body (`apps/30_metaballs` renders 1024×1024 with 3 reflections in about 7 ms this way).
@@ -170,6 +185,12 @@ pImpl->Run(w, h, in.data(), out.data());
 - Generated files are named after the **source file**: `conv2d.cpp` gives `conv2d_generated.h`,
   `conv2d_generated.cpp`, `conv2d_generated_ds.cpp`, `conv2d_generated_init.cpp` and the
   folder `shaders_generated/`. Class and factory names come from the **class** name.
+- Kernel-only GPU time: translate with `-timestamps 1` and call
+  `GetExecutionTime("kernel2D_Name", t)`: `t[0]` = average, `t[1]` = min, `t[2]` = max over calls.
+  `GetExecutionTime("ControlFunction", t)` gives CPU-measured submit+wait time in `t[0]` and copy
+  times in `t[1]`, `t[2]`; use kernel names when comparing kernel performance.
+  Kernels merged into an RTV megakernel are reported under `"<ControlFunction>Mega"`.
+  A kernel that was never launched returns zeros.
 - After every kslicer run, recompile the shaders (`shaders_generated/build_slang.sh`) and
   rebuild the application.
 
@@ -178,7 +199,7 @@ Translate with kslicer from the repository root (elsewhere add `-selfdir <repo r
 ```bash
 ./cmake-build-release/kslicer apps/my_app/my_algo.cpp -mainClass MyAlgo \
   -stdlibfolder TINYSTL -Iapps/LiteMath ignore -Iapps/LiteMathAux ignore -ITINYSTL ignore \
-  -shaderCC slang -DKERNEL_SLICER -v
+  -shaderCC slang -reorderLoops YX -DKERNEL_SLICER -v
 cd apps/my_app/shaders_generated && bash build_slang.sh   # slangc -> *.spv
 ```
 
@@ -217,6 +238,8 @@ Always pass `-shaderCC slang`. It is the current back end; `glsl` is legacy (its
 - [ ] Kernel names have exactly one prefix: `kernel1D_`/`kernel2D_`/`kernel3D_` (IPV) or `kernel_` (RTV).
 - [ ] IPV: the number of nested thread loops equals the `ND` in the name; loops are perfectly
       nested with nothing between them; there is only one such loop nest per kernel.
+- [ ] IPV 2D kernels: `y` outer, `x` inner, and `-reorderLoops YX` is set in `kmake.json` or on
+      the command line.
 - [ ] IPV: every thread-loop bound is a plain kernel argument or class member. An expression
       such as `i < w*h` is accepted silently but produces uncompilable shaders.
 - [ ] IPV: code before and after the loop nest only initializes/finalizes members or writes

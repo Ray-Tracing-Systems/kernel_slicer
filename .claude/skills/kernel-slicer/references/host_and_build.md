@@ -165,7 +165,7 @@ Command line form:
     -mainClass MyAlgo \
     -stdlibfolder TINYSTL \
     -Iapps/LiteMath ignore -Iapps/LiteMathAux ignore -ITINYSTL ignore \
-    -shaderCC slang \
+    -shaderCC slang -reorderLoops YX \
     -DKERNEL_SLICER -v
 ```
 
@@ -176,9 +176,15 @@ Command line form:
 - `-shaderCC slang | glsl | cuda | ispc | wgpu`. Use `slang` (current Vulkan back end); `glsl` is
   legacy. Always set it: the built-in default is the older clspv.
 - `-megakernel 1`: RTV control functions become a single shader each.
-- `-reorderLoops YX`: swap the thread order of 2D IPV kernels.
+- `-reorderLoops YX`: **always set it for 2D IPV kernels** written with `y` outer and `x` inner.
+  It makes `x` the fastest GPU thread index, so neighbouring threads read neighbouring pixels.
+  Memory-bound 2D kernels become 2–5 times faster (see the table in SKILL.md).
 - `-suffix _GPU`: name of generated class and files.
-- `-timestamps 1`: GPU timestamps for `GetExecutionTime`.
+- `-timestamps 1`: GPU timestamps per kernel; read them with `GetExecutionTime("kernel2D_Name", t)`
+  (`t[0]` avg, `t[1]` min, `t[2]` max in ms). With `-megakernel 1` the merged RTV kernels are
+  reported as `"<ControlFunction>Mega"`. Timestamps work for every control function, for IPV and
+  RTV, with and without megakernel (fixed in kslicer: older translator builds recorded only the
+  first control function and crashed when a megakernel class also had IPV control functions).
 - `-pattern ipv|rtv` appears in old launch configs; the pattern is actually chosen by the
   kernel name prefix.
 
@@ -193,8 +199,9 @@ Config-file form, `kslicer apps/NN_name/kmake.json` (paths relative to the json 
     "kernel2D_BlurX" : {"wgSize": [16, 16, 1]}           // per-kernel options
   },
   "options" : {
-    "-shaderCC"   : "slang",
-    "-megakernel" : 1
+    "-shaderCC"     : "slang",
+    "-reorderLoops" : "YX",       // always, for 2D IPV kernels with y outer / x inner
+    "-timestamps"   : "1"         // per-kernel GPU times in GetExecutionTime("kernel2D_...")
   },
   "source"         : ["my_algo.cpp"],
   "includeProcess" : [],

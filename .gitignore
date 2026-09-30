@@ -154,3 +154,5 @@ apps/tests/016_double_v1/include/Numbers_ubo.h
 apps/tests/017_assigment_no_reduction/include/Numbers_ubo.h
 apps/tests/018_compos_v1/include/TestClass_ubo.h
 apps/volk
+build_debug/
+build_release/
