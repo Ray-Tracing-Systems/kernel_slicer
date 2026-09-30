@@ -71,7 +71,7 @@ if(NOT KSLICER_LLVM_BUILD)
   # message("CLANG_INCLUDE_DIRS = ${CLANG_INCLUDE_DIRS}")
   # message("CLANG_LIBRARY_DIRS = ${CLANG_LIBRARY_DIRS}") set(CMAKE_MODULE_PATH
   # ${CMAKE_MODULE_PATH} "${LLVM_CMAKE_DIR}")
-
+  
   add_executable(kslicer ${KSLICER_SOURCE_FILES})
 
   target_link_libraries(
@@ -96,7 +96,8 @@ if(NOT KSLICER_LLVM_BUILD)
             clangARCMigrate
             clangRewrite
             clangLex
-            clangEdit)
+            clangEdit
+            )
 else() # NOT DEFINED KSLICER_LLVM_BUILD
   message(STATUS "kernel_slicer build with LLVM")
 
@@ -110,3 +111,5 @@ else() # NOT DEFINED KSLICER_LLVM_BUILD
   target_link_libraries(kslicer PRIVATE clang clangTooling clangBasic
                                         clangASTMatchers)
 endif() # DEFINED KSLICER_LLVM_BUILD
+
+add_subdirectory(common_rewriter)
