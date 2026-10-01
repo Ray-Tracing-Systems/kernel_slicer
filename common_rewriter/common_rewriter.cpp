@@ -174,6 +174,13 @@ namespace common_rewriter
             rewrite_expression(expr->getSubExpr());
             emit(")");
         }
+        else if (auto expr = dyn_cast<CStyleCastExpr>(expr_))
+        {
+            emit("(");
+            rewrite_type(expr->getType());
+            emit(")");
+            rewrite_expression(expr->getSubExpr());
+        }
         else if (auto expr = dyn_cast<CXXFunctionalCastExpr>(expr_))
         {
             rewrite_type(expr->getType());
@@ -208,27 +215,51 @@ namespace common_rewriter
         }
         else if (auto expr = dyn_cast<CXXOperatorCallExpr>(expr_))
         {
-            REWRITE_ASSERT(expr->getNumArgs() == 2);
-            std::string s = getOperatorSpelling(expr->getOperator());
-            if (s == "=" || s == "+" || s == "-" || s == "*" || s == "/" || s == "+=" || s == "-=" || s == "*=" || s == "/=")
+            // note_found(expr->getExprLoc(), "here");
+            if (expr->getNumArgs() == 1)
             {
-                rewrite_expression(expr->getArg(0));
-                emit(" ");
-                emit(s);
-                emit(" ");
-                rewrite_expression(expr->getArg(1));
-            }
-            else if (s == "[]")
-            {
-                rewrite_expression(expr->getArg(0));
-                emit("[");
-                rewrite_expression(expr->getArg(1));
-                emit("]");
+                std::string s = getOperatorSpelling(expr->getOperator());
+                if (s == "+" || s == "-")
+                {
+                    emit(s);
+                    rewrite_expression(expr->getArg(0));
+                }
+                else
+                {
+                    error_unknown_overloaded_operator(expr);
+                }
             }
             else
             {
-                error_unknown_overloaded_operator(expr);
+                REWRITE_ASSERT(expr->getNumArgs() == 2);
+                std::string s = getOperatorSpelling(expr->getOperator());
+                if (s == "=" || s == "+" || s == "-" || s == "*" || s == "/" || s == "+=" || s == "-=" || s == "*=" || s == "/=" || s == "|" || s == "&" || s == "<<" || s == ">>")
+                {
+                    rewrite_expression(expr->getArg(0));
+                    emit(" ");
+                    emit(s);
+                    emit(" ");
+                    rewrite_expression(expr->getArg(1));
+                }
+                else if (s == "[]")
+                {
+                    rewrite_expression(expr->getArg(0));
+                    emit("[");
+                    rewrite_expression(expr->getArg(1));
+                    emit("]");
+                }
+                else
+                {
+                    error_unknown_overloaded_operator(expr);
+                }
             }
+        }
+        else if (auto expr = dyn_cast<ArraySubscriptExpr>(expr_))
+        {
+            rewrite_expression(expr->getBase());
+            emit("[");
+            rewrite_expression(expr->getIdx());
+            emit("]");
         }
         else if (auto expr = dyn_cast<ConditionalOperator>(expr_))
         {
@@ -243,6 +274,10 @@ namespace common_rewriter
             emit(string_from_source_range(expr->getSourceRange()));
         }
         else if (auto expr = dyn_cast<FloatingLiteral>(expr_))
+        {
+            emit(string_from_source_range(expr->getSourceRange()));
+        }
+        else if (auto expr = dyn_cast<CXXBoolLiteralExpr>(expr_))
         {
             emit(string_from_source_range(expr->getSourceRange()));
         }
@@ -269,19 +304,28 @@ namespace common_rewriter
         else if (auto expr = dyn_cast<CXXMemberCallExpr>(expr_))
         {
 
-            if (!dyn_cast<CXXThisExpr>(expr->getImplicitObjectArgument()))
-                error_can_only_call_methods_of_this(expr);
-
-            add_method(expr->getMethodDecl());
-            rewrite_expression(expr->getCallee());
-            emit("(");
-            for (int i = 0; i < expr->getNumArgs(); i++)
+            if (expr->getMethodDecl()->getNameAsString() == "size")
             {
-                rewrite_expression(expr->getArg(i));
-                if (i < expr->getNumArgs() - 1)
-                    emit(", ");
+                rewrite_expression(expr->getImplicitObjectArgument());
+                emit("_size");
             }
-            emit(")");
+            else
+            {
+
+                if (!dyn_cast<CXXThisExpr>(expr->getImplicitObjectArgument()))
+                    error_can_only_call_methods_of_this(expr);
+
+                add_method(expr->getMethodDecl());
+                rewrite_expression(expr->getCallee());
+                emit("(");
+                for (int i = 0; i < expr->getNumArgs(); i++)
+                {
+                    rewrite_expression(expr->getArg(i));
+                    if (i < expr->getNumArgs() - 1)
+                        emit(", ");
+                }
+                emit(")");
+            }
         }
         else if (auto expr = dyn_cast<CallExpr>(expr_))
         {
@@ -334,8 +378,11 @@ namespace common_rewriter
                 rewrite_type(var->getType());
                 emit(" ");
                 emit(var->getNameAsString());
-                emit(" = ");
-                rewrite_expression(var->getInit());
+                if (var->getInit())
+                {
+                    emit(" = ");
+                    rewrite_expression(var->getInit());
+                }
                 emit(";\n");
             }
         }
@@ -371,6 +418,16 @@ namespace common_rewriter
             rewrite_expression(stmt->getInc());
             emit(")\n");
             rewrite_statement(stmt->getBody(), indent + 1);
+        }
+        else if (auto stmt = dyn_cast<BreakStmt>(stmt_))
+        {
+            emit_indent(indent);
+            emit("break;\n");
+        }
+        else if (auto stmt = dyn_cast<ContinueStmt>(stmt_))
+        {
+            emit_indent(indent);
+            emit("continue;\n");
         }
         else if (auto stmt = dyn_cast<ReturnStmt>(stmt_))
         {
@@ -413,9 +470,11 @@ namespace common_rewriter
             note_found(class_decl->getLocation(), "class");
             for (auto method_decl : class_decl->methods())
             {
-                if (method_decl->getNameAsString() == kernel_name)
+                if (method_decl->getNameAsString().substr(0, 6) == "kernel")
                 {
                     note_found(method_decl->getLocation(), "kernel");
+                    emit(method_decl->getNameAsString());
+                    emit(":\n");
                     for (auto i : method_decl->getBody()->children())
                     {
                         if (auto for_stmt = dyn_cast<ForStmt>(i))
@@ -440,6 +499,8 @@ namespace common_rewriter
             rewrite_function(called_functions[i]);
         }
 
-        outs() << buffer_ << "\n";
+        // outs() << buffer_ << "\n";
+        std::ofstream f("out.txt");
+        f << buffer_;
     }
 }
