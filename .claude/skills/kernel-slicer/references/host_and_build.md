@@ -231,6 +231,16 @@ The sample folder itself is opened as the workspace.
 cd apps/NN_name/shaders_generated
 bash build_slang.sh      # Slang -> SPIR-V via slangc (-shaderCC slang)
 # bash build.sh          # legacy: GLSL -> SPIR-V via glslangValidator (-shaderCC glsl)
+```
+
+On Linux the generated script compiles shaders **in parallel** (bash; run it with `bash`, not `sh`).
+Each compiler call writes into its own log; the logs are printed in the original order after all
+calls finish, failed commands are listed, and the script exits with code 1 if any compilation
+failed. `KSLICER_SHADER_JOBS=N` limits the number of parallel jobs (default: number of cores).
+`-parallel_shader_build 0` generates the old sequential script. On Windows the `.bat` scripts are
+always sequential.
+
+```bash
 cd .. && mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make -j8
 cd .. && ./build/testapp && ./build/testapp --gpu
 ```

@@ -1246,7 +1246,7 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
       copy[el.key()] = a_kernelsJson[el.key()];
   }
 
-  std::ofstream buildSH(shaderPath / scriptName);
+  std::stringstream buildSH; // script text, written to file by WriteShaderBuildScript at the end
   #if not __WIN32__
   buildSH << "#!/bin/sh" << std::endl;
   #endif
@@ -1325,6 +1325,7 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
     buildSH << "slangc z_memcpy.slang -o z_memcpy.comp.spv" << std::endl;
   }
 
+  kslicer::WriteShaderBuildScript(shaderPath / scriptName, buildSH.str(), a_settings.parallelShaderBuild);
 }
 
 

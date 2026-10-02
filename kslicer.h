@@ -54,7 +54,7 @@ namespace kslicer
     bool uboIsAlwaysUniform = false;
     bool fwdFunDeclarations = false;
     bool forceRTXProxy      = false;
-    
+    bool parallelShaderBuild = true;  ///<! generate shader build script that runs the compiler in parallel (Linux only, '-parallel_shader_build 0' to disable)
   };
 
   struct IShaderCompiler;
@@ -1840,6 +1840,16 @@ namespace kslicer
   std::string GetRangeSourceCode(const clang::SourceRange a_range, const clang::SourceManager& sm);
   std::string CutOffFileExt(const std::string& a_filePath);
   std::string CutOffStructClass(const std::string& a_typeName);
+
+  /**
+  \brief write shader build script (build.sh, build_slang.sh, ...)
+  \param a_scriptPath -- output script file
+  \param a_commands   -- script text: one shader compiler command per line, optional "#!" first line
+  \param a_parallel   -- false: write a_commands as is (sequential script);
+                         true:  write bash script which runs commands in parallel, each command writes into its own log file,
+                                logs are printed in the original order after all commands finish (Linux only).
+  */
+  void WriteShaderBuildScript(const std::filesystem::path& a_scriptPath, const std::string& a_commands, bool a_parallel);
   
   FuncData FuncDataFromKernel(const kslicer::KernelInfo& k);
   uint64_t GetHashOfSourceRange(const clang::SourceRange& a_range);
