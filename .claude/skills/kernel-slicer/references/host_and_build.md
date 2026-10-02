@@ -237,7 +237,7 @@ On Linux the generated script compiles shaders **in parallel** (bash; run it wit
 Each compiler call writes into its own log; the logs are printed in the original order after all
 calls finish, failed commands are listed, and the script exits with code 1 if any compilation
 failed. `KSLICER_SHADER_JOBS=N` limits the number of parallel jobs (default: number of cores).
-`-parallel_shader_build 0` generates the old sequential script. On Windows the `.bat` scripts are
+`-mt_shader_compile 0` generates the old sequential script. On Windows the `.bat` scripts are
 always sequential.
 
 ```bash

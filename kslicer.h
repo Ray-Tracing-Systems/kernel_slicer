@@ -54,7 +54,7 @@ namespace kslicer
     bool uboIsAlwaysUniform = false;
     bool fwdFunDeclarations = false;
     bool forceRTXProxy      = false;
-    bool parallelShaderBuild = true;  ///<! generate shader build script that runs the compiler in parallel (Linux only, '-parallel_shader_build 0' to disable)
+    bool mtShaderCompile = true;  ///<! generate shader build script that runs the compiler in parallel (Linux only, '-mt_shader_compile 0' to disable)
   };
 
   struct IShaderCompiler;

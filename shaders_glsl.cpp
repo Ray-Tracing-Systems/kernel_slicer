@@ -266,7 +266,7 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     buildSH << "glslangValidator -V --target-env vulkan1.2 -S rmiss z_trace_smiss.glsl -o z_trace_smiss.glsl.spv" << std::endl;
   }
 
-  kslicer::WriteShaderBuildScript(shaderPath / scriptName, buildSH.str(), a_settings.parallelShaderBuild);
+  kslicer::WriteShaderBuildScript(shaderPath / scriptName, buildSH.str(), a_settings.mtShaderCompile);
 }
 
 std::string kslicer::GLSLCompiler::LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const

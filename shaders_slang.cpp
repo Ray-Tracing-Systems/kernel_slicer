@@ -1325,7 +1325,7 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
     buildSH << "slangc z_memcpy.slang -o z_memcpy.comp.spv" << std::endl;
   }
 
-  kslicer::WriteShaderBuildScript(shaderPath / scriptName, buildSH.str(), a_settings.parallelShaderBuild);
+  kslicer::WriteShaderBuildScript(shaderPath / scriptName, buildSH.str(), a_settings.mtShaderCompile);
 }
 
 
