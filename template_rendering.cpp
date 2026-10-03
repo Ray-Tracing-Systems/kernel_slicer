@@ -1245,6 +1245,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       for(const auto& iter : k.loopIters)
       {
         uint32_t loopIdReorderd  = threadsOrder[iter.loopNesting];
+        if(loopIdReorderd >= uint32_t(k.loopIters.size()))   // reorder (e.g. '-reorderLoops YX') must not move loops of 1D kernel to Y
+          loopIdReorderd = iter.loopNesting;
         auto pFound = usedVars.find(iter.sizeText);
         if(pFound == usedVars.end())
         {
