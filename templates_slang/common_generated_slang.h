@@ -247,23 +247,30 @@ static inline uint bitCount(uint x) { return countbits(x); }
 
 {% if AtomicFloatEmul %}
 // float atomic add emulation ('-atomicf_emul 1') for GPUs without shaderBufferFloat32AtomicAdd:
-// CAS loop on the same memory reinterpreted as 'uint' (SPIR-V OpAtomicCompareExchange supports integers only).
+// CAS on the same memory reinterpreted as 'uint' (SPIR-V OpAtomicCompareExchange supports integers only).
+// Returns the old value of 'mem' as 'uint' bits; CAS succeeded if it is equal to 'cmp'.
+//
+[ForceInline]
+uint AtomicCAS_F32AsU32(__ref float mem, uint cmp, uint val)
+{
+  const uint scope = 1; // Device
+  const uint sem   = 0; // Relaxed
+  return spirv_asm {
+    %ptrUint = OpTypePointer StorageBuffer $$uint;
+    %memUint = OpBitcast %ptrUint &mem;
+    result:$$uint = OpAtomicCompareExchange %memUint $scope $sem $sem $val $cmp
+  };
+}
+
 // 'a_res' gets the old value of 'mem', the same as in LiteMath::InterlockedAdd.
 //
 [ForceInline]
 void InterlockedAddEmul1f(__ref float mem, float data, out float a_res)
 {
-  const uint scope    = 1; // Device
-  const uint sem      = 0; // Relaxed
-  uint       expected = asuint(mem);
+  uint expected = asuint(mem);
   for(;;)
   {
-    const uint desired  = asuint(asfloat(expected) + data);
-    const uint original = spirv_asm {
-      %ptrUint = OpTypePointer StorageBuffer $$uint;
-      %memUint = OpBitcast %ptrUint &mem;
-      result:$$uint = OpAtomicCompareExchange %memUint $scope $sem $sem $desired $expected
-    };
+    const uint original = AtomicCAS_F32AsU32(mem, expected, asuint(asfloat(expected) + data));
     if(original == expected)
       break;
     expected = original;
@@ -276,6 +283,40 @@ void InterlockedAddEmul1f(__ref float mem, float data)
 {
   float oldVal;
   InterlockedAddEmul1f(mem, data, oldVal);
+}
+
+// LiteMath::InterlockedAdd3f: each channel is atomic separately, not the whole triple.
+// One loop for all 3 channels: CAS for channels which are not done yet are issued one after another
+// without waiting for each other, so their memory latencies overlap (unlike 3 separate CAS loops).
+//
+[ForceInline]
+void InterlockedAdd3f(RWStructuredBuffer<float> pMem, int offset, float3 data)
+{
+  uint3 expected = uint3(asuint(pMem[offset+0]), asuint(pMem[offset+1]), asuint(pMem[offset+2]));
+  bool3 done     = bool3(data.x == 0.0f, data.y == 0.0f, data.z == 0.0f); // adding zero does not change memory
+  while(!all(done))
+  {
+    [unroll]
+    for(int k = 0; k < 3; k++)
+    {
+      if(!done[k])
+      {
+        const uint original = AtomicCAS_F32AsU32(pMem[offset+k], expected[k], asuint(asfloat(expected[k]) + data[k]));
+        done[k]     = (original == expected[k]);
+        expected[k] = original;
+      }
+    }
+  }
+}
+{% else if not WGPUMode %}
+// LiteMath::InterlockedAdd3f: each channel is atomic separately, not the whole triple (hardware float atomics)
+//
+[ForceInline]
+void InterlockedAdd3f(RWStructuredBuffer<float> pMem, int offset, float3 data)
+{
+  InterlockedAdd(pMem[offset+0], data.x);
+  InterlockedAdd(pMem[offset+1], data.y);
+  InterlockedAdd(pMem[offset+2], data.z);
 }
 {% endif %}
   
