@@ -245,6 +245,41 @@ double3   operator*(double3x3 m,  double3 v) { return mul(m,v); }
 
 static inline uint bitCount(uint x) { return countbits(x); }
 
+{% if AtomicFloatEmul %}
+// float atomic add emulation ('-atomicf_emul 1') for GPUs without shaderBufferFloat32AtomicAdd:
+// CAS loop on the same memory reinterpreted as 'uint' (SPIR-V OpAtomicCompareExchange supports integers only).
+// 'a_res' gets the old value of 'mem', the same as in LiteMath::InterlockedAdd.
+//
+[ForceInline]
+void InterlockedAddEmul1f(__ref float mem, float data, out float a_res)
+{
+  const uint scope    = 1; // Device
+  const uint sem      = 0; // Relaxed
+  uint       expected = asuint(mem);
+  for(;;)
+  {
+    const uint desired  = asuint(asfloat(expected) + data);
+    const uint original = spirv_asm {
+      %ptrUint = OpTypePointer StorageBuffer $$uint;
+      %memUint = OpBitcast %ptrUint &mem;
+      result:$$uint = OpAtomicCompareExchange %memUint $scope $sem $sem $desired $expected
+    };
+    if(original == expected)
+      break;
+    expected = original;
+  }
+  a_res = asfloat(expected);
+}
+
+[ForceInline]
+void InterlockedAddEmul1f(__ref float mem, float data)
+{
+  float oldVal;
+  InterlockedAddEmul1f(mem, data, oldVal);
+}
+{% endif %}
+  
+
 ## for LocalDecl in LocalFuncDecls
 {{LocalDecl}};
 ## endfor

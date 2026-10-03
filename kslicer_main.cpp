@@ -503,6 +503,17 @@ int main(int argc, const char **argv)
   if(params.find("-const_shit") != params.end())
     inputCodeInfo.shitIsAlwaysConst = (atoi(params["-const_shit"].c_str()) != 0);
 
+  if(params.find("-atomicf_emul") != params.end())
+  {
+    inputCodeInfo.atomicFloatEmul = (atoi(params["-atomicf_emul"].c_str()) != 0);
+    const bool slangVulkan = (shaderCCName == "slang" || shaderCCName == "SLANG" || shaderCCName == "Slang");
+    if(inputCodeInfo.atomicFloatEmul && !slangVulkan)
+    {
+      std::cout << "[kslicer]: WARNING, '-atomicf_emul 1' is implemented for '-shaderCC slang' only and will be ignored" << std::endl;
+      inputCodeInfo.atomicFloatEmul = false;
+    }
+  }
+
   inputCodeInfo.halfFloatTextures    = halfFloatTextures;
   inputCodeInfo.megakernelRTV        = useMegakernel;
   inputCodeInfo.persistentRTV        = usePersistentThreads;

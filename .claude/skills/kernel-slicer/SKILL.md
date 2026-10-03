@@ -144,6 +144,9 @@ protected:
 - Small fixed-size local arrays; mark large ones `[[threadlocal]] float tmp[64];`.
 - Structs of POD fields, constants via `constexpr` / `static constexpr` / `#define`.
 - Atomics: `LiteMath::InterlockedAdd(a_out[idx], value)` for `int`/`uint`/`float`.
+  Float `InterlockedAdd` needs `shaderBufferFloat32AtomicAdd` on the GPU; for devices without it
+  translate with `-atomicf_emul 1` (Slang only): the call becomes a CAS loop `InterlockedAddEmul1f`
+  and the feature is not requested (`apps/tests/042_atomic_add_float/kmake_emul.json`).
 
 **Forbidden inside kernels and helpers**
 - Calling another kernel; recursion; virtual calls (except the special advanced samples).

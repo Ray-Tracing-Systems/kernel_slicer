@@ -54,7 +54,7 @@ void {{Fun.Name}}(RWStructuredBuffer<{{Fun.Type0}}> a_buffer, uint a_offset, {{F
   if (threadIdx < 1)   shared_data[threadIdx] += shared_data[threadIdx + 1];   GroupMemoryBarrierWithGroupSync();
   
   if (threadIdx == 0)
-    InterlockedAdd(a_buffer[a_offset], shared_data[0]);
+    {% if AtomicFloatEmul and Fun.Type0 == "float" %}InterlockedAddEmul1f{% else %}InterlockedAdd{% endif %}(a_buffer[a_offset], shared_data[0]);
 }
 {% endif %}
 {% endfor %}

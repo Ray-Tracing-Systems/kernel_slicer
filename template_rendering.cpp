@@ -590,6 +590,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   data["HasAllRefs"]         = bool(a_classInfo.m_allRefsFromVFH.size() != 0) || hasBufferReferenceBind;
   data["UsePersistentThreads"] = a_classInfo.persistentRTV;
   data["WGPUMode"]           = a_classInfo.pShaderCC->IsWGPU();
+  data["AtomicFloatEmul"]    = a_classInfo.atomicFloatEmul;
 
   data["VectorBufferRefs"] = std::vector<json>();
   for(const auto& v : a_classInfo.dataMembers)

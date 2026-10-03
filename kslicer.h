@@ -1800,6 +1800,7 @@ namespace kslicer
     bool forceAllBufToRefs  = false;
     bool placeVectorsInUBO  = false;
     bool shitIsAlwaysConst  = false;
+    bool atomicFloatEmul    = false; ///<! '-atomicf_emul 1': emulate float InterlockedAdd via CAS loop (Slang/Vulkan only), shaderBufferFloat32AtomicAdd is not required
     bool hasLocalContainers = false;
 
     std::unordered_map<std::string, VFHHierarchy> m_vhierarchy;

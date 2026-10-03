@@ -583,7 +583,7 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
         funInfo.types[0]     = typeName;
         m_pCurrKernel->templatedFunctionsLM[funInfo.name] = funInfo;
         if(typeName == "float")
-          m_codeInfo->globalShaderFeatures.useFloatAtomicAdd = true;
+          m_codeInfo->globalShaderFeatures.useFloatAtomicAdd = !m_codeInfo->atomicFloatEmul;
         else if(typeName == "double")
           m_codeInfo->globalShaderFeatures.useDoubleAtomicAdd = true;
       }
@@ -721,8 +721,15 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     //  makeSmth = fname.substr(5);
     /////////////////////////////////////////////////////////////////////////
 
+    const bool isAtomicAdd = (fname == "InterlockedAdd" || fname == "atomicAdd" || fname == "AtomicAdd");
     auto pFoundSmth = m_funReplacements.find(fname);
-    if(pFoundSmth != m_funReplacements.end() && WasNotRewrittenYet(call))
+    if(isAtomicAdd && m_codeInfo->atomicFloatEmul && call->getNumArgs() >= 2 && call->getArg(1)->getType().getAsString() == "float" && WasNotRewrittenYet(call))
+    {
+      std::string lastRewrittenText = "InterlockedAddEmul1f(" + CompleteFunctionCallRewrite(call);
+      ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
+      MarkRewritten(call);
+    }
+    else if(pFoundSmth != m_funReplacements.end() && WasNotRewrittenYet(call))
     {
       std::string lastRewrittenText = pFoundSmth->second + "(" + CompleteFunctionCallRewrite(call);
       ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
