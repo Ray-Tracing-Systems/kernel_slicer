@@ -61,7 +61,7 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   bool needRTDummies = false;
   bool rcHitForIntersectionIsGenerated = false;
 
-  std::ofstream buildSH(shaderPath / scriptName);
+  std::stringstream buildSH; // script text, written to file by WriteShaderBuildScript at the end
   #if not __WIN32__
   buildSH << "#!/bin/sh" << std::endl;
   #endif
@@ -266,7 +266,7 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     buildSH << "glslangValidator -V --target-env vulkan1.2 -S rmiss z_trace_smiss.glsl -o z_trace_smiss.glsl.spv" << std::endl;
   }
 
-  buildSH.close();
+  kslicer::WriteShaderBuildScript(shaderPath / scriptName, buildSH.str(), a_settings.mtShaderCompile);
 }
 
 std::string kslicer::GLSLCompiler::LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const

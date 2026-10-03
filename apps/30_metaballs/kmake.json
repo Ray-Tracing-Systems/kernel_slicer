@@ -1,0 +1,17 @@
+{
+    "mainClass"     : "Metaballs",
+    "baseClasses"   : [],
+    "composClasses" : {},
+    "kernels" : {
+        "kernel2D_Trace" : {"wgSize": [8, 8, 1]}    // set wgSize only for named 2D kernels, never a 2D "default"
+    },
+    "options" : {
+        "-shaderCC"   : "slang",
+        "-timestamps" : "1",
+        "-reorderLoops": "YX"
+    },
+    "source" : ["metaballs.cpp"],
+    "includeProcess" : [],
+    "includeIgnore"  : ["../LiteMath", "../LiteMathAux", "../../TINYSTL"],
+    "end" : ""
+}

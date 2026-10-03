@@ -473,7 +473,20 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["UseCallable"]        = a_settings.enableCallable;
   data["EnableTimeStamps"]   = a_settings.enableTimeStamps;
   data["UsePipelineCache"]   = a_settings.usePipelineCache;
-  if(a_classInfo.megakernelRTV)
+  if(a_settings.enableTimeStamps)
+  {
+    // The pool must cover the timestamps of EVERY control function: in megakernel mode RTV functions
+    // use kernel slot 0 (TS_START = 0, TS_SIZE = 1), while non-RTV (IPV) functions of the same class
+    // still record one slot per kernel call in [startTSNumber, endTSNumber).
+    size_t tsSize = a_classInfo.megakernelRTV ? a_classInfo.megakernelsByName.size() : size_t(a_classInfo.m_timestampPoolSize);
+    for(const auto& mainFunc : a_methodsToGenerate)
+    {
+      const size_t endTS = mainFunc.megakernel.isMega ? size_t(1) : mainFunc.endTSNumber;
+      tsSize = std::max(tsSize, endTS);
+    }
+    data["TimeStampSize"]    = tsSize;
+  }
+  else if(a_classInfo.megakernelRTV)
     data["TimeStampSize"]    = a_classInfo.megakernelsByName.size();
   else
     data["TimeStampSize"]    = a_classInfo.m_timestampPoolSize;

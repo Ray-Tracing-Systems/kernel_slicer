@@ -357,6 +357,12 @@ int main(int argc, const char **argv)
 
     if(params.find("-sortubo") != params.end())
       textGenSettings.sortUBOMode = uint32_t(atoi(params["-sortubo"].c_str()));
+
+    if(params.find("-mt_shader_compile") != params.end())
+      textGenSettings.mtShaderCompile = (atoi(params["-mt_shader_compile"].c_str()) != 0);
+    #ifdef _WIN32
+    textGenSettings.mtShaderCompile = false; // generated .bat scripts are always sequential, parallel build is implemented for Linux (bash) only
+    #endif
   }
 
   // include and process folders
