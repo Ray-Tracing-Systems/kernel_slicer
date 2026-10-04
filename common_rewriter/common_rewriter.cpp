@@ -1,79 +1,21 @@
 #include "common_rewriter.h"
+#include "class.h"
+#include "errors.h"
+#include "utils.h"
 #include <clang/AST/ASTContext.h>
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Lex/Lexer.h>
 #include <fstream>
-
 namespace common_rewriter {
 
     using namespace clang;
     using llvm::outs;
 
     /* -------------------------------------------------------------------------- */
-    /*                                    Utils                                   */
-    /* -------------------------------------------------------------------------- */
-
-#define REWRITE_ASSERT(cond) (!!(cond) ? (void)0 : (fprintf(stderr, "Assertion failed: %s\n", #cond), abort()))
-
-    // //
-    // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c
-    // static bool ends_with(std::string_view str, std::string_view suffix)
-    // {
-    //     return str.size() >= suffix.size() && str.compare(str.size() -
-    //     suffix.size(), suffix.size(), suffix) == 0;
-    // }
-
-    // static bool starts_with(std::string_view str, std::string_view prefix)
-    // {
-    //     return str.size() >= prefix.size() && str.compare(0, prefix.size(),
-    //     prefix) == 0;
-    // }
-
-    template <typename T, typename U>
-    bool contains(const std::vector<T>& v, const U& value) {
-        for (const auto& i : v)
-            if (i == value)
-                return true;
-        return false;
-    }
-
-    template <typename T, typename U>
-    void push_back_unique(std::vector<T>& v, const U& value) {
-        if (!contains(v, value))
-            v.push_back(value);
-    }
-
-    std::string string_from_source_range(SourceRange range) {
-        // https://stackoverflow.com/questions/11083066/getting-the-source-behind-clangs-ast
-        const SourceManager& source_manager = compiler_instance->getSourceManager();
-        clang::SourceLocation true_end(clang::Lexer::getLocForEndOfToken(range.getEnd(), 0, source_manager, {}));
-        return std::string(source_manager.getCharacterData(range.getBegin()),
-                           source_manager.getCharacterData(true_end) -
-                               source_manager.getCharacterData(range.getBegin()));
-    }
-
-    NamedDecl* find_global_declaration(std::string name) {
-        TranslationUnitDecl* translation_unit_declaration_context =
-            compiler_instance->getASTContext().getTranslationUnitDecl();
-        IdentifierInfo& identifier_info = compiler_instance->getASTContext().Idents.get(name);
-        DeclContext::lookup_result res = translation_unit_declaration_context->lookup(&identifier_info);
-
-        if (res.empty()) {
-            outs() << name << " is not found\n";
-            exit(1);
-        }
-        if (!res.isSingleResult()) {
-            outs() << name << " is not unique\n";
-            exit(1);
-        }
-        return res.front();
-    }
-
-    /* -------------------------------------------------------------------------- */
     /*                                Global state                                */
     /* -------------------------------------------------------------------------- */
 
-    const CompilerInstance* compiler_instance;
+    // const CompilerInstance* compiler_instance;
     std::string buffer;
     bool inside_kernel = false;
     bool inside_method = false;
@@ -83,53 +25,6 @@ namespace common_rewriter {
 
     std::vector<const RecordDecl*> structs;
     std::vector<const VarDecl*> globals;
-
-    /* -------------------------------------------------------------------------- */
-    /*                                   Errors                                   */
-    /* -------------------------------------------------------------------------- */
-
-    void note_found(SourceLocation loc, std::string what) {
-        DiagnosticsEngine& diagnostic_engine = compiler_instance->getDiagnostics();
-        uint32_t id = diagnostic_engine.getCustomDiagID(DiagnosticsEngine::Remark, "Found %0");
-        diagnostic_engine.Report(loc, id) << what;
-    }
-
-    void error_unknown_stmt_class(const Stmt* stmt) {
-        DiagnosticsEngine& diagnostic_engine = compiler_instance->getDiagnostics();
-        uint32_t id = diagnostic_engine.getCustomDiagID(DiagnosticsEngine::Error, "Unknown statement kind: %0");
-        diagnostic_engine.Report(stmt->getBeginLoc(), id) << stmt->getStmtClassName();
-    }
-
-    void error_expr_needs_cleanups(const ExprWithCleanups* expr) {
-        DiagnosticsEngine& diagnostic_engine = compiler_instance->getDiagnostics();
-        uint32_t id = diagnostic_engine.getCustomDiagID(DiagnosticsEngine::Error, "Expression needs cleanups");
-        diagnostic_engine.Report(expr->getExprLoc(), id);
-    }
-
-    void error_unknown_overloaded_operator(const CXXOperatorCallExpr* expr) {
-        DiagnosticsEngine& diagnostic_engine = compiler_instance->getDiagnostics();
-        uint32_t id = diagnostic_engine.getCustomDiagID(DiagnosticsEngine::Error, "Unknown operator overload '%0'");
-        diagnostic_engine.Report(expr->getExprLoc(), id) << getOperatorSpelling(expr->getOperator());
-    }
-
-    void error_can_only_access_locals(const Expr* expr) {
-        DiagnosticsEngine& diagnostic_engine = compiler_instance->getDiagnostics();
-        uint32_t id =
-            diagnostic_engine.getCustomDiagID(DiagnosticsEngine::Error, "Trying to access non local variable");
-        diagnostic_engine.Report(expr->getExprLoc(), id);
-    }
-
-    void error_can_only_call_methods_of_this(const Expr* expr) {
-        DiagnosticsEngine& diagnostic_engine = compiler_instance->getDiagnostics();
-        uint32_t id = diagnostic_engine.getCustomDiagID(DiagnosticsEngine::Error, "Can only call methods of this");
-        diagnostic_engine.Report(expr->getExprLoc(), id);
-    }
-
-    void error_function_without_definition(const FunctionDecl* function) {
-        DiagnosticsEngine& diagnostic_engine = compiler_instance->getDiagnostics();
-        uint32_t id = diagnostic_engine.getCustomDiagID(DiagnosticsEngine::Error, "Function without definition");
-        diagnostic_engine.Report(function->getLocation(), id);
-    }
 
     /* -------------------------------------------------------------------------- */
     /*                               Name resolving                               */
@@ -507,105 +402,8 @@ namespace common_rewriter {
         rewrite_statement(function->getBody(), 0);
     }
 
-    void traverse_statement(const Stmt* stmt, std::function<void(const Stmt* stmt)> callback) {
-        if (!stmt)
-            return;
-        callback(stmt);
-        for (auto i : stmt->children())
-            traverse_statement(i, callback);
-    }
-
-    void traverse_function_calls(const Stmt* stmt, std::function<void(const CallExpr*)> callback) {
-        traverse_statement(stmt, [callback](const Stmt* stmt_) {
-            if (auto expr = dyn_cast<CallExpr>(stmt_))
-                callback(expr);
-        });
-    }
-
-    void traverse_this_calls(const Stmt* stmt, std::function<void(const CXXMemberCallExpr*)> callback) {
-        traverse_statement(stmt, [callback](const Stmt* stmt) {
-            if (auto expr = dyn_cast<CXXMemberCallExpr>(stmt))
-                if (dyn_cast<CXXThisExpr>(expr->getImplicitObjectArgument()))
-                    callback(expr);
-        });
-    }
-
-    void traverse_this_fields(const Stmt* stmt, std::function<void(const MemberExpr*)> callback) {
-        traverse_statement(stmt, [callback](const Stmt* stmt) {
-            if (auto expr = dyn_cast<MemberExpr>(stmt))
-                if (dyn_cast<CXXThisExpr>(expr->getBase()) && !dyn_cast<CXXMethodDecl>(expr->getMemberDecl()))
-                    callback(expr);
-        });
-    }
-
     void rewrite_class(std::string main_class_name) {
-        auto main_class = dyn_cast<CXXRecordDecl>(find_global_declaration(main_class_name));
-
-        std::vector<const CXXMethodDecl*> kernels;
-        std::vector<const CXXMethodDecl*> controls;
-        std::vector<const CXXMethodDecl*> methods;
-        std::vector<const ValueDecl*> fields;
-
-        for (auto i : main_class->methods()) {
-            if (i->getNameAsString().substr(0, 6) == "kernel")
-                kernels.push_back(i);
-        }
-
-        for (auto i : main_class->methods()) {
-            if (auto def = i->getDefinition()) {
-                bool is_control = false;
-                traverse_this_calls(def->getBody(), [&](const CXXMemberCallExpr* expr) {
-                    if (contains(kernels, expr->getMethodDecl()))
-                        is_control = true;
-                });
-                if (is_control)
-                    controls.push_back(i);
-            }
-        }
-
-        for (auto i : kernels) {
-            traverse_this_calls(i->getBody(), [&](const CXXMemberCallExpr* expr) {
-                push_back_unique(methods, dyn_cast<CXXMethodDecl>(expr->getMethodDecl()->getDefinition()));
-            });
-        }
-
-        for (size_t i = 0; i < methods.size(); i++) {
-            traverse_this_calls(methods[i]->getBody(), [&](const CXXMemberCallExpr* expr) {
-                push_back_unique(methods, dyn_cast<CXXMethodDecl>(expr->getMethodDecl()->getDefinition()));
-            });
-        }
-
-        outs() << "controls:\n";
-        for (auto i : controls) {
-            outs() << i->getNameAsString() << "\n";
-        }
-        outs() << "\n";
-
-        outs() << "kernels:\n";
-        for (auto i : kernels) {
-            outs() << i->getNameAsString() << "\n";
-        }
-        outs() << "\n";
-
-        outs() << "methods:\n";
-        for (auto i : methods) {
-            outs() << i->getNameAsString() << "\n";
-        }
-        outs() << "\n";
-
-        for (auto i : kernels) {
-            traverse_this_fields(i->getBody(),
-                                 [&](const MemberExpr* expr) { push_back_unique(fields, expr->getMemberDecl()); });
-        }
-        for (auto i : methods) {
-            traverse_this_fields(i->getBody(),
-                                 [&](const MemberExpr* expr) { push_back_unique(fields, expr->getMemberDecl()); });
-        }
-
-        outs() << "fields:\n";
-        for (auto i : fields)
-            outs() << i->getNameAsString() << "\n";
-        outs() << "\n";
+        discover_class(main_class_name);
     }
 
     std::string slang_operators = R"(
