@@ -14,7 +14,7 @@ class MyASTConsumer : public ASTConsumer
 public:
     void HandleTranslationUnit(ASTContext &context) override
     {
-        common_rewriter::rewrite_kernel("VolumeRenderer", "kernel1D_RaymarchGrid_DDA");
+        common_rewriter::rewrite_class("VolumeRenderer");
     }
 };
 

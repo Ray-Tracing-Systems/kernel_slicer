@@ -1,11 +1,10 @@
 #include "common_rewriter.h"
-#include <clang/Frontend/CompilerInstance.h>
 #include <clang/AST/ASTContext.h>
+#include <clang/Frontend/CompilerInstance.h>
 #include <clang/Lex/Lexer.h>
 #include <fstream>
 
-namespace common_rewriter
-{
+namespace common_rewriter {
 
     using namespace clang;
     using llvm::outs;
@@ -14,41 +13,56 @@ namespace common_rewriter
     /*                                    Utils                                   */
     /* -------------------------------------------------------------------------- */
 
-#define REWRITE_ASSERT(cond) \
-    (!!(cond) ? (void)0 : (fprintf(stderr, "Assertion failed: %s\n", #cond), abort()))
+#define REWRITE_ASSERT(cond) (!!(cond) ? (void)0 : (fprintf(stderr, "Assertion failed: %s\n", #cond), abort()))
 
+    // //
     // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c
-    static bool ends_with(std::string_view str, std::string_view suffix)
-    {
-        return str.size() >= suffix.size() && str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
+    // static bool ends_with(std::string_view str, std::string_view suffix)
+    // {
+    //     return str.size() >= suffix.size() && str.compare(str.size() -
+    //     suffix.size(), suffix.size(), suffix) == 0;
+    // }
+
+    // static bool starts_with(std::string_view str, std::string_view prefix)
+    // {
+    //     return str.size() >= prefix.size() && str.compare(0, prefix.size(),
+    //     prefix) == 0;
+    // }
+
+    template <typename T, typename U>
+    bool contains(const std::vector<T>& v, const U& value) {
+        for (const auto& i : v)
+            if (i == value)
+                return true;
+        return false;
     }
 
-    static bool starts_with(std::string_view str, std::string_view prefix)
-    {
-        return str.size() >= prefix.size() && str.compare(0, prefix.size(), prefix) == 0;
+    template <typename T, typename U>
+    void push_back_unique(std::vector<T>& v, const U& value) {
+        if (!contains(v, value))
+            v.push_back(value);
     }
 
-    std::string string_from_source_range(SourceRange range)
-    {
+    std::string string_from_source_range(SourceRange range) {
         // https://stackoverflow.com/questions/11083066/getting-the-source-behind-clangs-ast
-        const SourceManager &source_manager = compiler_instance->getSourceManager();
+        const SourceManager& source_manager = compiler_instance->getSourceManager();
         clang::SourceLocation true_end(clang::Lexer::getLocForEndOfToken(range.getEnd(), 0, source_manager, {}));
-        return std::string(source_manager.getCharacterData(range.getBegin()), source_manager.getCharacterData(true_end) - source_manager.getCharacterData(range.getBegin()));
+        return std::string(source_manager.getCharacterData(range.getBegin()),
+                           source_manager.getCharacterData(true_end) -
+                               source_manager.getCharacterData(range.getBegin()));
     }
 
-    NamedDecl *find_decl_by_name(std::string name)
-    {
-        TranslationUnitDecl *translation_unit_declaration_context = compiler_instance->getASTContext().getTranslationUnitDecl();
-        IdentifierInfo &identifier_info = compiler_instance->getASTContext().Idents.get(name);
+    NamedDecl* find_global_declaration(std::string name) {
+        TranslationUnitDecl* translation_unit_declaration_context =
+            compiler_instance->getASTContext().getTranslationUnitDecl();
+        IdentifierInfo& identifier_info = compiler_instance->getASTContext().Idents.get(name);
         DeclContext::lookup_result res = translation_unit_declaration_context->lookup(&identifier_info);
 
-        if (res.empty())
-        {
+        if (res.empty()) {
             outs() << name << " is not found\n";
             exit(1);
         }
-        if (!res.isSingleResult())
-        {
+        if (!res.isSingleResult()) {
             outs() << name << " is not unique\n";
             exit(1);
         }
@@ -59,66 +73,60 @@ namespace common_rewriter
     /*                                Global state                                */
     /* -------------------------------------------------------------------------- */
 
-    const CompilerInstance *compiler_instance;
+    const CompilerInstance* compiler_instance;
     std::string buffer;
     bool inside_kernel = false;
     bool inside_method = false;
 
-    std::vector<const FunctionDecl *> functions;
-    std::map<const FunctionDecl *, std::string> function_bodies;
+    std::vector<const FunctionDecl*> functions;
+    std::map<const FunctionDecl*, std::string> function_bodies;
 
-    std::vector<const RecordDecl *> structs;
-    std::vector<const VarDecl *> globals;
+    std::vector<const RecordDecl*> structs;
+    std::vector<const VarDecl*> globals;
 
     /* -------------------------------------------------------------------------- */
     /*                                   Errors                                   */
     /* -------------------------------------------------------------------------- */
 
-    void note_found(SourceLocation loc, std::string what)
-    {
-        DiagnosticsEngine &diagnostic_engine = compiler_instance->getDiagnostics();
+    void note_found(SourceLocation loc, std::string what) {
+        DiagnosticsEngine& diagnostic_engine = compiler_instance->getDiagnostics();
         uint32_t id = diagnostic_engine.getCustomDiagID(DiagnosticsEngine::Remark, "Found %0");
         diagnostic_engine.Report(loc, id) << what;
     }
 
-    void error_unknown_stmt_class(const Stmt *stmt)
-    {
-        DiagnosticsEngine &diagnostic_engine = compiler_instance->getDiagnostics();
+    void error_unknown_stmt_class(const Stmt* stmt) {
+        DiagnosticsEngine& diagnostic_engine = compiler_instance->getDiagnostics();
         uint32_t id = diagnostic_engine.getCustomDiagID(DiagnosticsEngine::Error, "Unknown statement kind: %0");
         diagnostic_engine.Report(stmt->getBeginLoc(), id) << stmt->getStmtClassName();
     }
 
-    void error_expr_needs_cleanups(const ExprWithCleanups *expr)
-    {
-        DiagnosticsEngine &diagnostic_engine = compiler_instance->getDiagnostics();
+    void error_expr_needs_cleanups(const ExprWithCleanups* expr) {
+        DiagnosticsEngine& diagnostic_engine = compiler_instance->getDiagnostics();
         uint32_t id = diagnostic_engine.getCustomDiagID(DiagnosticsEngine::Error, "Expression needs cleanups");
         diagnostic_engine.Report(expr->getExprLoc(), id);
     }
 
-    void error_unknown_overloaded_operator(const CXXOperatorCallExpr *expr)
-    {
-        DiagnosticsEngine &diagnostic_engine = compiler_instance->getDiagnostics();
+    void error_unknown_overloaded_operator(const CXXOperatorCallExpr* expr) {
+        DiagnosticsEngine& diagnostic_engine = compiler_instance->getDiagnostics();
         uint32_t id = diagnostic_engine.getCustomDiagID(DiagnosticsEngine::Error, "Unknown operator overload '%0'");
         diagnostic_engine.Report(expr->getExprLoc(), id) << getOperatorSpelling(expr->getOperator());
     }
 
-    void error_can_only_access_locals(const Expr *expr)
-    {
-        DiagnosticsEngine &diagnostic_engine = compiler_instance->getDiagnostics();
-        uint32_t id = diagnostic_engine.getCustomDiagID(DiagnosticsEngine::Error, "Trying to access non local variable");
+    void error_can_only_access_locals(const Expr* expr) {
+        DiagnosticsEngine& diagnostic_engine = compiler_instance->getDiagnostics();
+        uint32_t id =
+            diagnostic_engine.getCustomDiagID(DiagnosticsEngine::Error, "Trying to access non local variable");
         diagnostic_engine.Report(expr->getExprLoc(), id);
     }
 
-    void error_can_only_call_methods_of_this(const Expr *expr)
-    {
-        DiagnosticsEngine &diagnostic_engine = compiler_instance->getDiagnostics();
+    void error_can_only_call_methods_of_this(const Expr* expr) {
+        DiagnosticsEngine& diagnostic_engine = compiler_instance->getDiagnostics();
         uint32_t id = diagnostic_engine.getCustomDiagID(DiagnosticsEngine::Error, "Can only call methods of this");
         diagnostic_engine.Report(expr->getExprLoc(), id);
     }
 
-    void error_function_without_definition(const FunctionDecl *function)
-    {
-        DiagnosticsEngine &diagnostic_engine = compiler_instance->getDiagnostics();
+    void error_function_without_definition(const FunctionDecl* function) {
+        DiagnosticsEngine& diagnostic_engine = compiler_instance->getDiagnostics();
         uint32_t id = diagnostic_engine.getCustomDiagID(DiagnosticsEngine::Error, "Function without definition");
         diagnostic_engine.Report(function->getLocation(), id);
     }
@@ -127,20 +135,17 @@ namespace common_rewriter
     /*                               Name resolving                               */
     /* -------------------------------------------------------------------------- */
 
-    std::string resolve_function(const FunctionDecl *function)
-    {
+    std::string resolve_function(const FunctionDecl* function) {
         std::string name = function->getNameAsString();
-        static std::string builtins[] = {"min", "max", "clamp", "floor", "abs", "dot", "length", "normalize", "exp", "sqrt", "copysign"};
+        static std::string builtins[] = {"min",    "max",       "clamp", "floor", "abs",     "dot",
+                                         "length", "normalize", "exp",   "sqrt",  "copysign"};
         for (auto i : builtins)
             if (i == name)
                 return name;
-        if (!function->getDefinition())
-        {
+        if (!function->getDefinition()) {
             error_function_without_definition(function);
             return name;
-        }
-        else
-        {
+        } else {
             function = function->getDefinition();
             for (auto i : functions)
                 if (i == function)
@@ -150,30 +155,21 @@ namespace common_rewriter
         }
     }
 
-    std::string resolve_function_param(std::string name)
-    {
+    std::string resolve_function_param(std::string name) {
         if (inside_kernel)
             return "kgenArgs." + name;
         else
             return name;
     }
 
-    std::string resolve_scalar_member(std::string name)
-    {
-        return "ubo[0]." + name;
-    }
+    std::string resolve_scalar_member(std::string name) { return "ubo[0]." + name; }
 
-    std::string resolve_vector_member(std::string name)
-    {
-        return name;
-    }
+    std::string resolve_vector_member(std::string name) { return name; }
 
-    std::string resolve_type(QualType type)
-    {
+    std::string resolve_type(QualType type) {
         type = type.getCanonicalType().getUnqualifiedType();
 
-        if (type->isPointerType())
-        {
+        if (type->isPointerType()) {
             return resolve_type(type->getPointeeType()) + "*";
         }
 
@@ -210,15 +206,11 @@ namespace common_rewriter
         if (s == "struct LiteMath::float4x4")
             return "float4x4";
 
-        if (auto decl = type->getAsRecordDecl())
-        {
-            if (auto t = dyn_cast<ClassTemplateSpecializationDecl>(decl))
-            {
+        if (auto decl = type->getAsRecordDecl()) {
+            if (auto t = dyn_cast<ClassTemplateSpecializationDecl>(decl)) {
                 (void)resolve_type(t->getTemplateArgs().get(0).getAsType());
                 return s;
-            }
-            else
-            {
+            } else {
                 decl = decl->getDefinition();
                 REWRITE_ASSERT(decl);
                 for (auto i : structs)
@@ -236,79 +228,49 @@ namespace common_rewriter
     /*                                  Rewriting                                 */
     /* -------------------------------------------------------------------------- */
 
-    void emit(std::string s)
-    {
-        buffer += s;
-    }
+    void emit(std::string s) { buffer += s; }
 
-    void emit_indent(size_t indent)
-    {
+    void emit_indent(size_t indent) {
         for (size_t i = 0; i < indent; i++)
             emit("    ");
     }
 
-    void emit(const char *s)
-    {
-        emit(std::string(s));
-    }
+    void emit(const char* s) { emit(std::string(s)); }
 
-    void emit(const llvm::StringRef &str)
-    {
-        emit(std::string(str));
-    }
+    void emit(const llvm::StringRef& str) { emit(std::string(str)); }
 
-    void rewrite_type(QualType type)
-    {
-        emit(resolve_type(type));
-    }
+    void rewrite_type(QualType type) { emit(resolve_type(type)); }
 
-    void rewrite_expression(const Expr *expr_)
-    {
-        if (auto expr = dyn_cast<ExprWithCleanups>(expr_))
-        {
+    void rewrite_expression(const Expr* expr_) {
+        if (auto expr = dyn_cast<ExprWithCleanups>(expr_)) {
             // Lets not do destroying of temporary variables
             if (expr->getNumObjects() > 0)
                 error_expr_needs_cleanups(expr);
             rewrite_expression(expr->getSubExpr());
-        }
-        else if (auto expr = dyn_cast<FullExpr>(expr_))
-        {
+        } else if (auto expr = dyn_cast<FullExpr>(expr_)) {
             rewrite_expression(expr->getSubExpr());
-        }
-        else if (auto expr = dyn_cast<ImplicitCastExpr>(expr_))
-        {
+        } else if (auto expr = dyn_cast<ImplicitCastExpr>(expr_)) {
             // Ignoring implicit casts
             return rewrite_expression(expr->getSubExpr());
-        }
-        else if (auto expr = dyn_cast<MaterializeTemporaryExpr>(expr_))
-        {
+        } else if (auto expr = dyn_cast<MaterializeTemporaryExpr>(expr_)) {
             // I don't know what it is...
             return rewrite_expression(expr->getSubExpr());
-        }
-        else if (auto expr = dyn_cast<ParenExpr>(expr_))
-        {
+        } else if (auto expr = dyn_cast<ParenExpr>(expr_)) {
             emit("(");
             rewrite_expression(expr->getSubExpr());
             emit(")");
-        }
-        else if (auto expr = dyn_cast<CStyleCastExpr>(expr_))
-        {
+        } else if (auto expr = dyn_cast<CStyleCastExpr>(expr_)) {
             emit("(");
             rewrite_type(expr->getType());
             emit(")");
             rewrite_expression(expr->getSubExpr());
-        }
-        else if (auto expr = dyn_cast<CXXFunctionalCastExpr>(expr_))
-        {
+        } else if (auto expr = dyn_cast<CXXFunctionalCastExpr>(expr_)) {
             rewrite_type(expr->getType());
             emit("(");
             rewrite_expression(expr->getSubExpr());
             emit(")");
-        }
-        else if (auto expr = dyn_cast<CXXConstructExpr>(expr_))
-        {
-            if (expr->getNumArgs() == 0)
-            {
+        } else if (auto expr = dyn_cast<CXXConstructExpr>(expr_)) {
+            if (expr->getNumArgs() == 0) {
                 std::string s = resolve_type(expr->getType());
                 if (s == "float2")
                     emit("float2(0, 0)");
@@ -318,109 +280,78 @@ namespace common_rewriter
                     emit("float4(0, 0, 0, 0)");
                 else
                     emit("???");
-            }
-            else
-            {
+            } else {
                 rewrite_type(expr->getType());
                 emit("(");
-                for (size_t i = 0; i < expr->getNumArgs(); i++)
-                {
+                for (size_t i = 0; i < expr->getNumArgs(); i++) {
                     rewrite_expression(expr->getArg(i));
                     if (i < expr->getNumArgs() - 1)
                         emit(", ");
                 }
                 emit(")");
             }
-        }
-        else if (auto expr = dyn_cast<BinaryOperator>(expr_))
-        {
+        } else if (auto expr = dyn_cast<BinaryOperator>(expr_)) {
             rewrite_expression(expr->getLHS());
             emit(" ");
             emit(BinaryOperator::getOpcodeStr(expr->getOpcode()));
             emit(" ");
             rewrite_expression(expr->getRHS());
-        }
-        else if (auto expr = dyn_cast<UnaryOperator>(expr_))
-        {
+        } else if (auto expr = dyn_cast<UnaryOperator>(expr_)) {
             emit(UnaryOperator::getOpcodeStr(expr->getOpcode()));
             rewrite_expression(expr->getSubExpr());
-        }
-        else if (auto expr = dyn_cast<CXXOperatorCallExpr>(expr_))
-        {
+        } else if (auto expr = dyn_cast<CXXOperatorCallExpr>(expr_)) {
             // note_found(expr->getExprLoc(), "here");
-            if (expr->getNumArgs() == 1)
-            {
+            if (expr->getNumArgs() == 1) {
                 std::string s = getOperatorSpelling(expr->getOperator());
-                if (s == "+" || s == "-")
-                {
+                if (s == "+" || s == "-") {
                     emit(s);
                     rewrite_expression(expr->getArg(0));
-                }
-                else
-                {
+                } else {
                     error_unknown_overloaded_operator(expr);
                 }
-            }
-            else
-            {
+            } else {
                 REWRITE_ASSERT(expr->getNumArgs() == 2);
                 std::string s = getOperatorSpelling(expr->getOperator());
 
-                std::string known_binary_operators[] = {"=", "+", "-", "*", "/", "+=", "-=", "*=", "/=", "&", "|", "<<", ">>"};
+                std::string known_binary_operators[] = {
+                    "=", "+", "-", "*", "/", "+=", "-=", "*=", "/=", "&", "|", "<<", ">>"};
 
-                if (std::find(std::begin(known_binary_operators), std::end(known_binary_operators), s) != std::end(known_binary_operators))
-                {
+                if (std::find(std::begin(known_binary_operators), std::end(known_binary_operators), s) !=
+                    std::end(known_binary_operators)) {
                     rewrite_expression(expr->getArg(0));
                     emit(" ");
                     emit(s);
                     emit(" ");
                     rewrite_expression(expr->getArg(1));
-                }
-                else if (s == "[]")
-                {
+                } else if (s == "[]") {
                     rewrite_expression(expr->getArg(0));
                     emit("[");
                     rewrite_expression(expr->getArg(1));
                     emit("]");
-                }
-                else
-                {
+                } else {
                     error_unknown_overloaded_operator(expr);
                 }
             }
-        }
-        else if (auto expr = dyn_cast<ArraySubscriptExpr>(expr_))
-        {
+        } else if (auto expr = dyn_cast<ArraySubscriptExpr>(expr_)) {
             rewrite_expression(expr->getBase());
             emit("[");
             rewrite_expression(expr->getIdx());
             emit("]");
-        }
-        else if (auto expr = dyn_cast<ConditionalOperator>(expr_))
-        {
+        } else if (auto expr = dyn_cast<ConditionalOperator>(expr_)) {
             rewrite_expression(expr->getCond());
             emit(" ? ");
             rewrite_expression(expr->getTrueExpr());
             emit(" : ");
             rewrite_expression(expr->getFalseExpr());
-        }
-        else if (auto expr = dyn_cast<IntegerLiteral>(expr_))
-        {
+        } else if (auto expr = dyn_cast<IntegerLiteral>(expr_)) {
             emit(string_from_source_range(expr->getSourceRange()));
-        }
-        else if (auto expr = dyn_cast<FloatingLiteral>(expr_))
-        {
+        } else if (auto expr = dyn_cast<FloatingLiteral>(expr_)) {
             emit(string_from_source_range(expr->getSourceRange()));
-        }
-        else if (auto expr = dyn_cast<CXXBoolLiteralExpr>(expr_))
-        {
+        } else if (auto expr = dyn_cast<CXXBoolLiteralExpr>(expr_)) {
             emit(string_from_source_range(expr->getSourceRange()));
-        }
-        else if (auto expr = dyn_cast<DeclRefExpr>(expr_))
-        {
+        } else if (auto expr = dyn_cast<DeclRefExpr>(expr_)) {
             auto decl = expr->getDecl();
-            if (decl->getDeclContext() == compiler_instance->getASTContext().getTranslationUnitDecl())
-            {
+            if (decl->getDeclContext() == compiler_instance->getASTContext().getTranslationUnitDecl()) {
                 bool found = false;
                 for (auto i : globals)
                     if (i == decl)
@@ -432,107 +363,82 @@ namespace common_rewriter
                 emit(resolve_function_param(decl->getNameAsString()));
             else
                 emit(decl->getNameAsString());
-        }
-        else if (auto expr = dyn_cast<MemberExpr>(expr_))
-        {
-            if (dyn_cast<CXXThisExpr>(expr->getBase()))
-            {
+        } else if (auto expr = dyn_cast<MemberExpr>(expr_)) {
+            if (dyn_cast<CXXThisExpr>(expr->getBase())) {
                 if (expr->getMemberDecl()->getType().getAsString({{}}).find("vector") != std::string::npos)
                     emit(resolve_vector_member(expr->getMemberDecl()->getNameAsString()));
                 else
                     emit(resolve_scalar_member(expr->getMemberDecl()->getNameAsString()));
-            }
-            else
-            {
+            } else {
                 rewrite_expression(expr->getBase());
                 // Accessing anonimous unions inside structs
-                if (expr->getMemberDecl()->getNameAsString().length() > 0)
-                {
+                if (expr->getMemberDecl()->getNameAsString().length() > 0) {
                     emit(".");
                     emit(expr->getMemberDecl()->getNameAsString());
                 }
             }
-        }
-        else if (auto expr = dyn_cast<CXXMemberCallExpr>(expr_))
-        {
+        } else if (auto expr = dyn_cast<CXXMemberCallExpr>(expr_)) {
 
-            if (expr->getMethodDecl()->getNameAsString() == "size")
-            {
+            if (expr->getMethodDecl()->getNameAsString() == "size") {
                 rewrite_expression(expr->getImplicitObjectArgument());
-                emit(resolve_scalar_member(dyn_cast<MemberExpr>(expr->getImplicitObjectArgument())->getMemberDecl()->getNameAsString()));
+                emit(resolve_scalar_member(
+                    dyn_cast<MemberExpr>(expr->getImplicitObjectArgument())->getMemberDecl()->getNameAsString()));
                 emit("_size");
-            }
-            else
-            {
+            } else {
                 if (!dyn_cast<CXXThisExpr>(expr->getImplicitObjectArgument()))
                     error_can_only_call_methods_of_this(expr);
 
                 emit(resolve_function(expr->getMethodDecl()));
                 emit("(");
-                for (int i = 0; i < expr->getNumArgs(); i++)
-                {
+                for (int i = 0; i < expr->getNumArgs(); i++) {
                     rewrite_expression(expr->getArg(i));
                     if (i < expr->getNumArgs() - 1)
                         emit(", ");
                 }
                 emit(")");
             }
-        }
-        else if (auto expr = dyn_cast<CallExpr>(expr_))
-        {
+        } else if (auto expr = dyn_cast<CallExpr>(expr_)) {
             auto func = dyn_cast<FunctionDecl>(expr->getCalleeDecl());
             REWRITE_ASSERT(func);
 
             emit(resolve_function(func));
             emit("(");
-            for (int i = 0; i < expr->getNumArgs(); i++)
-            {
+            for (int i = 0; i < expr->getNumArgs(); i++) {
                 rewrite_expression(expr->getArg(i));
                 if (i < expr->getNumArgs() - 1)
                     emit(", ");
             }
             emit(")");
-        }
-        else
-        {
+        } else {
             error_unknown_stmt_class(expr_);
         }
     }
 
-    void rewrite_statement(const Stmt *stmt_, size_t indent, bool newline = true)
-    {
-        if (auto stmt = dyn_cast<CompoundStmt>(stmt_))
-        {
+    void rewrite_statement(const Stmt* stmt_, size_t indent, bool newline = true) {
+        if (auto stmt = dyn_cast<CompoundStmt>(stmt_)) {
             emit_indent(indent);
             emit("{\n");
-            for (auto i : stmt->children())
-            {
+            for (auto i : stmt->children()) {
                 rewrite_statement(i, indent + 1);
             }
             emit_indent(indent);
             emit("}\n");
-        }
-        else if (auto stmt = dyn_cast<Expr>(stmt_))
-        {
+        } else if (auto stmt = dyn_cast<Expr>(stmt_)) {
             emit_indent(indent);
             rewrite_expression(stmt);
             emit(";");
             if (newline)
                 emit("\n");
-        }
-        else if (auto stmt = dyn_cast<DeclStmt>(stmt_))
-        {
+        } else if (auto stmt = dyn_cast<DeclStmt>(stmt_)) {
 
-            for (auto i : stmt->getDeclGroup())
-            {
+            for (auto i : stmt->getDeclGroup()) {
                 auto var = dyn_cast<VarDecl>(i);
                 REWRITE_ASSERT(var);
                 emit_indent(indent);
                 rewrite_type(var->getType());
                 emit(" ");
                 emit(var->getNameAsString());
-                if (var->getInit())
-                {
+                if (var->getInit()) {
                     emit(" = ");
                     rewrite_expression(var->getInit());
                 }
@@ -540,31 +446,24 @@ namespace common_rewriter
                 if (newline)
                     emit("\n");
             }
-        }
-        else if (auto stmt = dyn_cast<IfStmt>(stmt_))
-        {
+        } else if (auto stmt = dyn_cast<IfStmt>(stmt_)) {
             emit_indent(indent);
             emit("if (");
             rewrite_expression(stmt->getCond());
             emit(")\n");
             rewrite_statement(stmt->getThen(), indent);
-            if (stmt->getElse())
-            {
+            if (stmt->getElse()) {
                 emit_indent(indent);
                 emit("else\n");
                 rewrite_statement(stmt->getElse(), indent);
             }
-        }
-        else if (auto stmt = dyn_cast<WhileStmt>(stmt_))
-        {
+        } else if (auto stmt = dyn_cast<WhileStmt>(stmt_)) {
             emit_indent(indent);
             emit("while (");
             rewrite_expression(stmt->getCond());
             emit(")\n");
             rewrite_statement(stmt->getBody(), indent);
-        }
-        else if (auto stmt = dyn_cast<ForStmt>(stmt_))
-        {
+        } else if (auto stmt = dyn_cast<ForStmt>(stmt_)) {
             emit_indent(indent);
             emit("for (");
             rewrite_statement(stmt->getInit(), 0, false);
@@ -573,39 +472,29 @@ namespace common_rewriter
             rewrite_expression(stmt->getInc());
             emit(")\n");
             rewrite_statement(stmt->getBody(), indent + 1);
-        }
-        else if (auto stmt = dyn_cast<BreakStmt>(stmt_))
-        {
+        } else if (auto stmt = dyn_cast<BreakStmt>(stmt_)) {
             emit_indent(indent);
             emit("break;\n");
-        }
-        else if (auto stmt = dyn_cast<ContinueStmt>(stmt_))
-        {
+        } else if (auto stmt = dyn_cast<ContinueStmt>(stmt_)) {
             emit_indent(indent);
             emit("continue;\n");
-        }
-        else if (auto stmt = dyn_cast<ReturnStmt>(stmt_))
-        {
+        } else if (auto stmt = dyn_cast<ReturnStmt>(stmt_)) {
             emit_indent(indent);
             emit("return ");
             if (stmt->getRetValue())
                 rewrite_expression(stmt->getRetValue());
             emit(";\n");
-        }
-        else
-        {
+        } else {
             error_unknown_stmt_class(stmt_);
         }
     }
 
-    void rewrite_function(const FunctionDecl *function)
-    {
+    void rewrite_function(const FunctionDecl* function) {
         rewrite_type(function->getReturnType());
         emit(" ");
         emit(function->getNameAsString());
         emit("(");
-        for (int i = 0; i < function->getNumParams(); i++)
-        {
+        for (int i = 0; i < function->getNumParams(); i++) {
             auto decl = function->getParamDecl(i);
             rewrite_type(decl->getType());
             emit(" ");
@@ -616,6 +505,107 @@ namespace common_rewriter
         emit(")\n");
         REWRITE_ASSERT(function->getBody());
         rewrite_statement(function->getBody(), 0);
+    }
+
+    void traverse_statement(const Stmt* stmt, std::function<void(const Stmt* stmt)> callback) {
+        if (!stmt)
+            return;
+        callback(stmt);
+        for (auto i : stmt->children())
+            traverse_statement(i, callback);
+    }
+
+    void traverse_function_calls(const Stmt* stmt, std::function<void(const CallExpr*)> callback) {
+        traverse_statement(stmt, [callback](const Stmt* stmt_) {
+            if (auto expr = dyn_cast<CallExpr>(stmt_))
+                callback(expr);
+        });
+    }
+
+    void traverse_this_calls(const Stmt* stmt, std::function<void(const CXXMemberCallExpr*)> callback) {
+        traverse_statement(stmt, [callback](const Stmt* stmt) {
+            if (auto expr = dyn_cast<CXXMemberCallExpr>(stmt))
+                if (dyn_cast<CXXThisExpr>(expr->getImplicitObjectArgument()))
+                    callback(expr);
+        });
+    }
+
+    void traverse_this_fields(const Stmt* stmt, std::function<void(const MemberExpr*)> callback) {
+        traverse_statement(stmt, [callback](const Stmt* stmt) {
+            if (auto expr = dyn_cast<MemberExpr>(stmt))
+                if (dyn_cast<CXXThisExpr>(expr->getBase()) && !dyn_cast<CXXMethodDecl>(expr->getMemberDecl()))
+                    callback(expr);
+        });
+    }
+
+    void rewrite_class(std::string main_class_name) {
+        auto main_class = dyn_cast<CXXRecordDecl>(find_global_declaration(main_class_name));
+
+        std::vector<const CXXMethodDecl*> kernels;
+        std::vector<const CXXMethodDecl*> controls;
+        std::vector<const CXXMethodDecl*> methods;
+        std::vector<const ValueDecl*> fields;
+
+        for (auto i : main_class->methods()) {
+            if (i->getNameAsString().substr(0, 6) == "kernel")
+                kernels.push_back(i);
+        }
+
+        for (auto i : main_class->methods()) {
+            if (auto def = i->getDefinition()) {
+                bool is_control = false;
+                traverse_this_calls(def->getBody(), [&](const CXXMemberCallExpr* expr) {
+                    if (contains(kernels, expr->getMethodDecl()))
+                        is_control = true;
+                });
+                if (is_control)
+                    controls.push_back(i);
+            }
+        }
+
+        for (auto i : kernels) {
+            traverse_this_calls(i->getBody(), [&](const CXXMemberCallExpr* expr) {
+                push_back_unique(methods, dyn_cast<CXXMethodDecl>(expr->getMethodDecl()->getDefinition()));
+            });
+        }
+
+        for (size_t i = 0; i < methods.size(); i++) {
+            traverse_this_calls(methods[i]->getBody(), [&](const CXXMemberCallExpr* expr) {
+                push_back_unique(methods, dyn_cast<CXXMethodDecl>(expr->getMethodDecl()->getDefinition()));
+            });
+        }
+
+        outs() << "controls:\n";
+        for (auto i : controls) {
+            outs() << i->getNameAsString() << "\n";
+        }
+        outs() << "\n";
+
+        outs() << "kernels:\n";
+        for (auto i : kernels) {
+            outs() << i->getNameAsString() << "\n";
+        }
+        outs() << "\n";
+
+        outs() << "methods:\n";
+        for (auto i : methods) {
+            outs() << i->getNameAsString() << "\n";
+        }
+        outs() << "\n";
+
+        for (auto i : kernels) {
+            traverse_this_fields(i->getBody(),
+                                 [&](const MemberExpr* expr) { push_back_unique(fields, expr->getMemberDecl()); });
+        }
+        for (auto i : methods) {
+            traverse_this_fields(i->getBody(),
+                                 [&](const MemberExpr* expr) { push_back_unique(fields, expr->getMemberDecl()); });
+        }
+
+        outs() << "fields:\n";
+        for (auto i : fields)
+            outs() << i->getNameAsString() << "\n";
+        outs() << "\n";
     }
 
     std::string slang_operators = R"(
@@ -727,29 +717,23 @@ void main(uint3 a_globalTID : SV_DispatchThreadID, uint3 a_localTID : SV_GroupTh
     if(runThisThread)
 )";
 
-    void rewrite_kernel(std::string class_name, std::string kernel_name)
-    {
+    void rewrite_kernel(std::string class_name, std::string kernel_name) {
 
         std::string main_loop;
 
-        if (auto class_decl = dyn_cast<CXXRecordDecl>(find_decl_by_name(class_name)))
-        {
+        if (auto class_decl = dyn_cast<CXXRecordDecl>(find_global_declaration(class_name))) {
             for (auto i : class_decl->fields())
                 (void)resolve_type(i->getType());
             note_found(class_decl->getLocation(), "class");
-            for (auto method_decl : class_decl->methods())
-            {
-                if (method_decl->getNameAsString() == kernel_name)
-                {
+            for (auto method_decl : class_decl->methods()) {
+                if (method_decl->getNameAsString() == kernel_name) {
                     method_decl = dyn_cast<CXXMethodDecl>(method_decl->getDefinition());
                     note_found(method_decl->getLocation(), "kernel");
                     emit(method_decl->getNameAsString());
                     emit(":\n");
 
-                    for (auto i : method_decl->getBody()->children())
-                    {
-                        if (auto for_stmt = dyn_cast<ForStmt>(i))
-                        {
+                    for (auto i : method_decl->getBody()->children()) {
+                        if (auto for_stmt = dyn_cast<ForStmt>(i)) {
                             note_found(for_stmt->getForLoc(), "root for loop");
                             buffer = "";
                             inside_kernel = true;
@@ -765,8 +749,7 @@ void main(uint3 a_globalTID : SV_DispatchThreadID, uint3 a_localTID : SV_GroupTh
             }
         }
 
-        for (size_t i = 0; i < functions.size(); i++)
-        {
+        for (size_t i = 0; i < functions.size(); i++) {
             if (dyn_cast<CXXMethodDecl>(functions[i]))
                 inside_method = true;
             buffer = "";
@@ -776,8 +759,7 @@ void main(uint3 a_globalTID : SV_DispatchThreadID, uint3 a_localTID : SV_GroupTh
 
         std::ofstream f("out.slang");
 
-        for (size_t i = 0; i < globals.size(); i++)
-        {
+        for (size_t i = 0; i < globals.size(); i++) {
             buffer = "";
             emit("#define ");
             emit(globals[i]->getNameAsString());
@@ -787,14 +769,12 @@ void main(uint3 a_globalTID : SV_DispatchThreadID, uint3 a_localTID : SV_GroupTh
             f << buffer;
         }
 
-        for (size_t i = 0; i < structs.size(); i++)
-        {
+        for (size_t i = 0; i < structs.size(); i++) {
             buffer = "";
             emit("struct ");
             emit(structs[i]->getNameAsString());
             emit("\n{\n");
-            for (auto j : structs[i]->fields())
-            {
+            for (auto j : structs[i]->fields()) {
                 emit_indent(1);
                 emit(resolve_type(j->getType()));
                 emit(" ");
@@ -809,12 +789,9 @@ void main(uint3 a_globalTID : SV_DispatchThreadID, uint3 a_localTID : SV_GroupTh
         f << ubo;
         f << uniforms;
 
-        for (auto &[function, code] : function_bodies)
-        {
-            for (char c : code)
-            {
-                if (c == '{')
-                {
+        for (auto& [function, code] : function_bodies) {
+            for (char c : code) {
+                if (c == '{') {
                     f << ";\n";
                     break;
                 }
@@ -825,8 +802,7 @@ void main(uint3 a_globalTID : SV_DispatchThreadID, uint3 a_localTID : SV_GroupTh
 
         f << slang_operators << "\n";
 
-        for (auto &[function, code] : function_bodies)
-        {
+        for (auto& [function, code] : function_bodies) {
             f << code << "\n";
         }
 
@@ -834,4 +810,4 @@ void main(uint3 a_globalTID : SV_DispatchThreadID, uint3 a_localTID : SV_GroupTh
 
         f << kernel_boiler << main_loop << "}\n\n";
     }
-}
+} // namespace common_rewriter

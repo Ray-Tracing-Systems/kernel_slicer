@@ -2,9 +2,11 @@ cmake_minimum_required(VERSION 3.8)
 project(kernel_slicer)
 
 set(CMAKE_CXX_STANDARD 17)
-set(LLVM_LINK_COMPONENTS support)
 
-set(KSLICER_SOURCE_FILES
+find_package(LLVM 17 REQUIRED CONFIG)
+find_package(Clang 17 REQUIRED CONFIG)
+
+add_executable(kslicer
     kslicer_main.cpp
     kslicer_utils.cpp
     kslicer_warnings.cpp
@@ -36,80 +38,17 @@ set(KSLICER_SOURCE_FILES
     tr_host_vulkan.cpp
     tr_host_cuda.cpp
     tr_host_ispc.cpp
-    tr_host_wgpu.cpp)
+    tr_host_wgpu.cpp
+)
 
-include_directories("include")
+target_compile_definitions(kslicer PRIVATE ${LLVM_DEFINITIONS} ${CLANG_DEFINITIONS})
+target_include_directories(kslicer PRIVATE include ${LLVM_INCLUDE_DIRS} ${CLANG_INCLUDE_DIRS})
+target_link_directories(kslicer PRIVATE ${LLVM_LIBRARY_DIRS})
+target_link_libraries(kslicer PRIVATE clangTooling)
 
-option(KSLICER_LLVM_BUILD "Build kernel_slicer as a LLVM project module" OFF)
-
-if(NOT KSLICER_LLVM_BUILD)
-  set(LLVM_VER "17")
-  set(LLVM_LIB "LLVM-${LLVM_VER}")
-
-  if(WIN32)
-    if(MSVC)
-      add_compile_options(/bigobj)
-    endif()
-  else()
-    set(PLATFORM_DEPENDENT_LIBS clang ${LLVM_LIB})
-  endif()
-
-  find_package(LLVM ${LLVM_VER} REQUIRED CONFIG)
-  find_package(Clang ${LLVM_VER} REQUIRED)
-
-  message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
-  message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
-
-  include_directories(${LLVM_INCLUDE_DIRS})
-  include_directories(${CLANG_INCLUDE_DIRS})
-  link_directories(${LLVM_LIBRARY_DIRS})
-  add_definitions(${LLVM_DEFINITIONS})
-  add_definitions(${CLANG_DEFINITIONS})
-
-  message("LLVM_INCLUDE_DIRS = ${LLVM_INCLUDE_DIRS}")
-  message("LLVM_LIBRARY_DIRS = ${LLVM_LIBRARY_DIRS}")
-  # message("CLANG_INCLUDE_DIRS = ${CLANG_INCLUDE_DIRS}")
-  # message("CLANG_LIBRARY_DIRS = ${CLANG_LIBRARY_DIRS}") set(CMAKE_MODULE_PATH
-  # ${CMAKE_MODULE_PATH} "${LLVM_CMAKE_DIR}")
-  
-  add_executable(kslicer ${KSLICER_SOURCE_FILES})
-
-  target_link_libraries(
-    kslicer
-    PRIVATE ${PLATFORM_DEPENDENT_LIBS}
-            clangAST
-            clangTooling
-            clangBasic
-            clangASTMatchers
-            clangFrontendTool
-            clangFrontend
-            clangDriver
-            clangSerialization
-            clangCodeGen
-            clangParse
-            clangSema
-            clangStaticAnalyzerFrontend
-            clangStaticAnalyzerCheckers
-            clangStaticAnalyzerCore
-            clangAnalysis
-            clangIndex
-            clangARCMigrate
-            clangRewrite
-            clangLex
-            clangEdit
-            )
-else() # NOT DEFINED KSLICER_LLVM_BUILD
-  message(STATUS "kernel_slicer build with LLVM")
-
-  # file(GLOB_RECURSE SRC_DIR "include/*.h" "include/nlohmann/*.h" )
-  # set_source_files_properties(${SRC_DIR} PROPERTIES COMPILE_FLAGS "-w")
-
-  add_clang_executable(kslicer ${KSLICER_SOURCE_FILES})
-
-  target_compile_options(kslicer PRIVATE -fexceptions)
-
-  target_link_libraries(kslicer PRIVATE clang clangTooling clangBasic
-                                        clangASTMatchers)
-endif() # DEFINED KSLICER_LLVM_BUILD
+if(MSVC)
+    # This option is not ON by default because Microslop is stupid
+    target_compile_options(kslicer PRIVATE /bigobj)
+endif()
 
 add_subdirectory(common_rewriter)

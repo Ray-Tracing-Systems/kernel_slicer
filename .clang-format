@@ -1,0 +1,56 @@
+---
+BasedOnStyle: LLVM
+
+# # General
+# Language: Cpp
+# Standard: Latest
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 120
+
+# # Braces
+BreakBeforeBraces: Attach
+Cpp11BracedListStyle: true
+
+# # Pointers / references
+PointerAlignment: Left
+ReferenceAlignment: Pointer
+
+# # Functions
+# AllowShortFunctionsOnASingleLine: Empty
+# AllowShortBlocksOnASingleLine: Never
+# AllowShortIfStatementsOnASingleLine: Never
+# AllowShortLoopsOnASingleLine: Never
+
+# # Classes / structs
+# AccessModifierOffset: -4
+# IndentAccessModifiers: false
+
+# # Namespaces
+NamespaceIndentation: All
+FixNamespaceComments: true
+
+# # Includes
+# SortIncludes: CaseSensitive
+# IncludeBlocks: Regroup
+
+# # Comments
+ReflowComments: true
+
+# # Blank lines
+MaxEmptyLinesToKeep: 1
+
+# # C++ specifics
+# SpaceBeforeParens: ControlStatements
+# SpaceBeforeAssignmentOperators: true
+# SpacesInAngles: false
+# SpacesInContainerLiterals: false
+
+# # Constructors
+# PackConstructorInitializers: CurrentLine
+
+# # Misc
+# DerivePointerAlignment: false
+
+BreakTemplateDeclarations: Yes
