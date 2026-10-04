@@ -1,5 +1,6 @@
 #include "common_rewriter.h"
 #include "class.h"
+#include "codegen_host.h"
 #include "errors.h"
 #include "utils.h"
 #include <clang/AST/ASTContext.h>
@@ -404,6 +405,7 @@ namespace common_rewriter {
 
     void rewrite_class(std::string main_class_name) {
         discover_class(main_class_name);
+        codegen();
     }
 
     std::string slang_operators = R"(
