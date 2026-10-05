@@ -48,4 +48,10 @@ namespace common_rewriter {
         diagnostic_engine.Report(function->getLocation(), id);
     }
 
+    void error_invalid_for_loop_condition(const Expr* expr) {
+        DiagnosticsEngine& diagnostic_engine = compiler_instance->getDiagnostics();
+        uint32_t id = diagnostic_engine.getCustomDiagID(DiagnosticsEngine::Error, "Invalid for loop condition");
+        diagnostic_engine.Report(expr->getExprLoc(), id);
+    }
+
 } // namespace common_rewriter

@@ -5,6 +5,7 @@
 
 namespace common_rewriter {
     using namespace nlohmann;
+    using llvm::outs;
 
     void codegen() {
 
@@ -129,6 +130,39 @@ namespace common_rewriter {
                 REWRITE_ASSERT(false);
             }
 
+            kernel["AuxArgs"] = json::array();
+            for (size_t j = 0; j < i->getNumParams(); j++) {
+                auto p = i->getParamDecl(j);
+                if (!contains(kernels_dimentions[i], p) && !p->getType()->isPointerType()) {
+                    auto arg = json::object();
+                    arg["Name"] = p->getNameAsString();
+                    arg["Type"] = render_type_name(p->getType());
+                    kernel["AuxArgs"].push_back(arg);
+                }
+            }
+
+            kernel["SmplX"] = true;
+            kernel["SmplY"] = true;
+            kernel["SmplZ"] = true;
+            kernel["tidX"] = kernels_dimentions[i].size() > 0 ? kernels_dimentions[i][0]->getNameAsString() : "1";
+            kernel["tidY"] = kernels_dimentions[i].size() > 1 ? kernels_dimentions[i][1]->getNameAsString() : "1";
+            kernel["tidZ"] = kernels_dimentions[i].size() > 2 ? kernels_dimentions[i][2]->getNameAsString() : "1";
+            kernel["EnableBlockExpansion"] = true;
+
+            auto args = json::array();
+            for (auto binding : kernels_bindings[i]) {
+                auto arg = json::object();
+                arg["Name"] = binding->getNameAsString();
+                arg["Id"] = args.size();
+                arg["Type"] = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
+                arg["IsTextureArray"] = false;
+                arg["Count"] = 1;
+                args.push_back(arg);
+            }
+            kernel["Args"] = args;
+            kernel["ArgCount"] = args.size();
+            kernel["IsRTV"] = false;
+
             data["Kernels"].push_back(kernel);
         }
 
@@ -151,8 +185,21 @@ namespace common_rewriter {
             data["KernelsDecls"].push_back(decl);
         }
 
-        data["MainFunctions"] = json::array();
+        size_t ds_count = 0;
+        data["DescriptorSetsAll"] = json::array();
+        for (auto [control, kernels] : controls_kernel_calls) {
+            for (auto kernel : kernels) {
+                auto ds = json::object();
+                ds["Layout"] = kernel->getNameAsString();
+                ds["Id"] = ds_count++;
+                data["DescriptorSetsAll"].push_back(ds);
+            }
+        }
+        data["TotalDSNumber"] = ds_count;
+        size_t desc_count = 0;
 
+        size_t ds_id = 0;
+        data["MainFunctions"] = json::array();
         for (auto i : controls) {
             auto f = json::object();
             f["IsRTV"] = false;
@@ -179,10 +226,69 @@ namespace common_rewriter {
             }
             f["DeclOrig"] = i->getNameAsString() + "(" + decl + ")";
             f["Decl"] = i->getNameAsString() + "Cmd(VkCommandBuffer a_commandBuffer, " + decl + ")";
+            f["MainFuncDeclCmd"] = f["Decl"];
             f["InOutVars"] = in_outs;
             f["OverrideMe"] = true;
+            f["MainFuncTextCmd"] = "CODE_IS_HERE();";
+
+            f["FullImpl"] = json::object();
+            f["FullImpl"]["InputData"] = json::array();
+            f["FullImpl"]["OutputData"] = json::array();
+            std::string in_out = "";
+            for (size_t j = 0; j < i->getNumParams(); j++) {
+                auto p = i->getParamDecl(j);
+                if (p->getType()->isPointerType()) {
+                    auto var = json::object();
+                    var["IsTexture"] = false;
+                    var["Name"] = p->getNameAsString();
+                    var["DataSize"] = "width * height";
+                    var["DataType"] = render_type_name(p->getType()->getPointeeType());
+                    f["FullImpl"]["OutputData"].push_back(var);
+                    in_out += p->getNameAsString() + "Buffer" + ", 0, ";
+                }
+            }
+            f["FullImpl"]["ArgsOnSetInOut"] = in_out + "0";
+            f["FullImpl"]["HasImages"] = false;
+            {
+                std::string args;
+                for (size_t j = 0; j < i->getNumParams(); j++) {
+                    args += i->getParamDecl(j)->getNameAsString();
+                    if (j < i->getNumParams() - 1)
+                        args += ", ";
+                }
+                f["FullImpl"]["ArgsOnCall"] = args;
+            }
+
+            f["DescriptorSets"] = json::array();
+
+            for (auto kernel : controls_kernel_calls[i]) {
+                auto ds = json::object();
+                ds["Id"] = ds_id++;
+                ds["KernelName"] = kernel->getNameAsString();
+                ds["ArgNames"] = "ARG_NAMES()";
+                ds["IsServiceCall"] = false;
+                ds["IsVirtual"] = false;
+                ds["ArgNumber"] = kernels_bindings[kernel].size();
+                ds["Args"] = json::array();
+                // outs() << "size here: " << kernels_bindings[kernel].size() << "\n";
+                size_t index = 0;
+                for (auto binding : kernels_bindings[kernel]) {
+                    auto arg = json::object();
+                    arg["IsTexture"] = false;
+                    arg["IsTextureArray"] = false;
+                    arg["IsAccelStruct"] = false;
+                    arg["Id"] = index++;
+                    arg["Name"] = binding->getNameAsString();
+                    desc_count++;
+                    ds["Args"].push_back(arg);
+                }
+                // outs() << ds["Args"].size() << "\n";
+                f["DescriptorSets"].push_back(ds);
+            }
+
             data["MainFunctions"].push_back(f);
         }
+        data["TotalBuffersUsed"] = desc_count;
 
         data["UsePipelineCache"] = false;
         data["UseSpecConstWgSize"] = false;
@@ -192,6 +298,7 @@ namespace common_rewriter {
         data["IsMega"] = false;
         data["IsRTV"] = false;
         data["UniformUBO"] = false;
+        data["ContantUBO"] = true;
         data["ISV2"] = json::array();
         data["TextureMembers"] = json::array();
         data["GlobalUseInt64"] = false;
@@ -210,12 +317,12 @@ namespace common_rewriter {
         data["GlobalUse8BitStorage"] = false;
         data["GlobalUse16BitStorage"] = false;
 
-        data["TotalBuffersUsed"] = 95; // 17 * 5 // WHY????
+        // data["TotalBuffersUsed"] = 95; // 17 * 5 // WHY????
         data["TotalTexArrayUsed"] = 0;
         data["TotalTexCombinedUsed"] = 0;
         data["TotalTexStorageUsed"] = 0;
         data["TotalAccels"] = 0;
-        data["TotalDSNumber"] = 13; // WHY???
+        // data["TotalDSNumber"] = 13; // WHY???
 
         data["MainInclude"] = "D:/gml_private/VolumeRenderer/VolumeRenderer.h";
         data["GenGpuApi"] = false;
@@ -243,17 +350,6 @@ namespace common_rewriter {
             var["IsConst"] = false;
             var["Name"] = i->getNameAsString();
             data["ClassVars"].push_back(var);
-        }
-
-        data["ClassVectorVars"] = json::array();
-        for (auto i : buffer_fields) {
-            auto var = json::object();
-            var["Name"] = i->getNameAsString();
-            var["AccessSymb"] = ".";
-            var["IsVFHBuffer"] = false;
-            var["VFHLevel"] = 0;
-            var["TypeOfData"] = render_type_name(get_vector_specialization_type(i->getType()));
-            data["ClassVectorVars"].push_back(var);
         }
 
         data["SettersDecl"] = json::array();
@@ -300,13 +396,13 @@ namespace common_rewriter {
             std::ofstream out("class_slang_init.cpp");
             out << result << std::endl;
         }
-        // {
-        //     inja::Template t = env.parse_template("templates/vk_class_ds.cpp");
-        //     std::string result = env.render(t, data);
+        {
+            inja::Template t = env.parse_template("templates/vk_class_ds.cpp");
+            std::string result = env.render(t, data);
 
-        //     std::ofstream out("class_slang_ds.cpp");
-        //     out << result << std::endl;
-        // }
+            std::ofstream out("class_slang_ds.cpp");
+            out << result << std::endl;
+        }
     }
 
 } // namespace common_rewriter

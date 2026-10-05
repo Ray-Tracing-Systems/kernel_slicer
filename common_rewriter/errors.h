@@ -26,4 +26,6 @@ namespace common_rewriter {
 
     void error_function_without_definition(const FunctionDecl* function);
 
+    void error_invalid_for_loop_condition(const Expr* expr);
+
 } // namespace common_rewriter
