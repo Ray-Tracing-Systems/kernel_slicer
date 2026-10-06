@@ -9,9 +9,10 @@ clang::TypeDecl* kslicer::SplitContainerTypes(const clang::ClassTemplateSpeciali
   const auto& templateArgs = specDecl->getTemplateArgs();
 
   clang::TypeDecl* result = nullptr;
+  const unsigned dataArgId = (kslicer::IsHashMapContainer(a_containerType) && templateArgs.size() > 1) ? 1 : 0; // std::unordered_map<Key,X> ==> 'X'
   if(templateArgs.size() > 0)
   {
-    clang::QualType qt  = templateArgs[0].getAsType();
+    clang::QualType qt  = templateArgs[dataArgId].getAsType();
     a_containerDataType = qt.getAsString();
     auto pRecordType = qt->getAsStructureType();
     if(pRecordType != nullptr)
@@ -563,6 +564,13 @@ kslicer::DataMemberInfo kslicer::ExtractMemberInfo(clang::FieldDecl* fd, const c
     member.isContainer = true;
     auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl);
     member.pContainerDataTypeDeclIfRecord = kslicer::SplitContainerTypes(specDecl, member.containerType, member.containerDataType);
+    if(kslicer::IsHashMapContainer(member.containerType) && specDecl->getTemplateArgs().size() > 1)
+    {
+      const clang::QualType valueType = specDecl->getTemplateArgs()[1].getAsType();
+      member.containerKeyType   = specDecl->getTemplateArgs()[0].getAsType().getCanonicalType().getAsString();
+      member.containerDataSize  = astContext.getTypeSizeInChars(valueType).getQuantity();
+      member.containerDataAlign = kslicer::GetStd430Alignment(valueType, astContext);
+    }
   }
   else
   {

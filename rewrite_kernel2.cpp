@@ -541,6 +541,10 @@ bool kslicer::FunctionRewriter2::DetectAndRewriteShallowPattern(const clang::Stm
   else if(clang::isa<clang::CXXOperatorCallExpr>(expr)) 
   {
     const clang::CXXOperatorCallExpr* opCall = clang::dyn_cast<clang::CXXOperatorCallExpr>(expr);
+    if(opCall->getNumArgs() != 2)                 // unary operators, 'it->second' for example
+      return false;
+    if(kslicer::GetHashMapSubscript(opCall) != nullptr) // 'm_items[key]' needs full rewrite
+      return false;
     const clang::Expr* lhs = kslicer::RemoveImplicitCast(opCall->getArg(0));
     const clang::Expr* rhs = kslicer::RemoveImplicitCast(opCall->getArg(1));
     std::string opCode = clang::getOperatorSpelling(opCall->getOperator());

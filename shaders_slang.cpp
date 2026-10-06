@@ -255,6 +255,9 @@ bool kslicer::SlangRewriter::VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl
 
 bool kslicer::SlangRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)             
 {
+  if(RewriteHashMapIteratorAccess(expr)) // 'it->second' ==> 'm_items[it].val'
+    return true;
+
   if(m_kernelMode)
   {
     std::string originalText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
@@ -291,6 +294,9 @@ bool kslicer::SlangRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExp
         std::string fname              = dn.getAsString();
 
   std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler); 
+
+  if(RewriteHashMapMemberCall(call)) // 'm_items.find(key)' ==> 'hmap_m_items_find(key)'
+    return true;
 
   // Get name of "this" type; we should check wherther this member is std::vector<T>  
   //
@@ -752,6 +758,12 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
 
 bool kslicer::SlangRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
 { 
+  if(expr->isIncrementDecrementOp() && GetHashMapSubscript(expr->getSubExpr()) != nullptr) // 'm_hist[key]++' ==> 'InterlockedAdd(m_hist[...].val, uint(1))'
+  {
+    RewriteHashMapAtomicAdd(expr, expr->getSubExpr(), expr->isIncrementOp() ? "1" : "-1");
+    return true;
+  }
+
   if(m_kernelMode)
   {
     clang::Expr* subExpr = expr->getSubExpr();
@@ -836,6 +848,15 @@ static bool IsMatrixType(const std::string& a_typeName) // TODO: make it more 's
 
 bool kslicer::SlangRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr) 
 { 
+  if(RewriteHashMapSubscript(expr)) // 'm_items[key]' ==> 'm_items[hmap_m_items_insert(key)].val'
+    return true;
+  if(expr->getNumArgs() == 2 && GetHashMapSubscript(expr->getArg(0)) != nullptr && WasNotRewrittenYet(expr))
+  {
+    const std::string op = clang::getOperatorSpelling(expr->getOperator());
+    if(op != "=")
+      kslicer::PrintError("operator '" + op + "' for std::unordered_map value of class type is not supported in GPU code", expr->getSourceRange(), m_compiler.getSourceManager());
+  }
+
   if(m_kernelMode)
   {
     FunctionRewriter2::VisitCXXOperatorCallExpr_Impl(expr);
@@ -886,13 +907,14 @@ bool kslicer::SlangRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
   }
 
   const clang::Type::TypeClass typeClass = qt->getTypeClass();
-  const bool isAuto = (typeClass == clang::Type::Auto);
-  if(pValue != nullptr && WasNotRewrittenYet(pValue) && (NeedsVectorTypeRewrite(varType) || isAuto))
+  const bool isAuto       = (typeClass == clang::Type::Auto);
+  const bool isMapIterator = kslicer::IsHashMapIteratorType(qt); // std::unordered_map<...>::iterator ==> uint (slot index)
+  if(pValue != nullptr && WasNotRewrittenYet(pValue) && (NeedsVectorTypeRewrite(varType) || isAuto || isMapIterator))
   {
     std::string varName  = decl->getNameAsString();
     std::string varNameOld = varName;
     std::string varValue = RecursiveRewrite(pValue);
-    std::string varType2 = RewriteStdVectorTypeStr(varType, varName);
+    std::string varType2 = isMapIterator ? (qt.isConstQualified() ? "const uint" : "uint") : RewriteStdVectorTypeStr(varType, varName);
     
     std::string lastRewrittenText;
     if(varValue == "" || varNameOld == varValue) // 'float3 deviation;' for some reason !decl->hasInit() does not works
@@ -1002,6 +1024,19 @@ bool kslicer::SlangRewriter::VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExpr
 
 bool kslicer::SlangRewriter::VisitCompoundAssignOperator_Impl(clang::CompoundAssignOperator* expr) 
 { 
+  if(GetHashMapSubscript(expr->getLHS()) != nullptr && WasNotRewrittenYet(expr)) // 'm_hist[key] += 1' ==> 'InterlockedAdd(m_hist[...].val, uint(1))'
+  {
+    const std::string op = std::string(expr->getOpcodeStr());
+    if(op == "+=" || op == "-=")
+    {
+      const std::string rhsText = RecursiveRewrite(expr->getRHS());
+      RewriteHashMapAtomicAdd(expr, expr->getLHS(), (op == "+=") ? rhsText : "-(" + rhsText + ")");
+    }
+    else
+      kslicer::PrintError("operator '" + op + "' for std::unordered_map value is not supported in GPU code, only '+=' and '-=' (they become atomic)", expr->getSourceRange(), m_compiler.getSourceManager());
+    return true;
+  }
+
   if(m_kernelMode)
   {
     return FunctionRewriter2::VisitCompoundAssignOperator_Impl(expr);

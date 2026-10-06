@@ -481,7 +481,10 @@ namespace kslicer
 
     size_t      arraySize = 0;                         ///<! 'N' if data is declared as 'array[N]';
     std::string containerType;                         ///<! std::vector usually
-    std::string containerDataType;                     ///<! data type 'T' inside of std::vector<T>
+    std::string containerDataType;                     ///<! data type 'T' inside of std::vector<T>; 'X' for std::unordered_map<Key,X>
+    std::string containerKeyType;                      ///<! 'Key' for std::unordered_map<Key,X>
+    size_t      containerDataSize  = 0;                ///<! sizeof('X') for std::unordered_map<Key,X>
+    size_t      containerDataAlign = 0;                ///<! aligment of 'X' in std430 layout for std::unordered_map<Key,X>
     std::string intersectionClassName;                 ///<! used in the case of user intersection
 
     clang::TypeDecl* pTypeDeclIfRecord = nullptr;
@@ -986,6 +989,13 @@ namespace kslicer
     void Init();
     std::unordered_map<std::string, std::string> m_typesReplacement;
     std::unordered_map<std::string, std::string> m_funReplacements;
+
+    // std::unordered_map<Key,X> members, see hashmap.cpp
+    //
+    bool RewriteHashMapSubscript(clang::CXXOperatorCallExpr* expr);   ///<! 'm_items[key]'                     ==> 'm_items[hmap_m_items_insert(key)].val'
+    bool RewriteHashMapMemberCall(clang::CXXMemberCallExpr* call);    ///<! 'm_items.find(key)', 'm_items.end()' ==> 'hmap_m_items_find(key)', 'ubo[0].m_items_capacity'
+    bool RewriteHashMapIteratorAccess(clang::MemberExpr* expr);       ///<! 'it->second', 'it->first'          ==> 'm_items[it].val', 'm_items[it].key'
+    bool RewriteHashMapAtomicAdd(const clang::Expr* a_wholeExpr, const clang::Expr* a_lhs, const std::string& a_value); ///<! 'm_hist[key] += 1' ==> 'InterlockedAdd(m_hist[...].val, uint(1))'
   };
 
   class CudaRewriter : public FunctionRewriter2 ///!< BASE CLASS FOR ALL NEW BACKENDS
@@ -1803,11 +1813,26 @@ namespace kslicer
     bool atomicFloatEmul    = false; ///<! '-atomicf_emul 1': emulate float InterlockedAdd via CAS loop (Slang/Vulkan only), shaderBufferFloat32AtomicAdd is not required
     bool hasLocalContainers = false;
 
+    struct HashMapInfo
+    {
+      std::string name;          ///<! member name, 'm_items'
+      std::string keyType;       ///<! 'int' or 'uint'
+      std::string valueType;     ///<! clean type name of 'X' in std::unordered_map<Key,X>
+      std::string slotType;      ///<! 'HashMapSlot_m_items' == {X val; Key key; uint _pad[padWords]; }
+      std::string sentinel;      ///<! key value for empty slot
+      size_t      valueSize  = 0;
+      size_t      valueAlign = 4; ///<! aligment of 'X' in std430 layout
+      size_t      slotSize   = 0; ///<! == stride in buffer
+      size_t      padWords   = 0;
+    };
+    std::map<std::string, HashMapInfo> hashMaps; ///<! all hash maps used in kernels
+
     std::unordered_map<std::string, VFHHierarchy> m_vhierarchy;
     std::vector<BufferReference>                  m_allRefsFromVFH;
     bool IsVFHBuffer(const std::string& a_name, VFH_LEVEL* pOutLevel = nullptr, VFHHierarchy* pHierarchy = nullptr) const;
 
     std::unordered_set<std::string> ExtractTypesFromUsedContainers(const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls);
+    void ProcessHashMaps(const clang::ASTContext& a_astContext); ///<! ==> hashMaps; must be called after ProcessMemberTypesAligment
     void ProcessMemberTypes(const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls, clang::SourceManager& a_srcMgr,
                             std::vector<kslicer::DeclInClass>& generalDecls);
 
@@ -1865,6 +1890,15 @@ namespace kslicer
   bool IsAccelStruct(const std::string& a_typeName);
   bool IsVectorContainer(const std::string& a_typeName);
   bool IsPointerContainer(const std::string& a_typeName);
+  bool IsHashMapContainer(const std::string& a_typeName);  ///<! std::unordered_map<Key,X>, which becomes single GPU buffer of slots {X val; Key key;}
+
+  bool IsHashMapType(clang::QualType a_qt);                ///<! std::unordered_map<...>
+  bool IsHashMapIteratorType(clang::QualType a_qt);        ///<! std::unordered_map<...>::iterator or const_iterator
+  std::string HashMapSlotTypeName(const std::string& a_mapName);
+  std::string HashMapFuncName(const std::string& a_mapName, const std::string& a_func); ///<! 'hmap_m_items_insert' and e.t.c.
+  size_t      GetStd430Alignment(clang::QualType a_qt, const clang::ASTContext& a_astContext);
+  std::string GetHashMapNameFromExpr(const clang::Expr* a_expr);         ///<! 'this->m_items' or 'it' declared as 'auto it = m_items.find(...)' ==> "m_items"; "" if not a hash map
+  const clang::CXXOperatorCallExpr* GetHashMapSubscript(const clang::Expr* a_expr); ///<! 'm_items[key]' or 'm_items[key].val.x' ==> 'm_items[key]', nullptr if not a hash map
 
   clang::TypeDecl* SplitContainerTypes(const clang::ClassTemplateSpecializationDecl* specDecl, std::string& a_containerType, std::string& a_containerDataType);
   std::string GetDSArgName(const std::string& a_mainFuncName, const kslicer::ArgReferenceOnCall& a_arg, bool a_megakernel);

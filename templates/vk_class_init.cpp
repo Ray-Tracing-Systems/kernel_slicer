@@ -877,7 +877,8 @@ void {{MainClassName}}{{MainClassSuffix}}::InitBuffers(size_t a_maxThreadsCount,
 void {{MainClassName}}{{MainClassSuffix}}::ReserveEmptyVectors()
 {
   {% for Var in ClassVectorVars %}
-  {% if Var.AccessSymb == "." %}
+  {% if Var.IsHashMap %}
+  {% else if Var.AccessSymb == "." %}
   if({{Var.Name}}{{Var.AccessSymb}}capacity() == 0)
     {{Var.Name}}{{Var.AccessSymb}}reserve(4);
   {% else %}
@@ -1002,7 +1003,11 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
   all_references.resize(1); // need just single element to store all references
   {% endif %}
   {% for Var in ClassVectorVars %}
-  {% if Var.WithBuffRef %}
+  {% if Var.IsHashMap %}
+  m_vdata.{{Var.Name}}Capacity = kslicer_hmap_capacity({{Var.Name}}.bucket_count(), {{Var.Name}}.size()); // use reserve(...) on CPU to increase it
+  m_vdata.{{Var.Name}}Buffer   = vk_utils::createBuffer(m_device, (size_t(m_vdata.{{Var.Name}}Capacity) + 1)*sizeof({{Var.SlotType}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  memberVectors.push_back(m_vdata.{{Var.Name}}Buffer);
+  {% else if Var.WithBuffRef %}
   m_vdata.{{Var.Name}}Buffer = vk_utils::createBuffer(m_device, {{Var.Name}}{{Var.AccessSymb}}capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
   memberVectorsWithDevAddr.push_back(m_vdata.{{Var.Name}}Buffer);
   {% else %}

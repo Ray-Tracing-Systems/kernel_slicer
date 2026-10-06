@@ -5,6 +5,11 @@
 #include <string>
 #include <unordered_map>
 #include <array>
+{% if HasHashMaps %}
+#include <cstddef>
+#include <cstdint>
+#include <algorithm>
+{% endif %}
 
 #include "vk_pipeline.h"
 #include "vk_buffers.h"
@@ -65,6 +70,43 @@ typedef uint2    uvec2;
 typedef uint3    uvec3;
 typedef uint4    uvec4;
 #endif
+{% if HasHashMaps %}
+
+// std::unordered_map<Key,X> ==> buffer of slots {X val; Key key;}, open addressing with linear probing, capacity is power of 2;
+// slot layout must be the same as in shaders
+//
+static inline uint32_t kslicer_hmap_hash(uint32_t x) // murmur3 finalizer, the same as in shaders
+{
+  x ^= x >> 16; x *= 0x85ebca6bu;
+  x ^= x >> 13; x *= 0xc2b2ae35u;
+  x ^= x >> 16;
+  return x;
+}
+
+static inline uint32_t kslicer_hmap_capacity(size_t a_bucketCount, size_t a_size) // load factor <= 0.5 for reserved size
+{
+  const size_t minSize = 2*std::max(a_bucketCount, a_size);
+  size_t capacity = 16;
+  while(capacity < minSize)
+    capacity *= 2;
+  return uint32_t(capacity);
+}
+{% for Var in ClassVectorVars %}
+{% if Var.IsHashMap %}
+
+struct {{Var.SlotType}}
+{
+  {{Var.ValueType}} val;
+  {{Var.KeyType}} key;
+  {% if Var.PadWords > 0 %}
+  uint32_t _pad[{{Var.PadWords}}];
+  {% endif %}
+};
+static_assert(sizeof({{Var.SlotType}}) == {{Var.SlotSize}}, "{{Var.SlotType}}: slot size is different from std430 layout in shaders");
+static_assert(offsetof({{Var.SlotType}}, key) == sizeof({{Var.ValueType}}), "{{Var.SlotType}}: key offset is different from std430 layout in shaders");
+{% endif %}
+{% endfor %}
+{% endif %}
 
 struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data
 {
@@ -335,6 +377,9 @@ protected:
     {% for Vector in VectorMembers %}
     VkBuffer {{Vector.Name}}Buffer = VK_NULL_HANDLE;
     size_t   {{Vector.Name}}Offset = 0;
+    {% if Vector.IsHashMap %}
+    uint32_t {{Vector.Name}}Capacity = 0; ///<! number of slots in hash table (power of 2), buffer has one more garbage slot
+    {% endif %}
     {% if Vector.IsVFHBuffer and Vector.VFHLevel >= 2 %}
     VkBuffer {{Vector.Name}}_dataSBuffer = VK_NULL_HANDLE;
     size_t   {{Vector.Name}}_dataSOffset = 0;

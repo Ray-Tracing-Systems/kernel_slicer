@@ -103,6 +103,29 @@ complex operator/(float a, complex b)
 {{Decl.Text}}
 {% endif %}
 ## endfor
+{% if length(HashMaps) > 0 %}
+
+// std::unordered_map<Key,X> ==> buffer of slots {X val; Key key;}, open addressing with linear probing, capacity is power of 2
+//
+static inline uint kslicer_hmap_hash(uint x) // murmur3 finalizer
+{
+  x ^= x >> 16; x *= 0x85ebca6bu;
+  x ^= x >> 13; x *= 0xc2b2ae35u;
+  x ^= x >> 16;
+  return x;
+}
+{% for Map in HashMaps %}
+
+struct {{Map.SlotType}}
+{
+  {{Map.ValueType}} val;
+  {{Map.KeyType}} key;
+  {% if Map.PadWords > 0 %}
+  uint _pad[{{Map.PadWords}}];
+  {% endif %}
+};
+{% endfor %}
+{% endif %}
 
 {% include "inc_ubo.slang" %}
 

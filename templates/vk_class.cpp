@@ -57,8 +57,14 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdatePlainMembersInternal()
   {% endif %}
 ## endfor
 ## for Var in ClassVectorVars
+  {% if Var.IsHashMap %}
+  m_uboData.{{Var.Name}}_size     = uint32_t( {{Var.Name}}{{Var.AccessSymb}}size() ); 
+  m_uboData.{{Var.Name}}_capacity = m_vdata.{{Var.Name}}Capacity;
+  m_uboData.{{Var.Name}}_overflow = 0;
+  {% else %}
   m_uboData.{{Var.Name}}_size     = uint32_t( {{Var.Name}}{{Var.AccessSymb}}size() );     assert( {{Var.Name}}{{Var.AccessSymb}}size() < maxAllowedSize );
   m_uboData.{{Var.Name}}_capacity = uint32_t( {{Var.Name}}{{Var.AccessSymb}}capacity() ); assert( {{Var.Name}}{{Var.AccessSymb}}capacity() < maxAllowedSize );
+  {% endif %}
 ## endfor
 }
 
@@ -141,7 +147,13 @@ void {{MainClassName}}{{MainClassSuffix}}::ReadPlainMembers(std::shared_ptr<vk_u
   {% endif %} {#/* end of if not var.IsConst */#}
   {% endfor %}
   {% for Var in ClassVectorVars %}
+  {% if Var.IsHashMap %}
+  if(m_uboData.{{Var.Name}}_overflow != 0)
+    std::cout << "[{{MainClassName}}{{MainClassSuffix}}]: warning, GPU hash table '{{Var.Name}}' is full, " << m_uboData.{{Var.Name}}_overflow 
+              << " insertions were lost; capacity = " << m_uboData.{{Var.Name}}_capacity << ", use {{Var.Name}}.reserve(...) before CommitDeviceData()" << std::endl;
+  {% else %}
   {{Var.Name}}{{Var.AccessSymb}}resize(m_uboData.{{Var.Name}}_size);
+  {% endif %}
   {% endfor %}
 }
 {% endif %}
@@ -172,6 +184,28 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateVectorMembers(std::shared_ptr<v
       if(odata.size() != 0)
         a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}_dataSBuffer, offset, odata.data(), odata.size());
     }
+  }
+  {% else if Var.IsHashMap %}
+  {
+    // all slots are empty (including the last, garbage one), then insert CPU data the same way as shaders do
+    //
+    const uint32_t mask = m_vdata.{{Var.Name}}Capacity - 1;
+    std::vector<{{Var.SlotType}}> slots(size_t(m_vdata.{{Var.Name}}Capacity) + 1);
+    for(auto& slot : slots)
+    {
+      slot     = {{Var.SlotType}}{};
+      slot.key = {{Var.Sentinel}};
+    }
+    for(const auto& keyVal : {{Var.Name}})
+    {
+      assert(keyVal.first != {{Var.Sentinel}}); // this key value is reserved for empty slots
+      uint32_t slotId = kslicer_hmap_hash(uint32_t(keyVal.first)) & mask;
+      while(slots[slotId].key != {{Var.Sentinel}})
+        slotId = (slotId + 1) & mask;
+      slots[slotId].val = keyVal.second;
+      slots[slotId].key = keyVal.first;
+    }
+    a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}Buffer, 0, slots.data(), slots.size()*sizeof({{Var.SlotType}}));
   }
   {% else %}
   if({{Var.Name}}{{Var.AccessSymb}}size() > 0)

@@ -592,6 +592,25 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   data["WGPUMode"]           = a_classInfo.pShaderCC->IsWGPU();
   data["AtomicFloatEmul"]    = a_classInfo.atomicFloatEmul;
 
+  auto hashMapToJson = [&](const kslicer::MainClassInfo::HashMapInfo& a_map) {
+    json local;
+    local["Name"]      = a_map.name;
+    local["KeyType"]   = a_map.keyType;
+    local["ValueType"] = pShaderRewriter->RewriteStdVectorTypeStr(a_map.valueType);
+    local["SlotType"]  = a_map.slotType;
+    local["Sentinel"]  = a_map.sentinel;
+    local["PadWords"]  = a_map.padWords;
+    local["Size"]      = a_classInfo.pShaderCC->UBOAccess(a_map.name + "_size");
+    local["Capacity"]  = a_classInfo.pShaderCC->UBOAccess(a_map.name + "_capacity");
+    local["Overflow"]  = a_classInfo.pShaderCC->UBOAccess(a_map.name + "_overflow");
+    local["FindFunc"]  = kslicer::HashMapFuncName(a_map.name, "find");
+    local["InsertFunc"]= kslicer::HashMapFuncName(a_map.name, "insert");
+    return local;
+  };
+  data["HashMaps"] = std::vector<json>();
+  for(const auto& map : a_classInfo.hashMaps)
+    data["HashMaps"].push_back(hashMapToJson(map.second));
+
   data["VectorBufferRefs"] = std::vector<json>();
   for(const auto& v : a_classInfo.dataMembers)
   {
@@ -793,6 +812,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     //
     bool usedCombinedImageSamplers = false;
     json rtxNames = std::vector<json>();
+    json kernelHashMaps = std::vector<json>();
     for(const auto& container : k.usedContainers)
     {
       if(container.second.bindWithRef) // do not pass it to shader via descriptor set because we pass it with separate buffer reference
@@ -819,6 +839,12 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
       std::string buffType1 = a_classInfo.pShaderCC->ProcessBufferType(pVecMember->second.containerDataType);
       std::string buffType2 = pShaderRewriter->RewriteStdVectorTypeStr(buffType1);
+      auto pHashMap = a_classInfo.hashMaps.find(pVecMember->second.name);
+      if(pHashMap != a_classInfo.hashMaps.end())        // std::unordered_map<Key,X> ==> buffer of slots {X val; Key key;}
+      {
+        buffType2 = pHashMap->second.slotType;
+        kernelHashMaps.push_back(hashMapToJson(pHashMap->second));
+      }
       if(a_classInfo.pShaderCC->BuffersAsPointersInShaders())
         buffType2 += "*";
 
@@ -1062,6 +1088,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["LastArgNF"]    = VArgsSize; // Last Argument No Flags
     kernelJson["LastArgAll"]   = allArgs.size() - 1;
     kernelJson["Args"]         = args;
+    kernelJson["HashMaps"]     = kernelHashMaps;
     kernelJson["UserArgs"]     = userArgs;
     kernelJson["OriginalArgs"] = allArgs;
     kernelJson["Name"]         = k.name;

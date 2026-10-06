@@ -18,6 +18,57 @@ layout (constant_id = {{KSpec.Id}}) const int {{KSpec.Name}} = {{KSpec.Id}}; //
 {% endif %} {# /* not Arg.IsUBO */ #}
 {% endfor %}
 {% if Kernel.UseCombinedImageSampler %}[[vk::binding({{length(Kernel.Args)}}, 0)]] {% endif %}{%if not Kernel.ContantUBO%}RW{% endif %}StructuredBuffer<{{MainClassName}}{{MainClassSuffix}}_UBO_Data> ubo;
+{% for Map in Kernel.HashMaps %}
+
+// std::unordered_map '{{Map.Name}}': returns slot index of 'a_key' or capacity (index of the last, garbage slot) if 'a_key' is absent
+//
+uint {{Map.FindFunc}}({{Map.KeyType}} a_key)
+{
+  const uint capacity = {{Map.Capacity}};
+  uint slot = kslicer_hmap_hash(asuint(a_key)) & (capacity - 1);
+  for(uint probe = 0; probe < capacity; probe++)
+  {
+    const {{Map.KeyType}} key = {{Map.Name}}[slot].key;
+    if(key == a_key)
+      return slot;
+    if(key == {{Map.Sentinel}})
+      break;
+    slot = (slot + 1) & (capacity - 1);
+  }
+  return capacity;
+}
+
+// std::unordered_map '{{Map.Name}}': inserts 'a_key' if it is absent and returns its slot index;
+// returns capacity (index of the last, garbage slot) if table is full
+//
+uint {{Map.InsertFunc}}({{Map.KeyType}} a_key)
+{
+  const uint capacity = {{Map.Capacity}};
+  uint slot = kslicer_hmap_hash(asuint(a_key)) & (capacity - 1);
+  for(uint probe = 0; probe < capacity; probe++)
+  {
+    {{Map.KeyType}} prev = {{Map.Name}}[slot].key;
+    if(prev == {{Map.Sentinel}})
+    {
+      InterlockedCompareExchange({{Map.Name}}[slot].key, {{Map.Sentinel}}, a_key, prev);
+      if(prev == {{Map.Sentinel}})
+      {
+        {% if not Kernel.ContantUBO %}
+        InterlockedAdd({{Map.Size}}, 1u);
+        {% endif %}
+        return slot;
+      }
+    }
+    if(prev == a_key)
+      return slot;
+    slot = (slot + 1) & (capacity - 1);
+  }
+  {% if not Kernel.ContantUBO %}
+  InterlockedAdd({{Map.Overflow}}, 1u); // table is full, use reserve(...) on CPU to increase it
+  {% endif %}
+  return capacity;
+}
+{% endfor %}
 
 {% for Array in Kernel.ThreadLocalArrays %}
 static {{Array.Type}} {{Array.Name}}[{{Array.Size}}];

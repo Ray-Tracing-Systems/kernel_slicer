@@ -8,6 +8,7 @@ set(KSLICER_SOURCE_FILES
     kslicer_main.cpp
     kslicer_utils.cpp
     kslicer_warnings.cpp
+    hashmap.cpp
     kslicer_def.cpp
     attributes.cpp
     block_expansion.cpp
