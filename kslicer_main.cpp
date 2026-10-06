@@ -255,8 +255,12 @@ int main(int argc, const char **argv)
   if(params.find("-warpSize") != params.end())
     warpSize = atoi(params["-warpSize"].c_str());
 
+  int subgroupOption = -1;                                  // -1: not set, optimizations which are always correct are enabled if device supports subgroups
   if(params.find("-enableSubgroup") != params.end())
-    enableSubGroupOps = atoi(params["-enableSubgroup"].c_str());
+  {
+    subgroupOption    = atoi(params["-enableSubgroup"].c_str());
+    enableSubGroupOps = (subgroupOption != 0);
+  }
 
   if(params.find("-halfTex") != params.end())
     halfFloatTextures = (params["-halfTex"] == "1");
@@ -512,6 +516,11 @@ int main(int argc, const char **argv)
       std::cout << "[kslicer]: WARNING, '-atomicf_emul 1' is implemented for '-shaderCC slang' only and will be ignored" << std::endl;
       inputCodeInfo.atomicFloatEmul = false;
     }
+  }
+
+  {
+    const bool slangVulkan = (shaderCCName == "slang" || shaderCCName == "SLANG" || shaderCCName == "Slang");
+    inputCodeInfo.hashMapSubgroups = slangVulkan && (subgroupOption != 0) && (textGenSettings.vulkan_ver >= 11); // subgroup operations are core in Vulkan 1.1
   }
 
   inputCodeInfo.halfFloatTextures    = halfFloatTextures;

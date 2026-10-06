@@ -68,6 +68,58 @@ uint {{Map.InsertFunc}}({{Map.KeyType}} a_key)
   {% endif %}
   return capacity;
 }
+{% for Func in HashMapAddFuncs %}
+{% if Func.MapName == Map.Name %}
+
+// '{{Map.Name}}[a_key]{{Func.Path}} += a_value' with aggregation inside subgroup: one insertion and one atomic per different key
+//
+void {{Func.Name}}({{Map.KeyType}} a_key, {{Func.ValueType}} a_value)
+{
+  // (1) group lanes by key for several iterations, only subgroup operations here
+  //
+  bool grouped = false, isLeader = false;
+  {{Func.ValueType}} sum = {{Func.ValueType}}(0);
+  for(uint iter = 0; iter < 4; iter++)
+  {
+    const {{Map.KeyType}} leader = WaveReadLaneFirst(a_key);
+    const bool match = (a_key == leader);
+    const {{Func.ValueType}} groupSum = WaveActiveSum(match ? a_value : {{Func.ValueType}}(0));
+    if(match)
+    {
+      grouped  = true;
+      isLeader = WaveIsFirstLane();
+      sum      = groupSum;
+      break;
+    }
+  }
+  
+  // (2) few different keys in subgroup: leaders insert and add in parallel
+  //
+  if(grouped)
+  {
+    if(isLeader)
+      {{Func.AtomicFunc}}({{Map.Name}}[{{Map.InsertFunc}}(a_key)]{{Func.Path}}, sum);
+    return;
+  }
+
+  // (3) many different keys: all lanes insert in parallel, then group by slot
+  //
+  const uint slot = {{Map.InsertFunc}}(a_key);
+  for(;;)
+  {
+    const uint leader = WaveReadLaneFirst(slot);
+    const bool match  = (slot == leader);
+    const {{Func.ValueType}} groupSum = WaveActiveSum(match ? a_value : {{Func.ValueType}}(0));
+    if(match)
+    {
+      if(WaveIsFirstLane())
+        {{Func.AtomicFunc}}({{Map.Name}}[slot]{{Func.Path}}, groupSum);
+      break;
+    }
+  }
+}
+{% endif %}
+{% endfor %}
 {% endfor %}
 
 {% for Array in Kernel.ThreadLocalArrays %}

@@ -131,6 +131,13 @@ void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, 
     std::cout << " --> this class  'subgroupSize' = " << {{SubGroupSize}} << std::endl;
   }
   {% endif %}
+  {% if HashMapSubgroups %}
+  {
+    const VkSubgroupFeatureFlags required = VK_SUBGROUP_FEATURE_BASIC_BIT | VK_SUBGROUP_FEATURE_BALLOT_BIT | VK_SUBGROUP_FEATURE_ARITHMETIC_BIT;
+    if((m_ctx.subgroupProps.supportedOperations & required) != required || (m_ctx.subgroupProps.supportedStages & VK_SHADER_STAGE_COMPUTE_BIT) == 0)
+      std::cout << "ALERT! class '{{MainClassName}}{{MainClassSuffix}}' aggregates updates of hash tables with subgroup operations, but seems your device does not support them; translate it with '-enableSubgroup 0'" << std::endl;
+  }
+  {% endif %}
 }
 
 static uint32_t ComputeReductionAuxBufferElements(uint32_t whole_size, uint32_t wg_size)

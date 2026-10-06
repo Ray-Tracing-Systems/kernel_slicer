@@ -1827,6 +1827,17 @@ namespace kslicer
     };
     std::map<std::string, HashMapInfo> hashMaps; ///<! all hash maps used in kernels
 
+    struct HashMapAddFunc       ///<! 'm_items[key].val.x += value' with subgroup aggregation ==> 'hmap_m_items_add_val_x(key, value)'
+    {
+      std::string name;
+      std::string mapName;
+      std::string path;         ///<! '.val.x'
+      std::string valueType;    ///<! 'int', 'uint' or 'float'
+      std::string atomicFunc;   ///<! 'InterlockedAdd' or 'InterlockedAddEmul1f'
+    };
+    std::map<std::string, HashMapAddFunc> hashMapAddFuncs;
+    bool hashMapSubgroups = false; ///<! aggregate atomic updates of hash map values inside subgroup, needs Vulkan 1.1; '-enableSubgroup 0' disables it
+
     std::unordered_map<std::string, VFHHierarchy> m_vhierarchy;
     std::vector<BufferReference>                  m_allRefsFromVFH;
     bool IsVFHBuffer(const std::string& a_name, VFH_LEVEL* pOutLevel = nullptr, VFHHierarchy* pHierarchy = nullptr) const;

@@ -1267,6 +1267,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   }
   
   data["UseSubGroups"]  = useSubgroups;
+  data["HashMapSubgroups"] = a_classInfo.hashMapSubgroups && !a_classInfo.hashMaps.empty();
   data["SubGroupSize"]  = subgroupMaxSize;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

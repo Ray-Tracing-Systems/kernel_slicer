@@ -1606,6 +1606,18 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   for(const auto& pair : allUsedMemberFunctions)
     data["AllMemberFunctions"].push_back(pair.second);
 
+  data["HashMapAddFuncs"] = std::vector<json>(); // filled during rewriting of kernels and functions, so we put it at the end
+  for(const auto& func : a_classInfo.hashMapAddFuncs)
+  {
+    json local;
+    local["Name"]       = func.second.name;
+    local["MapName"]    = func.second.mapName;
+    local["Path"]       = func.second.path;
+    local["ValueType"]  = func.second.valueType;
+    local["AtomicFunc"] = func.second.atomicFunc;
+    data["HashMapAddFuncs"].push_back(local);
+  }
+
   return data;
 }
 
