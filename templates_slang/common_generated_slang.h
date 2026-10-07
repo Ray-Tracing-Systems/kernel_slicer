@@ -308,6 +308,60 @@ void InterlockedAddEmul1f(__ref float mem, float data)
   InterlockedAddEmul1f(mem, data, oldVal);
 }
 
+{% if AtomicFloatEmulMode == 2 %}
+// '-atomicf_emul 2': float atomic add via CAS on 'uint' view of the same buffer ('a_out_asUint'), declared at the same binding
+// by kernel_slicer; 'a_word' is index of 32 bit word in buffer: no pointer casts and no atomics on 'float' in SPIR-V.
+// 'a_res' gets the old value, the same as in LiteMath::InterlockedAdd.
+//
+[ForceInline]
+void InterlockedAddEmul1fU(RWStructuredBuffer<uint> pMemU, uint a_word, float data, out float a_res)
+{
+  uint expected = pMemU[a_word];
+  for(;;)
+  {
+    uint original;
+    InterlockedCompareExchange(pMemU[a_word], expected, asuint(asfloat(expected) + data), original);
+    if(original == expected)
+      break;
+    expected = original;
+  }
+  a_res = asfloat(expected);
+}
+
+[ForceInline]
+void InterlockedAddEmul1fU(RWStructuredBuffer<uint> pMemU, uint a_word, float data)
+{
+  float oldVal;
+  InterlockedAddEmul1fU(pMemU, a_word, data, oldVal);
+}
+
+// LiteMath::InterlockedAdd3f: each channel is atomic separately, not the whole triple.
+// 'pMemU' is 'uint' view of the float buffer, declared at the same binding by kernel_slicer ('out_color_asUint'),
+// so CAS is ordinary 'InterlockedCompareExchange' on 'uint': no pointer casts and no atomics on 'float' in SPIR-V.
+// One loop for all 3 channels: CAS for channels which are not done yet are issued one after another
+// without waiting for each other, so their memory latencies overlap (unlike 3 separate CAS loops).
+//
+[ForceInline]
+void InterlockedAdd3f(RWStructuredBuffer<uint> pMemU, int offset, float3 data)
+{
+  uint3 expected = uint3(pMemU[offset+0], pMemU[offset+1], pMemU[offset+2]);
+  bool3 done     = bool3(data.x == 0.0f, data.y == 0.0f, data.z == 0.0f); // adding zero does not change memory
+  while(!all(done))
+  {
+    [unroll]
+    for(int k = 0; k < 3; k++)
+    {
+      if(!done[k])
+      {
+        uint original;
+        InterlockedCompareExchange(pMemU[offset+k], expected[k], asuint(asfloat(expected[k]) + data[k]), original);
+        done[k]     = (original == expected[k]);
+        expected[k] = original;
+      }
+    }
+  }
+}
+{% else %}
 // LiteMath::InterlockedAdd3f: each channel is atomic separately, not the whole triple.
 // One loop for all 3 channels: CAS for channels which are not done yet are issued one after another
 // without waiting for each other, so their memory latencies overlap (unlike 3 separate CAS loops).
@@ -331,6 +385,7 @@ void InterlockedAdd3f(RWStructuredBuffer<float> pMem, int offset, float3 data)
     }
   }
 }
+{% endif %}
 {% else if not WGPUMode %}
 // LiteMath::InterlockedAdd3f: each channel is atomic separately, not the whole triple (hardware float atomics)
 //

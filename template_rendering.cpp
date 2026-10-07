@@ -591,6 +591,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   data["UsePersistentThreads"] = a_classInfo.persistentRTV;
   data["WGPUMode"]           = a_classInfo.pShaderCC->IsWGPU();
   data["AtomicFloatEmul"]    = a_classInfo.atomicFloatEmul;
+  data["AtomicFloatEmulMode"]= a_classInfo.atomicFloatEmulMode;
 
   auto hashMapToJson = [&](const kslicer::MainClassInfo::HashMapInfo& a_map) {
     json local;
@@ -1087,6 +1088,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["LastArgNF1"]   = VArgsSize + MArgsSize;
     kernelJson["LastArgNF"]    = VArgsSize; // Last Argument No Flags
     kernelJson["LastArgAll"]   = allArgs.size() - 1;
+    for(auto& argj : args) // float buffers used by emulated float atomics ('-atomicf_emul 1') are also declared as 'uint' at the same binding
+    {
+      const bool isBuffer = !argj["IsUBO"].get<bool>() && !argj["IsImage"].get<bool>() && !argj["IsAccelStruct"].get<bool>();
+      argj["NeedUintAlias"] = isBuffer && (a_classInfo.uintAliasBuffers.find(argj["Name"].get<std::string>()) != a_classInfo.uintAliasBuffers.end());
+    }
     kernelJson["Args"]         = args;
     kernelJson["HashMaps"]     = kernelHashMaps;
     kernelJson["UserArgs"]     = userArgs;
@@ -1615,6 +1621,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     local["Path"]       = func.second.path;
     local["ValueType"]  = func.second.valueType;
     local["AtomicFunc"] = func.second.atomicFunc;
+    local["ViaUintAlias"] = func.second.viaUintAlias;
+    local["SlotWords"]    = func.second.slotWords;
+    local["WordOffset"]   = func.second.wordOffset;
     data["HashMapAddFuncs"].push_back(local);
   }
 

@@ -509,12 +509,14 @@ int main(int argc, const char **argv)
 
   if(params.find("-atomicf_emul") != params.end())
   {
-    inputCodeInfo.atomicFloatEmul = (atoi(params["-atomicf_emul"].c_str()) != 0);
+    inputCodeInfo.atomicFloatEmulMode = atoi(params["-atomicf_emul"].c_str());
+    inputCodeInfo.atomicFloatEmul     = (inputCodeInfo.atomicFloatEmulMode != 0);
     const bool slangVulkan = (shaderCCName == "slang" || shaderCCName == "SLANG" || shaderCCName == "Slang");
     if(inputCodeInfo.atomicFloatEmul && !slangVulkan)
     {
       std::cout << "[kslicer]: WARNING, '-atomicf_emul 1' is implemented for '-shaderCC slang' only and will be ignored" << std::endl;
-      inputCodeInfo.atomicFloatEmul = false;
+      inputCodeInfo.atomicFloatEmul     = false;
+      inputCodeInfo.atomicFloatEmulMode = 0;
     }
   }
 

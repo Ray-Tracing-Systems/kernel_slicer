@@ -1,5 +1,6 @@
 #include "kslicer.h"
 #include "template_rendering.h"
+#include "clang/AST/RecordLayout.h"
 
 #ifdef _WIN32
   #include <sys/types.h>
@@ -503,6 +504,19 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
   const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);
   const std::string fname = fDecl->getNameInfo().getName().getAsString();
 
+  if(fname == "InterlockedAdd3f" && m_codeInfo->atomicFloatEmulMode == 2 && call->getNumArgs() == 3 && WasNotRewrittenYet(call))
+  {
+    // CAS is done on 'uint' view of the same buffer ('out_color_asUint'), declared at the same binding:
+    // no pointer casts and no atomics on 'float' in SPIR-V
+    //
+    const std::string bufferName = RecursiveRewrite(call->getArg(0));
+    m_codeInfo->uintAliasBuffers.insert(bufferName);
+    const std::string text = "InterlockedAdd3f(" + bufferName + "_asUint, " + RecursiveRewrite(call->getArg(1)) + ", " + RecursiveRewrite(call->getArg(2)) + ")";
+    ReplaceTextOrWorkAround(call->getSourceRange(), text);
+    MarkRewritten(call);
+    return true;
+  }
+
   if((fname == "as_int32" || fname == "as_int") && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
   {
     const std::string text = RecursiveRewrite(call->getArg(0));
@@ -576,7 +590,13 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
       suffix = "U";
     else if(typeName == "int" || typeName == "int32_t")
       suffix = "I";
-    const std::string rewrittenText = "ReduceAdd" + suffix + "(" + argText0 + ", uint(" + argText1 + "), " + argText2 + ", a_localTID.x)";
+    std::string bufferText = argText0;
+    if(suffix == "F" && m_codeInfo->atomicFloatEmulMode == 2) // CAS on 'uint' view of the same buffer
+    {
+      m_codeInfo->uintAliasBuffers.insert(argText0);
+      bufferText = argText0 + "_asUint";
+    }
+    const std::string rewrittenText = "ReduceAdd" + suffix + "(" + bufferText + ", uint(" + argText1 + "), " + argText2 + ", a_localTID.x)";
 
     if(m_pCurrKernel != nullptr)
     {
@@ -731,7 +751,22 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     auto pFoundSmth = m_funReplacements.find(fname);
     if(isAtomicAdd && m_codeInfo->atomicFloatEmul && call->getNumArgs() >= 2 && call->getArg(1)->getType().getAsString() == "float" && WasNotRewrittenYet(call))
     {
-      std::string lastRewrittenText = "InterlockedAddEmul1f(" + CompleteFunctionCallRewrite(call);
+      std::string bufferName, wordIndex;
+      std::string lastRewrittenText;
+      if(m_codeInfo->atomicFloatEmulMode == 2 && GetUintAliasWord(call->getArg(0), bufferName, wordIndex)) // CAS on 'uint' view of the same buffer
+      {
+        m_codeInfo->uintAliasBuffers.insert(bufferName);
+        lastRewrittenText = "InterlockedAddEmul1fU(" + bufferName + "_asUint, " + wordIndex + ", " + RecursiveRewrite(call->getArg(1));
+        if(call->getNumArgs() >= 3)
+          lastRewrittenText += ", " + RecursiveRewrite(call->getArg(2));
+        lastRewrittenText += ")";
+      }
+      else
+      {
+        if(m_codeInfo->atomicFloatEmulMode == 2)
+          kslicer::PrintWarning("'-atomicf_emul 2' supports only elements of buffers ('a_out[i]', 'm_vec[i].field'); 'spirv_asm' implementation of '-atomicf_emul 1' is used here", call->getSourceRange(), m_compiler.getSourceManager());
+        lastRewrittenText = "InterlockedAddEmul1f(" + CompleteFunctionCallRewrite(call);
+      }
       ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
       MarkRewritten(call);
     }
@@ -1320,6 +1355,7 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
     }
 
     buildSH << "slangc " << outFileName.c_str() << targetString.c_str() << kernelName.c_str() << targetSuffix.c_str() << " -I.. ";
+    buildSH << "-warnings-disable 39001 "; // several variables at the same binding on purpose: combined image samplers, '-atomicf_emul 2'
     for(auto folder : ignoreFolders)
       buildSH << "-I" << folder.u8string().c_str() << " ";
     if(a_settings.auxShaderCCOptions != "")
@@ -1342,7 +1378,7 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
       outFileName = kernelName + "_UpdateIndirect.slang";
       outFilePath = shaderPath / outFileName;
       kslicer::ApplyJsonToTemplate(templatePathUpdInd.c_str(), outFilePath, currKerneJson);
-      buildSH << "slangc " << outFileName.c_str() << targetString.c_str() << kernelName.c_str() << "_UpdateIndirect" << targetSuffix.c_str() << " -I.. ";
+      buildSH << "slangc " << outFileName.c_str() << targetString.c_str() << kernelName.c_str() << "_UpdateIndirect" << targetSuffix.c_str() << " -I.. -warnings-disable 39001 ";
       for(auto folder : ignoreFolders)
        buildSH << "-I" << folder.u8string().c_str() << " ";
       buildSH << std::endl;
@@ -1353,7 +1389,7 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
       outFileName = kernelName + "_Reduction.slang";
       outFilePath = shaderPath / outFileName;
       kslicer::ApplyJsonToTemplate(templatePathRedFin.c_str(), outFilePath, currKerneJson);
-      buildSH << "slangc " << outFileName.c_str() << targetString.c_str() << kernelName.c_str() << "_Reduction" << targetSuffix.c_str() << " -I.. ";
+      buildSH << "slangc " << outFileName.c_str() << targetString.c_str() << kernelName.c_str() << "_Reduction" << targetSuffix.c_str() << " -I.. -warnings-disable 39001 ";
       for(auto folder : ignoreFolders)
        buildSH << "-I" << folder.u8string().c_str() << " ";
       buildSH << std::endl;
@@ -1364,7 +1400,7 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
   {
     nlohmann::json dummy;
     kslicer::ApplyJsonToTemplate(templatesFolder / "z_memcpy.slang", shaderPath / "z_memcpy.slang", dummy); // just file copy actually
-    buildSH << "slangc z_memcpy.slang -o z_memcpy.comp.spv" << std::endl;
+    buildSH << "slangc z_memcpy.slang -o z_memcpy.comp.spv -warnings-disable 39001" << std::endl;
   }
 
   kslicer::WriteShaderBuildScript(shaderPath / scriptName, buildSH.str(), a_settings.mtShaderCompile);
@@ -1435,3 +1471,71 @@ std::string kslicer::SlangCompiler::RTVGetFakeOffsetExpression(const kslicer::Ke
   else
     return "a_globalTID.x";
 } 
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const clang::Expr* kslicer::GetMemberPathOffset(const clang::Expr* a_expr, const clang::ASTContext& a_astContext, uint64_t& a_offsetInBytes, bool& a_ok)
+{
+  a_offsetInBytes = 0;
+  a_ok            = true;
+  const clang::Expr* expr = a_expr->IgnoreParenImpCasts();
+  while(auto memberExpr = clang::dyn_cast<clang::MemberExpr>(expr))  // 'x[i].vel.x', including anonymous structs and unions inside LiteMath types
+  {
+    auto fieldDecl = clang::dyn_cast<clang::FieldDecl>(memberExpr->getMemberDecl());
+    if(fieldDecl == nullptr || memberExpr->isArrow())
+    {
+      a_ok = false;
+      return expr;
+    }
+    const clang::ASTRecordLayout& layout = a_astContext.getASTRecordLayout(fieldDecl->getParent());
+    a_offsetInBytes += layout.getFieldOffset(fieldDecl->getFieldIndex()) / 8;
+    expr = memberExpr->getBase()->IgnoreParenImpCasts();
+  }
+  return expr;
+}
+
+bool kslicer::SlangRewriter::GetUintAliasWord(const clang::Expr* a_lvalue, std::string& a_bufferName, std::string& a_wordIndex)
+{
+  const clang::ASTContext& astContext = m_compiler.getASTContext();
+
+  uint64_t offset = 0;
+  bool     pathOk = true;
+  const clang::Expr* base = kslicer::GetMemberPathOffset(a_lvalue, astContext, offset, pathOk);
+  if(!pathOk)
+    return false;
+
+  const clang::Expr* bufferExpr = nullptr;
+  const clang::Expr* indexExpr  = nullptr;
+  if(auto arrayExpr = clang::dyn_cast<clang::ArraySubscriptExpr>(base))        // 'a_out[i]', 'a_out' is a pointer argument
+  {
+    bufferExpr = arrayExpr->getBase()->IgnoreParenImpCasts();
+    indexExpr  = arrayExpr->getIdx();
+    if(!clang::isa<clang::DeclRefExpr>(bufferExpr) && !clang::isa<clang::MemberExpr>(bufferExpr))
+      return false;
+  }
+  else if(auto opCall = clang::dyn_cast<clang::CXXOperatorCallExpr>(base))     // 'm_vec[i]', 'm_vec' is std::vector member
+  {
+    if(opCall->getOperator() != clang::OO_Subscript || opCall->getNumArgs() != 2 || kslicer::GetHashMapSubscript(opCall) != nullptr)
+      return false;
+    bufferExpr = opCall->getArg(0)->IgnoreParenImpCasts();
+    indexExpr  = opCall->getArg(1);
+    if(!clang::isa<clang::MemberExpr>(bufferExpr))
+      return false;
+  }
+  else
+    return false;
+
+  const clang::QualType elemType = base->getType().getNonReferenceType();
+  const uint64_t elemSize = astContext.getTypeSizeInChars(elemType).getQuantity();
+  if(elemSize == 0 || elemSize % 4 != 0 || offset % 4 != 0)
+    return false;
+
+  a_bufferName = RecursiveRewrite(bufferExpr);
+  a_wordIndex  = "uint(" + RecursiveRewrite(indexExpr) + ")";
+  if(elemSize != 4)
+    a_wordIndex += "*" + std::to_string(elemSize/4);
+  if(offset != 0)
+    a_wordIndex += " + " + std::to_string(offset/4);
+  return true;
+}

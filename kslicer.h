@@ -996,6 +996,10 @@ namespace kslicer
     bool RewriteHashMapMemberCall(clang::CXXMemberCallExpr* call);    ///<! 'm_items.find(key)', 'm_items.end()' ==> 'hmap_m_items_find(key)', 'ubo[0].m_items_capacity'
     bool RewriteHashMapIteratorAccess(clang::MemberExpr* expr);       ///<! 'it->second', 'it->first'          ==> 'm_items[it].val', 'm_items[it].key'
     bool RewriteHashMapAtomicAdd(const clang::Expr* a_wholeExpr, const clang::Expr* a_lhs, const std::string& a_value); ///<! 'm_hist[key] += 1' ==> 'InterlockedAdd(m_hist[...].val, uint(1))'
+
+    // '-atomicf_emul 2': float atomics via CAS on 'uint' view of the same buffer ('a_out_asUint')
+    //
+    bool GetUintAliasWord(const clang::Expr* a_lvalue, std::string& a_bufferName, std::string& a_wordIndex); ///<! 'm_vec[i].vel.x' ==> 'm_vec', '(i)*8 + 4'
   };
 
   class CudaRewriter : public FunctionRewriter2 ///!< BASE CLASS FOR ALL NEW BACKENDS
@@ -1810,7 +1814,9 @@ namespace kslicer
     bool forceAllBufToRefs  = false;
     bool placeVectorsInUBO  = false;
     bool shitIsAlwaysConst  = false;
-    bool atomicFloatEmul    = false; ///<! '-atomicf_emul 1': emulate float InterlockedAdd via CAS loop (Slang/Vulkan only), shaderBufferFloat32AtomicAdd is not required
+    bool atomicFloatEmul    = false; ///<! '-atomicf_emul 1|2': emulate float InterlockedAdd via CAS loop (Slang/Vulkan only), shaderBufferFloat32AtomicAdd is not required
+    int  atomicFloatEmulMode = 0;    ///<! 1: CAS via pointer cast in 'spirv_asm'; 2: CAS on 'uint' view of the same buffer, declared at the same binding
+    std::unordered_set<std::string> uintAliasBuffers; ///<! float buffers which are also declared as 'uint' at the same binding for CAS (float atomics emulation)
     bool hasLocalContainers = false;
 
     struct HashMapInfo
@@ -1834,6 +1840,9 @@ namespace kslicer
       std::string path;         ///<! '.val.x'
       std::string valueType;    ///<! 'int', 'uint' or 'float'
       std::string atomicFunc;   ///<! 'InterlockedAdd' or 'InterlockedAddEmul1f'
+      bool        viaUintAlias = false; ///<! '-atomicf_emul 2': 'InterlockedAddEmul1fU(m_items_asUint, slot*slotWords + wordOffset, value)'
+      uint32_t    slotWords    = 0;
+      uint32_t    wordOffset   = 0;
     };
     std::map<std::string, HashMapAddFunc> hashMapAddFuncs;
     bool hashMapSubgroups = false; ///<! aggregate atomic updates of hash map values inside subgroup, needs Vulkan 1.1; '-enableSubgroup 0' disables it
@@ -1908,6 +1917,7 @@ namespace kslicer
   std::string HashMapSlotTypeName(const std::string& a_mapName);
   std::string HashMapFuncName(const std::string& a_mapName, const std::string& a_func); ///<! 'hmap_m_items_insert' and e.t.c.
   size_t      GetStd430Alignment(clang::QualType a_qt, const clang::ASTContext& a_astContext);
+  const clang::Expr* GetMemberPathOffset(const clang::Expr* a_expr, const clang::ASTContext& a_astContext, uint64_t& a_offsetInBytes, bool& a_ok); ///<! 'x[i].vel.x' ==> 'x[i]', offset of '.vel.x' in bytes
   std::string GetHashMapNameFromExpr(const clang::Expr* a_expr);         ///<! 'this->m_items' or 'it' declared as 'auto it = m_items.find(...)' ==> "m_items"; "" if not a hash map
   const clang::CXXOperatorCallExpr* GetHashMapSubscript(const clang::Expr* a_expr); ///<! 'm_items[key]' or 'm_items[key].val.x' ==> 'm_items[key]', nullptr if not a hash map
 

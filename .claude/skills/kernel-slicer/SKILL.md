@@ -143,10 +143,24 @@ protected:
   translator ignores it.
 - Small fixed-size local arrays; mark large ones `[[threadlocal]] float tmp[64];`.
 - Structs of POD fields, constants via `constexpr` / `static constexpr` / `#define`.
-- Atomics: `LiteMath::InterlockedAdd(a_out[idx], value)` for `int`/`uint`/`float`.
-  Float `InterlockedAdd` needs `shaderBufferFloat32AtomicAdd` on the GPU; for devices without it
-  translate with `-atomicf_emul 1` (Slang only): the call becomes a CAS loop `InterlockedAddEmul1f`
-  and the feature is not requested (`apps/tests/042_atomic_add_float/kmake_emul.json`).
+- Atomics: `LiteMath::InterlockedAdd(a_out[idx], value)` for `int`/`uint`/`float`, and
+  `LiteMath::InterlockedAdd3f(a_out, offset, float3)` (each channel atomic separately).
+  Float atomics need `shaderBufferFloat32AtomicAdd` on the GPU (absent, for example, on AMD RDNA2
+  with RADV). For portable code emulate them with a CAS loop via `-atomicf_emul` (Slang only):
+
+  | Value | Implementation | Use |
+  |-------|----------------|-----|
+  | `0` (default) | hardware float atomics, the feature is requested | only if every target GPU has it |
+  | `2` | CAS on a `uint` view of the same buffer (`a_out_asUint`, declared at the same binding) | **recommended default for emulation** |
+  | `1` | CAS through a pointer cast in `spirv_asm` | legacy, avoid |
+
+  Prefer `"-atomicf_emul" : 2`. Mode `1` produces valid SPIR-V, but its pointer cast is unusual for
+  drivers: `vkCreateComputePipelines` crashed on NVIDIA (driver 580) for a large megakernel that
+  works on AMD. Mode `2` emits only ordinary `InterlockedCompareExchange` on `uint`, the same pattern
+  Slang uses for `RWByteAddressBuffer`. It covers `InterlockedAdd(a_out[i], v)`,
+  `InterlockedAdd(m_vec[i].field, v)`, `InterlockedAdd3f`, `ReduceAdd<float>` and `+=` on float values
+  of `std::unordered_map`. Any other float atomic target falls back to mode `1` with a translator
+  warning. Configs: `apps/tests/042_atomic_add_float/kmake_{hw,emul,emul2}.json`.
 
 **Forbidden inside kernels and helpers**
 - Calling another kernel; recursion; virtual calls (except the special advanced samples).
@@ -259,6 +273,8 @@ Always pass `-shaderCC slang`. It is the current back end; `glsl` is legacy (its
 - [ ] `std::` math calls exist in `TINYSTL/cmath` (no `std::fabs`, `std::fmin`, `std::fmax`).
 - [ ] `kmake.json`, if any, sets `wgSize` only for named kernels, never a 2D size under `"default"`.
 - [ ] No class member or kernel argument written directly inside a `std::` call in GPU code.
+- [ ] Float atomics (`InterlockedAdd` on float, `InterlockedAdd3f`, `ReduceAdd<float>`): `"-atomicf_emul" : 2`
+      unless every target GPU has `shaderBufferFloat32AtomicAdd`; never mode `1` in new code.
 - [ ] kslicer log has no `error:`; `build_slang.sh` compiled every shader; `--compare` passes.
 
 Common mistakes with corrected versions: [references/pitfalls.md](references/pitfalls.md).
@@ -280,7 +296,7 @@ Files with `_generated`, `_gpu`, `_ispc` suffixes and `shaders_*` folders are tr
 | RTV path tracer | `apps/02_spheresStupidPt`, `apps/03_spheresStupidPt_loopBreak`, `apps/07_simple_pt` |
 | Same algorithm in IPV and RTV side by side | `apps/tests/051_saxpy_ipv_rtv` |
 | Reductions (min/max/sum), bounding box | `apps/tests/003_reduction`, `apps/tests/004_setter` |
-| Atomics, `ReduceAdd` | `apps/tests/041_atomic_add_int`, `042_atomic_add_float`, `045_reduce_add` |
+| Atomics, `ReduceAdd`, float atomics emulation (`kmake_hw/emul/emul2.json`) | `apps/tests/041_atomic_add_int`, `042_atomic_add_float`, `045_reduce_add`, `054_random_add` |
 | Scan and sort service calls | `apps/tests/023_prefix_summ`, `apps/tests/025_sort_v1` |
 | `[[threadlocal]]` arrays | `apps/tests/033_threadlocal_array_v1` |
 | `[[kslicer::setter]]` | `apps/tests/004_setter` |

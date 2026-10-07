@@ -13,7 +13,10 @@ layout (constant_id = {{KSpec.Id}}) const int {{KSpec.Name}} = {{KSpec.Id}}; //
 {% else if Arg.IsAccelStruct %}
 {% if Kernel.UseCombinedImageSampler %}[[vk::binding({{loop.index}}, 0)]] {% endif %}RaytracingAccelerationStructure {{Arg.Name}};
 {% else %}
-{% if Kernel.UseCombinedImageSampler %}[[vk::binding({{loop.index}}, 0)]] {% endif %}{%if not Arg.IsConst%}RW{% endif %}StructuredBuffer<{{Arg.Type}}> {{Arg.Name}}; // 
+{% if Kernel.UseCombinedImageSampler or Arg.NeedUintAlias %}[[vk::binding({{loop.index}}, 0)]] {% endif %}{%if not Arg.IsConst%}RW{% endif %}StructuredBuffer<{{Arg.Type}}> {{Arg.Name}}; // 
+{% if Arg.NeedUintAlias %}
+[[vk::binding({{loop.index}}, 0)]] RWStructuredBuffer<uint> {{Arg.Name}}_asUint; // the same buffer viewed as 'uint' for CAS in float atomics emulation
+{% endif %}
 {% endif %} {# /* Arg.IsImage */ #}
 {% endif %} {# /* not Arg.IsUBO */ #}
 {% endfor %}
@@ -98,7 +101,11 @@ void {{Func.Name}}({{Map.KeyType}} a_key, {{Func.ValueType}} a_value)
   if(grouped)
   {
     if(isLeader)
+    {% if Func.ViaUintAlias %}
+      InterlockedAddEmul1fU({{Map.Name}}_asUint, {{Map.InsertFunc}}(a_key)*{{Func.SlotWords}} + {{Func.WordOffset}}, sum);
+    {% else %}
       {{Func.AtomicFunc}}({{Map.Name}}[{{Map.InsertFunc}}(a_key)]{{Func.Path}}, sum);
+    {% endif %}
     return;
   }
 
@@ -113,7 +120,11 @@ void {{Func.Name}}({{Map.KeyType}} a_key, {{Func.ValueType}} a_value)
     if(match)
     {
       if(WaveIsFirstLane())
+      {% if Func.ViaUintAlias %}
+        InterlockedAddEmul1fU({{Map.Name}}_asUint, slot*{{Func.SlotWords}} + {{Func.WordOffset}}, groupSum);
+      {% else %}
         {{Func.AtomicFunc}}({{Map.Name}}[slot]{{Func.Path}}, groupSum);
+      {% endif %}
       break;
     }
   }

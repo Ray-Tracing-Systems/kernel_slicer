@@ -325,6 +325,31 @@ bool kslicer::SlangRewriter::RewriteHashMapAtomicAdd(const clang::Expr* a_wholeE
       m_codeInfo->globalShaderFeatures.useFloatAtomicAdd = true;
   }
 
+  // '-atomicf_emul 2': CAS on 'uint' view of the slot buffer ('m_sum_asUint'), word index = slot*slotWords + offset of the field inside 'X'
+  //
+  const clang::CXXOperatorCallExpr* subscript = GetHashMapSubscript(a_lhs);
+  const std::string mapName = GetHashMapNameFromExpr(subscript->getArg(0));
+  bool     viaUintAlias = (slangType == "float" && m_codeInfo->atomicFloatEmulMode == 2);
+  uint32_t slotWords = 0, wordOffset = 0;
+  if(viaUintAlias)
+  {
+    uint64_t offsetInBytes = 0;
+    bool     pathOk        = true;
+    kslicer::GetMemberPathOffset(a_lhs, m_compiler.getASTContext(), offsetInBytes, pathOk); // 'val' has zero offset in slot
+    auto pMap = m_codeInfo->hashMaps.find(mapName);
+    if(pathOk && pMap != m_codeInfo->hashMaps.end() && offsetInBytes % 4 == 0)
+    {
+      slotWords  = uint32_t(pMap->second.slotSize/4);
+      wordOffset = uint32_t(offsetInBytes/4);
+      m_codeInfo->uintAliasBuffers.insert(mapName);
+    }
+    else
+    {
+      viaUintAlias = false;
+      kslicer::PrintWarning("can't apply '-atomicf_emul 2' to this hash map value, 'spirv_asm' implementation of '-atomicf_emul 1' is used here", a_wholeExpr->getSourceRange(), m_compiler.getSourceManager());
+    }
+  }
+
   if(m_codeInfo->hashMapSubgroups) // aggregate updates of the same key inside subgroup: 'hmap_m_hist_add(key, value)'
   {
     std::string path = "";            // 'm_items[key].val.x' ==> '.x'
@@ -336,21 +361,31 @@ bool kslicer::SlangRewriter::RewriteHashMapAtomicAdd(const clang::Expr* a_wholeE
         path = "." + name + path;
       expr = memberExpr->getBase()->IgnoreParenImpCasts();
     }
-    const clang::CXXOperatorCallExpr* subscript = GetHashMapSubscript(a_lhs);
-    const std::string mapName = GetHashMapNameFromExpr(subscript->getArg(0));
     const std::string keyText = RecursiveRewrite(subscript->getArg(1));
 
     MainClassInfo::HashMapAddFunc addFunc;
-    addFunc.mapName    = mapName;
-    addFunc.path       = ".val" + path;
-    addFunc.valueType  = slangType;
-    addFunc.atomicFunc = func;
+    addFunc.mapName      = mapName;
+    addFunc.path         = ".val" + path;
+    addFunc.valueType    = slangType;
+    addFunc.atomicFunc   = func;
+    addFunc.viaUintAlias = viaUintAlias;
+    addFunc.slotWords    = slotWords;
+    addFunc.wordOffset   = wordOffset;
     addFunc.name       = HashMapFuncName(mapName, "add");
     for(char c : path)
       addFunc.name += (c == '.') ? '_' : c;
     m_codeInfo->hashMapAddFuncs[addFunc.name] = addFunc;
 
     ReplaceTextOrWorkAround(a_wholeExpr->getSourceRange(), addFunc.name + "(" + keyText + ", " + slangType + "(" + a_value + "))");
+    MarkRewritten(a_wholeExpr);
+    return true;
+  }
+
+  if(viaUintAlias)
+  {
+    const std::string keyText   = RecursiveRewrite(subscript->getArg(1));
+    const std::string wordIndex = HashMapFuncName(mapName, "insert") + "(" + keyText + ")*" + std::to_string(slotWords) + " + " + std::to_string(wordOffset);
+    ReplaceTextOrWorkAround(a_wholeExpr->getSourceRange(), "InterlockedAddEmul1fU(" + mapName + "_asUint, " + wordIndex + ", float(" + a_value + "))");
     MarkRewritten(a_wholeExpr);
     return true;
   }
