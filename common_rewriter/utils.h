@@ -18,19 +18,19 @@ namespace common_rewriter {
     std::string string_from_source_range(SourceRange range);
     const NamedDecl* find_global_declaration(std::string name);
 
-    template <typename T, typename U>
-    bool contains(const std::vector<T>& v, const U& value) {
-        for (const auto& i : v)
-            if (i == value)
-                return true;
-        return false;
-    }
+    // template <typename T, typename U>
+    // bool contains(const std::vector<T>& v, const U& value) {
+    //     for (const auto& i : v)
+    //         if (i == value)
+    //             return true;
+    //     return false;
+    // }
 
-    template <typename T, typename U>
-    void push_back_unique(std::vector<T>& v, const U& value) {
-        if (!contains(v, value))
-            v.push_back(value);
-    }
+    // template <typename T, typename U>
+    // void push_back_unique(std::vector<T>& v, const U& value) {
+    //     if (!contains(v, value))
+    //         v.push_back(value);
+    // }
 
     // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c
     bool starts_with(std::string_view str, std::string_view prefix);

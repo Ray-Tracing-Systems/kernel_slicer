@@ -404,8 +404,11 @@ namespace common_rewriter {
     }
 
     void rewrite_class(std::string main_class_name) {
-        discover_class(main_class_name);
-        codegen();
+        // discover_class(main_class_name);
+        // codegen();
+        ClassInfo info(dyn_cast<CXXRecordDecl>(find_global_declaration(main_class_name)));
+        info.dump();
+        codegen(info);
     }
 
     std::string slang_operators = R"(

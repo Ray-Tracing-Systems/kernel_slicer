@@ -1,8 +1,9 @@
 #pragma once
-#include <inja.hpp>
+#include "class_info.h"
+
 
 namespace common_rewriter {
 
-    void codegen();
+    void codegen(const ClassInfo& info);
 
 }
