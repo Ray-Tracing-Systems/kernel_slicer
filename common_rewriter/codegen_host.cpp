@@ -1,6 +1,7 @@
 #include "codegen_host.h"
 // #include "class.h"
 #include "class_info.h"
+#include "codegen.h"
 #include "utils.h"
 #include <clang/AST/AST.h>
 #include <inja.hpp>
@@ -165,7 +166,10 @@ namespace common_rewriter {
             out["MainFuncDeclCmd"] = out["Decl"];
             out["InOutVars"] = in_outs;
             out["OverrideMe"] = true;
-            out["MainFuncTextCmd"] = "CODE_IS_HERE();";
+
+            ControlFunctionCodegen codegen(info, i.decl, descriptor_sets_count);
+            codegen.render_statement(i.decl->getBody(), 0);
+            out["MainFuncTextCmd"] = codegen.buffer;
 
             out["FullImpl"] = json::object();
             out["FullImpl"]["InputData"] = json::array();
@@ -180,7 +184,7 @@ namespace common_rewriter {
                     var["DataSize"] = "width * height";
                     var["DataType"] = render_type_name(p->getType()->getPointeeType());
                     out["FullImpl"]["OutputData"].push_back(var);
-                    in_out += p->getNameAsString() + "Buffer" + ", 0, ";
+                    in_out += p->getNameAsString() + "GPU" + ", 0, ";
                 }
             }
             out["FullImpl"]["ArgsOnSetInOut"] = in_out + "0";
@@ -197,20 +201,20 @@ namespace common_rewriter {
 
             out["DescriptorSets"] = json::array();
 
-            for (auto kernel : i.kernel_calls) {
-
+            for (auto call_expr : i.kernel_calls) {
+                const KernelInfo* kernel = info.get_kernel(call_expr->getMethodDecl());
                 auto ds = json::object();
                 ds["Id"] = descriptor_sets_count++;
-                ds["KernelName"] = kernel->getNameAsString();
+                ds["KernelName"] = kernel->decl->getNameAsString();
                 ds["ArgNames"] = "ARG_NAMES()";
                 ds["IsServiceCall"] = false;
                 ds["IsVirtual"] = false;
-                ds["ArgNumber"] = info.get_kernel(kernel)->bindings.size();
-                ds["Layout"] = kernel->getNameAsString();
+                ds["ArgNumber"] = kernel->bindings.size();
+                ds["Layout"] = kernel->decl->getNameAsString();
                 ds["Args"] = json::array();
 
                 size_t index = 0;
-                for (auto binding : info.get_kernel(kernel)->bindings) {
+                for (auto binding : kernel->bindings) {
                     auto arg = json::object();
                     arg["IsTexture"] = false;
                     arg["IsTextureArray"] = false;

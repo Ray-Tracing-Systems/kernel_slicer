@@ -9,6 +9,8 @@ TabWidth: 4
 UseTab: Never
 ColumnLimit: 120
 
+AccessModifierOffset: -4
+
 # # Braces
 BreakBeforeBraces: Attach
 Cpp11BracedListStyle: true

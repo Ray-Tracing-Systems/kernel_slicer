@@ -15,7 +15,7 @@ namespace common_rewriter {
 
     struct ControlFunctionInfo {
         const CXXMethodDecl* decl = nullptr;
-        std::vector<const CXXMethodDecl*> kernel_calls;
+        std::vector<const CXXMemberCallExpr*> kernel_calls;
         std::string body;
     };
 
@@ -33,7 +33,7 @@ namespace common_rewriter {
         std::vector<const FieldDecl*> used_uniform_fields;
         std::vector<const FieldDecl*> used_buffer_fields;
 
-      private:
+    private:
         void add_kernel(const CXXMethodDecl* decl);
         void add_control_function(const CXXMethodDecl* decl);
     };

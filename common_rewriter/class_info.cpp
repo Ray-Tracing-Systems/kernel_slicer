@@ -109,8 +109,8 @@ namespace common_rewriter {
         ControlFunctionInfo info{decl};
 
         traverse_this_method_calls(decl->getBody(), [&](const CXXMemberCallExpr* expr) {
-            if (auto kernel = get_kernel(expr->getMethodDecl())) {
-                info.kernel_calls.push_back(kernel->decl);
+            if (get_kernel(expr->getMethodDecl())) {
+                info.kernel_calls.push_back(expr);
             }
         });
 
