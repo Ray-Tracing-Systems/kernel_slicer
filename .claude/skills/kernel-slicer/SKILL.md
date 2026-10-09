@@ -109,8 +109,7 @@ protected:
    temporary buffer becomes a member vector, sized in the constructor or a setter, and is
    passed to kernels as `m_vec.data()`.
 4. The body is a sequence of kernel calls, optionally inside plain `for` loops (iterations,
-   ping-pong steps) with scalar arithmetic on arguments. Timing with `std::chrono` around the
-   calls is allowed and conventional.
+   ping-pong steps) with scalar arithmetic on arguments, and time measurement (rule 9).
 5. Allowed service calls between kernels: `memcpy(dst, src, bytes)`,
    `std::exclusive_scan` / `std::inclusive_scan`, `std::sort`. They are replaced by GPU
    implementations.
@@ -121,6 +120,35 @@ protected:
    calls requires another commit.
 8. Scalar class members written by kernels (e.g. a reduction result) are read back to the CPU
    after the control function returns, so host code can read `pImpl->m_summ`.
+9. **Measure time, never print it.** A control function (and an RTV `...Block` function) stores
+   the measured time in a class member; `GetExecutionTime(name, t)` returns it by function name,
+   and the **host** prints it. The generated class overrides control functions, `...Block`
+   functions and `GetExecutionTime` with its own Vulkan code, so a `std::cout` inside a control
+   function is either dropped or prints a CPU-side time of almost zero for the GPU version, while
+   the generated `GetExecutionTime` returns the real GPU time for the same name.
+
+   ```cpp
+   void MyAlgo::Run(int w, int h, const float4* a_in, uint32_t* a_out)
+   {
+     auto start = std::chrono::high_resolution_clock::now();
+     kernel2D_Stage1(w, h, a_in, m_tmp.data());
+     kernel2D_Stage2(w, h, m_tmp.data(), a_out);
+     m_timeRun = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start).count()/1000.f;
+   }
+
+   void MyAlgo::GetExecutionTime(const char* a_funcName, float a_out[4]) // one member per control function
+   {
+     a_out[0] = a_out[1] = a_out[2] = a_out[3] = 0.0f;                    // [exec, copy to GPU, copy from GPU, overhead] in ms
+     if(std::string(a_funcName) == "Run" || std::string(a_funcName) == "RunBlock")
+       a_out[0] = m_timeRun;
+   }
+
+   // host code, works the same for the CPU class and the generated GPU class
+   pImpl->Run(w, h, in.data(), out.data());
+   float t[4];
+   pImpl->GetExecutionTime("Run", t);
+   std::cout << "Run(exec) = " << t[0] << " ms, Run(copy) = " << t[1] + t[2] << " ms" << std::endl;
+   ```
 
 ## Step 4. Kernel and helper code rules
 
@@ -269,6 +297,8 @@ Always pass `-shaderCC slang`. It is the current back end; `glsl` is legacy (its
       sized before `CommitDeviceData()`.
 - [ ] Only LiteMath vector types; `using LiteMath::...` for each one used.
 - [ ] `CommitDeviceData()` and `GetExecutionTime()` are declared virtual in the class.
+- [ ] Control and `...Block` functions store their time in members returned by `GetExecutionTime`
+      by function name; nothing is printed inside them, timings are printed by the host.
 - [ ] No I/O, exceptions, allocation, recursion or pointer members in GPU-side code.
 - [ ] `std::` math calls exist in `TINYSTL/cmath` (no `std::fabs`, `std::fmin`, `std::fmax`).
 - [ ] `kmake.json`, if any, sets `wgSize` only for named kernels, never a 2D size under `"default"`.

@@ -243,3 +243,36 @@ or a float value of `std::unordered_map`. For other targets the translator print
 mode `1` there. Check the log after translation, and if needed `spirv-dis *.spv | grep "OpBitcast %ptrUint"`
 (must be empty in mode `2`).
 
+
+## 19. Printing time inside a control function
+
+```cpp
+// WRONG: the generated GPU class overrides this function; the message disappears or shows ~0 ms
+void C::Render(int w, int h, uint32_t* a_out)
+{
+  auto start = std::chrono::high_resolution_clock::now();
+  kernel2D_Render(w, h, a_out);
+  const float timeMs = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start).count()/1000.f;
+  std::cout << "[Render]: finished for " << timeMs << " ms" << std::endl;
+}
+
+// RIGHT: store the time in a member, return it by name, print it on the host
+void C::Render(int w, int h, uint32_t* a_out)
+{
+  auto start = std::chrono::high_resolution_clock::now();
+  kernel2D_Render(w, h, a_out);
+  m_timeRender = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start).count()/1000.f;
+}
+void C::GetExecutionTime(const char* a_funcName, float a_out[4])
+{
+  a_out[0] = a_out[1] = a_out[2] = a_out[3] = 0.0f;
+  if(std::string(a_funcName) == "Render" || std::string(a_funcName) == "RenderBlock")
+    a_out[0] = m_timeRender;
+}
+// host
+float t[4];
+pImpl->GetExecutionTime("Render", t);
+std::cout << "Render(exec) = " << t[0] << " ms" << std::endl;
+```
+
+The same applies to RTV `...Block` functions: they are overridden as well.
