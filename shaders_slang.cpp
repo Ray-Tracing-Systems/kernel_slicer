@@ -504,7 +504,7 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
   const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);
   const std::string fname = fDecl->getNameInfo().getName().getAsString();
 
-  if(fname == "InterlockedAdd3f" && m_codeInfo->atomicFloatEmulMode == 2 && call->getNumArgs() == 3 && WasNotRewrittenYet(call))
+  if(fname == "InterlockedAdd3f" && m_codeInfo->atomicFloatEmul && call->getNumArgs() == 3 && WasNotRewrittenYet(call))
   {
     // CAS is done on 'uint' view of the same buffer ('out_color_asUint'), declared at the same binding:
     // no pointer casts and no atomics on 'float' in SPIR-V
@@ -591,7 +591,7 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     else if(typeName == "int" || typeName == "int32_t")
       suffix = "I";
     std::string bufferText = argText0;
-    if(suffix == "F" && m_codeInfo->atomicFloatEmulMode == 2) // CAS on 'uint' view of the same buffer
+    if(suffix == "F" && m_codeInfo->atomicFloatEmul) // CAS on 'uint' view of the same buffer
     {
       m_codeInfo->uintAliasBuffers.insert(argText0);
       bufferText = argText0 + "_asUint";
@@ -753,7 +753,7 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     {
       std::string bufferName, wordIndex;
       std::string lastRewrittenText;
-      if(m_codeInfo->atomicFloatEmulMode == 2 && GetUintAliasWord(call->getArg(0), bufferName, wordIndex)) // CAS on 'uint' view of the same buffer
+      if(GetUintAliasWord(call->getArg(0), bufferName, wordIndex)) // CAS on 'uint' view of the same buffer
       {
         m_codeInfo->uintAliasBuffers.insert(bufferName);
         lastRewrittenText = "InterlockedAddEmul1fU(" + bufferName + "_asUint, " + wordIndex + ", " + RecursiveRewrite(call->getArg(1));
@@ -763,9 +763,9 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
       }
       else
       {
-        if(m_codeInfo->atomicFloatEmulMode == 2)
-          kslicer::PrintWarning("'-atomicf_emul 2' supports only elements of buffers ('a_out[i]', 'm_vec[i].field'); 'spirv_asm' implementation of '-atomicf_emul 1' is used here", call->getSourceRange(), m_compiler.getSourceManager());
-        lastRewrittenText = "InterlockedAddEmul1f(" + CompleteFunctionCallRewrite(call);
+        kslicer::PrintWarning("'-atomicf_emul' supports only elements of buffers ('a_out[i]', 'm_vec[i].field'); hardware float atomics are used here (shaderBufferFloat32AtomicAdd is required)", call->getSourceRange(), m_compiler.getSourceManager());
+        m_codeInfo->globalShaderFeatures.useFloatAtomicAdd = true;
+        lastRewrittenText = "InterlockedAdd(" + CompleteFunctionCallRewrite(call);
       }
       ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
       MarkRewritten(call);
@@ -1309,7 +1309,8 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
   std::filesystem::path templatesFolder("templates_slang");
   kslicer::ApplyJsonToTemplate(templatesFolder / "common_generated_slang.h", shaderPath / headerCommon, a_kernelsJson);
 
-  const std::filesystem::path templatePath       = templatesFolder / (a_codeInfo->megakernelRTV ? "generated_mega.slang" : "generated.slang");
+  const std::filesystem::path templatePathMega   = templatesFolder / "generated_mega.slang"; // only for megakernels of RTV control functions ("-megakernel 1"); IPV kernels always use usual template
+  const std::filesystem::path templatePathUsual  = templatesFolder / "generated.slang";
   const std::filesystem::path templatePathUpdInd = templatesFolder / "update_indirect.slang";
   const std::filesystem::path templatePathRedFin = templatesFolder / "reduction_finish.slang";
   
@@ -1339,6 +1340,8 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
 
     std::string outFileName           = kernelName + ".slang";
     std::filesystem::path outFilePath = shaderPath / outFileName;
+    const bool isMega = a_codeInfo->megakernelsByName.find(kernelName) != a_codeInfo->megakernelsByName.end(); // RTV control function joined to megakernel
+    const std::filesystem::path templatePath = isMega ? templatePathMega : templatePathUsual;
     kslicer::ApplyJsonToTemplate(templatePath.c_str(), outFilePath, currKerneJson);
     
     std::string targetString;

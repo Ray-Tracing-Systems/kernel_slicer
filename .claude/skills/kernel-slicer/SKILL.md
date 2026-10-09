@@ -179,16 +179,15 @@ protected:
   | Value | Implementation | Use |
   |-------|----------------|-----|
   | `0` (default) | hardware float atomics, the feature is requested | only if every target GPU has it |
-  | `2` | CAS on a `uint` view of the same buffer (`a_out_asUint`, declared at the same binding) | **recommended default for emulation** |
-  | `1` | CAS through a pointer cast in `spirv_asm` | legacy, avoid |
+  | `1` or `2` (same) | CAS on a `uint` view of the same buffer (`a_out_asUint`, declared at the same binding) | portable code |
 
-  Prefer `"-atomicf_emul" : 2`. Mode `1` produces valid SPIR-V, but its pointer cast is unusual for
-  drivers: `vkCreateComputePipelines` crashed on NVIDIA (driver 580) for a large megakernel that
-  works on AMD. Mode `2` emits only ordinary `InterlockedCompareExchange` on `uint`, the same pattern
-  Slang uses for `RWByteAddressBuffer`. It covers `InterlockedAdd(a_out[i], v)`,
+  `1` and `2` generate identical code (the former `spirv_asm` pointer-cast implementation of `1`
+  was removed: it crashed `vkCreateComputePipelines` on NVIDIA). The emulation emits only ordinary
+  `InterlockedCompareExchange` on `uint`. It covers `InterlockedAdd(a_out[i], v)`,
   `InterlockedAdd(m_vec[i].field, v)`, `InterlockedAdd3f`, `ReduceAdd<float>` and `+=` on float values
-  of `std::unordered_map`. Any other float atomic target falls back to mode `1` with a translator
-  warning. Configs: `apps/tests/042_atomic_add_float/kmake_{hw,emul,emul2}.json`.
+  of `std::unordered_map`. Any other float atomic target gets a translator warning and uses hardware
+  float atomics there (`shaderBufferFloat32AtomicAdd` is then requested). Configs:
+  `apps/tests/042_atomic_add_float/kmake_{hw,emul,emul2}.json`.
 
 **Forbidden inside kernels and helpers**
 - Calling another kernel; recursion; virtual calls (except the special advanced samples).
@@ -304,7 +303,8 @@ Always pass `-shaderCC slang`. It is the current back end; `glsl` is legacy (its
 - [ ] `kmake.json`, if any, sets `wgSize` only for named kernels, never a 2D size under `"default"`.
 - [ ] No class member or kernel argument written directly inside a `std::` call in GPU code.
 - [ ] Float atomics (`InterlockedAdd` on float, `InterlockedAdd3f`, `ReduceAdd<float>`): `"-atomicf_emul" : 2`
-      unless every target GPU has `shaderBufferFloat32AtomicAdd`; never mode `1` in new code.
+      (or `1`, the same) unless every target GPU has `shaderBufferFloat32AtomicAdd`; no translator warning
+      about a float atomic target falling back to hardware atomics.
 - [ ] kslicer log has no `error:`; `build_slang.sh` compiled every shader; `--compare` passes.
 
 Common mistakes with corrected versions: [references/pitfalls.md](references/pitfalls.md).

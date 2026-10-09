@@ -214,7 +214,7 @@ The same call without `std::` (`pow(x, a_p)`) is translated correctly, but on th
 unqualified `abs`/`max` may pick the wrong overload, so local copies are the safer fix.
 The reduction statement `m_max = std::max(m_max, v);` is handled by a separate path and works.
 
-## 18. Float atomics: hardware feature missing or driver crash with `-atomicf_emul 1`
+## 18. Float atomics: hardware feature missing
 
 Float `InterlockedAdd`, `InterlockedAdd3f` and `ReduceAdd<float>` request
 `shaderBufferFloat32AtomicAdd`. Without it the application fails at start with
@@ -223,13 +223,11 @@ Float `InterlockedAdd`, `InterlockedAdd3f` and `ReduceAdd<float>` request
 ```jsonc
 // WRONG: hardware float atomics only, does not start on GPUs without the feature
 "-atomicf_emul" : 0,
-// WRONG: legacy emulation, pointer cast in spirv_asm; vkCreateComputePipelines crashed on NVIDIA
-"-atomicf_emul" : 1,
-// RIGHT: CAS on 'uint' view of the same buffer, works everywhere
+// RIGHT: CAS on 'uint' view of the same buffer, works everywhere ('1' is the same as '2')
 "-atomicf_emul" : 2,
 ```
 
-Mode `2` generates
+Modes `1` and `2` generate
 
 ```slang
 [[vk::binding(0, 0)]] RWStructuredBuffer<float> a_out;
@@ -240,8 +238,9 @@ InterlockedAddEmul1fU(a_out_asUint, uint(i), val);             // was Interlocke
 
 The target of the atomic must be an element of a buffer: `a_out[i]`, `m_vec[i]`, `m_vec[i].field`,
 or a float value of `std::unordered_map`. For other targets the translator prints a warning and uses
-mode `1` there. Check the log after translation, and if needed `spirv-dis *.spv | grep "OpBitcast %ptrUint"`
-(must be empty in mode `2`).
+hardware float atomics there, which again need `shaderBufferFloat32AtomicAdd`: check the log after
+translation. Pointer arithmetic such as `InterlockedAdd(*(a_out + i), v)` is not translated by the
+Slang back end at all; write `a_out[i]`.
 
 
 ## 19. Printing time inside a control function

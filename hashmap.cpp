@@ -316,20 +316,15 @@ bool kslicer::SlangRewriter::RewriteHashMapAtomicAdd(const clang::Expr* a_wholeE
     return false;
   }
 
-  std::string func = "InterlockedAdd";
-  if(slangType == "float")
-  {
-    if(m_codeInfo->atomicFloatEmul)
-      func = "InterlockedAddEmul1f";
-    else
-      m_codeInfo->globalShaderFeatures.useFloatAtomicAdd = true;
-  }
+  std::string func = "InterlockedAdd"; // hardware atomics; used when value is not emulated via 'uint' view of the slot buffer
+  if(slangType == "float" && !m_codeInfo->atomicFloatEmul)
+    m_codeInfo->globalShaderFeatures.useFloatAtomicAdd = true;
 
-  // '-atomicf_emul 2': CAS on 'uint' view of the slot buffer ('m_sum_asUint'), word index = slot*slotWords + offset of the field inside 'X'
+  // '-atomicf_emul 1|2': CAS on 'uint' view of the slot buffer ('m_sum_asUint'), word index = slot*slotWords + offset of the field inside 'X'
   //
   const clang::CXXOperatorCallExpr* subscript = GetHashMapSubscript(a_lhs);
   const std::string mapName = GetHashMapNameFromExpr(subscript->getArg(0));
-  bool     viaUintAlias = (slangType == "float" && m_codeInfo->atomicFloatEmulMode == 2);
+  bool     viaUintAlias = (slangType == "float" && m_codeInfo->atomicFloatEmul);
   uint32_t slotWords = 0, wordOffset = 0;
   if(viaUintAlias)
   {
@@ -346,7 +341,8 @@ bool kslicer::SlangRewriter::RewriteHashMapAtomicAdd(const clang::Expr* a_wholeE
     else
     {
       viaUintAlias = false;
-      kslicer::PrintWarning("can't apply '-atomicf_emul 2' to this hash map value, 'spirv_asm' implementation of '-atomicf_emul 1' is used here", a_wholeExpr->getSourceRange(), m_compiler.getSourceManager());
+      m_codeInfo->globalShaderFeatures.useFloatAtomicAdd = true;
+      kslicer::PrintWarning("can't apply '-atomicf_emul' to this hash map value, hardware float atomics are used here (shaderBufferFloat32AtomicAdd is required)", a_wholeExpr->getSourceRange(), m_compiler.getSourceManager());
     }
   }
 

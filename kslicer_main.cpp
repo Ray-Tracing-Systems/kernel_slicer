@@ -509,12 +509,15 @@ int main(int argc, const char **argv)
 
   if(params.find("-atomicf_emul") != params.end())
   {
-    inputCodeInfo.atomicFloatEmulMode = atoi(params["-atomicf_emul"].c_str());
-    inputCodeInfo.atomicFloatEmul     = (inputCodeInfo.atomicFloatEmulMode != 0);
+    const int requestedMode = atoi(params["-atomicf_emul"].c_str());
+    inputCodeInfo.atomicFloatEmul     = (requestedMode != 0);
+    inputCodeInfo.atomicFloatEmulMode = inputCodeInfo.atomicFloatEmul ? 2 : 0; // '-atomicf_emul 1' and '-atomicf_emul 2' are the same: CAS on 'uint' view of the buffer
+    if(requestedMode == 1)                                                      // (the former 'spirv_asm' pointer cast implementation of mode 1 is removed: it does not work on Nvidia)
+      std::cout << "[kslicer]: '-atomicf_emul 1' is the same as '-atomicf_emul 2' (float atomics via CAS on 'uint' view of the buffer)" << std::endl;
     const bool slangVulkan = (shaderCCName == "slang" || shaderCCName == "SLANG" || shaderCCName == "Slang");
     if(inputCodeInfo.atomicFloatEmul && !slangVulkan)
     {
-      std::cout << "[kslicer]: WARNING, '-atomicf_emul 1' is implemented for '-shaderCC slang' only and will be ignored" << std::endl;
+      std::cout << "[kslicer]: WARNING, '-atomicf_emul' is implemented for '-shaderCC slang' only and will be ignored" << std::endl;
       inputCodeInfo.atomicFloatEmul     = false;
       inputCodeInfo.atomicFloatEmulMode = 0;
     }

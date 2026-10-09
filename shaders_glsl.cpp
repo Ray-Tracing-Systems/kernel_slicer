@@ -39,7 +39,8 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
 
   // now generate all glsl shaders
   //
-  const std::filesystem::path templatePath       = templatesFolder / (a_codeInfo->megakernelRTV ? "generated_mega.glsl" : "generated.glsl");
+  const std::filesystem::path templatePathMega   = templatesFolder / "generated_mega.glsl"; // only for megakernels of RTV control functions ("-megakernel 1"); IPV kernels always use usual template
+  const std::filesystem::path templatePathUsual  = templatesFolder / "generated.glsl";
   const std::filesystem::path templatePathUpdInd = templatesFolder / "update_indirect.glsl";
   const std::filesystem::path templatePathRedFin = templatesFolder / "reduction_finish.glsl";
   const std::filesystem::path templatePathIntShd = templatesFolder / "intersection_shader.glsl";
@@ -156,6 +157,8 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
 
     std::string outFileName = kernelName + (useRayTracingPipeline ? "RGEN.glsl" : ".comp");
     std::filesystem::path outFilePath = shaderPath / outFileName;
+    const bool isMega = a_codeInfo->megakernelsByName.find(kernelName) != a_codeInfo->megakernelsByName.end(); // RTV control function joined to megakernel
+    const std::filesystem::path templatePath = isMega ? templatePathMega : templatePathUsual;
     kslicer::ApplyJsonToTemplate(templatePath.c_str(), outFilePath, currKerneJson);
 
     buildSH << "glslangValidator -V ";

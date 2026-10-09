@@ -36,7 +36,7 @@ groupshared {{Var}}
 {% for Fun in Kernel.TemplatedFun %}
 {% if Fun.NameT == "ReduceAdd" %}
 groupshared {{Fun.Type0}} shared_data[256];
-void {{Fun.Name}}(RWStructuredBuffer<{% if AtomicFloatEmulMode == 2 and Fun.Type0 == "float" %}uint{% else %}{{Fun.Type0}}{% endif %}> a_buffer, uint a_offset, {{Fun.Type0}} value, uint threadIdx)
+void {{Fun.Name}}(RWStructuredBuffer<{% if AtomicFloatEmul and Fun.Type0 == "float" %}uint{% else %}{{Fun.Type0}}{% endif %}> a_buffer, uint a_offset, {{Fun.Type0}} value, uint threadIdx)
 {
   if (isnan(value) || isinf(value))
     value = 0.0f;
@@ -54,7 +54,7 @@ void {{Fun.Name}}(RWStructuredBuffer<{% if AtomicFloatEmulMode == 2 and Fun.Type
   if (threadIdx < 1)   shared_data[threadIdx] += shared_data[threadIdx + 1];   GroupMemoryBarrierWithGroupSync();
   
   if (threadIdx == 0)
-    {% if AtomicFloatEmulMode == 2 and Fun.Type0 == "float" %}InterlockedAddEmul1fU(a_buffer, a_offset, shared_data[0]);{% else %}{% if AtomicFloatEmul and Fun.Type0 == "float" %}InterlockedAddEmul1f{% else %}InterlockedAdd{% endif %}(a_buffer[a_offset], shared_data[0]);{% endif %}
+    {% if AtomicFloatEmul and Fun.Type0 == "float" %}InterlockedAddEmul1fU(a_buffer, a_offset, shared_data[0]);{% else %}InterlockedAdd(a_buffer[a_offset], shared_data[0]);{% endif %}
 }
 {% endif %}
 {% endfor %}

@@ -1815,7 +1815,7 @@ namespace kslicer
     bool placeVectorsInUBO  = false;
     bool shitIsAlwaysConst  = false;
     bool atomicFloatEmul    = false; ///<! '-atomicf_emul 1|2': emulate float InterlockedAdd via CAS loop (Slang/Vulkan only), shaderBufferFloat32AtomicAdd is not required
-    int  atomicFloatEmulMode = 0;    ///<! 1: CAS via pointer cast in 'spirv_asm'; 2: CAS on 'uint' view of the same buffer, declared at the same binding
+    int  atomicFloatEmulMode = 0;    ///<! 0: hardware float atomics; 2: CAS on 'uint' view of the same buffer, declared at the same binding ('-atomicf_emul 1' is mapped to 2)
     std::unordered_set<std::string> uintAliasBuffers; ///<! float buffers which are also declared as 'uint' at the same binding for CAS (float atomics emulation)
     bool hasLocalContainers = false;
 
@@ -1839,7 +1839,7 @@ namespace kslicer
       std::string mapName;
       std::string path;         ///<! '.val.x'
       std::string valueType;    ///<! 'int', 'uint' or 'float'
-      std::string atomicFunc;   ///<! 'InterlockedAdd' or 'InterlockedAddEmul1f'
+      std::string atomicFunc;   ///<! 'InterlockedAdd' (hardware) or emulated via 'InterlockedAddEmul1fU'
       bool        viaUintAlias = false; ///<! '-atomicf_emul 2': 'InterlockedAddEmul1fU(m_items_asUint, slot*slotWords + wordOffset, value)'
       uint32_t    slotWords    = 0;
       uint32_t    wordOffset   = 0;

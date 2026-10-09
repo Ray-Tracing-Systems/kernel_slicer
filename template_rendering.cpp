@@ -1088,7 +1088,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["LastArgNF1"]   = VArgsSize + MArgsSize;
     kernelJson["LastArgNF"]    = VArgsSize; // Last Argument No Flags
     kernelJson["LastArgAll"]   = allArgs.size() - 1;
-    for(auto& argj : args) // float buffers used by emulated float atomics ('-atomicf_emul 1') are also declared as 'uint' at the same binding
+    for(auto& argj : args) // float buffers used by emulated float atomics ('-atomicf_emul 1|2') are also declared as 'uint' at the same binding
     {
       const bool isBuffer = !argj["IsUBO"].get<bool>() && !argj["IsImage"].get<bool>() && !argj["IsAccelStruct"].get<bool>();
       argj["NeedUintAlias"] = isBuffer && (a_classInfo.uintAliasBuffers.find(argj["Name"].get<std::string>()) != a_classInfo.uintAliasBuffers.end());
