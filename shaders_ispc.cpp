@@ -501,8 +501,12 @@ void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   kslicer::ApplyJsonToTemplate(templatePath, outFileName, a_kernelsJson);
   kslicer::ApplyJsonToTemplate("templates_ispc/ispc_class.cpp", outCppName, a_kernelsJson);
 
+  #ifdef _WIN32
+  std::ofstream buildSH(mainClassFileName.parent_path() / "z_build_ispc.bat");
+  #else
   std::ofstream buildSH(mainClassFileName.parent_path() / "z_build_ispc.sh");
-  #if not __WIN32__
+  #endif
+  #ifndef _WIN32
   buildSH << "#!/bin/sh" << std::endl;
   #endif
   std::filesystem::path kernelTarget = mainClassFileName;

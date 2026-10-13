@@ -364,6 +364,9 @@ int main(int argc, const char **argv)
 
     if(params.find("-mt_shader_compile") != params.end())
       textGenSettings.mtShaderCompile = (atoi(params["-mt_shader_compile"].c_str()) != 0);
+
+    if(params.find("-skip_shader_includes") != params.end())
+      textGenSettings.skipShaderIncludes = (atoi(params["-skip_shader_includes"].c_str()) != 0);
     #ifdef _WIN32
     textGenSettings.mtShaderCompile = false; // generated .bat scripts are always sequential, parallel build is implemented for Linux (bash) only
     #endif

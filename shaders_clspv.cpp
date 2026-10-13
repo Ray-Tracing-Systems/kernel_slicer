@@ -75,8 +75,12 @@ void kslicer::ClspvCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
   const std::filesystem::path outFileName  = mainClassFileName.parent_path() / "z_generated.cl";
   kslicer::ApplyJsonToTemplate(templatePath, outFileName, a_kernelsJson);
 
+  #ifdef _WIN32
+  std::ofstream buildSH(mainClassFileName.parent_path() / "z_build.bat");
+  #else
   std::ofstream buildSH(mainClassFileName.parent_path() / "z_build.sh");
-  #if not __WIN32__
+  #endif
+  #ifndef _WIN32
   buildSH << "#!/bin/sh" << std::endl;
   #endif
   std::string build = this->BuildCommand();

@@ -55,6 +55,7 @@ namespace kslicer
     bool fwdFunDeclarations = false;
     bool forceRTXProxy      = false;
     bool mtShaderCompile = true;  ///<! generate shader build script that runs the compiler in parallel (Linux only, '-mt_shader_compile 0' to disable)
+    bool skipShaderIncludes = true; ///<! do not put '-I..' and '-I<include folders>' to Slang build scripts, generated shaders usually do not need them ('-skip_shader_includes 0' to put them)
   };
 
   struct IShaderCompiler;

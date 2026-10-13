@@ -63,7 +63,7 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   bool rcHitForIntersectionIsGenerated = false;
 
   std::stringstream buildSH; // script text, written to file by WriteShaderBuildScript at the end
-  #if not __WIN32__
+  #ifndef _WIN32
   buildSH << "#!/bin/sh" << std::endl;
   #endif
   for(auto& kernel : kernels.items())

@@ -1324,8 +1324,22 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
       copy[el.key()] = a_kernelsJson[el.key()];
   }
 
+  // include folders are needed only if generated shaders include files from them ('Includes' in common header);
+  // '-skip_shader_includes 0' always puts them to build script
+  //
+  const bool hasExternalIncludes = copy.contains("Includes") && copy["Includes"].is_array() && !copy["Includes"].empty();
+  std::string includePaths = " ";
+  if(!a_settings.skipShaderIncludes || hasExternalIncludes)
+  {
+    includePaths = " -I.. ";
+    for(auto folder : ignoreFolders)
+      includePaths += "-I" + folder.u8string() + " ";
+    if(a_settings.skipShaderIncludes)
+      std::cout << "  [kslicer]: shaders include files from external folders, so include paths are put to " << scriptName.c_str() << std::endl;
+  }
+
   std::stringstream buildSH; // script text, written to file by WriteShaderBuildScript at the end
-  #if not __WIN32__
+  #ifndef _WIN32
   buildSH << "#!/bin/sh" << std::endl;
   #endif
   for(auto& kernel : kernels.items())
@@ -1357,10 +1371,8 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
       targetSuffix = ".comp.spv";
     }
 
-    buildSH << "slangc " << outFileName.c_str() << targetString.c_str() << kernelName.c_str() << targetSuffix.c_str() << " -I.. ";
+    buildSH << "slangc " << outFileName.c_str() << targetString.c_str() << kernelName.c_str() << targetSuffix.c_str() << includePaths.c_str();
     buildSH << "-warnings-disable 39001 "; // several variables at the same binding on purpose: combined image samplers, '-atomicf_emul 2'
-    for(auto folder : ignoreFolders)
-      buildSH << "-I" << folder.u8string().c_str() << " ";
     if(a_settings.auxShaderCCOptions != "")
       buildSH << " " << a_settings.auxShaderCCOptions.c_str();
     
@@ -1381,9 +1393,7 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
       outFileName = kernelName + "_UpdateIndirect.slang";
       outFilePath = shaderPath / outFileName;
       kslicer::ApplyJsonToTemplate(templatePathUpdInd.c_str(), outFilePath, currKerneJson);
-      buildSH << "slangc " << outFileName.c_str() << targetString.c_str() << kernelName.c_str() << "_UpdateIndirect" << targetSuffix.c_str() << " -I.. -warnings-disable 39001 ";
-      for(auto folder : ignoreFolders)
-       buildSH << "-I" << folder.u8string().c_str() << " ";
+      buildSH << "slangc " << outFileName.c_str() << targetString.c_str() << kernelName.c_str() << "_UpdateIndirect" << targetSuffix.c_str() << includePaths.c_str() << "-warnings-disable 39001 ";
       buildSH << std::endl;
     }
 
@@ -1392,9 +1402,7 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
       outFileName = kernelName + "_Reduction.slang";
       outFilePath = shaderPath / outFileName;
       kslicer::ApplyJsonToTemplate(templatePathRedFin.c_str(), outFilePath, currKerneJson);
-      buildSH << "slangc " << outFileName.c_str() << targetString.c_str() << kernelName.c_str() << "_Reduction" << targetSuffix.c_str() << " -I.. -warnings-disable 39001 ";
-      for(auto folder : ignoreFolders)
-       buildSH << "-I" << folder.u8string().c_str() << " ";
+      buildSH << "slangc " << outFileName.c_str() << targetString.c_str() << kernelName.c_str() << "_Reduction" << targetSuffix.c_str() << includePaths.c_str() << "-warnings-disable 39001 ";
       buildSH << std::endl;
     }
   }
