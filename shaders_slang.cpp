@@ -504,6 +504,9 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
   const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);
   const std::string fname = fDecl->getNameInfo().getName().getAsString();
 
+  if(fname == "InterlockedAdd3f")
+    m_codeInfo->globalShaderFeatures.useInterlockedAdd3f = true; // may be called from non-member function which is not processed by KernelInfoVisitor
+
   if(fname == "InterlockedAdd3f" && m_codeInfo->atomicFloatEmul && call->getNumArgs() == 3 && WasNotRewrittenYet(call))
   {
     // CAS is done on 'uint' view of the same buffer ('out_color_asUint'), declared at the same binding:

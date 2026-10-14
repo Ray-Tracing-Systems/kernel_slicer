@@ -158,6 +158,7 @@ namespace kslicer
 
       useFloatAtomicAdd  = useFloatAtomicAdd  || rhs.useFloatAtomicAdd;
       useDoubleAtomicAdd = useDoubleAtomicAdd || rhs.useDoubleAtomicAdd;
+      useInterlockedAdd3f = useInterlockedAdd3f || rhs.useInterlockedAdd3f;
       use8BitStorage     = use8BitStorage     || rhs.use8BitStorage;
       use16BitStorage    = use16BitStorage    || rhs.use16BitStorage;
 
@@ -172,6 +173,7 @@ namespace kslicer
 
     bool useFloatAtomicAdd  = false;
     bool useDoubleAtomicAdd = false;
+    bool useInterlockedAdd3f = false; ///<! LiteMath::InterlockedAdd3f is called, so its implementation is put to common shader header
     bool use8BitStorage     = false;
     bool use16BitStorage    = false;
   };

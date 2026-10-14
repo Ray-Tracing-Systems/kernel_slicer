@@ -1627,6 +1627,14 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     data["HashMapAddFuncs"].push_back(local);
   }
 
+  // 'InterlockedAdd3f' calls are found during rewriting of kernels and functions, so we put it at the end;
+  // hardware implementation is put to common header only if it is used: 'InterlockedAdd(float, float)' is not supported by some versions of Slang
+  //
+  bool useInterlockedAdd3f = a_classInfo.globalShaderFeatures.useInterlockedAdd3f;
+  for(const auto& k : a_classInfo.kernels)
+    useInterlockedAdd3f = useInterlockedAdd3f || k.second.shaderFeatures.useInterlockedAdd3f;
+  data["UseInterlockedAdd3f"] = useInterlockedAdd3f;
+
   return data;
 }
 

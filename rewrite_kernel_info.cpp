@@ -569,7 +569,10 @@ bool kslicer::KernelInfoVisitor::VisitCallExpr(clang::CallExpr* call)
   }
 
   if(fname == "InterlockedAdd3f")
-    m_currKernel.shaderFeatures.useFloatAtomicAdd = !m_codeInfo->atomicFloatEmul; // emulated via CAS on 'uint', hardware float atomics are not needed
+  {
+    m_currKernel.shaderFeatures.useFloatAtomicAdd   = !m_codeInfo->atomicFloatEmul; // emulated via CAS on 'uint', hardware float atomics are not needed
+    m_currKernel.shaderFeatures.useInterlockedAdd3f = true;
+  }
 
   if(fname.find("ReduceAdd") != std::string::npos)
   {

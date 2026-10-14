@@ -321,7 +321,7 @@ void InterlockedAdd3f(RWStructuredBuffer<uint> pMemU, int offset, float3 data)
     }
   }
 }
-{% else if not WGPUMode %}
+{% else if not WGPUMode and UseInterlockedAdd3f %}
 // LiteMath::InterlockedAdd3f: each channel is atomic separately, not the whole triple (hardware float atomics)
 //
 [ForceInline]
