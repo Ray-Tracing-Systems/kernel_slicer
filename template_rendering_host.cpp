@@ -738,7 +738,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       continue;
     }
 
-    if(v.isContainer)
+    if(v.isContainer || v.usage == kslicer::DATA_USAGE::USAGE_KERNEL_LOCAL) // kernel local variables in UBO are not class members
       continue;
 
     json local;

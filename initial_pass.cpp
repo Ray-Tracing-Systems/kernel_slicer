@@ -531,10 +531,13 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
 
 kslicer::DataMemberInfo kslicer::ExtractMemberInfo(clang::FieldDecl* fd, const clang::ASTContext& astContext)
 {
-  const clang::QualType qt = fd->getType();
+  return ExtractMemberInfo(fd->getName().str(), fd->getType(), astContext);
+}
 
+kslicer::DataMemberInfo kslicer::ExtractMemberInfo(const std::string& a_name, const clang::QualType qt, const clang::ASTContext& astContext)
+{
   kslicer::DataMemberInfo member;
-  member.name        = fd->getName().str();
+  member.name        = a_name;
   member.type        = qt.getAsString();
   member.kind        = kslicer::GetKindOfType(qt);
   member.sizeInBytes = 0;

@@ -785,3 +785,103 @@ void kslicer::WriteShaderBuildScript(const std::filesystem::path& a_scriptPath, 
   out << "echo \"all $CMD_NUM shaders compiled\"" << std::endl;
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+static void CollectStorageFeaturesRec(clang::QualType a_type, kslicer::ShaderFeatures& a_res, int a_depth)
+{
+  if(a_type.isNull() || a_depth > 32)
+    return;
+
+  const clang::QualType qt = a_type.getCanonicalType().getNonReferenceType();
+  if(const clang::ArrayType* pArray = qt->getAsArrayTypeUnsafe())
+  {
+    CollectStorageFeaturesRec(pArray->getElementType(), a_res, a_depth+1);
+    return;
+  }
+
+  if(const clang::BuiltinType* pBuiltin = qt->getAs<clang::BuiltinType>())
+  {
+    switch(pBuiltin->getKind())
+    {
+      case clang::BuiltinType::Short:      // shader code works with 16-bit integers loaded from buffer (OpCapability Int16)
+      case clang::BuiltinType::UShort:
+      a_res.use16BitStorage = true;
+      a_res.useShortType    = true;
+      break;
+
+      case clang::BuiltinType::Half:
+      case clang::BuiltinType::Float16:
+      case clang::BuiltinType::BFloat16:
+      a_res.use16BitStorage = true;
+      a_res.useHalfType     = true;
+      break;
+
+      case clang::BuiltinType::Char_S:
+      case clang::BuiltinType::Char_U:
+      case clang::BuiltinType::SChar:
+      case clang::BuiltinType::UChar:
+      a_res.use8BitStorage = true;
+      a_res.useByteType    = true;
+      break;
+
+      default:
+      break;
+    };
+    return;
+  }
+
+  if(qt->isPointerType()) // pointer fields are not placed to GPU buffers
+    return;
+
+  const clang::RecordDecl* pRecord = qt->getAsRecordDecl();
+  if(pRecord == nullptr)
+    return;
+  pRecord = pRecord->getDefinition();
+  if(pRecord == nullptr)
+    return;
+
+  if(pRecord->getNameAsString() == "half") // half_float::half (LiteMath::half) is 'half' in shaders
+  {
+    a_res.use16BitStorage = true;
+    a_res.useHalfType     = true;
+    return;
+  }
+
+  if(auto pCXXRecord = llvm::dyn_cast<clang::CXXRecordDecl>(pRecord))
+  {
+    for(const auto& base : pCXXRecord->bases())
+      CollectStorageFeaturesRec(base.getType(), a_res, a_depth+1);
+  }
+
+  for(const clang::FieldDecl* field : pRecord->fields())
+    CollectStorageFeaturesRec(field->getType(), a_res, a_depth+1);
+}
+
+kslicer::ShaderFeatures kslicer::GetStorageFeaturesFromType(clang::QualType a_type)
+{
+  kslicer::ShaderFeatures res;
+  CollectStorageFeaturesRec(a_type, res, 0);
+  return res;
+}
+
+kslicer::ShaderFeatures kslicer::GetStorageFeaturesFromDataMember(const kslicer::DataMemberInfo& a_member)
+{
+  kslicer::ShaderFeatures res;
+  if(a_member.IsUsedTexture() || a_member.kind == kslicer::DATA_KIND::KIND_ACCEL_STRUCT)
+    return res;
+
+  const clang::TypeDecl* pDecl = a_member.isContainer ? a_member.pContainerDataTypeDeclIfRecord : a_member.pTypeDeclIfRecord;
+  if(pDecl != nullptr && pDecl->getTypeForDecl() != nullptr)
+    return kslicer::GetStorageFeaturesFromType(clang::QualType(pDecl->getTypeForDecl(), 0));
+
+  // builtin types: analyze type name
+  //
+  const std::string typeName = (a_member.isContainer || a_member.isArray) ? a_member.containerDataType : a_member.type;
+  const auto features = kslicer::GetUsedShaderFeaturesFromTypeName(typeName);
+  res.use16BitStorage = features.useShortType || features.useHalfType;
+  res.use8BitStorage  = features.useByteType;
+  res.useShortType    = features.useShortType;
+  res.useHalfType     = features.useHalfType;
+  res.useByteType     = features.useByteType;
+  return res;
+}

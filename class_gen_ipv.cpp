@@ -39,7 +39,7 @@ kslicer::MainClassInfo::MHandlerCFPtr kslicer::MainClassInfo::MatcherHandler_CF(
 
 kslicer::MainClassInfo::MList kslicer::MainClassInfo::ListMatchers_KF(const KernelInfo& a_kernel)
 {
-  const std::string& a_kernelName = a_kernel.name;
+  const std::string& a_kernelName = a_kernel.FuncName(); // parts of kernel with several loops have the same function
   std::vector<clang::ast_matchers::StatementMatcher> list;
   list.push_back(kslicer::MakeMatch_MemberVarOfMethod(a_kernelName));
   list.push_back(kslicer::MakeMatch_FunctionCallFromFunction(a_kernelName));
@@ -85,7 +85,7 @@ public:
   bool FromThisClass(const clang::FunctionDecl* func_decl, int& classOrder)
   {
     bool fromThisClass = true;
-    if(func_decl->getNameAsString() == currKernel->name && clang::isa<clang::CXXMethodDecl>(func_decl))
+    if(func_decl->getNameAsString() == currKernel->FuncName() && clang::isa<clang::CXXMethodDecl>(func_decl))
     {
       const clang::CXXMethodDecl* method      = clang::dyn_cast<clang::CXXMethodDecl>(func_decl);
       const clang::CXXRecordDecl* parentClass = method->getParent();
@@ -123,7 +123,10 @@ public:
       //std::string debugIncVar  = kslicer::GetRangeSourceCode(incVar->getSourceRange(), m_compiler);
       //std::string debugForExp  = kslicer::GetRangeSourceCode(forLoop->getSourceRange(), m_compiler);
 
-      if(sameInitAndCond && sameInitAndInc && loopSZ)
+      const bool partOfKernel = (currKernel->partsNum > 1);  // kernel with several loops: take only loops of this part
+      const bool inThisPart   = !partOfKernel || (currKernel->partLoopRange.getBegin() <= forLoop->getBeginLoc() && forLoop->getEndLoc() <= currKernel->partLoopRange.getEnd());
+
+      if(sameInitAndCond && sameInitAndInc && loopSZ && inThisPart)
       {
         std::string name = initVar->getNameAsString();
         //std::string debugText = kslicer::GetRangeSourceCode(forLoop->getBody()->getSourceRange(), m_compiler);
@@ -163,6 +166,12 @@ public:
         }
       }
     }
+    else if(loopOutsidesInit && func_decl && currKernel->partsNum > 1)
+    {
+      int classOrder = 0;
+      if(func_decl->getBody() == loopOutsidesInit && FromThisClass(func_decl, classOrder) && classOrder <= currKernel->loopOutsidesInitOrder)
+        ProcessPartOfKernel(loopOutsidesInit, classOrder, *result.Context);
+    }
     else if(loopOutsidesInit && func_decl)
     {
       int classOrder = 0;
@@ -178,6 +187,8 @@ public:
         auto debugText = kslicer::GetRangeSourceCode(loopOutsidesInit->getSourceRange(), m_compiler);
         //std::cout << "debugText = " << debugText.c_str() << std::endl;
         clang::SourceLocation endOfInit = currKernel->loopOutsidesInit.getEnd();
+        currKernel->localVarsInUBO.clear();
+        const std::string kernelShortName = m_allInfo.RemoveKernelPrefix(currKernel->FuncName());
         auto p = loopOutsidesInit->body_begin();
         for(; p != loopOutsidesInit->body_end(); ++p)
         {
@@ -185,6 +196,26 @@ public:
           if(isa<ForStmt>(expr))                       // TODO: CHECK THIS IS EXACTLY THE 'for' WE NEED! HOW?
             break;                                     // TODO: REMEMBER 'for' LOCATION IN SOME VARIABLE AND IGNORE OTHER 'fors' INSIDE 'if(forLoop && func_decl)'        
           endOfInit = expr->getSourceRange().getEnd(); // TODO: WHICH ARE NOT INSIDE THIS FOR AND NOT THIS FOR ITSELF.
+          
+          if(auto pDeclStmt = dyn_cast<DeclStmt>(expr)) // variables declared before the loop are shared by all threads, so we put them to UBO
+          {
+            for(const Decl* pDecl : pDeclStmt->decls())
+            {
+              auto pVar = dyn_cast<VarDecl>(pDecl);
+              if(pVar == nullptr || pVar->isStaticLocal())
+                continue;
+              kslicer::KernelInfo::LocalVarInUBO var;
+              var.name        = pVar->getNameAsString();
+              var.uboName     = kernelShortName + "_" + var.name;
+              var.declLoc     = pVar->getLocation();
+              const clang::QualType qt = pVar->getType().getUnqualifiedType();
+              const auto kind = kslicer::GetKindOfType(qt);
+              var.typeName    = qt.getAsString();
+              var.isSupported = !qt->isPointerType() && !qt->isReferenceType() && !qt->isIncompleteType() && (kind == kslicer::DATA_KIND::KIND_POD || kind == kslicer::DATA_KIND::KIND_UNKNOWN);
+              var.sizeInBytes = var.isSupported ? size_t(result.Context->getTypeSizeInChars(qt).getQuantity()) : 0;
+              currKernel->localVarsInUBO.push_back(var);
+            }
+          }
         }
 
         currKernel->hasInitPass = (currKernel->loopOutsidesInit.getEnd() != endOfInit);
@@ -214,6 +245,68 @@ public:
 
 
   uint32_t m_maxNesting = 0;
+
+  void AddLocalVars(const clang::DeclStmt* pDeclStmt, clang::ASTContext& a_ctx)
+  {
+    const std::string kernelShortName = m_allInfo.RemoveKernelPrefix(currKernel->FuncName());
+    for(const clang::Decl* pDecl : pDeclStmt->decls())
+    {
+      auto pVar = clang::dyn_cast<clang::VarDecl>(pDecl);
+      if(pVar == nullptr || pVar->isStaticLocal())
+        continue;
+      kslicer::KernelInfo::LocalVarInUBO var;
+      var.name        = pVar->getNameAsString();
+      var.uboName     = kernelShortName + "_" + var.name;
+      var.declLoc     = pVar->getLocation();
+      const clang::QualType qt = pVar->getType().getUnqualifiedType();
+      const auto kind = kslicer::GetKindOfType(qt);
+      var.typeName    = qt.getAsString();
+      var.isSupported = !qt->isPointerType() && !qt->isReferenceType() && !qt->isIncompleteType() && (kind == kslicer::DATA_KIND::KIND_POD || kind == kslicer::DATA_KIND::KIND_UNKNOWN);
+      var.sizeInBytes = var.isSupported ? size_t(a_ctx.getTypeSizeInChars(qt).getQuantity()) : 0;
+      currKernel->localVarsInUBO.push_back(var);
+    }
+  }
+
+  // part #i of kernel with several top level loops: 'init' is the code between loop #(i-1) and loop #i, 'finish' is the code after the last loop
+  //
+  void ProcessPartOfKernel(const clang::CompoundStmt* a_body, int a_classOrder, clang::ASTContext& a_ctx)
+  {
+    using namespace clang;
+    currKernel->loopOutsidesInitOrder = a_classOrder;
+    currKernel->localVarsInUBO.clear();
+    currKernel->hasInitPass       = false;
+    currKernel->hasFinishPassSelf = false;
+    currKernel->loopOutsidesInit   = SourceRange();
+    currKernel->loopOutsidesFinish = SourceRange();
+
+    std::vector<const Stmt*> statements(a_body->body_begin(), a_body->body_end());
+    std::vector<size_t> loopIds;
+    for(size_t i=0; i<statements.size(); i++)
+    {
+      if(isa<ForStmt>(statements[i]))
+        loopIds.push_back(i);
+      else if(auto pDeclStmt = dyn_cast<DeclStmt>(statements[i])) // variables of single-threaded parts are shared by all threads, so we put them to UBO
+        AddLocalVars(pDeclStmt, a_ctx);
+    }
+    if(currKernel->partIndex >= loopIds.size())
+      return;
+
+    const size_t loopId  = loopIds[currKernel->partIndex];
+    const size_t initBeg = (currKernel->partIndex == 0) ? 0 : loopIds[currKernel->partIndex-1] + 1;
+    if(initBeg < loopId)
+    {
+      currKernel->hasInitPass = true;
+      const SourceLocation begin = (currKernel->partIndex == 0) ? a_body->getLBracLoc() : statements[initBeg]->getBeginLoc(); // 'init' code of part #0 begins with '{' as for usual kernels
+      currKernel->loopOutsidesInit = SourceRange(begin, statements[loopId-1]->getEndLoc());
+    }
+
+    const bool isLastPart = (currKernel->partIndex + 1 == loopIds.size());
+    if(isLastPart && loopId + 1 < statements.size())
+    {
+      currKernel->hasFinishPassSelf  = true;
+      currKernel->loopOutsidesFinish = SourceRange(statements[loopId+1]->getBeginLoc(), statements.back()->getEndLoc());
+    }
+  }
 };
 
 
@@ -255,5 +348,34 @@ void kslicer::MainClassInfo::VisitAndPrepare_KF(KernelInfo& a_funcInfo, const cl
   a_funcInfo.shaderFeatures = a_funcInfo.shaderFeatures || accessShaderFeatures;
   if(accessShaderFeatures.useByteType)
     a_funcInfo.shaderFeatures.use8BitStorage = true;
+
+  // (3) analyze data layout of all buffers (including fields of structures) to request 8/16 bit storage features
+  //
+  ShaderFeatures storageFeatures;
+  if(a_funcInfo.astNode != nullptr)
+  {
+    for(const clang::ParmVarDecl* param : a_funcInfo.astNode->parameters())
+    {
+      const clang::QualType qt = param->getType();
+      if(qt->isPointerType())
+        storageFeatures = storageFeatures || kslicer::GetStorageFeaturesFromType(qt->getPointeeType());
+    }
+  }
+
+  for(const auto& cont : a_funcInfo.usedContainers)
+  {
+    auto pMember = allDataMembers.find(cont.second.name);
+    if(pMember != allDataMembers.end())
+      storageFeatures = storageFeatures || kslicer::GetStorageFeaturesFromDataMember(pMember->second);
+  }
+
+  for(const auto& memberName : a_funcInfo.usedMembers) // plain members are placed in UBO
+  {
+    auto pMember = allDataMembers.find(memberName);
+    if(pMember != allDataMembers.end() && !pMember->second.isContainer)
+      storageFeatures = storageFeatures || kslicer::GetStorageFeaturesFromDataMember(pMember->second);
+  }
+
+  a_funcInfo.shaderFeatures = a_funcInfo.shaderFeatures || storageFeatures; // 8/16 bit storage and 8/16 bit types which are loaded from such buffers
 }
 

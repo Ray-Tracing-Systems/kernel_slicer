@@ -1012,6 +1012,34 @@ bool kslicer::SlangRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr*
 
 bool kslicer::SlangRewriter::VisitDeclStmt_Impl(clang::DeclStmt* decl)             
 { 
+  // variables declared before the loop of IPV kernel are placed to UBO: 'float x = val;' ==> 'ubo[0].Kernel_x = val;' 
+  //
+  if(m_kernelMode && m_pCurrKernel != nullptr && m_pCurrKernel->localVarsInUBO.size() != 0 && WasNotRewrittenYet(decl))
+  {
+    std::stringstream strOut;
+    bool found = false;
+    for(auto it = decl->decl_begin(); it != decl->decl_end(); ++it)
+    {
+      const clang::VarDecl* vdecl = clang::dyn_cast<clang::VarDecl>(*it);
+      for(const auto& var : m_pCurrKernel->localVarsInUBO)
+      {
+        if(vdecl == nullptr || var.declLoc != vdecl->getLocation())
+          continue;
+        found = true;
+        const clang::Expr* pInit = vdecl->getInit();
+        if(pInit != nullptr)
+          strOut << m_codeInfo->pShaderCC->UBOAccess(var.uboName) << " = " << RecursiveRewrite(pInit) << "; ";
+      }
+    }
+    if(found)
+    {
+      std::string text = strOut.str();
+      ReplaceTextOrWorkAround(decl->getSourceRange(), (text == "") ? std::string(";") : text);
+      MarkRewritten(decl);
+      return true;
+    }
+  }
+
   // multiple declarations in one statement, like 'uint32_t a = 0, b = 1;'. Source ranges of such VarDecls overlap 
   // (each of them begins from the type), so we can't rewrite them separately in VisitVarDecl and rewrite the whole statement here
   //
@@ -1469,6 +1497,182 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
 }
 
 
+bool kslicer::HasUserMethods(const clang::CXXRecordDecl* pRecord)
+{
+  if(pRecord == nullptr || !pRecord->hasDefinition())
+    return false;
+  for(const clang::CXXMethodDecl* method : pRecord->methods())
+    if(!method->isImplicit())
+      return true;
+  return false;
+}
+
+// checks if member function modifies fields of 'this' (directly or via call of other such member function); Slang needs '[mutating]' only for them
+//
+class MutatingMethodChecker : public clang::RecursiveASTVisitor<MutatingMethodChecker>
+{
+public:
+  MutatingMethodChecker(int a_depth) : m_depth(a_depth) {}
+  bool modifiesThis = false;
+
+  bool VisitBinaryOperator(clang::BinaryOperator* op)
+  {
+    if(op->isAssignmentOp() && RefersToThisField(op->getLHS())) // also catches CompoundAssignOperator
+      modifiesThis = true;
+    return !modifiesThis;
+  }
+
+  bool VisitUnaryOperator(clang::UnaryOperator* op)
+  {
+    if(op->isIncrementDecrementOp() && RefersToThisField(op->getSubExpr()))
+      modifiesThis = true;
+    return !modifiesThis;
+  }
+
+  bool VisitCXXOperatorCallExpr(clang::CXXOperatorCallExpr* call) // 'color += x' for LiteMath vector types
+  {
+    if(call->isAssignmentOp() || call->getOperator() == clang::OO_PlusPlus || call->getOperator() == clang::OO_MinusMinus)
+      if(call->getNumArgs() > 0 && RefersToThisField(call->getArg(0)))
+        modifiesThis = true;
+    return !modifiesThis;
+  }
+
+  bool VisitCXXMemberCallExpr(clang::CXXMemberCallExpr* call)
+  {
+    const clang::CXXMethodDecl* method = call->getMethodDecl();
+    if(method == nullptr || method->isConst() || method->isStatic() || !RefersToThisField(call->getImplicitObjectArgument()))
+      return true;
+    const clang::FunctionDecl* pDef = nullptr;
+    if(method->hasBody(pDef) && m_depth < 8)
+    {
+      MutatingMethodChecker checker(m_depth+1);
+      checker.TraverseStmt(pDef->getBody());
+      modifiesThis = modifiesThis || checker.modifiesThis;
+    }
+    return !modifiesThis;
+  }
+
+private:
+  int m_depth = 0;
+
+  static bool RefersToThisField(const clang::Expr* a_expr)
+  {
+    const clang::Expr* expr = a_expr;
+    while(expr != nullptr)
+    {
+      expr = expr->IgnoreParenImpCasts();
+      if(llvm::isa<clang::CXXThisExpr>(expr))
+        return true;
+      else if(auto pMember = llvm::dyn_cast<clang::MemberExpr>(expr))
+        expr = pMember->getBase();
+      else if(auto pSubscript = llvm::dyn_cast<clang::ArraySubscriptExpr>(expr))
+        expr = pSubscript->getBase();
+      else if(auto pOpCall = llvm::dyn_cast<clang::CXXOperatorCallExpr>(expr); pOpCall != nullptr && pOpCall->getOperator() == clang::OO_Subscript)
+        expr = pOpCall->getArg(0);
+      else if(auto pMemberCall = llvm::dyn_cast<clang::CXXMemberCallExpr>(expr)) // 'm_data.x()' like accessors returning reference
+        expr = pMemberCall->getImplicitObjectArgument();
+      else
+        return false;
+    }
+    return false;
+  }
+};
+
+// if declaration is followed by ';' (in-class declaration of out-of-line member function), extend the range to it
+//
+static clang::SourceRange ExtendRangeToSemicolon(const clang::SourceRange a_range, const clang::CompilerInstance& a_compiler)
+{
+  const clang::SourceManager& sm = a_compiler.getSourceManager();
+  std::optional<clang::Token> next = clang::Lexer::findNextToken(a_range.getEnd(), sm, a_compiler.getLangOpts());
+  if(next.has_value() && next->is(clang::tok::semi))
+    return clang::SourceRange(a_range.getBegin(), next->getLocation());
+  return a_range;
+}
+
+static bool IsMutatingMethod(const clang::FunctionDecl* a_func)
+{
+  MutatingMethodChecker checker(0);
+  checker.TraverseStmt(a_func->getBody());
+  return checker.modifiesThis;
+}
+
+std::string kslicer::SlangRewriter::RewriteStructWithMethods(const clang::CXXRecordDecl* pRecord)
+{
+  // Slang supports methods inside structures, but their code must be rewritten as for any other function:
+  // (1) 'const' after parameter list is removed (Slang methods are immutable by default),
+  // (2) non-const methods are marked with '[mutating]',
+  // (3) constructors are converted to '__init(...)' with member initializers moved to the body,
+  // (4) bodies are processed with the same rewriter as for ordinary functions.
+  //
+  clang::Rewriter rewrite2;
+  rewrite2.setSourceMgr(m_compiler.getSourceManager(), m_compiler.getLangOpts());
+  auto pVisitor = m_codeInfo->pShaderCC->MakeFuncRewriter(rewrite2, m_compiler, m_codeInfo);
+
+  for(clang::CXXMethodDecl* method : pRecord->methods())
+  {
+    if(method->isImplicit())
+      continue;
+
+    const clang::FunctionDecl* pDefinition = nullptr;
+    const bool hasBody = method->hasBody(pDefinition);
+    clang::SourceRange declRange = method->getSourceRange();
+    if(!method->doesThisDeclarationHaveABody())
+      declRange = ExtendRangeToSemicolon(declRange, m_compiler); // in-class declaration is replaced with full definition
+
+    if(llvm::isa<clang::CXXDestructorDecl>(method) || !hasBody)  // no destructors in Slang; declarations without definition are useless
+    {
+      kslicer::ReplaceTextSafe(rewrite2, declRange, "");
+      continue;
+    }
+
+    clang::FunctionDecl* pFunc = const_cast<clang::FunctionDecl*>(pDefinition);
+    auto pMethod = llvm::dyn_cast<clang::CXXMethodDecl>(pFunc);
+    std::string declText = pVisitor->RewriteFuncDecl(pFunc);
+    std::string bodyText = pVisitor->RecursiveRewrite(pFunc->getBody());
+
+    std::string result;
+    if(auto pCtor = llvm::dyn_cast<clang::CXXConstructorDecl>(pMethod))
+    {
+      if(pCtor->isCopyOrMoveConstructor()) // Slang copies structures by value
+      {
+        kslicer::ReplaceTextSafe(rewrite2, declRange, "");
+        continue;
+      }
+
+      std::stringstream inits;
+      for(const clang::CXXCtorInitializer* init : pCtor->inits())
+      {
+        if(!init->isWritten() || !init->isMemberInitializer())
+          continue;
+        const clang::Expr* pInit = init->getInit();
+        if(auto pConstruct = llvm::dyn_cast<clang::CXXConstructExpr>(pInit))  // 'member(a_value)' is a copy constructor call, its range includes 'member'
+        {
+          if(pConstruct->getConstructor()->isCopyOrMoveConstructor() && pConstruct->getNumArgs() == 1)
+            pInit = pConstruct->getArg(0);
+        }
+        inits << " " << init->getMember()->getNameAsString() << " = " << pVisitor->RecursiveRewrite(pInit) << ";";
+      }
+
+      const auto posArgs  = declText.find("(");
+      const auto posBrace = bodyText.find("{");
+      const std::string args = (posArgs != std::string::npos) ? declText.substr(posArgs) : std::string("()");
+      if(posBrace != std::string::npos)
+        bodyText = bodyText.substr(0, posBrace+1) + inits.str() + bodyText.substr(posBrace+1);
+      result = "__init" + args + " " + bodyText;
+    }
+    else if(pMethod->isStatic())
+      result = "static " + declText + " " + bodyText;
+    else if(!pMethod->isConst() && IsMutatingMethod(pFunc))
+      result = "[mutating] " + declText + " " + bodyText;
+    else
+      result = declText + " " + bodyText;
+
+    kslicer::ReplaceTextSafe(rewrite2, declRange, result);
+  }
+
+  return kslicer::GetRewrittenText(rewrite2, pRecord->getSourceRange());
+}
+
 std::string kslicer::SlangCompiler::PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler, std::shared_ptr<kslicer::FunctionRewriter> a_pRewriter)
 {
   std::string typeInCL = a_decl.type;
@@ -1481,7 +1685,14 @@ std::string kslicer::SlangCompiler::PrintHeaderDecl(const DeclInClass& a_decl, c
   switch(a_decl.kind)
   {
     case kslicer::DECL_IN_CLASS::DECL_STRUCT:
-    result = originalText + ";";
+    {
+      const clang::CXXRecordDecl* pRecord = (a_decl.astNode != nullptr) ? llvm::dyn_cast<clang::CXXRecordDecl>(a_decl.astNode) : nullptr;
+      auto pSlangRewriter = std::dynamic_pointer_cast<kslicer::SlangRewriter>(a_pRewriter);
+      if(pRecord != nullptr && pSlangRewriter != nullptr && kslicer::HasUserMethods(pRecord))
+        result = pSlangRewriter->RewriteStructWithMethods(pRecord) + ";";
+      else
+        result = originalText + ";";
+    }
     ProcessVectorTypesString(result);
     break;
     case kslicer::DECL_IN_CLASS::DECL_CONSTANT:

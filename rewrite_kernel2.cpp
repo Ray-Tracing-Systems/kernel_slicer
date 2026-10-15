@@ -193,6 +193,18 @@ bool kslicer::FunctionRewriter2::NeedToRewriteDeclRefExpr(const clang::DeclRefEx
     return false;
 
   const clang::ValueDecl* pDecl = expr->getDecl();
+  if(m_pCurrKernel != nullptr)                     // local variable which is declared before the loop and placed to UBO
+  {
+    for(const auto& var : m_pCurrKernel->localVarsInUBO)
+    {
+      if(var.declLoc == pDecl->getLocation())
+      {
+        out_text = m_codeInfo->pShaderCC->UBOAccess(var.uboName);
+        return true;
+      }
+    }
+  }
+
   if(!clang::isa<clang::ParmVarDecl>(pDecl))
     return false;
 

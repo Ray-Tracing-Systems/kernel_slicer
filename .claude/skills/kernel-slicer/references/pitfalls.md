@@ -195,9 +195,10 @@ kslicer still exits with code 0 and writes output, so check its log for `error:`
 "kernels" : { "kernel2D_Convolve" : {"wgSize": [16, 16, 1]} }
 ```
 
-## 17. Member or kernel argument inside a `std::` call (Slang back end)
+## 17. Member or kernel argument inside a `std::` call (Slang back end, old versions only)
 
-Verified with `-shaderCC slang` (GLSL is not affected):
+Fixed in October 2026 (`kslicer::GetRewrittenText` / `ReplaceTextSafe`); the workaround below is
+only needed for older translator versions. Verified with `-shaderCC slang` (GLSL is not affected):
 
 ```cpp
 // WRONG: generated Slang is  max(ubo[0, x)  and  pow(x, kge)  -> slangc error 30027

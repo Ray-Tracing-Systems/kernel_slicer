@@ -73,7 +73,7 @@ namespace kslicer
                           KIND_SAMPLER                          ///<! Sampler
                           };
 
-  enum class DATA_USAGE { USAGE_USER = 0, USAGE_SLICER_REDUCTION = 1 };
+  enum class DATA_USAGE { USAGE_USER = 0, USAGE_SLICER_REDUCTION = 1, USAGE_KERNEL_LOCAL = 2 }; ///<! USAGE_KERNEL_LOCAL: variable declared in kernel before the loop, placed to UBO
   enum class TEX_ACCESS { TEX_ACCESS_NOTHING = 0, TEX_ACCESS_READ = 1, TEX_ACCESS_WRITE = 2, TEX_ACCESS_SAMPLE = 4 };
   enum class CPP11_ATTR { ATTR_UNKNOWN = 0, ATTR_KERNEL = 1, ATTR_SETTER = 2  };
 
@@ -284,6 +284,16 @@ namespace kslicer
 
     enum class IPV_LOOP_KIND  { LOOP_KIND_LESS = 0, LOOP_KIND_LESS_EQUAL = 1};
 
+    struct LocalVarInUBO ///<! IPV: variable declared in single-threaded part of kernel (before the loop), placed to UBO as '<KernelName>_<varName>'
+    {
+      std::string           name;
+      std::string           uboName;
+      clang::SourceLocation declLoc;    ///<! location of VarDecl; kernel matchers work on a separate AST, so we can't store pointers to AST nodes
+      std::string           typeName;
+      size_t                sizeInBytes = 0;
+      bool                  isSupported = true; ///<! false for pointers, references, containers, ...
+    };
+
     struct LoopIter
     {
       std::string type;
@@ -333,10 +343,17 @@ namespace kslicer
     std::string           return_type;          ///<! func. return type
     std::string           return_class;         ///<! class name of pointer if pointer is returned
     std::string           name;                 ///<! func. name
+    std::string           funcName;             ///<! name of C++ function if it differs from 'name' (for parts of kernel with several loops)
+    uint32_t              partIndex = 0;        ///<! IPV: kernel with several top level loops is split to several kernels ('parts'), one for each loop
+    uint32_t              partsNum  = 1;        ///<! IPV: number of parts (top level loops) in kernel function
+    std::vector<std::string> partNames;         ///<! IPV: for part #0 only, names of all other parts which must be called after it
+    clang::SourceRange    partLoopRange;        ///<! IPV: top level loop of this part (valid only if partsNum > 1)
+    const std::string&    FuncName() const { return funcName.empty() ? name : funcName; }
     std::string           className;            ///<! Class::kernel_XXX --> 'Class'
     std::string           interfaceName;        ///<! Name of the interface if the kernel is virtual
     std::vector<ArgInfo>  args;                 ///<! all arguments of a kernel
     std::vector<LoopIter> loopIters;            ///<! info about internal loops inside kernel which should be eliminated (so these loops are transformed to kernel call); For IPV pattern.
+    std::vector<LocalVarInUBO> localVarsInUBO;  ///<! IPV: variables declared before the loop and therefore shared by all threads; they are placed to UBO
     std::string           debugOriginalText;
 
     uint32_t GetDim() const
@@ -985,6 +1002,7 @@ namespace kslicer
     //
     std::string RecursiveRewrite(const clang::Stmt* expr) override;
     std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) override;
+    std::string RewriteStructWithMethods(const clang::CXXRecordDecl* pRecord); ///<! rewrite member functions (and constructors) of user structure for Slang
     //void MarkRewritten(const clang::Stmt* expr);
     //bool WasNotRewrittenYet(const clang::Stmt* expr);
 
@@ -1933,6 +1951,7 @@ namespace kslicer
   std::string GetDSVulkanAccessMask(TEX_ACCESS a_accessMask);
 
   DataMemberInfo ExtractMemberInfo(clang::FieldDecl* fd, const clang::ASTContext& astContext);
+  DataMemberInfo ExtractMemberInfo(const std::string& a_name, const clang::QualType a_type, const clang::ASTContext& astContext);
   std::string InferenceVulkanTextureFormatFromTypeName(const std::string& a_typeName, bool a_useHalFloat);
 
   std::vector<kslicer::ArgMatch> MatchCallArgsForKernel(clang::CallExpr* call, const KernelInfo& k, const clang::CompilerInstance& a_compiler);
@@ -1949,6 +1968,9 @@ namespace kslicer
   void CheckInterlanIncInExcludedFolders(const std::vector<std::filesystem::path>& a_folders);
 
   ShaderFeatures GetUsedShaderFeaturesFromTypeName(const std::string& a_str);
+  bool           HasUserMethods(const clang::CXXRecordDecl* pRecord);               ///<! structure has member functions or constructors written by user
+  ShaderFeatures GetStorageFeaturesFromType(clang::QualType a_type);                  ///<! 8/16 bit storage features for data of this type placed in a buffer (fields of structures are analyzed recursively)
+  ShaderFeatures GetStorageFeaturesFromDataMember(const DataMemberInfo& a_member);        ///<! 8/16 bit storage features for class data member (std::vector<T> or plain member in UBO)
 
   std::unordered_set<std::string> GetAllServiceKernels();
 

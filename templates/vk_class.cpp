@@ -354,6 +354,10 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Decl}}
   vkCmdDispatch(m_currCmdBuffer, 1, 1, 1);
   VkBufferMemoryBarrier barUBO = BarrierForSingleBuffer(m_classDataBuffer);
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &barUBO, 0, nullptr);
+  {% if Kernel.IsIndirect and SlangShaders %}
+  VkBufferMemoryBarrier barIndirectInit = BarrierForIndirectBufferUpdate(m_indirectBuffer); // init pass updates size of indirect dispatch
+  vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, 0, 0, nullptr, 1, &barIndirectInit, 0, nullptr);
+  {% endif %}
   {% endif %}
   {# /* --------------------------------------------------------------------------------------------------------------------------------------- */ #}
   

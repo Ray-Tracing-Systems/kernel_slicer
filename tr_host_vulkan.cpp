@@ -118,6 +118,19 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
   const DeclarationName dn      = dni.getName();
   const std::string fname       = dn.getAsString();
 
+  std::string result = MakeKernelCallCmdString(f, fname);
+  const auto pKernelInfo = m_kernels.find(fname);
+  if(pKernelInfo != m_kernels.end())               // kernel with several loops: call all its parts one by one
+  {
+    for(const auto& partName : pKernelInfo->second.partNames)
+      result += std::string("\n  ") + MakeKernelCallCmdString(f, partName);
+  }
+  return result;
+}
+
+std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemberCallExpr* f, const std::string& fname)
+{
+
   const auto pKernelInfo = m_kernels.find(fname);
   assert(pKernelInfo != m_kernels.end());
 

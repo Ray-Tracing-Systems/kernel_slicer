@@ -991,6 +991,47 @@ int main(int argc, const char **argv)
 
   std::cout << "(3) Mark data members, methods and functions which are actually used in kernels." << std::endl;
   std::cout << "{" << std::endl;
+
+  // IPV kernel with several top level loops is split to several kernels ('parts'): one part for each parallel loop;
+  // single-threaded code between loops becomes init pass of the next part; variables declared there are placed to UBO
+  {
+    std::vector<kslicer::KernelInfo> newParts;
+    for(auto& nk : inputCodeInfo.kernels)
+    {
+      auto& kernel = nk.second;
+      const clang::FunctionDecl* pDef = nullptr;
+      if(kernel.pattern != kslicer::PATTERN_TP::PATTERN_IPV || kernel.astNode == nullptr || !kernel.astNode->hasBody(pDef))
+        continue;
+      auto pBody = clang::dyn_cast<clang::CompoundStmt>(pDef->getBody());
+      if(pBody == nullptr)
+        continue;
+      std::vector<const clang::ForStmt*> loops;
+      for(const clang::Stmt* stmt : pBody->body())
+        if(auto pFor = clang::dyn_cast<clang::ForStmt>(stmt))
+          loops.push_back(pFor);
+      if(loops.size() < 2)
+        continue;
+
+      std::cout << "  kernel " << kernel.name.c_str() << " has " << loops.size() << " top level loops, it is split to " << loops.size() << " kernels" << std::endl;
+      kernel.partsNum      = uint32_t(loops.size());
+      kernel.partIndex     = 0;
+      kernel.partLoopRange = loops[0]->getSourceRange();
+      kernel.partNames.clear();
+      for(uint32_t i=1; i<uint32_t(loops.size()); i++)
+      {
+        kslicer::KernelInfo part = kernel;
+        part.funcName      = kernel.name;
+        part.name          = kernel.name + "_Part" + std::to_string(i);
+        part.partIndex     = i;
+        part.partLoopRange = loops[i]->getSourceRange();
+        part.partNames.clear();
+        kernel.partNames.push_back(part.name);
+        newParts.push_back(part);
+      }
+    }
+    for(const auto& part : newParts)
+      inputCodeInfo.kernels[part.name] = part;
+  }
   
   for(auto& nk : inputCodeInfo.kernels)
   {
@@ -1324,6 +1365,32 @@ int main(int argc, const char **argv)
   //  if(foundIntersectionShader.accObjName != "")
   //    forceUsedInKernel.insert(foundIntersectionShader.accObjName);
   //}
+
+  for(const auto& k : inputCodeInfo.kernels) // local variables of kernels which are declared before the loop
+  {
+    for(const auto& var : k.second.localVarsInUBO)
+    {
+      kslicer::DataMemberInfo member;
+      member.name         = var.uboName;
+      member.type         = var.typeName;
+      member.sizeInBytes  = var.sizeInBytes;
+      member.kind         = kslicer::DATA_KIND::KIND_POD;
+      member.usage        = kslicer::DATA_USAGE::USAGE_KERNEL_LOCAL;
+      member.usedInKernel = true;
+      member.isConst      = false;
+      if(!var.isSupported)
+      {
+        std::cout << "  [kslicer]: ERROR, variable '" << var.name << "' of type '" << member.type << "' in kernel '" << k.first << "' is declared before the loop, but can not be placed to UBO" << std::endl;
+        continue;
+      }
+      auto pExisting = inputCodeInfo.allDataMembers.find(var.uboName);
+      if(pExisting != inputCodeInfo.allDataMembers.end() && pExisting->second.usage == kslicer::DATA_USAGE::USAGE_KERNEL_LOCAL) // the same variable from other part of this kernel
+        continue;
+      if(pExisting != inputCodeInfo.allDataMembers.end())
+        std::cout << "  [kslicer]: ERROR, kernel local variable '" << var.uboName << "' has the same name as class data member" << std::endl;
+      inputCodeInfo.allDataMembers[var.uboName] = member;
+    }
+  }
 
   inputCodeInfo.dataMembers = kslicer::MakeClassDataListAndCalcOffsets(inputCodeInfo.allDataMembers, forceUsedInKernel);
   inputCodeInfo.AppendAllRefsBufferIfNeeded(inputCodeInfo.dataMembers);                       // add abstract to concrete tables

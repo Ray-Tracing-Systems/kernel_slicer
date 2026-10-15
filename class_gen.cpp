@@ -373,6 +373,8 @@ std::string kslicer::MainClassInfo::VisitAndRewrite_KF(KernelInfo& a_funcInfo, c
         auto repairedEnd = clang::SourceLocation::getFromRawEncoding(brokenEnd+1);
         a_funcInfo.loopOutsidesInit.setEnd(repairedEnd);
         a_outLoopInitCode = kslicer::GetRewrittenText(rewrite2, a_funcInfo.loopOutsidesInit)   + ";";
+        if(a_funcInfo.partIndex > 0)                 // code between loops does not begin with '{' of function body
+          a_outLoopInitCode = "{" + a_outLoopInitCode;
       }
     }
   
@@ -527,6 +529,8 @@ void kslicer::ObtainKernelsDecl(std::unordered_map<std::string, KernelInfo>& a_k
     auto posEndBrace = kernelSourceCode.find(")");
 
     std::string kernelCmdDecl = remove_space_before_paren(kernelSourceCode.substr(posBeg, posEndBrace+1-posBeg));   
+    if(k.second.partIndex > 0)                     // part of kernel with several loops: XXX(...) ==> XXX_PartN(...)
+      ReplaceFirst(kernelCmdDecl, funcName, k.second.name);
     kernelCmdDecl = a_codeInfo.RemoveKernelPrefix(kernelCmdDecl);
     
     if(k.second.isMega)

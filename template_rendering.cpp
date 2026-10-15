@@ -1313,6 +1313,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["checkFlagsExpr"]      = "//xxx//";
     kernelJson["ThreadOffset"]        = threadOffsetStr;
     kernelJson["InitKPass"]           = false;
+    kernelJson["UpdateIndirectInInit"]= false;
     kernelJson["IsIndirect"]          = k.isIndirect;
     if(k.isIndirect)
     {
@@ -1518,6 +1519,10 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         kernelJson["HasEpilog"] = false;
         kernelJson["FinishRed"] = false;
         kernelJson["InitKPass"] = true;
+        kernelJson["UpdateIndirectInInit"] = k.isIndirect; // init pass may change loop size of indirect kernel, so it updates dispatch size itself
+        kernelJson["IndirectWGSizeX"] = k.wgSize[0];
+        kernelJson["IndirectWGSizeY"] = k.wgSize[1];
+        kernelJson["IndirectWGSizeZ"] = k.wgSize[2];
         kernelJson["WGSizeX"]   = 1;
         kernelJson["WGSizeY"]   = 1;
         kernelJson["WGSizeZ"]   = 1;

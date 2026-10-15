@@ -131,4 +131,18 @@ void main(uint3 a_globalTID: SV_DispatchThreadID, {% if Kernel.HasEpilog %} uint
   {% endif %}
   
   {% endif %} {# /* END of 'if Kernel.HasEpilog'  */ #}
+  {% if existsIn(Kernel, "UpdateIndirectInInit") and Kernel.UpdateIndirectInInit %}
+  {
+    // init pass may change loop size of indirect kernel, so update dispatch size here
+    uint4 blocksNum = uint4(1,1,1,0);
+    blocksNum.x = ({{Kernel.IndirectSizeX}} - {{Kernel.IndirectStartX}} + {{Kernel.IndirectWGSizeX}} - 1)/{{Kernel.IndirectWGSizeX}};
+    {% if Kernel.threadDim == 2 or Kernel.threadDim == 3 %}
+    blocksNum.y = ({{Kernel.IndirectSizeY}} - {{Kernel.IndirectStartY}} + {{Kernel.IndirectWGSizeY}} - 1)/{{Kernel.IndirectWGSizeY}};
+    {% endif %}
+    {% if Kernel.threadDim == 3 %}
+    blocksNum.z = ({{Kernel.IndirectSizeZ}} - {{Kernel.IndirectStartZ}} + {{Kernel.IndirectWGSizeZ}} - 1)/{{Kernel.IndirectWGSizeZ}};
+    {% endif %}
+    m_indirectBuffer[{{Kernel.IndirectOffset}}] = blocksNum;
+  }
+  {% endif %}
 }

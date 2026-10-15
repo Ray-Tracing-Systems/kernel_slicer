@@ -171,6 +171,17 @@ protected:
   translator ignores it.
 - Small fixed-size local arrays; mark large ones `[[threadlocal]] float tmp[64];`.
 - Structs of POD fields, constants via `constexpr` / `static constexpr` / `#define`.
+- Member functions of such structs (Slang back end): `const` methods, methods that modify fields
+  (emitted as `[mutating]`), `static` methods, constructors with initializer lists (`__init`), and
+  methods defined outside the struct. Fields of 8/16-bit types (`uint16_t`, `half`, `uint8_t`) in
+  buffers or UBO are detected automatically and the 8/16-bit storage features are requested.
+- IPV, Slang back end: local variables declared before the loop (and between loops) are shared by
+  all threads; the translator places them to UBO as `<KernelName>_<var>` (kernel name without the
+  `kernel1D_` prefix): `const float inv = 1.0f/a_gamma; for(...) a_out[i] = a_in[i]*inv;`.
+- IPV, Slang back end: several consecutive top-level loops in one kernel. Each loop becomes a
+  separate GPU pass (`<Kernel>_Part1`, ...), the code between loops runs single-threaded before the
+  next loop, and the passes are executed in order with barriers. A loop bound may be a member set in
+  the code before the loop (indirect dispatch): `m_count = a_size/2; for(i...; i<m_count; ...)`.
 - Atomics: `LiteMath::InterlockedAdd(a_out[idx], value)` for `int`/`uint`/`float`, and
   `LiteMath::InterlockedAdd3f(a_out, offset, float3)` (each channel atomic separately).
   Float atomics need `shaderBufferFloat32AtomicAdd` on the GPU (absent, for example, on AMD RDNA2
@@ -196,12 +207,9 @@ protected:
 - Pointer class members (`float* m_ptr` is ignored by the translator), nested containers
   (`std::vector` inside a struct stored in the main class), comparing pointers with `nullptr`.
 - `double`, unless you know the device supports it; write float literals as `1.0f`.
-- **Class members or kernel arguments directly inside a `std::` call** (`std::max(m_val, x)`,
-  `std::pow(x, a_gamma)`). The Slang back end truncates them (`m_val` becomes `ubo[0`) and the
-  shader does not compile. Copy them to a local first:
-  `const float val = m_val; ... std::max(val, x)`. Locals and helper-function parameters inside
-  `std::` calls are fine, and so is the reduction statement `m_max = std::max(m_max, v);`.
-- Two or more consecutive top-level loops in one IPV kernel: split them into two kernels.
+- Class members or kernel arguments directly inside a `std::` call (`std::max(m_val, x)`) were
+  truncated by older translator versions (`m_val` became `ubo[0`); fixed in October 2026. If you
+  must support an older kslicer, copy them to a local first.
 
 **Data layout**
 - Prefer `float4` over `float3` inside structs and buffers; keep struct sizes a multiple of 16
@@ -281,13 +289,14 @@ Always pass `-shaderCC slang`. It is the current back end; `glsl` is legacy (its
 
 - [ ] Kernel names have exactly one prefix: `kernel1D_`/`kernel2D_`/`kernel3D_` (IPV) or `kernel_` (RTV).
 - [ ] IPV: the number of nested thread loops equals the `ND` in the name; loops are perfectly
-      nested with nothing between them; there is only one such loop nest per kernel.
+      nested with nothing between them; several consecutive loop nests in one kernel are allowed
+      only with the Slang back end (each becomes a separate GPU pass).
 - [ ] IPV 2D kernels: `y` outer, `x` inner, and `-reorderLoops YX` is set in `kmake.json` or on
       the command line.
 - [ ] IPV: every thread-loop bound is a plain kernel argument or class member. An expression
       such as `i < w*h` is accepted silently but produces uncompilable shaders.
-- [ ] IPV: code before and after the loop nest only initializes/finalizes members or writes
-      single values (it runs once, not per thread).
+- [ ] IPV: code before, between and after the loop nests only initializes/finalizes members,
+      declares shared locals or writes single values (it runs once, not per thread).
 - [ ] RTV: first kernel arguments are `tid` or `tidX, tidY`; no thread loop in the body;
       a `...Block(..., uint a_passesNum)` virtual function exists for each RTV control function.
 - [ ] No kernel calls a kernel; no control function calls a control function.
@@ -301,7 +310,6 @@ Always pass `-shaderCC slang`. It is the current back end; `glsl` is legacy (its
 - [ ] No I/O, exceptions, allocation, recursion or pointer members in GPU-side code.
 - [ ] `std::` math calls exist in `TINYSTL/cmath` (no `std::fabs`, `std::fmin`, `std::fmax`).
 - [ ] `kmake.json`, if any, sets `wgSize` only for named kernels, never a 2D size under `"default"`.
-- [ ] No class member or kernel argument written directly inside a `std::` call in GPU code.
 - [ ] Float atomics (`InterlockedAdd` on float, `InterlockedAdd3f`, `ReduceAdd<float>`): `"-atomicf_emul" : 2`
       (or `1`, the same) unless every target GPU has `shaderBufferFloat32AtomicAdd`; no translator warning
       about a float atomic target falling back to hardware atomics.
