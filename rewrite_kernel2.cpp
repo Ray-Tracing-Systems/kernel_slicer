@@ -504,7 +504,7 @@ std::string kslicer::FunctionRewriter2::RecursiveRewrite(const clang::Stmt* expr
   if(p != rvCopy.m_workAround.end())
     return p->second;
   else
-    return m_rewriter.getRewrittenText(range);
+    return kslicer::GetRewrittenText(m_rewriter, range);
 }
 
 bool kslicer::FunctionRewriter2::DetectAndRewriteShallowPattern(const clang::Stmt* expr, std::string& a_out)
@@ -906,7 +906,7 @@ std::string kslicer::KernelRewriter2::RecursiveRewrite(const clang::Stmt* expr)
   else
   {
     //rvCopy.ApplyDefferedWorkArounds();
-    return m_rewriter.getRewrittenText(range);
+    return kslicer::GetRewrittenText(m_rewriter, range);
   }
 }
 

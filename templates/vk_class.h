@@ -317,7 +317,8 @@ protected:
   vk_utils::VulkanContext    m_ctx          = {};
   VkCommandBuffer            m_currCmdBuffer   = VK_NULL_HANDLE;
   uint32_t                   m_currThreadFlags = 0;
-  std::vector<MemLoc>        m_allMems;
+  std::vector<MemLoc>        m_allMems;      ///< memory for class data (member vectors, textures, ...), re-allocated on each CommitDeviceData()
+  std::vector<MemLoc>        m_internalMems; ///< memory for internal buffers (RTV local, reduction, scan, ...), allocated once in InitVulkanObjects
   VkPhysicalDeviceProperties m_devProps;
   size_t                     m_commitCount = 0;
 

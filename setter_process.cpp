@@ -32,7 +32,7 @@ public:
       m_foundMembers[pDecl->getNameAsString()] = typeName;
 
     std::string text = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
-    m_rewriter.ReplaceText(expr->getSourceRange(), text + "Vulkan");
+    kslicer::ReplaceTextSafe(m_rewriter, expr->getSourceRange(), text + "Vulkan");
     return true;
   }
 
@@ -121,7 +121,7 @@ void kslicer::MainClassInfo::ProcessAllSetters(const std::unordered_map<std::str
     SetterVisitor visitor(a_compiler, rewrite, structTypeNames);
     visitor.TraverseDecl(const_cast<clang::CXXMethodDecl*>(node));
 
-    std::string rewrittenFunc = rewrite.getRewrittenText(node->getSourceRange());
+    std::string rewrittenFunc = kslicer::GetRewrittenText(rewrite, node->getSourceRange());
     std::string rewrittenBody = rewrittenFunc.substr(rewrittenFunc.find("{"));
 
     std::stringstream strOutFD;

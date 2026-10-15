@@ -115,7 +115,7 @@ bool kslicer::ISPCRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
     if(NeedToRewriteMemberExpr(expr, rewrittenText))
     {
       //ReplaceTextOrWorkAround(expr->getSourceRange(), rewrittenText);
-      m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenText);
+      kslicer::ReplaceTextSafe(m_rewriter, expr->getSourceRange(), rewrittenText);
       MarkRewritten(expr);
     }
   }
@@ -426,7 +426,7 @@ std::string kslicer::ISPCRewriter::RecursiveRewrite(const clang::Stmt* expr)
   if(p != rvCopy.m_workAround.end())
     return p->second;
   else
-    return m_rewriter.getRewrittenText(range);
+    return kslicer::GetRewrittenText(m_rewriter, range);
 }
 
 

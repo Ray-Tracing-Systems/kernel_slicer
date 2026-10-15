@@ -71,6 +71,8 @@ void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, 
   {% endif %}
   InitHelpers();
   InitBuffers(a_maxThreadsCount, true);
+  m_internalMems.insert(m_internalMems.end(), m_allMems.begin(), m_allMems.end()); // internal buffers live until destructor,
+  m_allMems.clear();                                                               // m_allMems is freed on each CommitDeviceData()
   InitKernels("{{ShaderSingleFile}}.spv");
   AllocateAllDescriptorSets();
   {% if EnableTimeStamps %}
@@ -416,25 +418,11 @@ void {{MainClassName}}{{MainClassSuffix}}::DeleteDeviceData()
   {% for Sam in SamplerMembers %}
   vkDestroySampler(m_device, m_vdata.{{Sam}}, nullptr);
   {% endfor %}
-  {% for Buffer in RedVectorVars %}
-  vkDestroyBuffer(m_device, m_vdata.{{Buffer.Name}}Buffer, nullptr);
-  {% endfor %}
-  if(copyKernelFloatDSLayout != VK_NULL_HANDLE)
-     vkDestroyDescriptorSetLayout(m_device, copyKernelFloatDSLayout, nullptr);
   {% if length(IndirectDispatches) > 0 %}
   vkDestroyBuffer(m_device, m_indirectBuffer, nullptr);
-  vkDestroyDescriptorSetLayout(m_device, m_indirectUpdateDSLayout, nullptr);
-  vkDestroyPipelineLayout(m_device, m_indirectUpdateLayout, nullptr);
-  {% for Dispatch in IndirectDispatches %}
-  vkDestroyPipeline(m_device, m_indirectUpdate{{Dispatch.KernelName}}Pipeline, nullptr);
-  {% endfor %}
+  m_indirectBuffer = VK_NULL_HANDLE;
   {% endif %}
-  {% if UseServiceScan %}
-  {% for Scan in ServiceScan %}
-  m_scan_{{Scan.Type}}.DeleteTempBuffers(m_device);
-  {% endfor %}
-  {% endif %}
-  FreeAllAllocations(m_allMems);
+  FreeAllAllocations(m_allMems); // only memory allocated in InitDeviceData; internal buffers memory (InitBuffers) is in m_internalMems
   {% if UseRayGen %}
   for(size_t i=0;i<m_allShaderTableBuffers.size();i++)
     vkDestroyBuffer(m_device, m_allShaderTableBuffers[i], nullptr);
@@ -467,6 +455,9 @@ void {{MainClassName}}{{MainClassSuffix}}::DeleteDeviceData()
   {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;
 ## endfor
   vkDestroyDescriptorPool(m_device, m_dsPool, NULL); m_dsPool = VK_NULL_HANDLE;
+  DeleteDeviceData();
+  // objects which are created once in InitVulkanObjects and must survive repeated CommitDeviceData()
+  //
 ## for MainFunc in MainFunctions
   {% if MainFunc.IsRTV and not MainFunc.IsMega %}
   {% for Buffer in MainFunc.LocalVarsBuffersDecl %}
@@ -474,10 +465,29 @@ void {{MainClassName}}{{MainClassSuffix}}::DeleteDeviceData()
   {% endfor %}
   {% endif %}
 ## endfor
+  {% for Buffer in RedVectorVars %}
+  vkDestroyBuffer(m_device, m_vdata.{{Buffer.Name}}Buffer, nullptr);
+  {% endfor %}
+  {% if UseServiceScan %}
+  {% for Scan in ServiceScan %}
+  m_scan_{{Scan.Type}}.DeleteTempBuffers(m_device);
+  {% endfor %}
+  {% endif %}
+  if(copyKernelFloatDSLayout != VK_NULL_HANDLE)
+    vkDestroyDescriptorSetLayout(m_device, copyKernelFloatDSLayout, nullptr);
+  if(matMulTransposeDSLayout != VK_NULL_HANDLE)
+    vkDestroyDescriptorSetLayout(m_device, matMulTransposeDSLayout, nullptr);
+  {% if length(IndirectDispatches) > 0 %}
+  vkDestroyDescriptorSetLayout(m_device, m_indirectUpdateDSLayout, nullptr);
+  vkDestroyPipelineLayout(m_device, m_indirectUpdateLayout, nullptr);
+  {% for Dispatch in IndirectDispatches %}
+  vkDestroyPipeline(m_device, m_indirectUpdate{{Dispatch.KernelName}}Pipeline, nullptr);
+  {% endfor %}
+  {% endif %}
+  FreeAllAllocations(m_internalMems);
   {% if UsePipelineCache %}
   vkDestroyPipelineCache(m_device, m_pipelineCache, nullptr);
   {% endif %}
-  DeleteDeviceData();
 }
 
 void {{MainClassName}}{{MainClassSuffix}}::InitHelpers()

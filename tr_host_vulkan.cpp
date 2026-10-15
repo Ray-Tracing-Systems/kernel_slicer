@@ -48,7 +48,7 @@ void kslicer::MainFunctionRewriterVulkan::ReplaceTextOrWorkAround(clang::SourceR
   if(a_range.getBegin().getRawEncoding() == a_range.getEnd().getRawEncoding())
     m_workAround[GetHashOfSourceRange(a_range)] = a_text;
   else
-    m_rewriter.ReplaceText(a_range, a_text);
+    kslicer::ReplaceTextSafe(m_rewriter, a_range, a_text);
 }
 
 bool kslicer::MainFunctionRewriterVulkan::WasNotRewrittenYet(const clang::Stmt* expr) const
@@ -77,7 +77,7 @@ std::string kslicer::MainFunctionRewriterVulkan::RecursiveRewrite(const clang::S
     return p->second;
   else
   {
-    std::string text = m_rewriter.getRewrittenText(range);
+    std::string text = kslicer::GetRewrittenText(m_rewriter, range);
     return (text != "") ? text : kslicer::GetRangeSourceCode(range, m_compiler);
   }
 }

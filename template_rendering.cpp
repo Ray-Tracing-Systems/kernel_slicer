@@ -1253,17 +1253,17 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       if(threadIdNames.size() >= 1)
       {
         kernelJson["threadName1"] = threadIdNames[0];
-        kernelJson["CondLE1"]     = (tidArgs[0].loopIter.condKind == kslicer::KernelInfo::IPV_LOOP_KIND::LOOP_KIND_LESS_EQUAL) ? 1 : 0;
+        kernelJson["CondLE1"]     = (tidArgs[std::min<uint32_t>(threadsOrder[0], tidArgs.size()-1)].loopIter.condKind == kslicer::KernelInfo::IPV_LOOP_KIND::LOOP_KIND_LESS_EQUAL) ? 1 : 0;
       }
       if(threadIdNames.size() >= 2)
       {
         kernelJson["threadName2"] = threadIdNames[1];
-        kernelJson["CondLE2"]     = (tidArgs[1].loopIter.condKind == kslicer::KernelInfo::IPV_LOOP_KIND::LOOP_KIND_LESS_EQUAL) ? 1 : 0;
+        kernelJson["CondLE2"]     = (tidArgs[std::min<uint32_t>(threadsOrder[1], tidArgs.size()-1)].loopIter.condKind == kslicer::KernelInfo::IPV_LOOP_KIND::LOOP_KIND_LESS_EQUAL) ? 1 : 0;
       }
       if(threadIdNames.size() == 3)
       {
         kernelJson["threadName3"] = threadIdNames[2];
-        kernelJson["CondLE3"]     = (tidArgs[2].loopIter.condKind == kslicer::KernelInfo::IPV_LOOP_KIND::LOOP_KIND_LESS_EQUAL) ? 1 : 0;
+        kernelJson["CondLE3"]     = (tidArgs[std::min<uint32_t>(threadsOrder[2], tidArgs.size()-1)].loopIter.condKind == kslicer::KernelInfo::IPV_LOOP_KIND::LOOP_KIND_LESS_EQUAL) ? 1 : 0;
       }
     }
 
@@ -1323,31 +1323,19 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernelJson["IndirectStartY"] = "0";
       kernelJson["IndirectStartZ"] = "0";
 
-      if(k.loopIters.size() > 0)
+      // apply threads order (e.g. '-reorderLoops YX') in the same way as for 'ThreadIds': X dispatch size must correspond to the fastest thread index
+      //
+      const char* sizeNames [3] = {"IndirectSizeX",  "IndirectSizeY",  "IndirectSizeZ"};
+      const char* startNames[3] = {"IndirectStartX", "IndirectStartY", "IndirectStartZ"};
+      const uint32_t loopsNum   = uint32_t(std::min<size_t>(k.loopIters.size(), 3));
+      for(uint32_t dim = 0; dim < loopsNum; dim++)
       {
-        std::string exprContent      = a_classInfo.pShaderCC->ReplaceSizeCapacityExpr(k.loopIters[0].sizeText);
+        const uint32_t loopId   = std::min<uint32_t>(threadsOrder[dim], loopsNum-1);
+        std::string exprContent = a_classInfo.pShaderCC->ReplaceSizeCapacityExpr(k.loopIters[loopId].sizeText);
         if(a_classInfo.pShaderCC->IsCUDA() && a_classInfo.placeVectorsInUBO)
           exprContent = std::string("ubo.") + exprContent;
-        kernelJson["IndirectSizeX"]  = a_classInfo.pShaderCC->UBOAccess(exprContent);
-        kernelJson["IndirectStartX"] = kernelJson["ThreadIds"][0]["Start"];
-      }
-
-      if(k.loopIters.size() > 1)
-      {
-        std::string exprContent      = a_classInfo.pShaderCC->ReplaceSizeCapacityExpr(k.loopIters[1].sizeText);
-        if(a_classInfo.pShaderCC->IsCUDA() && a_classInfo.placeVectorsInUBO)
-          exprContent = std::string("ubo.") + exprContent;
-        kernelJson["IndirectSizeY"]  = a_classInfo.pShaderCC->UBOAccess(exprContent);
-        kernelJson["IndirectStartY"] = kernelJson["ThreadIds"][1]["Start"];
-      }
-
-      if(k.loopIters.size() > 2)
-      {
-        std::string exprContent      = a_classInfo.pShaderCC->ReplaceSizeCapacityExpr(k.loopIters[2].sizeText);
-        if(a_classInfo.pShaderCC->IsCUDA() && a_classInfo.placeVectorsInUBO)
-          exprContent = std::string("ubo.") + exprContent;
-        kernelJson["IndirectSizeZ"]  = a_classInfo.pShaderCC->UBOAccess(exprContent);
-        kernelJson["IndirectStartZ"] = kernelJson["ThreadIds"][2]["Start"];
+        kernelJson[sizeNames[dim]]  = a_classInfo.pShaderCC->UBOAccess(exprContent);
+        kernelJson[startNames[dim]] = kernelJson["ThreadIds"][dim]["Start"];
       }
        
       kernelJson["IndirectOffset"] = k.indirectBlockOffset;

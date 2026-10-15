@@ -1320,6 +1320,99 @@
         },
 
         {
+            "name"   : "Launch (test_057/Slang)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/tests/057_commit_twice/test_class.cpp",
+                        "-mainClass",    "CommitTest",
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-I${workspaceFolder}/apps/LiteMath",    "ignore",
+                        "-I${workspaceFolder}/TINYSTL",          "ignore",
+                        "-shaderCC", "slang",
+                        "-megakernel", "1",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (test_058/Slang)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/tests/058_inline_func_decl/test_class.cpp",
+                        "-mainClass",
+                        "InlineFuncs",
+                        "-stdlibfolder",
+                        "${workspaceFolder}/TINYSTL",
+                        "-I${workspaceFolder}/apps/LiteMath",
+                        "ignore",
+                        "-I${workspaceFolder}/TINYSTL",
+                        "ignore",
+                        "-shaderCC",
+                        "slang",
+                        "-reorderLoops",
+                        "YX",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (test_059/Slang)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/tests/059_indirect_reorder/test_class.cpp",
+                        "-mainClass",
+                        "IndirectReorder",
+                        "-stdlibfolder",
+                        "${workspaceFolder}/TINYSTL",
+                        "-I${workspaceFolder}/apps/LiteMath",
+                        "ignore",
+                        "-I${workspaceFolder}/TINYSTL",
+                        "ignore",
+                        "-shaderCC",
+                        "slang",
+                        "-reorderLoops",
+                        "YX",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
             "name"   : "Launch (HydraGMLPriv/MEGA_DS)",
             "type"   : "cppdbg",
             "request": "launch",

@@ -39,7 +39,7 @@ void kslicer::MainFunctionRewriterWGPU::ReplaceTextOrWorkAround(clang::SourceRan
   if(a_range.getBegin().getRawEncoding() == a_range.getEnd().getRawEncoding())
     m_workAround[GetHashOfSourceRange(a_range)] = a_text;
   else
-    m_rewriter.ReplaceText(a_range, a_text);
+    kslicer::ReplaceTextSafe(m_rewriter, a_range, a_text);
 }
 
 bool kslicer::MainFunctionRewriterWGPU::WasNotRewrittenYet(const clang::Stmt* expr) const
@@ -68,7 +68,7 @@ std::string kslicer::MainFunctionRewriterWGPU::RecursiveRewrite(const clang::Stm
     return p->second;
   else
   {
-    std::string text = m_rewriter.getRewrittenText(range);
+    std::string text = kslicer::GetRewrittenText(m_rewriter, range);
     return (text != "") ? text : kslicer::GetRangeSourceCode(range, m_compiler);
   }
 }

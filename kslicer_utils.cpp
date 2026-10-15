@@ -34,6 +34,57 @@ std::string kslicer::GetRangeSourceCode(const clang::SourceRange a_range, const 
   return std::string(sm.getCharacterData(b), sm.getCharacterData(e));
 }
 
+// Converts token range to a char range in file which ends right after the last token.
+// Ranges which begin or end inside macro expansion (like 'const uint32_t a = MY_DEFINE') are expanded to the macro use site.
+//
+static clang::CharSourceRange FileCharRangeAfterLastToken(const clang::Rewriter& a_rewriter, const clang::SourceRange a_range)
+{
+  const clang::SourceManager& sm = a_rewriter.getSourceMgr();
+  const clang::LangOptions&   lo = a_rewriter.getLangOpts();
+  clang::CharSourceRange res = clang::Lexer::makeFileCharRange(clang::CharSourceRange::getTokenRange(a_range), sm, lo);
+  if(res.isValid())
+    return res;
+  clang::SourceLocation b = a_range.getBegin();
+  clang::SourceLocation e = a_range.getEnd();
+  if(b.isMacroID())
+    b = sm.getExpansionRange(b).getBegin();
+  if(e.isMacroID())
+    e = sm.getExpansionRange(e).getEnd();
+  e = clang::Lexer::getLocForEndOfToken(e, 0, sm, lo);
+  if(b.isInvalid() || e.isInvalid() || e < b)
+    return clang::CharSourceRange();
+  return clang::CharSourceRange::getCharRange(b, e);
+}
+
+std::string kslicer::GetRewrittenText(const clang::Rewriter& a_rewriter, const clang::SourceRange a_range)
+{
+  // Rewriter::getRewrittenText(SourceRange) maps the beginning of the last token and then adds the ORIGINAL token length.
+  // If the last token was replaced by a text of different length, the result is cut ('m_summ' ==> 'ubo[0').
+  // So, we convert token range to char range which ends right after the last token.
+  //
+  const clang::CharSourceRange range = FileCharRangeAfterLastToken(a_rewriter, a_range);
+  if(range.isInvalid())
+    return a_rewriter.getRewrittenText(a_range);
+  return a_rewriter.getRewrittenText(range);
+}
+
+bool kslicer::ReplaceTextSafe(clang::Rewriter& a_rewriter, const clang::SourceRange a_range, const std::string& a_text)
+{
+  // Rewriter::ReplaceText(SourceRange) erases 'getRangeSize(range)' chars, which has the same problem as getRewrittenText:
+  // if the last token was already replaced, only its ORIGINAL length is erased and the tail of previous replacement remains ('m_winWidth' ==> 'ubo[0].m_winWidthinWidth').
+  // So we measure the current (rewritten) size of a char range which ends right after the last token.
+  //
+  const clang::CharSourceRange range = FileCharRangeAfterLastToken(a_rewriter, a_range);
+  if(range.isInvalid())
+    return a_rewriter.ReplaceText(a_range, a_text);
+  clang::Rewriter::RewriteOptions opts;
+  opts.IncludeInsertsAtBeginOfRange = false; // ReplaceText(loc, ...) starts after text inserted at 'loc', so measure the size from the same point
+  const int currSize = a_rewriter.getRangeSize(range, opts);
+  if(currSize < 0)
+    return a_rewriter.ReplaceText(a_range, a_text);
+  return a_rewriter.ReplaceText(range.getBegin(), unsigned(currSize), a_text);
+}
+
 uint64_t kslicer::GetHashOfSourceRange(const clang::SourceRange& a_range)
 {
   const uint32_t hash1 = a_range.getBegin().getRawEncoding();
@@ -733,3 +784,4 @@ void kslicer::WriteShaderBuildScript(const std::filesystem::path& a_scriptPath, 
   out << "fi" << std::endl;
   out << "echo \"all $CMD_NUM shaders compiled\"" << std::endl;
 }
+

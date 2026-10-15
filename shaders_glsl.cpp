@@ -521,7 +521,7 @@ std::string kslicer::GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* e
       return p->second;
     else
     {
-      std::string res = m_rewriter.getRewrittenText(range);
+      std::string res = kslicer::GetRewrittenText(m_rewriter, range);
       return (res != "") ? res : GetRangeSourceCode(range, m_compiler);
     }
   }
@@ -542,7 +542,7 @@ void kslicer::GLSLFunctionRewriter::ApplyDefferedWorkArounds()
   {
     auto loc = clang::SourceLocation::getFromRawEncoding(pair.first);
     clang::SourceRange range(loc, loc); 
-    m_rewriter.ReplaceText(range, pair.second);
+    kslicer::ReplaceTextSafe(m_rewriter, range, pair.second);
   }
 
   m_workAround.clear();
@@ -1302,7 +1302,7 @@ bool kslicer::GLSLFunctionRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCa
     {
       const std::string textRes = RewriteConstructCall(call);
       //ReplaceTextOrWorkAround(call->getSourceRange(), textRes); //
-      m_rewriter.ReplaceText(call->getSourceRange(), textRes);    //
+      kslicer::ReplaceTextSafe(m_rewriter, call->getSourceRange(), textRes);    //
       MarkRewritten(call);
     }
 
@@ -1323,7 +1323,7 @@ bool kslicer::GLSLFunctionRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCa
     {
       const std::string exprText = RecursiveRewrite(next);
       //ReplaceTextOrWorkAround(next->getSourceRange(), castTo + "(" + exprText + ")");
-      m_rewriter.ReplaceText(next->getSourceRange(), castTo + "(" + exprText + ")");
+      kslicer::ReplaceTextSafe(m_rewriter, next->getSourceRange(), castTo + "(" + exprText + ")");
       MarkRewritten(next);
     }
   }
@@ -1561,7 +1561,7 @@ std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)
   else
   {
     //rvCopy.ApplyDefferedWorkArounds();
-    return m_rewriter.getRewrittenText(range);
+    return kslicer::GetRewrittenText(m_rewriter, range);
   }
 }
 
@@ -1582,7 +1582,7 @@ void GLSLKernelRewriter::ApplyDefferedWorkArounds()
   {
     auto loc = clang::SourceLocation::getFromRawEncoding(pair.first);
     clang::SourceRange range(loc, loc); 
-    m_rewriter.ReplaceText(range, pair.second);
+    kslicer::ReplaceTextSafe(m_rewriter, range, pair.second);
   }
 
   m_workAround.clear();
@@ -2041,7 +2041,7 @@ bool GLSLKernelRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
     if(!m_codeInfo->megakernelRTV || m_currKernel.isMega)
     {
       //ReplaceTextOrWorkAround(expr->getSourceRange(), std::string("kgenArgs.") + textOri);
-      m_rewriter.ReplaceText(expr->getSourceRange(), std::string("kgenArgs.") + textOri);
+      kslicer::ReplaceTextSafe(m_rewriter, expr->getSourceRange(), std::string("kgenArgs.") + textOri);
       MarkRewritten(expr);
     }
   }

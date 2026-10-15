@@ -18,6 +18,7 @@
 
 #include "clang/AST/DeclCXX.h"
 #include "clang/Frontend/CompilerInstance.h"
+#include "clang/Rewrite/Core/Rewriter.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Tooling/Tooling.h"
 
@@ -1887,6 +1888,8 @@ namespace kslicer
 
   std::string GetRangeSourceCode(const clang::SourceRange a_range, const clang::CompilerInstance& compiler);
   std::string GetRangeSourceCode(const clang::SourceRange a_range, const clang::SourceManager& sm);
+  std::string GetRewrittenText(const clang::Rewriter& a_rewriter, const clang::SourceRange a_range); ///<! safe version of Rewriter::getRewrittenText, does not cut last token if it was rewritten
+  bool        ReplaceTextSafe(clang::Rewriter& a_rewriter, const clang::SourceRange a_range, const std::string& a_text); ///<! safe version of Rewriter::ReplaceText, replaces whole current text of the range even if the last token was already rewritten
   std::string CutOffFileExt(const std::string& a_filePath);
   std::string CutOffStructClass(const std::string& a_typeName);
 

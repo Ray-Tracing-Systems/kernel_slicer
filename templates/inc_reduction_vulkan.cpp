@@ -10,10 +10,10 @@
     vkCmdBindPipeline(m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}ReductionPipeline);
     
     {% if Kernel.threadDim == 1 %}
-    uint32_t oldSize    = {{Kernel.tidX}};
+    uint32_t oldSize    = {% if Kernel.IsIndirect %}uint32_t(m_maxThreadCount){% else %}{{Kernel.tidX}}{% endif %}; // for indirect dispatch actual size is known only on GPU, use upper bound
     uint32_t wholeSize  = (oldSize + blockSizeX - 1) / blockSizeX; // assume first pass of reduction is done inside kernel itself
     {% else %}
-    uint32_t oldSize    = {{Kernel.tidX}}*{{Kernel.tidY}};
+    uint32_t oldSize    = {% if Kernel.IsIndirect %}uint32_t(m_maxThreadCount){% else %}{{Kernel.tidX}}*{{Kernel.tidY}}{% endif %};
     uint32_t wholeSize  = (oldSize + blockSizeX*blockSizeY - 1) / (blockSizeX*blockSizeY); // assume first pass of reduction is done inside kernel itself
     {% endif %}
     bool     singleRun  = (wholeSize == 1);

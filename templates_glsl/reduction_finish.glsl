@@ -48,15 +48,20 @@ void main()
 {
   const uint globalId = gl_GlobalInvocationID[0];
   const uint localId  = gl_LocalInvocationID[0];
+  uint numElemsX = kgenArgs.{{Kernel.threadSZName1}};
+  {% if Kernel.IsIndirect and Kernel.threadDim == 1 %}
+  if(kgenArgs.{{Kernel.threadSZName2}} == 0) // first pass of indirect kernel: host uses upper bound, actual number of thread groups is known only on GPU
+    numElemsX = min(numElemsX, m_indirectBuffer[{{Kernel.IndirectOffset}}].x);
+  {% endif %}
   {% for redvar in Kernel.SubjToRed %}
   {% if not redvar.SupportAtomic %}
-  {{redvar.Name}}Shared[localId] = (globalId < kgenArgs.{{Kernel.threadSZName1}}) ?  {{ redvar.OutTempName }}[kgenArgs.{{Kernel.threadSZName2}} + globalId]  :  {{redvar.Init}}; // use kgenArgs.{{Kernel.threadSZName2}} for 'InputOffset'
+  {{redvar.Name}}Shared[localId] = (globalId < numElemsX) ?  {{ redvar.OutTempName }}[kgenArgs.{{Kernel.threadSZName2}} + globalId]  :  {{redvar.Init}}; // use kgenArgs.{{Kernel.threadSZName2}} for 'InputOffset'
   {% endif %}
   {% endfor %}
   {% for redvar in Kernel.ArrsToRed %}
   {% for outName in redvar.OutTempNameA %}
   {% if not redvar.SupportAtomic %}
-  {{redvar.Name}}Shared[{{loop.index}}][localId] = (globalId < kgenArgs.{{Kernel.threadSZName1}}) ? {{ outName }}[kgenArgs.{{Kernel.threadSZName2}} + globalId] : {{redvar.Init}}; // use kgenArgs.{{Kernel.threadSZName2}} for 'InputOffset'
+  {{redvar.Name}}Shared[{{loop.index}}][localId] = (globalId < numElemsX) ? {{ outName }}[kgenArgs.{{Kernel.threadSZName2}} + globalId] : {{redvar.Init}}; // use kgenArgs.{{Kernel.threadSZName2}} for 'InputOffset'
   {% endif %}
   {% endfor %}
   {% endfor %}

@@ -372,19 +372,19 @@ std::string kslicer::MainClassInfo::VisitAndRewrite_KF(KernelInfo& a_funcInfo, c
       {
         auto repairedEnd = clang::SourceLocation::getFromRawEncoding(brokenEnd+1);
         a_funcInfo.loopOutsidesInit.setEnd(repairedEnd);
-        a_outLoopInitCode = rewrite2.getRewrittenText(a_funcInfo.loopOutsidesInit)   + ";";
+        a_outLoopInitCode = kslicer::GetRewrittenText(rewrite2, a_funcInfo.loopOutsidesInit)   + ";";
       }
     }
   
     if(a_funcInfo.loopOutsidesFinish.isValid())  
-      a_outLoopFinishCode = rewrite2.getRewrittenText(a_funcInfo.loopOutsidesFinish) + ";";
+      a_outLoopFinishCode = kslicer::GetRewrittenText(rewrite2, a_funcInfo.loopOutsidesFinish) + ";";
     
     // new way
     //
     if(funcBodyText != "")
       return funcBodyText;
     else
-      return rewrite2.getRewrittenText(a_funcInfo.loopInsides) + ";"; // old way works
+      return kslicer::GetRewrittenText(rewrite2, a_funcInfo.loopInsides) + ";"; // old way works
   }
 
   return "[MainClassInfo::VisitAndRewrite_KF]::UNREACHED_CODE!";
@@ -592,6 +592,6 @@ void kslicer::FunctionRewriter::ReplaceTextOrWorkAround(clang::SourceRange a_ran
   if(a_range.getBegin().getRawEncoding() == a_range.getEnd().getRawEncoding())
     m_workAround[GetHashOfSourceRange(a_range)] = a_text;
   else
-    m_rewriter.ReplaceText(a_range, a_text);
+    kslicer::ReplaceTextSafe(m_rewriter, a_range, a_text);
 }
 

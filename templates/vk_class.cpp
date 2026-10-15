@@ -360,6 +360,9 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Decl}}
   {% if Kernel.IsIndirect %}
   vkCmdBindPipeline    (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Pipeline);
   vkCmdDispatchIndirect(m_currCmdBuffer, m_indirectBuffer, {{Kernel.IndirectOffset}}*sizeof(uint32_t)*4);
+  {% if Kernel.FinishRed %}
+  {% include "inc_reduction_vulkan.cpp" %}
+  {% endif %} {# /* Kernel.FinishRed      */ #}
   {% else %}
   vkCmdBindPipeline(m_currCmdBuffer, {% if Kernel.UseRayGen %}VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR{% else %}VK_PIPELINE_BIND_POINT_COMPUTE{% endif %}, {{Kernel.Name}}Pipeline);
   {% if Kernel.UseRayGen %}

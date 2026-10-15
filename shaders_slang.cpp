@@ -266,7 +266,7 @@ bool kslicer::SlangRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
     if(NeedToRewriteMemberExpr(expr, rewrittenText))
     {
       //ReplaceTextOrWorkAround(expr->getSourceRange(), rewrittenText);
-      m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenText);
+      kslicer::ReplaceTextSafe(m_rewriter, expr->getSourceRange(), rewrittenText);
       MarkRewritten(expr);
     }
   }
@@ -279,7 +279,7 @@ bool kslicer::SlangRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
     const std::string lText = exprText.substr(exprText.find("->")+2);
     const std::string rText = RecursiveRewrite(expr->getBase());
     ReplaceTextOrWorkAround(expr->getSourceRange(), rText + "." + lText);
-    //m_rewriter.ReplaceText(expr->getSourceRange(), rText + "." + lText);
+    //kslicer::ReplaceTextSafe(m_rewriter, expr->getSourceRange(), rText + "." + lText);
     MarkRewritten(expr->getBase());
   }
 
@@ -488,7 +488,7 @@ bool kslicer::SlangRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr*
     if(hasVarName)
       textRes = varName + " = " + textRes;
     ReplaceTextOrWorkAround(call->getSourceRange(), textRes); //
-    //m_rewriter.ReplaceText(call->getSourceRange(), textRes);
+    //kslicer::ReplaceTextSafe(m_rewriter, call->getSourceRange(), textRes);
     MarkRewritten(call);
   }
 
@@ -706,7 +706,7 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
       //}
       
       ReplaceTextOrWorkAround(call->getSourceRange(), rewrittenRes);
-      //m_rewriter.ReplaceText(call->getSourceRange(), rewrittenRes);
+      //kslicer::ReplaceTextSafe(m_rewriter, call->getSourceRange(), rewrittenRes);
       MarkRewritten(call);
     }
     else if ((m_pCurrKernel != nullptr) && (m_pCurrKernel->pattern == kslicer::PATTERN_TP::PATTERN_RTV) && rewriteDueToFakeOffset)
@@ -726,7 +726,7 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
       }
       rewrittenRes += ")";
       ReplaceTextOrWorkAround(call->getSourceRange(), rewrittenRes);
-      //m_rewriter.ReplaceText(call->getSourceRange(), rewrittenRes);
+      //kslicer::ReplaceTextSafe(m_rewriter, call->getSourceRange(), rewrittenRes);
       MarkRewritten(call);
     }
   }
@@ -861,7 +861,7 @@ bool kslicer::SlangRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
   {
     std::string text = RecursiveRewrite(expr->getSubExpr());
     ReplaceTextOrWorkAround(expr->getSourceRange(), text);
-    //m_rewriter.ReplaceText(expr->getSourceRange(), text);
+    //kslicer::ReplaceTextSafe(m_rewriter, expr->getSourceRange(), text);
     MarkRewritten(expr->getSubExpr());
   }
 
@@ -918,7 +918,7 @@ bool kslicer::SlangRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCal
       const std::string rightText = RecursiveRewrite(right);
       const std::string text      = "mul(" + leftText + "," + rightText + ")";
       ReplaceTextOrWorkAround(expr->getSourceRange(), text);
-      //m_rewriter.ReplaceText(expr->getSourceRange(), text);
+      //kslicer::ReplaceTextSafe(m_rewriter, expr->getSourceRange(), text);
       MarkRewritten(expr);
     }
   }
@@ -961,7 +961,7 @@ bool kslicer::SlangRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
       lastRewrittenText = varType2 + " " + varName + " = " + varValue;
   
     ReplaceTextOrWorkAround(decl->getSourceRange(), lastRewrittenText);
-    //m_rewriter.ReplaceText(decl->getSourceRange(), lastRewrittenText);
+    //kslicer::ReplaceTextSafe(m_rewriter, decl->getSourceRange(), lastRewrittenText);
     MarkRewritten(pValue);
   }
   
@@ -1000,7 +1000,7 @@ bool kslicer::SlangRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr*
     {
       const std::string textRes = RewriteConstructCall(call);
       //ReplaceTextOrWorkAround(call->getSourceRange(), textRes); //
-      m_rewriter.ReplaceText(call->getSourceRange(), textRes);    //
+      kslicer::ReplaceTextSafe(m_rewriter, call->getSourceRange(), textRes);    //
       MarkRewritten(call);
     }
 
@@ -1012,11 +1012,59 @@ bool kslicer::SlangRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr*
 
 bool kslicer::SlangRewriter::VisitDeclStmt_Impl(clang::DeclStmt* decl)             
 { 
-  if(m_kernelMode)
+  // multiple declarations in one statement, like 'uint32_t a = 0, b = 1;'. Source ranges of such VarDecls overlap 
+  // (each of them begins from the type), so we can't rewrite them separately in VisitVarDecl and rewrite the whole statement here
+  //
+  if(decl->isSingleDecl() || !WasNotRewrittenYet(decl))
+    return true;
+
+  struct VarText { std::string type; std::string name; std::string value; };
+  std::vector<VarText> vars;
+  bool needRewrite = false;
+  for(auto it = decl->decl_begin(); it != decl->decl_end(); ++it)
   {
-    // ...
+    clang::VarDecl* vdecl = clang::dyn_cast<clang::VarDecl>(*it);
+    if(vdecl == nullptr) // struct declaration or something else, don't touch it
+      return true;
+    
+    const auto qt         = vdecl->getType();
+    const auto pValue     = vdecl->getAnyInitializer();
+    const auto varType    = qt.getAsString();
+    const bool isAuto     = (qt->getTypeClass() == clang::Type::Auto);
+    const bool isMapIter  = kslicer::IsHashMapIteratorType(qt);
+    needRewrite = needRewrite || NeedsVectorTypeRewrite(varType) || isAuto || isMapIter;
+
+    VarText var;
+    var.name  = vdecl->getNameAsString();
+    var.type  = isMapIter ? (qt.isConstQualified() ? "const uint" : "uint") : RewriteStdVectorTypeStr(varType, var.name);
+    var.value = (pValue != nullptr) ? RecursiveRewrite(pValue) : "";
+    if(var.value == var.name) // 'float3 deviation;' for some reason !decl->hasInit() does not works
+      var.value = "";
+    vars.push_back(var);
   }
 
+  if(!needRewrite || vars.size() == 0)
+    return true;
+
+  bool sameTypes = true;
+  for(const auto& var : vars)
+    sameTypes = sameTypes && (var.type == vars[0].type);
+
+  std::stringstream strOut;
+  for(size_t i=0; i<vars.size(); i++)
+  {
+    if(i == 0 || !sameTypes)
+      strOut << vars[i].type << " ";
+    strOut << vars[i].name;
+    if(vars[i].value != "")
+      strOut << " = " << vars[i].value;
+    if(i+1 != vars.size())
+      strOut << (sameTypes ? ", " : "; ");
+  }
+  strOut << ";";
+
+  ReplaceTextOrWorkAround(decl->getSourceRange(), strOut.str());
+  MarkRewritten(decl);
   return true; 
 }
 
@@ -1030,7 +1078,7 @@ bool kslicer::SlangRewriter::VisitFloatingLiteral_Impl(clang::FloatingLiteral* e
   {
     std::string originalText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
     //ReplaceTextOrWorkAround(expr->getSourceRange(), originalText + "l");
-    m_rewriter.ReplaceText(expr->getSourceRange(), originalText + "l");
+    kslicer::ReplaceTextSafe(m_rewriter, expr->getSourceRange(), originalText + "l");
     MarkRewritten(expr);
   }
 
@@ -1103,7 +1151,7 @@ bool  kslicer::SlangRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
     if(NeedToRewriteDeclRefExpr(expr,rewrittenText) && WasNotRewrittenYet(expr))
     {
       //ReplaceTextOrWorkAround(expr->getSourceRange(), rewrittenText);
-      m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenText);
+      kslicer::ReplaceTextSafe(m_rewriter, expr->getSourceRange(), rewrittenText);
       MarkRewritten(expr);
     }
   }
@@ -1128,7 +1176,7 @@ std::string kslicer::SlangRewriter::RecursiveRewrite(const clang::Stmt* expr)
   if(p != rvCopy.m_workAround.end())
     return p->second;
   else
-    return m_rewriter.getRewrittenText(range);
+    return kslicer::GetRewrittenText(m_rewriter, range);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
