@@ -186,32 +186,6 @@ resources and host code. Maintaining them by hand is impractical; here you switc
 | `wgpu`  | WebGPU | experimental |
 | `clspv` | OpenCL C → SPIR-V via clspv (the built-in default) | outdated, always set `-shaderCC` explicitly |
 
-## Results
-
-Excerpt from the Graphicon 2026 abstract [2]:
-
-- **BVH construction and traversal.** An LBVH builder written in C++ is, after translation, about
-  as fast as a hand-optimized CUDA/HIP implementation. Compared to the original CPU code it is up
-  to 40× faster with software traversal and up to 130× faster with hardware traversal on a desktop
-  GPU. On the mobile Adreno 730 GPU it is 10–15× faster and ran without changes.
-- **Custom primitives.** Software and hardware-accelerated versions were obtained for SDF and
-  trimmed NURBS surfaces. Scenes with 849 million NURBS primitive instances were rendered.
-
-  <p align = "center"><img src="images/nurbs.jpg" width = "900"></p>
-  <p align = "center"><i>NURBS models from the ABC dataset with 1K, 4K and 16K instances (53M, 212M and 849M
-  instanced NURBS primitives), 4096×720.</i></p>
-- **Path tracing.** The GPU version of the Hydra Renderer 3 rendering system is generated entirely
-  by kernel_slicer. The best execution strategy depends on the GPU: on an NVIDIA RTX 4090 the
-  megakernel with ray reordering is the fastest, while on AMD RX 6800 XT and Intel Arc A380 separate
-  kernels are faster (by 20–30% and up to 2×, respectively). Switching between them is a translator
-  option.
-
-  <p align = "center"><img src="images/scenes.jpg" width = "700"></p>
-  <p align = "center"><i>Test scenes for path tracing and ambient occlusion (scenes by B. Bitterli).</i></p>
-- **Development effort.** Hydra Renderer 3 is 7.5K lines of input code, from which about 100K lines
-  of host code and shaders are generated. The ray tracing library is 8.3K lines of input code and
-  169K lines of generated code.
-
 ## Build
 
 Requirements: CMake ≥ 3.8, a C++17 compiler, **LLVM/clang 17** (development libraries), and the
