@@ -1493,6 +1493,52 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
     buildSH << "slangc z_memcpy.slang -o z_memcpy.comp.spv -warnings-disable 39001" << std::endl;
   }
 
+  // scan and sort are implemented for Vulkan host only (not for WebGPU)
+  //
+  if(!m_wgpuEnabled && (a_codeInfo->usedServiceCalls.find("exclusive_scan") != a_codeInfo->usedServiceCalls.end() ||
+                        a_codeInfo->usedServiceCalls.find("inclusive_scan") != a_codeInfo->usedServiceCalls.end()))
+  {
+    for(auto scanImpl : a_codeInfo->serviceCalls)
+    {
+      if (scanImpl.second.opName == "scan")
+      {
+        nlohmann::json params;
+        params["Type"] = scanImpl.second.dataTypeName;
+
+        const std::string name = "z_scan_" + scanImpl.second.dataTypeName;
+        kslicer::ApplyJsonToTemplate(templatesFolder / "z_scan_block.slang",     shaderPath / (name + "_block.slang"),     params);
+        kslicer::ApplyJsonToTemplate(templatesFolder / "z_scan_propagate.slang", shaderPath / (name + "_propagate.slang"), params);
+        buildSH << "slangc " << name << "_block.slang     -o " << name << "_block.comp.spv -warnings-disable 39001"     << std::endl;
+        buildSH << "slangc " << name << "_propagate.slang -o " << name << "_propagate.comp.spv -warnings-disable 39001" << std::endl;
+      }
+    }
+  }
+
+  if(!m_wgpuEnabled && a_codeInfo->usedServiceCalls.find("sort") != a_codeInfo->usedServiceCalls.end())
+  {
+    for(auto sortImpl : a_codeInfo->serviceCalls)
+    {
+      if (sortImpl.second.opName == "sort")
+      {
+        nlohmann::json params;
+        params["Type"]   = sortImpl.second.dataTypeName;
+        params["Lambda"] = sortImpl.second.lambdaSource;
+        params["Suffix"] = ToLowerCase(m_suffix);
+
+        const std::string name = "z_bitonic_" + sortImpl.second.dataTypeName;
+        kslicer::ApplyJsonToTemplate(templatesFolder / "z_bitonic_pass.slang", shaderPath / (name + "_pass.slang"), params);
+        buildSH << "slangc " << name << "_pass.slang -o " << name << "_pass.comp.spv -warnings-disable 39001" << std::endl;
+        for(int blockSize : {512, 1024, 2048})
+        {
+          params["BlockSize"] = blockSize;
+          const std::string blockName = name + "_" + std::to_string(blockSize);
+          kslicer::ApplyJsonToTemplate(templatesFolder / "z_bitonic_block.slang", shaderPath / (blockName + ".slang"), params);
+          buildSH << "slangc " << blockName << ".slang -o " << blockName << ".comp.spv -warnings-disable 39001" << std::endl;
+        }
+      }
+    }
+  }
+
   kslicer::WriteShaderBuildScript(shaderPath / scriptName, buildSH.str(), a_settings.mtShaderCompile);
 }
 

@@ -431,7 +431,9 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeServiceKernelCallCmdString(
     kslicer::ServiceCall call;
     call.opName       = a_name;
     call.dataTypeName = m_pCodeInfo->pShaderFuncRewriter->RewriteStdVectorTypeStr(SubstrBetween(originArgs[0].type, "<", ">"));
-    call.lambdaSource = FixLamdbaSourceCode(m_pCodeInfo->pShaderFuncRewriter->RecursiveRewrite(originArgs[2].node));
+    call.lambdaSource = m_pCodeInfo->pShaderFuncRewriter->RecursiveRewrite(originArgs[2].node);
+    if(m_pCodeInfo->pShaderCC->Name() != "Slang") // Slang has the same vector types as C++ (uint2, float4, ...)
+      call.lambdaSource = FixLamdbaSourceCode(call.lambdaSource);
     call.lambdaSource = call.lambdaSource.substr(call.lambdaSource.find("[]")+2); // eliminate "[]" from source code
     m_pCodeInfo->serviceCalls[call.key()] = call;
 
