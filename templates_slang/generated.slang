@@ -26,7 +26,7 @@ groupshared {{redvar.Type}} {{redvar.Name}}Shared[{{redvar.ArraySize}}][{{Kernel
 {% endif %}
 {% if Kernel.EnableBlockExpansion %}
 {% for TID in Kernel.ThreadSizeBE %}
-const {{TID.Type}} {{TID.Name}} = {{TID.Value}}; 
+static const {{TID.Type}} {{TID.Name}} = {{TID.Value}}; 
 {% endfor %}
 {% for Var in Kernel.SharedBE %}
 groupshared {{Var}}
@@ -61,7 +61,7 @@ void {{Fun.Name}}(RWStructuredBuffer<{% if AtomicFloatEmul and Fun.Type0 == "flo
 
 [shader("compute")]
 [numthreads({{Kernel.WGSizeX}}, {{Kernel.WGSizeY}}, {{Kernel.WGSizeZ}})]
-void main(uint3 a_globalTID: SV_DispatchThreadID, {% if Kernel.HasEpilog %} uint3 a_groupID : SV_GroupID, {% endif%} uint3 a_localTID : SV_GroupThreadID, uniform KernelArgs kgenArgs)
+void main(uint3 a_globalTID: SV_DispatchThreadID, {% if Kernel.HasEpilog or Kernel.EnableBlockExpansion %} uint3 a_groupID : SV_GroupID, {% endif%} uint3 a_localTID : SV_GroupThreadID, uniform KernelArgs kgenArgs)
 {
   {% if not Kernel.EnableBlockExpansion and not Kernel.IsSingleThreaded %}
   {% if WGPUMode %}
@@ -74,9 +74,9 @@ void main(uint3 a_globalTID: SV_DispatchThreadID, {% if Kernel.HasEpilog %} uint
   {% if Kernel.EnableBlockExpansion %}
   {% for TID in Kernel.ThreadIds %}
   {% if TID.Simple %}
-  const {{TID.Type}} {{TID.Name}} = {{TID.Type}}(a_globalTID[{{ loop.index }}]); 
+  const {{TID.Type}} {{TID.Name}} = {{TID.Type}}(a_groupID[{{ loop.index }}]); 
   {% else %}
-  const {{TID.Type}} {{TID.Name}} = {{TID.Start}} + {{TID.Type}}(a_globalTID[{{ loop.index }}])*{{TID.Stride}}; 
+  const {{TID.Type}} {{TID.Name}} = {{TID.Start}} + {{TID.Type}}(a_groupID[{{ loop.index }}])*{{TID.Stride}}; 
   {% endif %}
   {% endfor %}
   {% else %}
@@ -104,7 +104,7 @@ void main(uint3 a_globalTID: SV_DispatchThreadID, {% if Kernel.HasEpilog %} uint
   }
   GroupMemoryBarrierWithGroupSync();
   {% else %}
-  if(a_loacalTID[0] == 0) {
+  if(a_localTID[0] == 0) {
   {{Block.Text}}
   }
   {% endif %}
