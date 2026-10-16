@@ -22,7 +22,7 @@ int main(int argc, const char** argv)
   bool enableValidationLayers = false;
   #endif
 
-  std::vector<int> array    (1025*371 + 776); // 1024
+  std::vector<int> array    (1025*3710 + 776); // > 1M to catch races between workgroups
   std::vector<int> outArray (array.size());
   for(size_t i=0;i<array.size();i++)
     array[i] = (i % 2 == 0) ? 1 : 0;  

@@ -1717,26 +1717,19 @@ inline size_t sRoundBlocks(size_t elems, int threadsPerBlock)
 
 std::vector<VkBuffer> {{MainClassName}}{{MainClassSuffix}}::ScanData::InitTempBuffers(VkDevice a_device, size_t a_maxSize)
 {
+  // compute temp buffer layout exactly as InclusiveScanCmd does
+  //
   m_scanMipOffsets.resize(0);
-  size_t currSize = a_maxSize;
   size_t currOffset = 0;
-  for (int i = 0; i < 16; i++)
+  size_t lastWrite  = 256;
+  for (size_t currSize = a_maxSize / 256; currSize > 1; currSize = currSize / 256)
   {
-    size_t size2 = sRoundBlocks(currSize, 256) / 256;
-    if (currSize > 0)
-    {
-      size_t size3 = std::max(size2, size_t(256));
-      m_scanMipOffsets.push_back(currOffset);
-      currOffset += size3;
-    }
-    else
-    {
-      m_scanMipOffsets.push_back(currOffset);
-      currOffset += 256;
-      break;
-    }
-    currSize = currSize / 256;
+    const size_t runSize = sRoundBlocks(currSize, 256);
+    m_scanMipOffsets.push_back(currOffset);
+    currOffset += runSize;
+    lastWrite   = runSize / 256;
   }
+  currOffset = std::max(currOffset + lastWrite, sRoundBlocks(a_maxSize, 256) / 256);
 
   m_scanTempDataBuffer = vk_utils::createBuffer(a_device, currOffset*sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
   m_scanTempDataOffset = 0;
@@ -1806,7 +1799,7 @@ void {{MainClassName}}{{MainClassSuffix}}::ScanData::InclusiveScanCmd(VkCommandB
   bufBars[0].sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
   bufBars[0].pNext               = NULL;
   bufBars[0].srcAccessMask       = VK_ACCESS_SHADER_WRITE_BIT;
-  bufBars[0].dstAccessMask       = VK_ACCESS_SHADER_READ_BIT;
+  bufBars[0].dstAccessMask       = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT; // next pass reads and then writes this part in-place
   bufBars[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
   bufBars[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
   bufBars[0].buffer              = m_scanTempDataBuffer;
@@ -1844,13 +1837,13 @@ void {{MainClassName}}{{MainClassSuffix}}::ScanData::InclusiveScanCmd(VkCommandB
   //
   int currMip = 0;
   size_t currOffset = 0;
-  for (size_t currSize = a_size; currSize > 1; currSize = currSize / 256)
+  for (size_t currSize = a_size; currSize > 1 || (currMip == 0 && currSize > 0); currSize = currSize / 256)
   {
     lastSizeV.push_back(currSize);
 
     const size_t runSize  = sRoundBlocks(currSize, 256);
     const size_t nextSize = runSize / 256;
-    pcData.iNumElementsX  = uint32_t(runSize);
+    pcData.iNumElementsX  = uint32_t((currMip == 0) ? currSize : runSize); // don't go out of input/output buffers bounds
     pcData.currMip        = uint32_t(currMip);
     if(currMip == 0)
     {
@@ -1897,7 +1890,7 @@ void {{MainClassName}}{{MainClassSuffix}}::ScanData::InclusiveScanCmd(VkCommandB
     lastSizeV.pop_back();
 
     const size_t runSize  = sRoundBlocks(currSize, 256);
-    pcData.iNumElementsX  = uint32_t(runSize);
+    pcData.iNumElementsX  = uint32_t((currMip == 0) ? currSize : runSize); // don't go out of output buffer bounds
     pcData.currMip        = uint32_t(currMip);
     if(currMip == 0)
     {
