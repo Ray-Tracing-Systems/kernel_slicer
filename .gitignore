@@ -158,4 +158,7 @@ build_debug/
 build_release/
 apps/18_simple_shadow_cast/ispc_proto/test_class_kernels.o
 apps/18_simple_shadow_cast/ispc_proto/test_class_kernels.h
-apps/18_simple_shadow_cast/build_ispc/
+apps/18_simple_shadow_cast/build_ispc*/
+apps/18_simple_shadow_cast/test_class_ispc.cpp
+apps/18_simple_shadow_cast/test_class_kernels.*
+apps/18_simple_shadow_cast/z_build_ispc.sh

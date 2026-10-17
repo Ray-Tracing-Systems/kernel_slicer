@@ -1,12 +1,20 @@
 #ifndef BASIC_PROJ_LOGIC_H
 #define BASIC_PROJ_LOGIC_H
 
+#ifndef ISPC
 #include "LiteMath.h"
 #ifndef __OPENCL_VERSION__
 using namespace LiteMath;
 #endif
 #ifndef __global
 #define __global
+#endif
+#define varying     // pointers to local variables must be 'varying' in ISPC
+#else
+#define fmin  min   // this header is also included to ISPC kernels as is
+#define fmax  max
+#define fabs  abs
+#define constexpr static const uniform
 #endif
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -107,14 +115,14 @@ static inline uint RealColorToUint32(float4 real_color)
 }
 
 
-constexpr int WIN_WIDTH  = 512;
-constexpr int WIN_HEIGHT = 512;
+constexpr int WIN_WIDTH  = 1024;
+constexpr int WIN_HEIGHT = 1024;
 
 static uint pitchOffset(uint x, uint y) { return y*WIN_WIDTH + x; } 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static inline void CoordinateSystem(float3 v1, float3* v2, float3* v3)
+static inline void CoordinateSystem(float3 v1, varying float3* v2, varying float3* v3)
 {
   float invLen = 1.0f;
 

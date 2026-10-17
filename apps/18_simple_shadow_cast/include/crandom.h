@@ -1,19 +1,29 @@
 #ifndef RTC_RANDOM
 #define RTC_RANDOM
 
+#ifndef ISPC
 #include "LiteMath.h"
 #ifndef __OPENCL_VERSION__
 using namespace LiteMath;
 #endif
-
+#define varying     // pointers to local variables must be 'varying' in ISPC
 
 typedef struct RandomGenT
 {
   uint2 state;
 
 } RandomGen;
+#else 
+struct uint2_s { uint x; uint y; }; // ISPC 'uint<2>' is 16 bytes, but LiteMath::uint2 is 8 bytes; 'RandomGen' is stored in buffer, so layout must be the same
 
-static inline unsigned int NextState(RandomGen* gen)
+typedef struct RandomGenT
+{
+  uint2_s state;
+
+} RandomGen;
+#endif
+
+static inline unsigned int NextState(varying RandomGen* gen)
 {
   const unsigned int x = (gen->state).x * 17 + (gen->state).y * 13123;
   (gen->state).x = (x << 13) ^ x;
@@ -34,12 +44,12 @@ static inline RandomGen RandomGenInit(const int a_seed)
   return gen;
 }
 
-static inline unsigned int rndInt_Pseudo(RandomGen* gen)
+static inline unsigned int rndInt_Pseudo(varying RandomGen* gen)
 {
   return NextState(gen);
 }
 
-static inline float4 rndFloat4_Pseudo(RandomGen* gen)
+static inline float4 rndFloat4_Pseudo(varying RandomGen* gen)
 {
   unsigned int x = NextState(gen);
 
@@ -53,7 +63,7 @@ static inline float4 rndFloat4_Pseudo(RandomGen* gen)
   return make_float4((float)(x1), (float)(y1), (float)(z1), (float)(w1))*scale;
 }
 
-static inline float2 rndFloat2_Pseudo(RandomGen* gen)
+static inline float2 rndFloat2_Pseudo(varying RandomGen* gen)
 {
   unsigned int x = NextState(gen); 
 
@@ -65,7 +75,7 @@ static inline float2 rndFloat2_Pseudo(RandomGen* gen)
   return make_float2((float)(x1), (float)(y1))*scale;
 }
 
-static inline float rndFloat1_Pseudo(RandomGen* gen)
+static inline float rndFloat1_Pseudo(varying RandomGen* gen)
 {
   const unsigned int x   = NextState(gen);
   const unsigned int tmp = (x * (x * x * 15731 + 74323) + 871483);
@@ -104,7 +114,7 @@ static inline int mapRndFloatToInt(float a_val, int a, int b)
     return res;
 }
 
-static inline float4 rndUniform(RandomGen* gen, float a, float b)
+static inline float4 rndUniform(varying RandomGen* gen, float a, float b)
 {
   return make_float4(a, a, a, a) + (b - a)*rndFloat4_Pseudo(gen);
 }

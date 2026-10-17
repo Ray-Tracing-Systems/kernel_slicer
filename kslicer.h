@@ -735,6 +735,7 @@ namespace kslicer
     bool VisitFieldDecl(clang::FieldDecl* decl)              { return VisitFieldDecl_Impl(decl);      }
     bool VisitUnaryOperator(clang::UnaryOperator* op)        { return VisitUnaryOperator_Impl(op);    }
     bool VisitCStyleCastExpr(clang::CStyleCastExpr* cast)    { return VisitCStyleCastExpr_Impl(cast); }
+    bool VisitCXXFunctionalCastExpr(clang::CXXFunctionalCastExpr* cast) { return VisitCXXFunctionalCastExpr_Impl(cast); }
     bool VisitImplicitCastExpr(clang::ImplicitCastExpr* cast){ return VisitImplicitCastExpr_Impl(cast); }
 
     bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr* arrayExpr)            { return VisitArraySubscriptExpr_Impl(arrayExpr); }
@@ -809,6 +810,7 @@ namespace kslicer
     virtual bool VisitFieldDecl_Impl(clang::FieldDecl* decl)              { return true; } // override this in Derived class
     virtual bool VisitUnaryOperator_Impl(clang::UnaryOperator* op)        { return true; } // override this in Derived class
     virtual bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)    { return true; } // override this in Derived class
+    virtual bool VisitCXXFunctionalCastExpr_Impl(clang::CXXFunctionalCastExpr* cast) { return true; } // 'float(x)', override this in Derived class
     virtual bool VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast){ return true; } // override this in Derived class
     virtual bool VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call);                // override this in Derived class
     virtual bool VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr);
@@ -1091,6 +1093,7 @@ namespace kslicer
     bool VisitFieldDecl_Impl(clang::FieldDecl* decl)               override;
     bool VisitUnaryOperator_Impl(clang::UnaryOperator* op)         override;
     bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)     override;
+    bool VisitCXXFunctionalCastExpr_Impl(clang::CXXFunctionalCastExpr* cast) override;
     bool VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast) override;
     bool VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) override; 
     bool VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr) override;
@@ -1187,6 +1190,7 @@ namespace kslicer
     bool VisitCompoundAssignOperator(clang::CompoundAssignOperator* expr) { if(WasRewritten(expr)) return true; else return VisitCompoundAssignOperator_Impl(expr); }
     bool VisitCXXOperatorCallExpr   (clang::CXXOperatorCallExpr* expr)    { if(WasRewritten(expr)) return true; else return VisitCXXOperatorCallExpr_Impl(expr); }
     bool VisitCStyleCastExpr(clang::CStyleCastExpr* cast)                 { if(WasRewritten(cast)) return true; else return VisitCStyleCastExpr_Impl(cast); }
+    bool VisitCXXFunctionalCastExpr(clang::CXXFunctionalCastExpr* cast)   { if(WasRewritten(cast)) return true; else return VisitCXXFunctionalCastExpr_Impl(cast); }
     bool VisitImplicitCastExpr(clang::ImplicitCastExpr* cast)             { if(WasRewritten(cast)) return true; else return VisitImplicitCastExpr_Impl(cast); }
     bool VisitDeclRefExpr(clang::DeclRefExpr* expr)                       { if(WasRewritten(expr)) return true; else return VisitDeclRefExpr_Impl(expr); }
     bool VisitFloatingLiteral(clang::FloatingLiteral* expr)               { if(WasRewritten(expr)) return true; else return VisitFloatingLiteral_Impl(expr); }
@@ -1275,6 +1279,7 @@ namespace kslicer
 
     virtual bool VisitVarDecl_Impl(clang::VarDecl* decl)                   { return true; } // override this in Derived class
     virtual bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)     { return true; } // override this in Derived class
+    virtual bool VisitCXXFunctionalCastExpr_Impl(clang::CXXFunctionalCastExpr* cast) { return true; } // override this in Derived class
     virtual bool VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast) { return true; } // override this in Derived class
     virtual bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr);
     virtual bool VisitDeclStmt_Impl(clang::DeclStmt* decl)                 { return true; } // override this in Derived class
@@ -1309,6 +1314,7 @@ namespace kslicer
 
     bool VisitVarDecl_Impl(clang::VarDecl* decl)                               override; // override this in Derived class
     bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)                 override; // override this in Derived class
+    bool VisitCXXFunctionalCastExpr_Impl(clang::CXXFunctionalCastExpr* cast)   override { return m_pFunRW2->VisitCXXFunctionalCastExpr_Impl(cast); }
     bool VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast)             override; // override this in Derived class
 
     bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)                               override;
@@ -1452,6 +1458,7 @@ namespace kslicer
     std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo[0].") + a_name; };
     std::string Name() const override { return "ISPC"; }
     std::string m_target = "avx2-i32x8"; ///<! ISPC '--target', set by '-ispc_target'
+    bool        MemberFunctionsAreSupported() const override { return true; }
     void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings) override;
     bool        IsISPC() const override { return true; }
     std::string BuildCommand(const std::string& a_inputFile) const override;

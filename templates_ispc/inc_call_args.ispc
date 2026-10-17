@@ -1,0 +1,1 @@
+{% for Arg in Kernel.Args %}{% if not Arg.IsUBO %}{% if Arg.IsAccelStruct %}{{Arg.Name}}_scene,{{Arg.Name}}_geomIdByInst,{% else %}{{Arg.Name}},{% endif %}{% endif %}{% endfor %}

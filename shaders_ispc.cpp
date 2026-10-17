@@ -188,10 +188,26 @@ bool kslicer::ISPCRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr
         ReplaceTextOrWorkAround(f->getSourceRange(), memberNameA);
         MarkRewritten(f);
       }
-      else 
+      else
       {
         kslicer::PrintError(std::string("Unsuppoted std::vector method") + fname, f->getSourceRange(), m_compiler.getSourceManager());
       }
+    }
+    else if(isRTX && WasNotRewrittenYet(f)) // 'm_pAccelStruct->RayQuery_NearestHit(a,b)' ==> 'm_pAccelStruct_RayQuery_NearestHit(a,b)', see 'templates_ispc/generated.ispc'
+    {
+      const std::string exprContent = GetRangeSourceCode(f->getSourceRange(), m_compiler);
+      const std::string memberNameA = exprContent.substr(0, exprContent.find("->"));
+
+      std::string resCallText = memberNameA + "_" + fname + "(";
+      for(unsigned i=0;i<f->getNumArgs(); i++)
+      {
+        resCallText += RecursiveRewrite(f->getArg(i));
+        if(i!=f->getNumArgs()-1)
+          resCallText += ", ";
+      }
+      resCallText += ")";
+      ReplaceTextOrWorkAround(f->getSourceRange(), resCallText);
+      MarkRewritten(f);
     }
   }
 
@@ -205,10 +221,53 @@ std::string kslicer::ISPCRewriter::VectorTypeContructorReplace(const std::string
   return fname + callText;
 }
 
+// 'float3(a,b,c)' ==> 'make_float3(a,b,c)', 'float3(a)' ==> '(float3)(a)'; ISPC has no constructors for short vectors
+//
 bool kslicer::ISPCRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) 
 { 
+  const clang::CXXConstructorDecl* ctorDecl = call->getConstructor();
+  if(ctorDecl == nullptr || ctorDecl->isCopyOrMoveConstructor() || call->getNumArgs() == 0 || !WasNotRewrittenYet(call))
+    return true;
+
+  const std::string typeName = ctorDecl->getNameInfo().getName().getAsString();
+  static const std::unordered_set<std::string> vecTypes = {"float2", "float3", "float4", "int2", "int3", "int4", "uint2", "uint3", "uint4"};
+  if(vecTypes.find(typeName) == vecTypes.end())
+    return true;
+
+  const uint32_t vecSize = uint32_t(typeName[typeName.size()-1] - '0');
+  std::string text;
+  if(call->getNumArgs() == vecSize)
+  {
+    text = "make_" + typeName + "(";
+    for(unsigned i=0;i<call->getNumArgs();i++)
+    {
+      text += RecursiveRewrite(call->getArg(i));
+      if(i != call->getNumArgs()-1)
+        text += ", ";
+    }
+    text += ")";
+  }
+  else if(call->getNumArgs() == 1 && call->getArg(0)->getType()->isBuiltinType())
+    text = "(" + typeName + ")(" + RecursiveRewrite(call->getArg(0)) + ")";
+  else
+    return true;
+
+  ReplaceTextOrWorkAround(call->getSourceRange(), text);
+  MarkRewritten(call);
   return true; 
 } 
+
+// 'float(x)' ==> '(float)(x)'
+//
+bool kslicer::ISPCRewriter::VisitCXXFunctionalCastExpr_Impl(clang::CXXFunctionalCastExpr* cast)
+{
+  if(!cast->getType()->isBuiltinType() || !WasNotRewrittenYet(cast))
+    return true;
+  const std::string typeName = RewriteStdVectorTypeStr(cast->getTypeAsWritten().getAsString());
+  ReplaceTextOrWorkAround(cast->getSourceRange(), "(" + typeName + ")(" + RecursiveRewrite(cast->getSubExpr()) + ")");
+  MarkRewritten(cast);
+  return true;
+}
 
 bool kslicer::ISPCRewriter::VisitCallExpr_Impl(clang::CallExpr* call)                    
 { 
@@ -482,6 +541,35 @@ void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   const std::filesystem::path rawName = a_kernelsJson["MainRawName"].get<std::string>();
   a_kernelsJson["MainISPCFile"] = rawName.filename().u8string() + "_kernels.h";
 
+  // member functions access class data directly, so all member buffers and acceleration structures used by kernels
+  // are also placed to global variables of ISPC file; each kernel sets them before work
+  //
+  std::set<std::string> globalNames;
+  nlohmann::json memberBuffers = std::vector<nlohmann::json>();
+  nlohmann::json accelStructs  = std::vector<nlohmann::json>();
+  for(const auto& kernel : a_kernelsJson["Kernels"])
+  {
+    for(const auto& arg : kernel["Args"])
+    {
+      const std::string name = arg["Name"];
+      if(!arg["IsMember"].get<bool>() || globalNames.find(name) != globalNames.end())
+        continue;
+      globalNames.insert(name);
+      if(arg["IsAccelStruct"].get<bool>())
+        accelStructs.push_back(name);
+      else if(arg["IsPointer"].get<bool>())
+      {
+        nlohmann::json buff;
+        buff["Name"] = name;
+        buff["Type"] = arg["Type"];
+        memberBuffers.push_back(buff);
+      }
+    }
+  }
+  a_kernelsJson["MemberBuffersISPC"] = memberBuffers;
+  a_kernelsJson["AccelStructsISPC"]  = accelStructs;
+  a_kernelsJson["UseAccelStruct"]    = (accelStructs.size() != 0);
+
   std::filesystem::path folderPath = rawName.parent_path();
   std::filesystem::path incUBOPath = folderPath / "include";
   std::filesystem::create_directory(incUBOPath);
@@ -508,6 +596,16 @@ void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   std::filesystem::path kernelHeader = rawName;
   kernelHeader.concat("_kernels.h");
   std::string build = this->BuildCommand(outFileName.u8string()) + " -o " + kernelTarget.u8string() + " -h " + kernelHeader.u8string();
+  if(a_kernelsJson["UseAccelStruct"].get<bool>())
+  {
+    // Embree ISPC headers: 'embree3/*.isph' are stored near 'CrossRT.h'; for Embree 4 set EMBREE4_FLAGS="-I<embree4>/include -DUSE_EMBREE4"
+    //
+    buildSH << "# for Embree 4 set EMBREE4_FLAGS=\"-I<embree 4 install>/include -DUSE_EMBREE4\"" << std::endl;
+    for(auto folder : a_codeInfo->processFolders)
+      if(std::filesystem::exists(folder / "CrossRT.h"))
+        build += " -I" + folder.u8string();
+    build += " $EMBREE4_FLAGS";
+  }
   buildSH << build.c_str() << " ";
   for(auto folder : ignoreFolders)
     buildSH << "-I" << folder.c_str() << " ";
@@ -541,7 +639,9 @@ const std::string ConvertVecTypesToISPC(const std::string& a_typeName,
   ReplaceFirst(nameToSearch, "const ", "");
   while(nameToSearch[nameToSearch.size()-1] == ' ')
     nameToSearch = nameToSearch.substr(0, nameToSearch.size()-1);
-  if(vecTypes.find(nameToSearch) != vecTypes.end() || nameToSearch.find("struct") != std::string::npos)
+  static const std::unordered_set<std::string> scalarTypes = {"float", "double", "int", "uint", "unsigned", "unsigned int", "bool", "_Bool", "char", "unsigned char", "short", "unsigned short",
+                                                               "int8_t", "uint8_t", "int16_t", "uint16_t", "int32_t", "uint32_t", "int64_t", "uint64_t", "size_t"};
+  if(scalarTypes.find(nameToSearch) == scalarTypes.end()) // vector types and user structures have their own declarations in ISPC header 
   {
     if (nameToSearch.find("struct") != std::string::npos)
       ReplaceFirst(nameToSearch, "struct ", "");
@@ -568,6 +668,7 @@ std::string kslicer::ISPCCompiler::PrintHeaderDecl(const DeclInClass& a_decl, co
     result = typeInCL + " " + a_decl.name + " = " + kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler) + ";";
     break;
     case kslicer::DECL_IN_CLASS::DECL_TYPEDEF:
+    ReplaceFirst(typeInCL, "LiteMath::", "");
     result = "typedef " + typeInCL + " " + a_decl.name + ";";
     break;
     default:

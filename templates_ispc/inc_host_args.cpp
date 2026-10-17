@@ -1,0 +1,1 @@
+{% for Arg in Kernel.Args %}{% if not Arg.IsUBO %}{% if Arg.IsAccelStruct %}{{Arg.Name}}_impl->GetEmbreeScene(), {{Arg.Name}}_impl->GetGeomIdByInstId(), {% else if Arg.IsPointer %}ISPCPtr({{Arg.Name}}{% if Arg.IsMember %}.data(){% endif %}), {% else %}{{Arg.Name}}, {% endif %}{% endif %}{% endfor %}&m_uboData

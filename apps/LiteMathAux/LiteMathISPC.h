@@ -48,6 +48,12 @@ typedef struct float4x4T
   float4 m_col[4];
 } float4x4;
 
+typedef struct Box4fT // LiteMath::Box4f, used by CrossRT (CRT_AABB)
+{
+  float4 boxMin;
+  float4 boxMax;
+} Box4f;
+
 static inline float4 make_float4(float a, float b, float c, float d)
 {
   float4 res;
@@ -88,6 +94,44 @@ static inline int2 make_int2(int a, int b)
   int2 res;
   res.x = a;
   res.y = b;
+  return res;
+}
+
+static inline int3 make_int3(int a, int b, int c)
+{
+  int3 res;
+  res.x = a;
+  res.y = b;
+  res.z = c;
+  return res;
+}
+
+static inline int4 make_int4(int a, int b, int c, int d)
+{
+  int4 res;
+  res.x = a;
+  res.y = b;
+  res.z = c;
+  res.w = d;
+  return res;
+}
+
+static inline uint3 make_uint3(uint a, uint b, uint c)
+{
+  uint3 res;
+  res.x = a;
+  res.y = b;
+  res.z = c;
+  return res;
+}
+
+static inline uint4 make_uint4(uint a, uint b, uint c, uint d)
+{
+  uint4 res;
+  res.x = a;
+  res.y = b;
+  res.z = c;
+  res.w = d;
   return res;
 }
 

@@ -66,7 +66,7 @@ float TestClass::CalcShadow(uint tid, float4 surfPos)
   RandomGen gen = m_randomGens[tid];
 
   float shadow = 0.0f;
-  const int numSamples = 16;
+  const int numSamples = 64;
   
   for(int i=0;i<numSamples;i++)
   {

@@ -4,6 +4,8 @@
 #include <unordered_map>
 #include <cassert>
 #include <chrono>
+#include <cstring>
+#include <iostream>
 
 #include "{{MainInclude}}"
 #include "{{MainISPCFile}}"
@@ -13,6 +15,38 @@ using {{Decl.Type}} = {{MainClassName}}::{{Decl.Type}}; // for passing this data
 {% endif %}
 ## endfor
 #include "LiteMath.h"
+
+// ISPC header declares its own types for vectors and structures (with the same layout), so buffers are passed to ISPC functions via untyped pointer
+//
+struct ISPCPtr 
+{ 
+  ISPCPtr(const void* a_ptr) : ptr(const_cast<void*>(a_ptr)) {}
+  template<typename T> operator T*() const { return (T*)ptr; } 
+  void* ptr; 
+};
+{% if UseAccelStruct %}
+
+#ifdef USE_EMBREE4
+#include "EmbreeRT4.h"
+using EmbreeImpl = EmbreeRT4;
+#else
+#include "EmbreeRT.h"
+using EmbreeImpl = EmbreeRT;
+#endif
+
+// ISPC kernels call Embree directly, so acceleration structure must be implemented via Embree
+//
+static EmbreeImpl* GetEmbreeImpl(ISceneObject* a_pScene, const char* a_name)
+{
+  auto pImpl = dynamic_cast<EmbreeImpl*>(a_pScene->UnderlyingImpl(0));
+  if(pImpl == nullptr)
+  {
+    std::cout << "[{{MainClassName}}_ISPC]: '" << a_name << "' is not an Embree implementation, can't trace rays with ISPC" << std::endl;
+    exit(0);
+  }
+  return pImpl;
+}
+{% endif %}
 
 struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data
 {
@@ -61,32 +95,38 @@ protected:
   {% for Kernel in Kernels %}
   void {{Kernel.Name}}({% for Arg in Kernel.Args %}{% if not Arg.IsUBO and not Arg.IsMember %}{% if Arg.IsPointer %}{{Arg.Type}}* {{Arg.Name}}{% if loop.index1 != Kernel.LastArgNF %}, {% endif %}{% else %}{{Arg.Type}} {{Arg.Name}}{% if loop.index1 != Kernel.LastArgNF %}, {% endif %} {% endif %}{% endif %} {% endfor %}) {% if not Kernel.InitKPass %} override {% endif %}
   { 
+    {% for Arg in Kernel.Args %}
+    {% if Arg.IsAccelStruct %}
+    auto {{Arg.Name}}_impl = GetEmbreeImpl({{Arg.Name}}.get(), "{{Arg.Name}}");
+    {% endif %}
+    {% endfor %}
+    ispc::{{Kernel.Name}}_Bind_ISPC({% include "inc_host_args.cpp" %});
     {% if Kernel.OpenMPAndISPC %}
     constexpr int BLOCK_SIZE = 64;
     [[maybe_unused]] auto* ubo = &m_uboData; // loop bounds may refer to class members as 'ubo[0].m_member'
     {% if Kernel.HasInitISPC %}
-    ispc::{{Kernel.Name}}_Init_ISPC({% for Arg in Kernel.Args %}{% if Arg.IsPointer and Arg.IsMember %}{{Arg.NameISPC}}.data(){% else %}{{Arg.NameISPC}}{%endif%}{% if loop.index1 != Kernel.LastArgNF1 %},{% endif %}{% endfor %},&m_uboData);
+    ispc::{{Kernel.Name}}_Init_ISPC({% include "inc_host_args.cpp" %});
     {% endif %}
     {% if Kernel.threadDim == 1 %}
     #pragma omp parallel for 
     for(int {{Kernel.ThreadId0.Name}} = {{Kernel.ThreadId0.Start}}; {{Kernel.ThreadId0.Name}} < {{Kernel.ThreadId0.Size}}; {{Kernel.ThreadId0.Name}} += BLOCK_SIZE) {
       const int end = std::min({{Kernel.ThreadId0.Name}} + BLOCK_SIZE, int({{Kernel.ThreadId0.Size}}));
-      ispc::{{Kernel.Name}}_ISPC({% for Arg in Kernel.Args %}{% if Arg.IsPointer and Arg.IsMember %}{{Arg.NameISPC}}.data(){% else %}{{Arg.NameISPC}}{%endif%}{% if loop.index1 != Kernel.LastArgNF1 %},{% endif %}{% endfor %},&m_uboData,{{Kernel.ThreadId0.Name}},end,0);  
+      ispc::{{Kernel.Name}}_ISPC({% include "inc_host_args.cpp" %},{{Kernel.ThreadId0.Name}},end,0);  
     }
     {% else %}
     #pragma omp parallel for 
     for(int {{Kernel.ThreadId0.Name}} = {{Kernel.ThreadId0.Start}}; {{Kernel.ThreadId0.Name}} < {{Kernel.ThreadId0.Size}}; {{Kernel.ThreadId0.Name}}++) {
       for(int {{Kernel.ThreadId1.Name}} = {{Kernel.ThreadId1.Start}}; {{Kernel.ThreadId1.Name}} < {{Kernel.ThreadId1.Size}}; {{Kernel.ThreadId1.Name}} += BLOCK_SIZE) {
         const int end = std::min({{Kernel.ThreadId1.Name}} + BLOCK_SIZE, int({{Kernel.ThreadId1.Size}}));
-        ispc::{{Kernel.Name}}_ISPC({% for Arg in Kernel.Args %}{% if Arg.IsPointer and Arg.IsMember %}{{Arg.NameISPC}}.data(){% else %}{{Arg.NameISPC}}{%endif%}{% if loop.index1 != Kernel.LastArgNF1 %},{% endif %}{% endfor %},&m_uboData,{{Kernel.ThreadId1.Name}},end,{{Kernel.ThreadId0.Name}});  
+        ispc::{{Kernel.Name}}_ISPC({% include "inc_host_args.cpp" %},{{Kernel.ThreadId1.Name}},end,{{Kernel.ThreadId0.Name}});  
       }
     }
     {% endif %}
     {% if Kernel.HasFinishISPC %}
-    ispc::{{Kernel.Name}}_Finish_ISPC({% for Arg in Kernel.Args %}{% if Arg.IsPointer and Arg.IsMember %}{{Arg.NameISPC}}.data(){% else %}{{Arg.NameISPC}}{%endif%}{% if loop.index1 != Kernel.LastArgNF1 %},{% endif %}{% endfor %},&m_uboData);
+    ispc::{{Kernel.Name}}_Finish_ISPC({% include "inc_host_args.cpp" %});
     {% endif %}
     {% else %}
-    ispc::{{Kernel.Name}}_ISPC({% for Arg in Kernel.Args %}{% if Arg.IsPointer and Arg.IsMember %}{{Arg.NameISPC}}.data(){% else %}{{Arg.NameISPC}}{%endif%}{% if loop.index1 != Kernel.LastArgNF1 %},{% endif %}{% endfor %},&m_uboData); 
+    ispc::{{Kernel.Name}}_ISPC({% include "inc_host_args.cpp" %}); 
     {% endif %}
   }
   {% endfor %}
@@ -102,7 +142,8 @@ void {{MainClassName}}_ISPC::UpdatePlainMembers()
   {% if Var.IsArray %}
   memcpy(m_uboData.{{Var.Name}},{{Var.Name}},sizeof({{Var.Name}}));
   {% else %}
-  m_uboData.{{Var.Name}} = {{Var.Name}};
+  static_assert(sizeof(m_uboData.{{Var.Name}}) >= sizeof({{Var.Name}}), "'{{Var.Name}}' has different layout in ISPC");
+  memcpy(&m_uboData.{{Var.Name}}, &{{Var.Name}}, sizeof({{Var.Name}})); // LiteMath and ISPC types are different, ISPC float3 is 16 bytes
   {% endif %}
 ## endfor
 ## for Var in ClassVectorVars 
@@ -118,7 +159,7 @@ void {{MainClassName}}_ISPC::ReadPlainMembers()
   {% if Var.IsArray %}
   memcpy({{Var.Name}}, m_uboData.{{Var.Name}}, sizeof({{Var.Name}}));
   {% else %}
-  {{Var.Name}} = m_uboData.{{Var.Name}};
+  memcpy(&{{Var.Name}}, &m_uboData.{{Var.Name}}, sizeof({{Var.Name}}));
   {% endif %}
   {% endif %} {#/* end of if not var.IsConst */#}
   {% endfor %}
