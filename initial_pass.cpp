@@ -263,9 +263,9 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
       m_currId++;
     }
   }
-  else if(isa<TypedefDecl>(type))
+  else if(isa<TypedefNameDecl>(type)) // both 'typedef A B;' and 'using B = A;'
   {
-    TypedefDecl* pTargetTpdf = dyn_cast<TypedefDecl>(type);
+    TypedefNameDecl* pTargetTpdf = dyn_cast<TypedefNameDecl>(type);
     const auto qt  = pTargetTpdf->getUnderlyingType();
     decl.name      = pTargetTpdf->getNameAsString();
     decl.type      = qt.getAsString();
@@ -567,6 +567,24 @@ kslicer::DataMemberInfo kslicer::ExtractMemberInfo(const std::string& a_name, co
     member.isContainer = true;
     auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl);
     member.pContainerDataTypeDeclIfRecord = kslicer::SplitContainerTypes(specDecl, member.containerType, member.containerDataType);
+
+    // keep the alias name of a struct element type ('std::vector<CRT_AABB>' with 'using CRT_AABB = LiteMath::Box4f;'):
+    // the canonical name is 'LiteMath::Box4f' and its namespace is cut off in generated host code, while the alias is visible
+    // in host code and is put to shaders as well
+    //
+    if(const auto* pSpecType = qt->getAs<clang::TemplateSpecializationType>())
+    {
+      const unsigned dataArgId = (kslicer::IsHashMapContainer(member.containerType) && pSpecType->template_arguments().size() > 1) ? 1 : 0;
+      if(pSpecType->template_arguments().size() > dataArgId && pSpecType->template_arguments()[dataArgId].getKind() == clang::TemplateArgument::Type)
+      {
+        const clang::QualType argType = pSpecType->template_arguments()[dataArgId].getAsType();
+        const auto* pAlias = argType->getAs<clang::TypedefType>();
+        if(pAlias != nullptr && argType.getCanonicalType()->isRecordType() &&
+           !astContext.getSourceManager().isInSystemHeader(pAlias->getDecl()->getLocation()))
+          member.containerDataType = pAlias->getDecl()->getNameAsString();
+      }
+    }
+
     if(kslicer::IsHashMapContainer(member.containerType) && specDecl->getTemplateArgs().size() > 1)
     {
       const clang::QualType valueType = specDecl->getTemplateArgs()[1].getAsType();
