@@ -55,6 +55,32 @@ namespace common_rewriter {
         }
     }
 
+    void Codegen::render_function(const FunctionDecl* function) {
+        render_type(function->getReturnType());
+        emit(" ");
+        emit(function->getNameAsString());
+        emit("(");
+        for (int i = 0; i < function->getNumParams(); i++) {
+            auto decl = function->getParamDecl(i);
+            // if (decl->getOriginalType()->isArrayType()) {
+            // note_found(decl->getLocation(), "array arg!");
+            // }
+            render_type(decl->getOriginalType());
+            emit(" ");
+            emit(decl->getNameAsString());
+            if (decl->getOriginalType()->isArrayType()) {
+                emit("[");
+                emit(std::to_string(get_type_array_size(decl->getOriginalType())));
+                emit("]");
+            }
+            if (i < function->getNumParams() - 1)
+                emit(", ");
+        }
+        emit(")\n");
+        REWRITE_ASSERT(function->getBody());
+        render_statement(function->getBody(), 0);
+    }
+
     void Codegen::render_statement(const Stmt* stmt_, size_t indent, bool newline) {
         if (auto stmt = dyn_cast<CompoundStmt>(stmt_)) {
             emit_indent(indent);
@@ -79,6 +105,11 @@ namespace common_rewriter {
                 render_type(var->getType());
                 emit(" ");
                 emit(var->getNameAsString());
+                if (var->getType()->isArrayType()) {
+                    emit("[");
+                    emit(std::to_string(get_type_array_size(var->getType())));
+                    emit("]");
+                }
                 if (var->getInit()) {
                     emit(" = ");
                     render_expression(var->getInit());
@@ -112,7 +143,7 @@ namespace common_rewriter {
             emit("; ");
             render_expression(stmt->getInc());
             emit(")\n");
-            render_statement(stmt->getBody(), indent + 1);
+            render_statement(stmt->getBody(), indent);
         } else if (auto stmt = dyn_cast<BreakStmt>(stmt_)) {
             emit_indent(indent);
             emit("break;\n");
@@ -183,8 +214,9 @@ namespace common_rewriter {
                     emit("float3(0, 0, 0)");
                 else if (s == "float4")
                     emit("float4(0, 0, 0, 0)");
-                else
-                    emit("???");
+                else {
+                    emit("{}");
+                }
             } else {
                 render_type(expr->getType());
                 emit("(");
@@ -202,8 +234,13 @@ namespace common_rewriter {
             emit(" ");
             render_expression(expr->getRHS());
         } else if (auto expr = dyn_cast<UnaryOperator>(expr_)) {
-            emit(UnaryOperator::getOpcodeStr(expr->getOpcode()));
-            render_expression(expr->getSubExpr());
+            if (expr->isPostfix()) {
+                render_expression(expr->getSubExpr());
+                emit(UnaryOperator::getOpcodeStr(expr->getOpcode()));
+            } else {
+                emit(UnaryOperator::getOpcodeStr(expr->getOpcode()));
+                render_expression(expr->getSubExpr());
+            }
         } else if (auto expr = dyn_cast<CXXOperatorCallExpr>(expr_)) {
             // note_found(expr->getExprLoc(), "here");
             if (expr->getNumArgs() == 1) {
@@ -321,8 +358,11 @@ namespace common_rewriter {
         } else if (auto expr = dyn_cast<CallExpr>(expr_)) {
             auto func = dyn_cast<FunctionDecl>(expr->getCalleeDecl());
             REWRITE_ASSERT(func);
-
-            emit(func->getNameAsString());
+            if (func->getNameAsString() == "__builtin_popcount") {
+                emit("countbits");
+            } else {
+                emit(func->getNameAsString());
+            }
             emit("(");
             for (int i = 0; i < expr->getNumArgs(); i++) {
                 render_expression(expr->getArg(i));
@@ -330,6 +370,15 @@ namespace common_rewriter {
                     emit(", ");
             }
             emit(")");
+        } else if (auto expr = dyn_cast<InitListExpr>(expr_)) {
+            emit("{");
+            for (size_t i = 0; i < expr->getNumInits(); i++) {
+                auto init = expr->getInit(i);
+                render_expression(init);
+                if (i < expr->getNumInits() - 1)
+                    emit(", ");
+            }
+            emit("}");
         } else {
             error_unknown_stmt_class(expr_);
         }
@@ -381,6 +430,35 @@ namespace common_rewriter {
             }
         }
         if (!is_kernel_call) {
+            Codegen::render_method_call(expr);
+        }
+    }
+
+    void KernelCodegen::render_field_access(const MemberExpr* expr) {
+        if (dyn_cast<CXXThisExpr>(expr->getBase())) {
+            if (is_vector_specialization(expr->getMemberDecl()->getType())) {
+                emit(expr->getMemberDecl()->getNameAsString());
+            } else {
+                emit("ubo[0].");
+                emit(expr->getMemberDecl()->getNameAsString());
+            }
+        } else {
+            Codegen::render_field_access(expr);
+        }
+    }
+
+    void KernelCodegen::render_method_call(const CXXMemberCallExpr* expr) {
+        if (!dyn_cast<CXXThisExpr>(expr->getImplicitObjectArgument())) {
+            emit("ubo[0].");
+            // note_found(expr->getExprLoc(), "here");
+            // outs() << expr->getImplicitObjectArgument()->IgnoreParenImpCasts()->getStmtClassName() << "\n";
+            // outs() << dyn_cast<MemberExpr>(expr->getImplicitObjectArgument()) << "\n";
+            emit(dyn_cast<MemberExpr>(expr->getImplicitObjectArgument()->IgnoreParenImpCasts())
+                     ->getMemberDecl()
+                     ->getNameAsString());
+            emit("_");
+            emit(expr->getMethodDecl()->getNameAsString());
+        } else {
             Codegen::render_method_call(expr);
         }
     }

@@ -69,6 +69,58 @@ namespace common_rewriter {
                     add_control_function(i);
             }
         }
+
+        for (auto f : kernels) {
+            traverse_this_field_accesses(f.decl->getBody(), [&](const MemberExpr* expr) {
+                auto field = dyn_cast<FieldDecl>(expr->getMemberDecl());
+                add_field(field);
+            });
+        }
+
+        for (auto f : control_functions) {
+            traverse_this_field_accesses(f.decl->getBody(), [&](const MemberExpr* expr) {
+                auto field = dyn_cast<FieldDecl>(expr->getMemberDecl());
+                add_field(field);
+            });
+        }
+
+        for (auto f : used_functions) {
+            traverse_this_field_accesses(f->getBody(), [&](const MemberExpr* expr) {
+                auto field = dyn_cast<FieldDecl>(expr->getMemberDecl());
+                add_field(field);
+            });
+            traverse_statement(f->getBody(), [&](const Stmt* stmt_) {
+                if (auto stmt = dyn_cast<DeclStmt>(stmt_)) {
+                    for (auto decl : stmt->decls()) {
+                        add_type(dyn_cast<VarDecl>(decl)->getType().getCanonicalType());
+                    }
+                }
+                if (auto expr = dyn_cast<DeclRefExpr>(stmt_)) {
+                    auto decl = expr->getDecl();
+                    if (auto var = dyn_cast<VarDecl>(decl)) {
+                        if (var->isConstexpr()) {
+                            note_found(decl->getLocation(), "global");
+                            for (auto i : used_global_constants) {
+                                if (i == decl) {
+                                    return;
+                                }
+                            }
+                            used_global_constants.push_back(var);
+                        }
+                    }
+                }
+            });
+        }
+
+        for (auto& i : kernels) {
+            for (auto j : used_buffer_fields) {
+                i.bindings.push_back(j);
+            }
+        }
+
+        std::sort(used_uniform_fields.begin(), used_uniform_fields.end(), [](const FieldDecl* a, const FieldDecl* b) {
+            return get_type_alignment(a->getType()) > get_type_alignment(b->getType());
+        });
     }
 
     void ClassInfo::add_kernel(const CXXMethodDecl* decl) {
@@ -85,19 +137,70 @@ namespace common_rewriter {
 
         for (auto stmt : decl->getBody()->children()) {
             if (auto for1 = dyn_cast<ForStmt>(stmt)) {
+                info.index_vars.push_back(dyn_cast<VarDecl>(dyn_cast<DeclStmt>(for1->getInit())->getSingleDecl()));
                 info.bounds_args.push_back(get_for_loop_bound(for1));
+                info.body = for1->getBody();
                 for (auto stmt : for1->getBody()->children()) {
                     if (auto for2 = dyn_cast<ForStmt>(stmt)) {
+                        info.index_vars.push_back(
+                            dyn_cast<VarDecl>(dyn_cast<DeclStmt>(for2->getInit())->getSingleDecl()));
                         info.bounds_args.push_back(get_for_loop_bound(for2));
+                        info.body = for2->getBody();
                         for (auto stmt : for2->getBody()->children()) {
                             if (auto for3 = dyn_cast<ForStmt>(stmt)) {
+                                info.index_vars.push_back(
+                                    dyn_cast<VarDecl>(dyn_cast<DeclStmt>(for3->getInit())->getSingleDecl()));
                                 info.bounds_args.push_back(get_for_loop_bound(for3));
+                                info.body = for3->getBody();
                             }
                         }
                     }
                 }
             }
         }
+
+        auto add_used_function = [&](auto expr_) {
+            const CallExpr* expr = expr_;
+            auto decl = dyn_cast<FunctionDecl>(expr->getCalleeDecl());
+            if (auto def = decl->getDefinition()) {
+                std::string n = def->getNameAsString();
+                if (n == "clamp" || n == "max" || n == "min" || n == "floor" || n == "abs" || n == "dot" ||
+                    n == "length" || n == "normalize" || n == "exp" || n == "sqrt" || n == "copysign" || n == "sign" || n == "pow")
+                    return;
+                for (auto i : used_functions)
+                    if (i == def)
+                        return;
+                used_functions.push_back(def);
+            }
+        };
+
+        traverse_this_method_calls(decl->getBody(), add_used_function);
+        traverse_global_function_calls(decl->getBody(), add_used_function);
+
+        for (size_t i = 0; i < used_functions.size(); i++) {
+            traverse_this_method_calls(used_functions[i]->getBody(), add_used_function);
+            traverse_global_function_calls(used_functions[i]->getBody(), add_used_function);
+        }
+
+        // traverse_this_method_calls(decl->getBody(), [&](const CXXMemberCallExpr* expr) {
+        //     auto def = expr->getMethodDecl()->getDefinition();
+        //     for (auto i : used_functions)
+        //         if (i == def)
+        //             return;
+        //     used_functions.push_back(def);
+        // });
+
+        // traverse_global_function_calls(decl->getBody(), [&](const CallExpr* expr) {
+        //     auto def = expr->getCalleeDecl();
+        //     for (auto i : used_functions)
+        //         if (i == def)
+        //             return;
+        //     used_functions.push_back(def);
+        // });
+
+        // for (size_t i = 0; i < used_functions.size(); i++) {
+        //     traverse_this_method_calls(used_functions[i]->getBody(), [&](){});
+        // }
 
         kernels.push_back(info);
     }
@@ -115,6 +218,55 @@ namespace common_rewriter {
         });
 
         control_functions.push_back(info);
+    }
+
+    void ClassInfo::add_field(const FieldDecl* decl) {
+        if (is_vector_specialization(decl->getType())) {
+            for (auto i : used_buffer_fields) {
+                if (i == decl)
+                    return;
+            }
+            used_buffer_fields.push_back(decl);
+            add_type(get_vector_specialization_type(decl->getType()));
+        } else {
+            for (auto i : used_uniform_fields) {
+                if (i == decl) {
+                    return;
+                }
+            }
+            used_uniform_fields.push_back(decl);
+            add_type(decl->getType());
+        }
+    }
+
+    void ClassInfo::add_type(QualType type) {
+        if (auto r = dyn_cast<RecordDecl>(type->getAsRecordDecl())) {
+            add_struct(r);
+        }
+    }
+
+    void ClassInfo::add_struct(const RecordDecl* decl) {
+        decl = dyn_cast<RecordDecl>(decl->getDefinition());
+        {
+            auto n = decl->getNameAsString();
+            if (n[0] == 'f' && n[1] == 'l' && n[2] == 'o' && n[3] == 'a' && n[4] == 't')
+                return;
+            if (n[0] == 'i' && n[1] == 'n' && n[2] == 't')
+                return;
+            if (n[0] == 'u' && n[1] == 'i' && n[2] == 'n' && n[3] == 't')
+                return;
+        }
+        outs() << "Struct: " << decl->getNameAsString() << "\n";
+        for (auto i : used_structs) {
+            if (i == decl) {
+                return;
+            }
+        }
+        used_structs.push_back(decl);
+
+        for (auto i : decl->fields()) {
+            add_type(i->getType());
+        }
     }
 
 } // namespace common_rewriter

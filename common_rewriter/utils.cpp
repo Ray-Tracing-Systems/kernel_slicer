@@ -108,6 +108,9 @@ namespace common_rewriter {
         llvm::raw_string_ostream out(s);
         type.print(out, {{}});
 
+        if (s == "_Bool")
+            return "bool";
+
         if (s == "unsigned int")
             return "uint";
 
@@ -136,6 +139,10 @@ namespace common_rewriter {
             return "float3x3";
         if (s == "struct LiteMath::float4x4")
             return "float4x4";
+
+        if (type->getAsRecordDecl()) {
+            return s.substr(6);
+        }
 
         // if (auto record = type->getAsRecordDecl()) {
 
@@ -167,5 +174,28 @@ namespace common_rewriter {
 
     bool is_builtin_type(QualType type);
     size_t get_type_alignment(QualType type);
+
+    size_t get_type_alignment(QualType type) {
+        std::string s = render_type_name(type);
+        if (s == "float")
+            return 4;
+        if (starts_with(s, "float") || starts_with(s, "int") || starts_with(s, "uint")) {
+            size_t d = s[0] == 'f' ? 5 : s[0] == 'i' ? 3 : 4;
+            if (s.size() <= d)
+                return 4;
+            else if (s[d] == '2')
+                return 8;
+            else
+                return 16;
+        } else if (auto r = type->getAsRecordDecl()) {
+            size_t a = 0;
+            for (auto i : r->fields()) {
+                a = std::max(a, get_type_alignment(i->getType()));
+            }
+            return a;
+        } else {
+            REWRITE_ASSERT(false);
+        }
+    }
 
 } // namespace common_rewriter

@@ -9,6 +9,8 @@ namespace common_rewriter {
     struct KernelInfo {
         const CXXMethodDecl* decl = nullptr;
         std::vector<const ParmVarDecl*> bounds_args;
+        std::vector<const VarDecl*> index_vars;
+        const Stmt* body = nullptr;
         std::vector<const ValueDecl*> bindings;
         std::string shader;
     };
@@ -32,10 +34,16 @@ namespace common_rewriter {
 
         std::vector<const FieldDecl*> used_uniform_fields;
         std::vector<const FieldDecl*> used_buffer_fields;
+        std::vector<const FunctionDecl*> used_functions;
+        std::vector<const RecordDecl*> used_structs;
+        std::vector<const VarDecl*> used_global_constants;
 
     private:
         void add_kernel(const CXXMethodDecl* decl);
         void add_control_function(const CXXMethodDecl* decl);
+        void add_field(const FieldDecl* decl);
+        void add_type(QualType type);
+        void add_struct(const RecordDecl* decl);
     };
 
 } // namespace common_rewriter

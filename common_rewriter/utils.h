@@ -49,4 +49,6 @@ namespace common_rewriter {
     bool is_builtin_type(QualType type);
     size_t get_type_alignment(QualType type);
 
+    size_t get_type_alignment(QualType type);
+
 } // namespace common_rewriter

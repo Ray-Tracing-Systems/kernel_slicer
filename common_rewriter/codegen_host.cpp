@@ -2,10 +2,10 @@
 // #include "class.h"
 #include "class_info.h"
 #include "codegen.h"
+#include "errors.h"
 #include "utils.h"
 #include <clang/AST/AST.h>
 #include <inja.hpp>
-
 namespace common_rewriter {
     using namespace nlohmann;
     using llvm::outs;
@@ -79,12 +79,12 @@ namespace common_rewriter {
             kernel["tidX"] = i.bounds_args.size() > 0 ? i.bounds_args[0]->getNameAsString() : "1";
             kernel["tidY"] = i.bounds_args.size() > 1 ? i.bounds_args[1]->getNameAsString() : "1";
             kernel["tidZ"] = i.bounds_args.size() > 2 ? i.bounds_args[2]->getNameAsString() : "1";
-            kernel["EnableBlockExpansion"] = true;
+            kernel["EnableBlockExpansion"] = false;
 
             auto args = json::array();
             for (auto binding : i.bindings) {
                 auto arg = json::object();
-                arg["Name"] = binding->getNameAsString();
+                arg["Name"] = "m_vdata" + binding->getNameAsString();
                 arg["Id"] = args.size();
                 arg["Type"] = "VK_DESCRIPTOR_TYPE_STORAGE_BUFFER";
                 arg["IsTextureArray"] = false;
@@ -94,6 +94,137 @@ namespace common_rewriter {
             kernel["Args"] = args;
             kernel["ArgCount"] = args.size();
             kernel["IsRTV"] = false;
+
+            {
+                KernelCodegen codegen(info, i.decl);
+
+                for (auto i : info.used_structs) {
+                    codegen.buffer += "struct " + i->getNameAsString() + "\n{\n";
+                    for (auto field : i->fields()) {
+                        codegen.buffer += "    ";
+                        codegen.render_type(field->getType());
+                        codegen.buffer += " ";
+                        codegen.buffer += field->getNameAsString();
+                        if (field->getType()->isArrayType()) {
+                            codegen.buffer += "[" + std::to_string(get_type_array_size(field->getType())) + "]";
+                        }
+                        codegen.buffer += ";\n";
+                    }
+                    codegen.buffer += "};\n";
+                }
+
+                codegen.buffer += "struct UBO\n{\n";
+
+                for (auto i : info.used_uniform_fields) {
+                    codegen.buffer += "    ";
+                    codegen.render_type(i->getType());
+                    codegen.buffer += " ";
+                    codegen.buffer += i->getNameAsString();
+                    codegen.buffer += ";\n";
+                }
+
+                for (auto i : info.used_buffer_fields) {
+                    codegen.buffer += "    uint " + i->getNameAsString() + "_size;\n";
+                    codegen.buffer += "    uint " + i->getNameAsString() + "_capacity;\n";
+                }
+
+                codegen.buffer += "    uint dummy_last;\n";
+                codegen.buffer += "};\n";
+
+                for (auto binding : i.bindings) {
+                    QualType t = binding->getType();
+                    QualType u = t->isPointerType() ? t->getPointeeType() : get_vector_specialization_type(t);
+                    codegen.buffer +=
+                        "RWStructuredBuffer<" + render_type_name(u) + "> " + binding->getNameAsString() + ";\n";
+                }
+                codegen.buffer += "StructuredBuffer<UBO> ubo;\n";
+
+                codegen.buffer += R"(                
+float4   operator*(float4x4 m, float4 v) { return mul(m,v); }
+float3   operator*(float4x4 m, float3 v) { return mul(m, float4(v,1.0f)).xyz; }
+float3   operator*(float3x3 m, float3 v) { return mul(m,v); }
+)";
+
+                for (auto i : info.used_global_constants) {
+                    codegen.buffer += "static const " + render_type_name(i->getType()) + " " + i->getNameAsString();
+                    if (i->getType()->isArrayType()) {
+                        codegen.buffer += "[" + std::to_string(get_type_array_size(i->getType())) + "]";
+                    }
+                    codegen.buffer += " = ";
+                    codegen.render_expression(i->getInit());
+                    codegen.buffer += ";\n";
+                }
+
+                for (auto i : info.used_functions) {
+                    codegen.render_function(i);
+                }
+
+                codegen.buffer += "struct KernelArgs\n{\n";
+
+                for (auto j : kernel["AuxArgs"]) {
+                    codegen.buffer +=
+                        "    " + j["Type"].get<std::string>() + " " + j["Name"].get<std::string>() + ";\n";
+                }
+
+                for (auto j : i.bounds_args) {
+                    codegen.buffer += "    uint " + j->getNameAsString() + ";\n";
+                }
+
+                if (i.bounds_args.size() < 2) {
+                    codegen.buffer += "    uint iNumElementsY;\n";
+                }
+                if (i.bounds_args.size() < 3) {
+                    codegen.buffer += "    uint iNumElementsZ;\n";
+                }
+                codegen.buffer += "    uint tFlagsMask;\n";
+
+                codegen.buffer += "};\n";
+
+                codegen.buffer += "[shader(\"compute\")]\n";
+                codegen.buffer += "[numthreads(" + std::to_string(kernel["WGSizeX"].get<size_t>()) + ", " +
+                                  std::to_string(kernel["WGSizeY"].get<size_t>()) + ", " +
+                                  std::to_string(kernel["WGSizeZ"].get<size_t>()) + ")]\n";
+                codegen.buffer += "void main(uint3 a_globalTID: SV_DispatchThreadID, uint3 a_localTID : "
+                                  "SV_GroupThreadID, uniform KernelArgs kgenArgs)\n";
+                // for (auto index : i.index_vars) {
+                //     codegen.buffer += index->getNameAsString() + "\n";
+                // }
+
+                codegen.buffer += "{\n";
+
+                for (size_t j = 0; j < i.index_vars.size(); j++) {
+                    codegen.buffer += "    uint " + i.index_vars[j]->getNameAsString() + " = uint(a_globalTID[" +
+                                      std::to_string(j) + "]);\n";
+                }
+
+                for (size_t j = 0; j < i.decl->getNumParams(); j++) {
+                    auto p = i.decl->getParamDecl(j);
+                    if (!p->getType()->isPointerType()) {
+                        codegen.buffer += "    ";
+                        codegen.buffer += render_type_name(p->getType());
+                        codegen.buffer += " ";
+                        codegen.buffer += p->getNameAsString();
+                        codegen.buffer += " = ";
+                        codegen.buffer += "kgenArgs.";
+                        codegen.buffer += p->getNameAsString();
+                        codegen.buffer += ";\n";
+                    }
+                }
+
+                codegen.buffer += "    if (";
+                for (size_t j = 0; j < i.index_vars.size(); j++) {
+                    codegen.buffer += i.index_vars[j]->getNameAsString() + " < " + i.bounds_args[j]->getNameAsString();
+                    if (j < i.index_vars.size() - 1) {
+                        codegen.buffer += " && ";
+                    }
+                }
+                codegen.buffer += ")\n";
+                codegen.render_statement(i.body, 1);
+                codegen.buffer += "}\n";
+                std::ofstream file("D:/gml_private/VolumeRenderer/shaders_slang/" + i.decl->getNameAsString() +
+                                   ".slang");
+                file << codegen.buffer;
+            }
 
             data["Kernels"].push_back(kernel);
         }
@@ -209,22 +340,64 @@ namespace common_rewriter {
                 ds["ArgNames"] = "ARG_NAMES()";
                 ds["IsServiceCall"] = false;
                 ds["IsVirtual"] = false;
-                ds["ArgNumber"] = kernel->bindings.size();
-                ds["Layout"] = kernel->decl->getNameAsString();
+                // ds["ArgNumber"] = kernel->bindings.size();
+                ds["Layout"] = kernel->decl->getNameAsString().substr(9) + "DSLayout";
                 ds["Args"] = json::array();
 
                 size_t index = 0;
+
+                for (size_t j = 0; j < call_expr->getNumArgs(); j++) {
+                    auto arg = call_expr->getArg(j)->IgnoreParenImpCasts();
+                    if (auto mcall = dyn_cast<CXXMemberCallExpr>(arg)) {
+                        auto obj = mcall->getImplicitObjectArgument()->IgnoreParenImpCasts();
+                        if (auto member = dyn_cast<MemberExpr>(obj)) {
+                            if (dyn_cast<CXXThisExpr>(member->getBase())) {
+                                if (mcall->getMethodDecl()->getNameAsString() == "data") {
+                                    // note_found(mcall->getExprLoc(), "method call");
+                                    // member->getMemberDecl()
+                                    auto arg = json::object();
+                                    arg["IsTexture"] = false;
+                                    arg["IsTextureArray"] = false;
+                                    arg["IsAccelStruct"] = false;
+                                    arg["Id"] = index++;
+                                    arg["Name"] = "m_vdata." + member->getMemberDecl()->getNameAsString();
+                                    descriptors_count++;
+                                    ds["Args"].push_back(arg);
+                                }
+                            }
+                        }
+                    } else if (auto ref = dyn_cast<DeclRefExpr>(arg)) {
+                        if (auto p = dyn_cast<ParmVarDecl>(ref->getDecl())) {
+                            if (p->getType()->isPointerType()) {
+                                // note_found(p->getLocation(), "uses arg");
+                                auto arg = json::object();
+                                arg["IsTexture"] = false;
+                                arg["IsTextureArray"] = false;
+                                arg["IsAccelStruct"] = false;
+                                arg["Id"] = index++;
+                                arg["Name"] = i.decl->getNameAsString() + "_local." + p->getNameAsString();
+                                descriptors_count++;
+                                ds["Args"].push_back(arg);
+                            }
+                        }
+                    }
+                }
+
                 for (auto binding : kernel->bindings) {
+                    if (!dyn_cast<FieldDecl>(binding)) {
+                        continue;
+                    }
                     auto arg = json::object();
                     arg["IsTexture"] = false;
                     arg["IsTextureArray"] = false;
                     arg["IsAccelStruct"] = false;
                     arg["Id"] = index++;
-                    arg["Name"] = binding->getNameAsString();
+                    arg["Name"] = "m_vdata." + binding->getNameAsString();
                     descriptors_count++;
                     ds["Args"].push_back(arg);
                 }
                 // outs() << ds["Args"].size() << "\n";
+                ds["ArgNumber"] = index;
                 data["DescriptorSetsAll"].push_back(ds);
                 out["DescriptorSets"].push_back(ds);
             }
@@ -247,6 +420,17 @@ namespace common_rewriter {
             field["IsArray"] = get_type_array_size(i->getType()) > 0;
             field["ArraySize"] = get_type_array_size(i->getType());
             field["IsDummy"] = false;
+            data["UBO"]["UBOStructFields"].push_back(field);
+        }
+        for (auto i : info.used_buffer_fields) {
+            auto field = json::object();
+            field["Name"] = i->getNameAsString() + "_size";
+            field["Type"] = "uint";
+            field["IsArray"] = false;
+            field["ArraySize"] = 0;
+            field["IsDummy"] = false;
+            data["UBO"]["UBOStructFields"].push_back(field);
+            field["Name"] = i->getNameAsString() + "_capacity";
             data["UBO"]["UBOStructFields"].push_back(field);
         }
 
@@ -290,7 +474,7 @@ namespace common_rewriter {
         data["UseServiceSort"] = false;
         data["HasAllRefs"] = false;
         data["UseRayGen"] = false;
-        data["IncludeClassDecl"] = "D:/kernel_slicer/class.h";
+        data["IncludeClassDecl"] = "D:/kernel_slicer/class_slang.h";
         data["SceneMembers"] = json::array();
         data["ForceProxy"] = false;
         data["IntersectionHierarhcy"] = json::object();
