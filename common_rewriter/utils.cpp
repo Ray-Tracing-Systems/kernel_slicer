@@ -1,4 +1,5 @@
 #include "utils.h"
+#include "compiler.h"
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Lex/Lexer.h>
 
@@ -6,11 +7,9 @@ namespace common_rewriter {
     using namespace clang;
     using llvm::outs;
 
-    const CompilerInstance* compiler_instance;
-
     std::string string_from_source_range(SourceRange range) {
         // https://stackoverflow.com/questions/11083066/getting-the-source-behind-clangs-ast
-        const SourceManager& source_manager = compiler_instance->getSourceManager();
+        const SourceManager& source_manager = kslicer::compiler()->getSourceManager();
         SourceLocation true_end(Lexer::getLocForEndOfToken(range.getEnd(), 0, source_manager, {}));
         return std::string(source_manager.getCharacterData(range.getBegin()),
                            source_manager.getCharacterData(true_end) -
@@ -19,8 +18,8 @@ namespace common_rewriter {
 
     const NamedDecl* find_global_declaration(std::string name) {
         TranslationUnitDecl* translation_unit_declaration_context =
-            compiler_instance->getASTContext().getTranslationUnitDecl();
-        IdentifierInfo& identifier_info = compiler_instance->getASTContext().Idents.get(name);
+            kslicer::compiler()->getASTContext().getTranslationUnitDecl();
+        IdentifierInfo& identifier_info = kslicer::compiler()->getASTContext().Idents.get(name);
         DeclContext::lookup_result res = translation_unit_declaration_context->lookup(&identifier_info);
 
         if (res.empty()) {

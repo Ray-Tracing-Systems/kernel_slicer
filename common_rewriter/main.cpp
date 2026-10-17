@@ -1,47 +1,24 @@
-#include "clang/Tooling/Tooling.h"
-#include "clang/AST/ASTConsumer.h"
-#include "clang/Frontend/FrontendAction.h"
-#include "clang/Tooling/CommonOptionsParser.h"
-#include "llvm/Support/CommandLine.h"
-#include "common_rewriter.h"
-
-using namespace clang;
-using namespace clang::tooling;
-
-// ASTConsumer that runs our visitor.
-class MyASTConsumer : public ASTConsumer
-{
-public:
-    void HandleTranslationUnit(ASTContext &context) override
-    {
-        common_rewriter::rewrite_class("VolumeRenderer");
+#include "class_info.h"
+#include "codegen_host.h"
+#include "compiler.h"
+#include "errors.h"
+#include "utils.h"
+namespace kslicer {
+    using namespace clang;
+    using namespace common_rewriter;
+    void handle_translation_unit() {
+        auto decl = find_global_declaration("VolumeRenderer");
+        ClassInfo class_info(dyn_cast<CXXRecordDecl>(decl));
+        note_found(decl->getLocation(), "found");
+        class_info.dump();
+        codegen(class_info);
     }
-};
+} // namespace kslicer
 
-class MyASTFrontedAction : public ASTFrontendAction
-{
-public:
-    std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI, StringRef file) override
-    {
-        common_rewriter::compiler_instance = &CI;
-        return std::make_unique<MyASTConsumer>();
-    }
-};
-
-static llvm::cl::OptionCategory ToolCategory{"What is a tool category???"};
-
-int main(int argc, const char **argv)
-{
-    auto ExpectedParser = CommonOptionsParser::create(argc, argv, ToolCategory);
-    if (!ExpectedParser)
-    {
-        llvm::errs() << ExpectedParser.takeError() << "\n";
-        return 1;
-    }
-    CommonOptionsParser &OptionsParser = ExpectedParser.get();
-
-    ClangTool Tool(OptionsParser.getCompilations(),
-                   OptionsParser.getSourcePathList());
-
-    return Tool.run(newFrontendActionFactory<MyASTFrontedAction>().get());
+int main(int argc, const char** argv) {
+    kslicer::InvocationParams params;
+    params.sources = {"D:/gml_private/VolumeRenderer/VolumeRenderer.cpp"};
+    params.include_directories = {"D:/gml_private/", "D:/gml_private/VolumeRenderer/",
+                                  "D:/gml_private/dependencies/1st-party/LiteMath/", "D:/kernel_slicer/TINYSTL"};
+    return kslicer::invoke_compiler(params, kslicer::handle_translation_unit);
 }

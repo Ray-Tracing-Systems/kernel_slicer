@@ -13,7 +13,7 @@ namespace clang {
 namespace common_rewriter {
     using namespace clang;
 
-    extern const clang::CompilerInstance* compiler_instance;
+    // extern const clang::CompilerInstance* compiler_instance;
 
     std::string string_from_source_range(SourceRange range);
     const NamedDecl* find_global_declaration(std::string name);
