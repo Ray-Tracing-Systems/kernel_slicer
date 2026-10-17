@@ -51,4 +51,4 @@ if(MSVC)
     target_compile_options(kslicer PRIVATE /bigobj)
 endif()
 
-add_subdirectory(common_rewriter)
+add_subdirectory(kslicer2)
