@@ -77,7 +77,8 @@ std::string kslicer::IShaderCompiler::RewriteBEParallelFor(const clang::ForStmt*
       if (const auto *VarDecl = clang::dyn_cast<clang::VarDecl>(Decl)) {
         clang::QualType Type = VarDecl->getType();
         std::string typeName = Type.getAsString();
-        loopInit = typeName + " " + VarDecl->getNameAsString() + " = " + typeName + "(gl_LocalInvocationID[0]);\n";
+        uint32_t wgSizeDummy[3] = {1,1,1};
+        loopInit = typeName + " " + VarDecl->getNameAsString() + " = " + typeName + "(" + LocalIdExpr(1, wgSizeDummy) + ");\n"; // local thread id of the current back end
       }
     }
   }

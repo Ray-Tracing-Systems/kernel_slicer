@@ -170,7 +170,7 @@ bool kslicer::FunctionRewriter2::NeedToRewriteMemberExpr(const clang::MemberExpr
   const bool subjectedToRed = m_pCurrKernel->subjectedToReduction.find(fieldName) != m_pCurrKernel->subjectedToReduction.end();
   const bool checkContainer = !pMember->second.isContainer || m_codeInfo->placeVectorsInUBO; // || CUDA_ENABLE_UBO 
 
-  if(m_codeInfo->pShaderCC->IsISPC() && subjectedToRed)
+  if(m_codeInfo->pShaderCC->IsISPC() && subjectedToRed && !isInLoopInitPart && !isInLoopFinishPart) // inside loop ISPC uses local varying variable
     return false;
   
   if(checkContainer && WasNotRewrittenYet(expr) && (isInLoopInitPart || isInLoopFinishPart || !subjectedToRed) && 
@@ -193,6 +193,18 @@ bool kslicer::FunctionRewriter2::NeedToRewriteDeclRefExpr(const clang::DeclRefEx
     return false;
 
   const clang::ValueDecl* pDecl = expr->getDecl();
+  if(m_pCurrKernel != nullptr)                     // local variable which is declared before the loop and placed to UBO
+  {
+    for(const auto& var : m_pCurrKernel->localVarsInUBO)
+    {
+      if(var.declLoc == pDecl->getLocation())
+      {
+        out_text = m_codeInfo->pShaderCC->UBOAccess(var.uboName);
+        return true;
+      }
+    }
+  }
+
   if(!clang::isa<clang::ParmVarDecl>(pDecl))
     return false;
 
@@ -504,7 +516,7 @@ std::string kslicer::FunctionRewriter2::RecursiveRewrite(const clang::Stmt* expr
   if(p != rvCopy.m_workAround.end())
     return p->second;
   else
-    return m_rewriter.getRewrittenText(range);
+    return kslicer::GetRewrittenText(m_rewriter, range);
 }
 
 bool kslicer::FunctionRewriter2::DetectAndRewriteShallowPattern(const clang::Stmt* expr, std::string& a_out)
@@ -541,6 +553,10 @@ bool kslicer::FunctionRewriter2::DetectAndRewriteShallowPattern(const clang::Stm
   else if(clang::isa<clang::CXXOperatorCallExpr>(expr)) 
   {
     const clang::CXXOperatorCallExpr* opCall = clang::dyn_cast<clang::CXXOperatorCallExpr>(expr);
+    if(opCall->getNumArgs() != 2)                 // unary operators, 'it->second' for example
+      return false;
+    if(kslicer::GetHashMapSubscript(opCall) != nullptr) // 'm_items[key]' needs full rewrite
+      return false;
     const clang::Expr* lhs = kslicer::RemoveImplicitCast(opCall->getArg(0));
     const clang::Expr* rhs = kslicer::RemoveImplicitCast(opCall->getArg(1));
     std::string opCode = clang::getOperatorSpelling(opCall->getOperator());
@@ -902,7 +918,7 @@ std::string kslicer::KernelRewriter2::RecursiveRewrite(const clang::Stmt* expr)
   else
   {
     //rvCopy.ApplyDefferedWorkArounds();
-    return m_rewriter.getRewrittenText(range);
+    return kslicer::GetRewrittenText(m_rewriter, range);
   }
 }
 

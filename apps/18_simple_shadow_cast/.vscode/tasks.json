@@ -6,13 +6,13 @@
         {
             "label": "BuildRelease",
             "type": "shell",
-            "command": "cd cmake-build-release && make -j 8",
+            "command": "cd build_release && make -j 8",
             "group": "build"
         },
         {
             "label": "BuildDebug",
             "type": "shell",
-            "command": "cd cmake-build-debug && make -j 8",
+            "command": "cd build_debug && make -j 8",
             "group": "build",
             "problemMatcher": [
                 "$gcc"
@@ -35,5 +35,15 @@
             "problemMatcher": [
                 "$gcc"
             ]
+        },
+        {
+            "label": "Build Kernels (ISPC)",
+            "type": "shell",
+            "command": "bash z_build_ispc.sh",
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
         }
     ]
+}

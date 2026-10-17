@@ -563,9 +563,15 @@ bool kslicer::KernelInfoVisitor::VisitCallExpr(clang::CallExpr* call)
     std::string aTypeName  = aType1.getAsString();
 
     if(aTypeName == "float")
-      m_currKernel.shaderFeatures.useFloatAtomicAdd = true;
+      m_currKernel.shaderFeatures.useFloatAtomicAdd = !m_codeInfo->atomicFloatEmul; // emulated via CAS on 'uint', hardware float atomics are not needed
     else if(aTypeName == "double")
       m_currKernel.shaderFeatures.useDoubleAtomicAdd = true;
+  }
+
+  if(fname == "InterlockedAdd3f")
+  {
+    m_currKernel.shaderFeatures.useFloatAtomicAdd   = !m_codeInfo->atomicFloatEmul; // emulated via CAS on 'uint', hardware float atomics are not needed
+    m_currKernel.shaderFeatures.useInterlockedAdd3f = true;
   }
 
   if(fname.find("ReduceAdd") != std::string::npos)

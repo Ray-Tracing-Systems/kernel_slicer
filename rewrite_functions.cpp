@@ -143,7 +143,7 @@ bool kslicer::FunctionRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructEx
   {
     const std::string textRes = RewriteConstructCall(call);
     ReplaceTextOrWorkAround(call->getSourceRange(), textRes); //
-    //m_rewriter.ReplaceText(call->getSourceRange(), textRes);    //
+    //kslicer::ReplaceTextSafe(m_rewriter, call->getSourceRange(), textRes);    //
     MarkRewritten(call);
   }
 
@@ -203,7 +203,7 @@ std::string kslicer::FunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
   if(p != rvCopy.m_workAround.end())
     return p->second;
   else
-    return m_rewriter.getRewrittenText(range);
+    return kslicer::GetRewrittenText(m_rewriter, range);
 }
 
 kslicer::RewrittenFunction kslicer::FunctionRewriter::RewriteFunction(clang::FunctionDecl* fDecl)

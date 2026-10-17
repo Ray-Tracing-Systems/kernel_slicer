@@ -18,6 +18,7 @@
 
 #include "clang/AST/DeclCXX.h"
 #include "clang/Frontend/CompilerInstance.h"
+#include "clang/Rewrite/Core/Rewriter.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Tooling/Tooling.h"
 
@@ -55,6 +56,7 @@ namespace kslicer
     bool fwdFunDeclarations = false;
     bool forceRTXProxy      = false;
     bool mtShaderCompile = true;  ///<! generate shader build script that runs the compiler in parallel (Linux only, '-mt_shader_compile 0' to disable)
+    bool skipShaderIncludes = true; ///<! do not put '-I..' and '-I<include folders>' to Slang build scripts, generated shaders usually do not need them ('-skip_shader_includes 0' to put them)
   };
 
   struct IShaderCompiler;
@@ -71,7 +73,7 @@ namespace kslicer
                           KIND_SAMPLER                          ///<! Sampler
                           };
 
-  enum class DATA_USAGE { USAGE_USER = 0, USAGE_SLICER_REDUCTION = 1 };
+  enum class DATA_USAGE { USAGE_USER = 0, USAGE_SLICER_REDUCTION = 1, USAGE_KERNEL_LOCAL = 2 }; ///<! USAGE_KERNEL_LOCAL: variable declared in kernel before the loop, placed to UBO
   enum class TEX_ACCESS { TEX_ACCESS_NOTHING = 0, TEX_ACCESS_READ = 1, TEX_ACCESS_WRITE = 2, TEX_ACCESS_SAMPLE = 4 };
   enum class CPP11_ATTR { ATTR_UNKNOWN = 0, ATTR_KERNEL = 1, ATTR_SETTER = 2  };
 
@@ -157,6 +159,7 @@ namespace kslicer
 
       useFloatAtomicAdd  = useFloatAtomicAdd  || rhs.useFloatAtomicAdd;
       useDoubleAtomicAdd = useDoubleAtomicAdd || rhs.useDoubleAtomicAdd;
+      useInterlockedAdd3f = useInterlockedAdd3f || rhs.useInterlockedAdd3f;
       use8BitStorage     = use8BitStorage     || rhs.use8BitStorage;
       use16BitStorage    = use16BitStorage    || rhs.use16BitStorage;
 
@@ -171,6 +174,7 @@ namespace kslicer
 
     bool useFloatAtomicAdd  = false;
     bool useDoubleAtomicAdd = false;
+    bool useInterlockedAdd3f = false; ///<! LiteMath::InterlockedAdd3f is called, so its implementation is put to common shader header
     bool use8BitStorage     = false;
     bool use16BitStorage    = false;
   };
@@ -280,6 +284,16 @@ namespace kslicer
 
     enum class IPV_LOOP_KIND  { LOOP_KIND_LESS = 0, LOOP_KIND_LESS_EQUAL = 1};
 
+    struct LocalVarInUBO ///<! IPV: variable declared in single-threaded part of kernel (before the loop), placed to UBO as '<KernelName>_<varName>'
+    {
+      std::string           name;
+      std::string           uboName;
+      clang::SourceLocation declLoc;    ///<! location of VarDecl; kernel matchers work on a separate AST, so we can't store pointers to AST nodes
+      std::string           typeName;
+      size_t                sizeInBytes = 0;
+      bool                  isSupported = true; ///<! false for pointers, references, containers, ...
+    };
+
     struct LoopIter
     {
       std::string type;
@@ -329,10 +343,17 @@ namespace kslicer
     std::string           return_type;          ///<! func. return type
     std::string           return_class;         ///<! class name of pointer if pointer is returned
     std::string           name;                 ///<! func. name
+    std::string           funcName;             ///<! name of C++ function if it differs from 'name' (for parts of kernel with several loops)
+    uint32_t              partIndex = 0;        ///<! IPV: kernel with several top level loops is split to several kernels ('parts'), one for each loop
+    uint32_t              partsNum  = 1;        ///<! IPV: number of parts (top level loops) in kernel function
+    std::vector<std::string> partNames;         ///<! IPV: for part #0 only, names of all other parts which must be called after it
+    clang::SourceRange    partLoopRange;        ///<! IPV: top level loop of this part (valid only if partsNum > 1)
+    const std::string&    FuncName() const { return funcName.empty() ? name : funcName; }
     std::string           className;            ///<! Class::kernel_XXX --> 'Class'
     std::string           interfaceName;        ///<! Name of the interface if the kernel is virtual
     std::vector<ArgInfo>  args;                 ///<! all arguments of a kernel
     std::vector<LoopIter> loopIters;            ///<! info about internal loops inside kernel which should be eliminated (so these loops are transformed to kernel call); For IPV pattern.
+    std::vector<LocalVarInUBO> localVarsInUBO;  ///<! IPV: variables declared before the loop and therefore shared by all threads; they are placed to UBO
     std::string           debugOriginalText;
 
     uint32_t GetDim() const
@@ -481,7 +502,10 @@ namespace kslicer
 
     size_t      arraySize = 0;                         ///<! 'N' if data is declared as 'array[N]';
     std::string containerType;                         ///<! std::vector usually
-    std::string containerDataType;                     ///<! data type 'T' inside of std::vector<T>
+    std::string containerDataType;                     ///<! data type 'T' inside of std::vector<T>; 'X' for std::unordered_map<Key,X>
+    std::string containerKeyType;                      ///<! 'Key' for std::unordered_map<Key,X>
+    size_t      containerDataSize  = 0;                ///<! sizeof('X') for std::unordered_map<Key,X>
+    size_t      containerDataAlign = 0;                ///<! aligment of 'X' in std430 layout for std::unordered_map<Key,X>
     std::string intersectionClassName;                 ///<! used in the case of user intersection
 
     clang::TypeDecl* pTypeDeclIfRecord = nullptr;
@@ -711,6 +735,7 @@ namespace kslicer
     bool VisitFieldDecl(clang::FieldDecl* decl)              { return VisitFieldDecl_Impl(decl);      }
     bool VisitUnaryOperator(clang::UnaryOperator* op)        { return VisitUnaryOperator_Impl(op);    }
     bool VisitCStyleCastExpr(clang::CStyleCastExpr* cast)    { return VisitCStyleCastExpr_Impl(cast); }
+    bool VisitCXXFunctionalCastExpr(clang::CXXFunctionalCastExpr* cast) { return VisitCXXFunctionalCastExpr_Impl(cast); }
     bool VisitImplicitCastExpr(clang::ImplicitCastExpr* cast){ return VisitImplicitCastExpr_Impl(cast); }
 
     bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr* arrayExpr)            { return VisitArraySubscriptExpr_Impl(arrayExpr); }
@@ -785,6 +810,7 @@ namespace kslicer
     virtual bool VisitFieldDecl_Impl(clang::FieldDecl* decl)              { return true; } // override this in Derived class
     virtual bool VisitUnaryOperator_Impl(clang::UnaryOperator* op)        { return true; } // override this in Derived class
     virtual bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)    { return true; } // override this in Derived class
+    virtual bool VisitCXXFunctionalCastExpr_Impl(clang::CXXFunctionalCastExpr* cast) { return true; } // 'float(x)', override this in Derived class
     virtual bool VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast){ return true; } // override this in Derived class
     virtual bool VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call);                // override this in Derived class
     virtual bool VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr);
@@ -967,6 +993,7 @@ namespace kslicer
     bool VisitCompoundAssignOperator_Impl(clang::CompoundAssignOperator* expr) override;
     bool VisitBinaryOperator_Impl(clang::BinaryOperator* expr)                 override;
     bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)                       override;
+    bool VisitReturnStmt_Impl(clang::ReturnStmt* ret)                          override;
 
     // Also important functions to use(!)
     //
@@ -978,6 +1005,7 @@ namespace kslicer
     //
     std::string RecursiveRewrite(const clang::Stmt* expr) override;
     std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) override;
+    std::string RewriteStructWithMethods(const clang::CXXRecordDecl* pRecord); ///<! rewrite member functions (and constructors) of user structure for Slang
     //void MarkRewritten(const clang::Stmt* expr);
     //bool WasNotRewrittenYet(const clang::Stmt* expr);
 
@@ -986,6 +1014,17 @@ namespace kslicer
     void Init();
     std::unordered_map<std::string, std::string> m_typesReplacement;
     std::unordered_map<std::string, std::string> m_funReplacements;
+
+    // std::unordered_map<Key,X> members, see hashmap.cpp
+    //
+    bool RewriteHashMapSubscript(clang::CXXOperatorCallExpr* expr);   ///<! 'm_items[key]'                     ==> 'm_items[hmap_m_items_insert(key)].val'
+    bool RewriteHashMapMemberCall(clang::CXXMemberCallExpr* call);    ///<! 'm_items.find(key)', 'm_items.end()' ==> 'hmap_m_items_find(key)', 'ubo[0].m_items_capacity'
+    bool RewriteHashMapIteratorAccess(clang::MemberExpr* expr);       ///<! 'it->second', 'it->first'          ==> 'm_items[it].val', 'm_items[it].key'
+    bool RewriteHashMapAtomicAdd(const clang::Expr* a_wholeExpr, const clang::Expr* a_lhs, const std::string& a_value); ///<! 'm_hist[key] += 1' ==> 'InterlockedAdd(m_hist[...].val, uint(1))'
+
+    // '-atomicf_emul 2': float atomics via CAS on 'uint' view of the same buffer ('a_out_asUint')
+    //
+    bool GetUintAliasWord(const clang::Expr* a_lvalue, std::string& a_bufferName, std::string& a_wordIndex); ///<! 'm_vec[i].vel.x' ==> 'm_vec', '(i)*8 + 4'
   };
 
   class CudaRewriter : public FunctionRewriter2 ///!< BASE CLASS FOR ALL NEW BACKENDS
@@ -1054,6 +1093,7 @@ namespace kslicer
     bool VisitFieldDecl_Impl(clang::FieldDecl* decl)               override;
     bool VisitUnaryOperator_Impl(clang::UnaryOperator* op)         override;
     bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)     override;
+    bool VisitCXXFunctionalCastExpr_Impl(clang::CXXFunctionalCastExpr* cast) override;
     bool VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast) override;
     bool VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) override; 
     bool VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr) override;
@@ -1150,6 +1190,7 @@ namespace kslicer
     bool VisitCompoundAssignOperator(clang::CompoundAssignOperator* expr) { if(WasRewritten(expr)) return true; else return VisitCompoundAssignOperator_Impl(expr); }
     bool VisitCXXOperatorCallExpr   (clang::CXXOperatorCallExpr* expr)    { if(WasRewritten(expr)) return true; else return VisitCXXOperatorCallExpr_Impl(expr); }
     bool VisitCStyleCastExpr(clang::CStyleCastExpr* cast)                 { if(WasRewritten(cast)) return true; else return VisitCStyleCastExpr_Impl(cast); }
+    bool VisitCXXFunctionalCastExpr(clang::CXXFunctionalCastExpr* cast)   { if(WasRewritten(cast)) return true; else return VisitCXXFunctionalCastExpr_Impl(cast); }
     bool VisitImplicitCastExpr(clang::ImplicitCastExpr* cast)             { if(WasRewritten(cast)) return true; else return VisitImplicitCastExpr_Impl(cast); }
     bool VisitDeclRefExpr(clang::DeclRefExpr* expr)                       { if(WasRewritten(expr)) return true; else return VisitDeclRefExpr_Impl(expr); }
     bool VisitFloatingLiteral(clang::FloatingLiteral* expr)               { if(WasRewritten(expr)) return true; else return VisitFloatingLiteral_Impl(expr); }
@@ -1238,6 +1279,7 @@ namespace kslicer
 
     virtual bool VisitVarDecl_Impl(clang::VarDecl* decl)                   { return true; } // override this in Derived class
     virtual bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)     { return true; } // override this in Derived class
+    virtual bool VisitCXXFunctionalCastExpr_Impl(clang::CXXFunctionalCastExpr* cast) { return true; } // override this in Derived class
     virtual bool VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast) { return true; } // override this in Derived class
     virtual bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr);
     virtual bool VisitDeclStmt_Impl(clang::DeclStmt* decl)                 { return true; } // override this in Derived class
@@ -1272,6 +1314,7 @@ namespace kslicer
 
     bool VisitVarDecl_Impl(clang::VarDecl* decl)                               override; // override this in Derived class
     bool VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)                 override; // override this in Derived class
+    bool VisitCXXFunctionalCastExpr_Impl(clang::CXXFunctionalCastExpr* cast)   override { return m_pFunRW2->VisitCXXFunctionalCastExpr_Impl(cast); }
     bool VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast)             override; // override this in Derived class
 
     bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)                               override;
@@ -1414,6 +1457,8 @@ namespace kslicer
     ISPCCompiler(bool a_useCPP, const std::string& a_prefix);
     std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo[0].") + a_name; };
     std::string Name() const override { return "ISPC"; }
+    std::string m_target = "avx2-i32x8"; ///<! ISPC '--target', set by '-ispc_target'
+    bool        MemberFunctionsAreSupported() const override { return true; }
     void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings) override;
     bool        IsISPC() const override { return true; }
     std::string BuildCommand(const std::string& a_inputFile) const override;
@@ -1800,13 +1845,45 @@ namespace kslicer
     bool forceAllBufToRefs  = false;
     bool placeVectorsInUBO  = false;
     bool shitIsAlwaysConst  = false;
+    bool atomicFloatEmul    = false; ///<! '-atomicf_emul 1|2': emulate float InterlockedAdd via CAS loop (Slang/Vulkan only), shaderBufferFloat32AtomicAdd is not required
+    int  atomicFloatEmulMode = 0;    ///<! 0: hardware float atomics; 2: CAS on 'uint' view of the same buffer, declared at the same binding ('-atomicf_emul 1' is mapped to 2)
+    std::unordered_set<std::string> uintAliasBuffers; ///<! float buffers which are also declared as 'uint' at the same binding for CAS (float atomics emulation)
     bool hasLocalContainers = false;
+
+    struct HashMapInfo
+    {
+      std::string name;          ///<! member name, 'm_items'
+      std::string keyType;       ///<! 'int' or 'uint'
+      std::string valueType;     ///<! clean type name of 'X' in std::unordered_map<Key,X>
+      std::string slotType;      ///<! 'HashMapSlot_m_items' == {X val; Key key; uint _pad[padWords]; }
+      std::string sentinel;      ///<! key value for empty slot
+      size_t      valueSize  = 0;
+      size_t      valueAlign = 4; ///<! aligment of 'X' in std430 layout
+      size_t      slotSize   = 0; ///<! == stride in buffer
+      size_t      padWords   = 0;
+    };
+    std::map<std::string, HashMapInfo> hashMaps; ///<! all hash maps used in kernels
+
+    struct HashMapAddFunc       ///<! 'm_items[key].val.x += value' with subgroup aggregation ==> 'hmap_m_items_add_val_x(key, value)'
+    {
+      std::string name;
+      std::string mapName;
+      std::string path;         ///<! '.val.x'
+      std::string valueType;    ///<! 'int', 'uint' or 'float'
+      std::string atomicFunc;   ///<! 'InterlockedAdd' (hardware) or emulated via 'InterlockedAddEmul1fU'
+      bool        viaUintAlias = false; ///<! '-atomicf_emul 2': 'InterlockedAddEmul1fU(m_items_asUint, slot*slotWords + wordOffset, value)'
+      uint32_t    slotWords    = 0;
+      uint32_t    wordOffset   = 0;
+    };
+    std::map<std::string, HashMapAddFunc> hashMapAddFuncs;
+    bool hashMapSubgroups = false; ///<! aggregate atomic updates of hash map values inside subgroup, needs Vulkan 1.1; '-enableSubgroup 0' disables it
 
     std::unordered_map<std::string, VFHHierarchy> m_vhierarchy;
     std::vector<BufferReference>                  m_allRefsFromVFH;
     bool IsVFHBuffer(const std::string& a_name, VFH_LEVEL* pOutLevel = nullptr, VFHHierarchy* pHierarchy = nullptr) const;
 
     std::unordered_set<std::string> ExtractTypesFromUsedContainers(const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls);
+    void ProcessHashMaps(const clang::ASTContext& a_astContext); ///<! ==> hashMaps; must be called after ProcessMemberTypesAligment
     void ProcessMemberTypes(const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls, clang::SourceManager& a_srcMgr,
                             std::vector<kslicer::DeclInClass>& generalDecls);
 
@@ -1838,6 +1915,8 @@ namespace kslicer
 
   std::string GetRangeSourceCode(const clang::SourceRange a_range, const clang::CompilerInstance& compiler);
   std::string GetRangeSourceCode(const clang::SourceRange a_range, const clang::SourceManager& sm);
+  std::string GetRewrittenText(const clang::Rewriter& a_rewriter, const clang::SourceRange a_range); ///<! safe version of Rewriter::getRewrittenText, does not cut last token if it was rewritten
+  bool        ReplaceTextSafe(clang::Rewriter& a_rewriter, const clang::SourceRange a_range, const std::string& a_text); ///<! safe version of Rewriter::ReplaceText, replaces whole current text of the range even if the last token was already rewritten
   std::string CutOffFileExt(const std::string& a_filePath);
   std::string CutOffStructClass(const std::string& a_typeName);
 
@@ -1864,6 +1943,16 @@ namespace kslicer
   bool IsAccelStruct(const std::string& a_typeName);
   bool IsVectorContainer(const std::string& a_typeName);
   bool IsPointerContainer(const std::string& a_typeName);
+  bool IsHashMapContainer(const std::string& a_typeName);  ///<! std::unordered_map<Key,X>, which becomes single GPU buffer of slots {X val; Key key;}
+
+  bool IsHashMapType(clang::QualType a_qt);                ///<! std::unordered_map<...>
+  bool IsHashMapIteratorType(clang::QualType a_qt);        ///<! std::unordered_map<...>::iterator or const_iterator
+  std::string HashMapSlotTypeName(const std::string& a_mapName);
+  std::string HashMapFuncName(const std::string& a_mapName, const std::string& a_func); ///<! 'hmap_m_items_insert' and e.t.c.
+  size_t      GetStd430Alignment(clang::QualType a_qt, const clang::ASTContext& a_astContext);
+  const clang::Expr* GetMemberPathOffset(const clang::Expr* a_expr, const clang::ASTContext& a_astContext, uint64_t& a_offsetInBytes, bool& a_ok); ///<! 'x[i].vel.x' ==> 'x[i]', offset of '.vel.x' in bytes
+  std::string GetHashMapNameFromExpr(const clang::Expr* a_expr);         ///<! 'this->m_items' or 'it' declared as 'auto it = m_items.find(...)' ==> "m_items"; "" if not a hash map
+  const clang::CXXOperatorCallExpr* GetHashMapSubscript(const clang::Expr* a_expr); ///<! 'm_items[key]' or 'm_items[key].val.x' ==> 'm_items[key]', nullptr if not a hash map
 
   clang::TypeDecl* SplitContainerTypes(const clang::ClassTemplateSpecializationDecl* specDecl, std::string& a_containerType, std::string& a_containerDataType);
   std::string GetDSArgName(const std::string& a_mainFuncName, const kslicer::ArgReferenceOnCall& a_arg, bool a_megakernel);
@@ -1871,6 +1960,7 @@ namespace kslicer
   std::string GetDSVulkanAccessMask(TEX_ACCESS a_accessMask);
 
   DataMemberInfo ExtractMemberInfo(clang::FieldDecl* fd, const clang::ASTContext& astContext);
+  DataMemberInfo ExtractMemberInfo(const std::string& a_name, const clang::QualType a_type, const clang::ASTContext& astContext);
   std::string InferenceVulkanTextureFormatFromTypeName(const std::string& a_typeName, bool a_useHalFloat);
 
   std::vector<kslicer::ArgMatch> MatchCallArgsForKernel(clang::CallExpr* call, const KernelInfo& k, const clang::CompilerInstance& a_compiler);
@@ -1887,6 +1977,9 @@ namespace kslicer
   void CheckInterlanIncInExcludedFolders(const std::vector<std::filesystem::path>& a_folders);
 
   ShaderFeatures GetUsedShaderFeaturesFromTypeName(const std::string& a_str);
+  bool           HasUserMethods(const clang::CXXRecordDecl* pRecord);               ///<! structure has member functions or constructors written by user
+  ShaderFeatures GetStorageFeaturesFromType(clang::QualType a_type);                  ///<! 8/16 bit storage features for data of this type placed in a buffer (fields of structures are analyzed recursively)
+  ShaderFeatures GetStorageFeaturesFromDataMember(const DataMemberInfo& a_member);        ///<! 8/16 bit storage features for class data member (std::vector<T> or plain member in UBO)
 
   std::unordered_set<std::string> GetAllServiceKernels();
 

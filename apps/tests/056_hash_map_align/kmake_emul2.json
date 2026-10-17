@@ -1,0 +1,17 @@
+{
+    "mainClass"     : "HashMapAlign", // must explicitly specify main class as main process 'unit' for slicer
+    "baseClasses"   : [],            // specify all base clases in  reverse order from leaf to root
+    "composClasses" : {},            // specify all classes for composition pattern 
+    "options" : {
+        "-pattern"      : "ipv",
+        "-shaderCC"     : "slang",
+        "-timestamps"   : 1,
+        "-atomicf_emul" : 2,       // emulate float atomics via CAS on 'uint' view of the same buffer (no spirv_asm)
+        "-enableSubgroup" : 1,
+        "end" : ""
+    },
+    "source" : ["test_class.cpp"],
+    "includeProcess" : [],
+    "includeIgnore"  : ["../../LiteMath"],
+    "end" : ""
+}

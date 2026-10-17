@@ -9,9 +9,10 @@ clang::TypeDecl* kslicer::SplitContainerTypes(const clang::ClassTemplateSpeciali
   const auto& templateArgs = specDecl->getTemplateArgs();
 
   clang::TypeDecl* result = nullptr;
+  const unsigned dataArgId = (kslicer::IsHashMapContainer(a_containerType) && templateArgs.size() > 1) ? 1 : 0; // std::unordered_map<Key,X> ==> 'X'
   if(templateArgs.size() > 0)
   {
-    clang::QualType qt  = templateArgs[0].getAsType();
+    clang::QualType qt  = templateArgs[dataArgId].getAsType();
     a_containerDataType = qt.getAsString();
     auto pRecordType = qt->getAsStructureType();
     if(pRecordType != nullptr)
@@ -262,9 +263,9 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
       m_currId++;
     }
   }
-  else if(isa<TypedefDecl>(type))
+  else if(isa<TypedefNameDecl>(type)) // both 'typedef A B;' and 'using B = A;'
   {
-    TypedefDecl* pTargetTpdf = dyn_cast<TypedefDecl>(type);
+    TypedefNameDecl* pTargetTpdf = dyn_cast<TypedefNameDecl>(type);
     const auto qt  = pTargetTpdf->getUnderlyingType();
     decl.name      = pTargetTpdf->getNameAsString();
     decl.type      = qt.getAsString();
@@ -530,10 +531,13 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXMethodDecl(CXXMethodDecl* 
 
 kslicer::DataMemberInfo kslicer::ExtractMemberInfo(clang::FieldDecl* fd, const clang::ASTContext& astContext)
 {
-  const clang::QualType qt = fd->getType();
+  return ExtractMemberInfo(fd->getName().str(), fd->getType(), astContext);
+}
 
+kslicer::DataMemberInfo kslicer::ExtractMemberInfo(const std::string& a_name, const clang::QualType qt, const clang::ASTContext& astContext)
+{
   kslicer::DataMemberInfo member;
-  member.name        = fd->getName().str();
+  member.name        = a_name;
   member.type        = qt.getAsString();
   member.kind        = kslicer::GetKindOfType(qt);
   member.sizeInBytes = 0;
@@ -563,6 +567,31 @@ kslicer::DataMemberInfo kslicer::ExtractMemberInfo(clang::FieldDecl* fd, const c
     member.isContainer = true;
     auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl);
     member.pContainerDataTypeDeclIfRecord = kslicer::SplitContainerTypes(specDecl, member.containerType, member.containerDataType);
+
+    // keep the alias name of a struct element type ('std::vector<CRT_AABB>' with 'using CRT_AABB = LiteMath::Box4f;'):
+    // the canonical name is 'LiteMath::Box4f' and its namespace is cut off in generated host code, while the alias is visible
+    // in host code and is put to shaders as well
+    //
+    if(const auto* pSpecType = qt->getAs<clang::TemplateSpecializationType>())
+    {
+      const unsigned dataArgId = (kslicer::IsHashMapContainer(member.containerType) && pSpecType->template_arguments().size() > 1) ? 1 : 0;
+      if(pSpecType->template_arguments().size() > dataArgId && pSpecType->template_arguments()[dataArgId].getKind() == clang::TemplateArgument::Type)
+      {
+        const clang::QualType argType = pSpecType->template_arguments()[dataArgId].getAsType();
+        const auto* pAlias = argType->getAs<clang::TypedefType>();
+        if(pAlias != nullptr && argType.getCanonicalType()->isRecordType() &&
+           !astContext.getSourceManager().isInSystemHeader(pAlias->getDecl()->getLocation()))
+          member.containerDataType = pAlias->getDecl()->getNameAsString();
+      }
+    }
+
+    if(kslicer::IsHashMapContainer(member.containerType) && specDecl->getTemplateArgs().size() > 1)
+    {
+      const clang::QualType valueType = specDecl->getTemplateArgs()[1].getAsType();
+      member.containerKeyType   = specDecl->getTemplateArgs()[0].getAsType().getCanonicalType().getAsString();
+      member.containerDataSize  = astContext.getTypeSizeInChars(valueType).getQuantity();
+      member.containerDataAlign = kslicer::GetStd430Alignment(valueType, astContext);
+    }
   }
   else
   {

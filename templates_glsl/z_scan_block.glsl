@@ -23,21 +23,12 @@ void main()
 
   {{Type}} idata = {{Type}}(0);
   {{Type}} odata = {{Type}}(0);
+  {{Type}} edata = {{Type}}(0);
   
   if(kgenArgs.currMip == 0)
   {
-    if(kgenArgs.exclusiveFlag == 0)
-    {
-      if (globalId < kgenArgs.iNumElementsX)
-        idata = in_data[globalId];
-    }
-    else
-    {
-      if(globalId == 0)
-        idata = 0;
-      else if (globalId < kgenArgs.iNumElementsX)
-        idata = in_data[globalId-1];
-    }
+    if (globalId < kgenArgs.iNumElementsX) // don't read in_data[globalId-1] for exclusive scan: in_data may alias out_data (in-place scan), 
+      idata = in_data[globalId];          // so neighbour workgroup could have already overwritten it
   }
   else
   {
@@ -60,14 +51,17 @@ void main()
       barrier();                                     
       l_Data[pos] = t;                                       
     }                                                                                                
-    odata = l_Data[pos];         
+    odata = l_Data[pos];
+    barrier();
+    if(kgenArgs.currMip == 0 && kgenArgs.exclusiveFlag != 0)
+      edata = l_Data[pos - 1]; // inclusive summ of previous element; l_Data[_bsize-1] == 0 for localId == 0
   }                        
   /////////////////////////////////////////////////////  
 
   if(kgenArgs.currMip == 0)
   {
     if (globalId < kgenArgs.iNumElementsX)
-      out_data[globalId] = odata;
+      out_data[globalId] = (kgenArgs.exclusiveFlag != 0) ? edata : odata;
   
     if (localId == 255)
       tmp_data[globalId / 256] = odata;

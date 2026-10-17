@@ -109,8 +109,7 @@ protected:
    temporary buffer becomes a member vector, sized in the constructor or a setter, and is
    passed to kernels as `m_vec.data()`.
 4. The body is a sequence of kernel calls, optionally inside plain `for` loops (iterations,
-   ping-pong steps) with scalar arithmetic on arguments. Timing with `std::chrono` around the
-   calls is allowed and conventional.
+   ping-pong steps) with scalar arithmetic on arguments, and time measurement (rule 9).
 5. Allowed service calls between kernels: `memcpy(dst, src, bytes)`,
    `std::exclusive_scan` / `std::inclusive_scan`, `std::sort`. They are replaced by GPU
    implementations.
@@ -121,6 +120,35 @@ protected:
    calls requires another commit.
 8. Scalar class members written by kernels (e.g. a reduction result) are read back to the CPU
    after the control function returns, so host code can read `pImpl->m_summ`.
+9. **Measure time, never print it.** A control function (and an RTV `...Block` function) stores
+   the measured time in a class member; `GetExecutionTime(name, t)` returns it by function name,
+   and the **host** prints it. The generated class overrides control functions, `...Block`
+   functions and `GetExecutionTime` with its own Vulkan code, so a `std::cout` inside a control
+   function is either dropped or prints a CPU-side time of almost zero for the GPU version, while
+   the generated `GetExecutionTime` returns the real GPU time for the same name.
+
+   ```cpp
+   void MyAlgo::Run(int w, int h, const float4* a_in, uint32_t* a_out)
+   {
+     auto start = std::chrono::high_resolution_clock::now();
+     kernel2D_Stage1(w, h, a_in, m_tmp.data());
+     kernel2D_Stage2(w, h, m_tmp.data(), a_out);
+     m_timeRun = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start).count()/1000.f;
+   }
+
+   void MyAlgo::GetExecutionTime(const char* a_funcName, float a_out[4]) // one member per control function
+   {
+     a_out[0] = a_out[1] = a_out[2] = a_out[3] = 0.0f;                    // [exec, copy to GPU, copy from GPU, overhead] in ms
+     if(std::string(a_funcName) == "Run" || std::string(a_funcName) == "RunBlock")
+       a_out[0] = m_timeRun;
+   }
+
+   // host code, works the same for the CPU class and the generated GPU class
+   pImpl->Run(w, h, in.data(), out.data());
+   float t[4];
+   pImpl->GetExecutionTime("Run", t);
+   std::cout << "Run(exec) = " << t[0] << " ms, Run(copy) = " << t[1] + t[2] << " ms" << std::endl;
+   ```
 
 ## Step 4. Kernel and helper code rules
 
@@ -143,7 +171,34 @@ protected:
   translator ignores it.
 - Small fixed-size local arrays; mark large ones `[[threadlocal]] float tmp[64];`.
 - Structs of POD fields, constants via `constexpr` / `static constexpr` / `#define`.
-- Atomics: `LiteMath::InterlockedAdd(a_out[idx], value)` for `int`/`uint`/`float`.
+- Member functions of such structs (Slang back end): `const` methods, methods that modify fields
+  (emitted as `[mutating]`), `static` methods, constructors with initializer lists (`__init`), and
+  methods defined outside the struct. Fields of 8/16-bit types (`uint16_t`, `half`, `uint8_t`) in
+  buffers or UBO are detected automatically and the 8/16-bit storage features are requested.
+- IPV, Slang back end: local variables declared before the loop (and between loops) are shared by
+  all threads; the translator places them to UBO as `<KernelName>_<var>` (kernel name without the
+  `kernel1D_` prefix): `const float inv = 1.0f/a_gamma; for(...) a_out[i] = a_in[i]*inv;`.
+- IPV, Slang back end: several consecutive top-level loops in one kernel. Each loop becomes a
+  separate GPU pass (`<Kernel>_Part1`, ...), the code between loops runs single-threaded before the
+  next loop, and the passes are executed in order with barriers. A loop bound may be a member set in
+  the code before the loop (indirect dispatch): `m_count = a_size/2; for(i...; i<m_count; ...)`.
+- Atomics: `LiteMath::InterlockedAdd(a_out[idx], value)` for `int`/`uint`/`float`, and
+  `LiteMath::InterlockedAdd3f(a_out, offset, float3)` (each channel atomic separately).
+  Float atomics need `shaderBufferFloat32AtomicAdd` on the GPU (absent, for example, on AMD RDNA2
+  with RADV). For portable code emulate them with a CAS loop via `-atomicf_emul` (Slang only):
+
+  | Value | Implementation | Use |
+  |-------|----------------|-----|
+  | `0` (default) | hardware float atomics, the feature is requested | only if every target GPU has it |
+  | `1` or `2` (same) | CAS on a `uint` view of the same buffer (`a_out_asUint`, declared at the same binding) | portable code |
+
+  `1` and `2` generate identical code (the former `spirv_asm` pointer-cast implementation of `1`
+  was removed: it crashed `vkCreateComputePipelines` on NVIDIA). The emulation emits only ordinary
+  `InterlockedCompareExchange` on `uint`. It covers `InterlockedAdd(a_out[i], v)`,
+  `InterlockedAdd(m_vec[i].field, v)`, `InterlockedAdd3f`, `ReduceAdd<float>` and `+=` on float values
+  of `std::unordered_map`. Any other float atomic target gets a translator warning and uses hardware
+  float atomics there (`shaderBufferFloat32AtomicAdd` is then requested). Configs:
+  `apps/tests/042_atomic_add_float/kmake_{hw,emul,emul2}.json`.
 
 **Forbidden inside kernels and helpers**
 - Calling another kernel; recursion; virtual calls (except the special advanced samples).
@@ -152,12 +207,9 @@ protected:
 - Pointer class members (`float* m_ptr` is ignored by the translator), nested containers
   (`std::vector` inside a struct stored in the main class), comparing pointers with `nullptr`.
 - `double`, unless you know the device supports it; write float literals as `1.0f`.
-- **Class members or kernel arguments directly inside a `std::` call** (`std::max(m_val, x)`,
-  `std::pow(x, a_gamma)`). The Slang back end truncates them (`m_val` becomes `ubo[0`) and the
-  shader does not compile. Copy them to a local first:
-  `const float val = m_val; ... std::max(val, x)`. Locals and helper-function parameters inside
-  `std::` calls are fine, and so is the reduction statement `m_max = std::max(m_max, v);`.
-- Two or more consecutive top-level loops in one IPV kernel: split them into two kernels.
+- Class members or kernel arguments directly inside a `std::` call (`std::max(m_val, x)`) were
+  truncated by older translator versions (`m_val` became `ubo[0`); fixed in October 2026. If you
+  must support an older kslicer, copy them to a local first.
 
 **Data layout**
 - Prefer `float4` over `float3` inside structs and buffers; keep struct sizes a multiple of 16
@@ -237,13 +289,14 @@ Always pass `-shaderCC slang`. It is the current back end; `glsl` is legacy (its
 
 - [ ] Kernel names have exactly one prefix: `kernel1D_`/`kernel2D_`/`kernel3D_` (IPV) or `kernel_` (RTV).
 - [ ] IPV: the number of nested thread loops equals the `ND` in the name; loops are perfectly
-      nested with nothing between them; there is only one such loop nest per kernel.
+      nested with nothing between them; several consecutive loop nests in one kernel are allowed
+      only with the Slang back end (each becomes a separate GPU pass).
 - [ ] IPV 2D kernels: `y` outer, `x` inner, and `-reorderLoops YX` is set in `kmake.json` or on
       the command line.
 - [ ] IPV: every thread-loop bound is a plain kernel argument or class member. An expression
       such as `i < w*h` is accepted silently but produces uncompilable shaders.
-- [ ] IPV: code before and after the loop nest only initializes/finalizes members or writes
-      single values (it runs once, not per thread).
+- [ ] IPV: code before, between and after the loop nests only initializes/finalizes members,
+      declares shared locals or writes single values (it runs once, not per thread).
 - [ ] RTV: first kernel arguments are `tid` or `tidX, tidY`; no thread loop in the body;
       a `...Block(..., uint a_passesNum)` virtual function exists for each RTV control function.
 - [ ] No kernel calls a kernel; no control function calls a control function.
@@ -252,10 +305,14 @@ Always pass `-shaderCC slang`. It is the current back end; `glsl` is legacy (its
       sized before `CommitDeviceData()`.
 - [ ] Only LiteMath vector types; `using LiteMath::...` for each one used.
 - [ ] `CommitDeviceData()` and `GetExecutionTime()` are declared virtual in the class.
+- [ ] Control and `...Block` functions store their time in members returned by `GetExecutionTime`
+      by function name; nothing is printed inside them, timings are printed by the host.
 - [ ] No I/O, exceptions, allocation, recursion or pointer members in GPU-side code.
 - [ ] `std::` math calls exist in `TINYSTL/cmath` (no `std::fabs`, `std::fmin`, `std::fmax`).
 - [ ] `kmake.json`, if any, sets `wgSize` only for named kernels, never a 2D size under `"default"`.
-- [ ] No class member or kernel argument written directly inside a `std::` call in GPU code.
+- [ ] Float atomics (`InterlockedAdd` on float, `InterlockedAdd3f`, `ReduceAdd<float>`): `"-atomicf_emul" : 2`
+      (or `1`, the same) unless every target GPU has `shaderBufferFloat32AtomicAdd`; no translator warning
+      about a float atomic target falling back to hardware atomics.
 - [ ] kslicer log has no `error:`; `build_slang.sh` compiled every shader; `--compare` passes.
 
 Common mistakes with corrected versions: [references/pitfalls.md](references/pitfalls.md).
@@ -277,7 +334,7 @@ Files with `_generated`, `_gpu`, `_ispc` suffixes and `shaders_*` folders are tr
 | RTV path tracer | `apps/02_spheresStupidPt`, `apps/03_spheresStupidPt_loopBreak`, `apps/07_simple_pt` |
 | Same algorithm in IPV and RTV side by side | `apps/tests/051_saxpy_ipv_rtv` |
 | Reductions (min/max/sum), bounding box | `apps/tests/003_reduction`, `apps/tests/004_setter` |
-| Atomics, `ReduceAdd` | `apps/tests/041_atomic_add_int`, `042_atomic_add_float`, `045_reduce_add` |
+| Atomics, `ReduceAdd`, float atomics emulation (`kmake_hw/emul/emul2.json`) | `apps/tests/041_atomic_add_int`, `042_atomic_add_float`, `045_reduce_add`, `054_random_add` |
 | Scan and sort service calls | `apps/tests/023_prefix_summ`, `apps/tests/025_sort_v1` |
 | `[[threadlocal]]` arrays | `apps/tests/033_threadlocal_array_v1` |
 | `[[kslicer::setter]]` | `apps/tests/004_setter` |

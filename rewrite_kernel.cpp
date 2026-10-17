@@ -228,7 +228,7 @@ bool kslicer::KernelRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
   if(NeedToRewriteMemberExpr(expr, rewrittenText))
   {
     //ReplaceTextOrWorkAround(expr->getSourceRange(), rewrittenText);
-    m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenText);
+    kslicer::ReplaceTextSafe(m_rewriter, expr->getSourceRange(), rewrittenText);
     MarkRewritten(expr);
   }
 
@@ -1035,7 +1035,7 @@ std::string kslicer::KernelRewriter::RecursiveRewrite(const Stmt* expr)
   else
   {
     //rvCopy.ApplyDefferedWorkArounds();
-    return m_rewriter.getRewrittenText(range);
+    return kslicer::GetRewrittenText(m_rewriter, range);
   }
 }
 
@@ -1044,7 +1044,7 @@ void kslicer::KernelRewriter::ReplaceTextOrWorkAround(clang::SourceRange a_range
   if(a_range.getBegin().getRawEncoding() == a_range.getEnd().getRawEncoding())
     m_workAround[GetHashOfSourceRange(a_range)] = a_text;
   else
-    m_rewriter.ReplaceText(a_range, a_text);
+    kslicer::ReplaceTextSafe(m_rewriter, a_range, a_text);
 }
 
 void kslicer::KernelRewriter::ApplyDefferedWorkArounds()
@@ -1064,7 +1064,7 @@ void kslicer::KernelRewriter::ApplyDefferedWorkArounds()
   {
     auto loc = clang::SourceLocation::getFromRawEncoding(pair.first);
     clang::SourceRange range(loc, loc); 
-    m_rewriter.ReplaceText(range, pair.second);
+    kslicer::ReplaceTextSafe(m_rewriter, range, pair.second);
   }
 
   m_workAround.clear();

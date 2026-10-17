@@ -29,19 +29,8 @@ include_directories("../../vkutils"
                     "../..")
                     
 link_directories("../../volk")
-link_directories("../../RayTracing/lib")
 
 add_compile_definitions(USE_VOLK)
-if(CMAKE_SYSTEM_NAME STREQUAL Windows)
-  link_directories("${CMAKE_SOURCE_DIR}/../../RayTracing/lib_win64")
-  set(EMBREE_LIBS ${CMAKE_CURRENT_SOURCE_DIR}/../../RayTracing/lib_win64/embree3.lib)
-elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)
-  find_package(Threads REQUIRED)
-  set(EMBREE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../RayTracing/lib)
-  link_directories(${EMBREE_DIR})
-  set(EMBREE_LIBS ${EMBREE_DIR}/libembree3.so 
-                  ${EMBREE_DIR}/libtbb.so)
-endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -Wno-attributes")
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -50,6 +39,8 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fsanitize-address-use-after-scope -fno-omit-frame-pointer -fsanitize=leak -fsanitize=undefined -fsanitize=bounds-strict")
 else()
 endif()
+
+add_subdirectory(../../RayTracing ${CMAKE_CURRENT_BINARY_DIR}/RayTracing)
 
 add_executable(testapp main.cpp 
                        test_class.cpp 
@@ -71,12 +62,10 @@ add_executable(testapp main.cpp
                        ../../LiteScene/3rd_party/pugixml.cpp
                        ../../LiteScene/hydraxml.cpp
                        ../../LiteScene/scene_mgr.cpp
-                       ../../LiteScene/cmesh4.cpp
-                       ../../RayTracing/EmbreeRT.cpp
-                       ../../RayTracing/VulkanRTX.cpp)
+                       ../../LiteScene/cmesh4.cpp)
 
 set_target_properties(testapp PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
-target_link_libraries(testapp LINK_PUBLIC ${EMBREE_LIBS} ${Vulkan_LIBRARY} volk dl)
+target_link_libraries(testapp LINK_PUBLIC CrossRT ${Vulkan_LIBRARY} volk dl)
 if(OpenMP_CXX_FOUND)
   target_link_libraries(testapp PUBLIC OpenMP::OpenMP_CXX)
 endif()

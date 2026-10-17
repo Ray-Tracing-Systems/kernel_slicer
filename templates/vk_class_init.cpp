@@ -71,6 +71,8 @@ void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, 
   {% endif %}
   InitHelpers();
   InitBuffers(a_maxThreadsCount, true);
+  m_internalMems.insert(m_internalMems.end(), m_allMems.begin(), m_allMems.end()); // internal buffers live until destructor,
+  m_allMems.clear();                                                               // m_allMems is freed on each CommitDeviceData()
   InitKernels("{{ShaderSingleFile}}.spv");
   AllocateAllDescriptorSets();
   {% if EnableTimeStamps %}
@@ -129,6 +131,13 @@ void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, 
     std::cout << "ALERT! class '{{MainClassName}}{{MainClassSuffix}}' uses subgroup operations with different subgroup size:" << std::endl;
     std::cout << " --> your device 'subgroupSize' = " << m_ctx.subgroupProps.subgroupSize << std::endl;
     std::cout << " --> this class  'subgroupSize' = " << {{SubGroupSize}} << std::endl;
+  }
+  {% endif %}
+  {% if HashMapSubgroups %}
+  {
+    const VkSubgroupFeatureFlags required = VK_SUBGROUP_FEATURE_BASIC_BIT | VK_SUBGROUP_FEATURE_BALLOT_BIT | VK_SUBGROUP_FEATURE_ARITHMETIC_BIT;
+    if((m_ctx.subgroupProps.supportedOperations & required) != required || (m_ctx.subgroupProps.supportedStages & VK_SHADER_STAGE_COMPUTE_BIT) == 0)
+      std::cout << "ALERT! class '{{MainClassName}}{{MainClassSuffix}}' aggregates updates of hash tables with subgroup operations, but seems your device does not support them; translate it with '-enableSubgroup 0'" << std::endl;
   }
   {% endif %}
 }
@@ -409,25 +418,11 @@ void {{MainClassName}}{{MainClassSuffix}}::DeleteDeviceData()
   {% for Sam in SamplerMembers %}
   vkDestroySampler(m_device, m_vdata.{{Sam}}, nullptr);
   {% endfor %}
-  {% for Buffer in RedVectorVars %}
-  vkDestroyBuffer(m_device, m_vdata.{{Buffer.Name}}Buffer, nullptr);
-  {% endfor %}
-  if(copyKernelFloatDSLayout != VK_NULL_HANDLE)
-     vkDestroyDescriptorSetLayout(m_device, copyKernelFloatDSLayout, nullptr);
   {% if length(IndirectDispatches) > 0 %}
   vkDestroyBuffer(m_device, m_indirectBuffer, nullptr);
-  vkDestroyDescriptorSetLayout(m_device, m_indirectUpdateDSLayout, nullptr);
-  vkDestroyPipelineLayout(m_device, m_indirectUpdateLayout, nullptr);
-  {% for Dispatch in IndirectDispatches %}
-  vkDestroyPipeline(m_device, m_indirectUpdate{{Dispatch.KernelName}}Pipeline, nullptr);
-  {% endfor %}
+  m_indirectBuffer = VK_NULL_HANDLE;
   {% endif %}
-  {% if UseServiceScan %}
-  {% for Scan in ServiceScan %}
-  m_scan_{{Scan.Type}}.DeleteTempBuffers(m_device);
-  {% endfor %}
-  {% endif %}
-  FreeAllAllocations(m_allMems);
+  FreeAllAllocations(m_allMems); // only memory allocated in InitDeviceData; internal buffers memory (InitBuffers) is in m_internalMems
   {% if UseRayGen %}
   for(size_t i=0;i<m_allShaderTableBuffers.size();i++)
     vkDestroyBuffer(m_device, m_allShaderTableBuffers[i], nullptr);
@@ -460,6 +455,9 @@ void {{MainClassName}}{{MainClassSuffix}}::DeleteDeviceData()
   {{Kernel.Name}}DSLayout = VK_NULL_HANDLE;
 ## endfor
   vkDestroyDescriptorPool(m_device, m_dsPool, NULL); m_dsPool = VK_NULL_HANDLE;
+  DeleteDeviceData();
+  // objects which are created once in InitVulkanObjects and must survive repeated CommitDeviceData()
+  //
 ## for MainFunc in MainFunctions
   {% if MainFunc.IsRTV and not MainFunc.IsMega %}
   {% for Buffer in MainFunc.LocalVarsBuffersDecl %}
@@ -467,10 +465,29 @@ void {{MainClassName}}{{MainClassSuffix}}::DeleteDeviceData()
   {% endfor %}
   {% endif %}
 ## endfor
+  {% for Buffer in RedVectorVars %}
+  vkDestroyBuffer(m_device, m_vdata.{{Buffer.Name}}Buffer, nullptr);
+  {% endfor %}
+  {% if UseServiceScan %}
+  {% for Scan in ServiceScan %}
+  m_scan_{{Scan.Type}}.DeleteTempBuffers(m_device);
+  {% endfor %}
+  {% endif %}
+  if(copyKernelFloatDSLayout != VK_NULL_HANDLE)
+    vkDestroyDescriptorSetLayout(m_device, copyKernelFloatDSLayout, nullptr);
+  if(matMulTransposeDSLayout != VK_NULL_HANDLE)
+    vkDestroyDescriptorSetLayout(m_device, matMulTransposeDSLayout, nullptr);
+  {% if length(IndirectDispatches) > 0 %}
+  vkDestroyDescriptorSetLayout(m_device, m_indirectUpdateDSLayout, nullptr);
+  vkDestroyPipelineLayout(m_device, m_indirectUpdateLayout, nullptr);
+  {% for Dispatch in IndirectDispatches %}
+  vkDestroyPipeline(m_device, m_indirectUpdate{{Dispatch.KernelName}}Pipeline, nullptr);
+  {% endfor %}
+  {% endif %}
+  FreeAllAllocations(m_internalMems);
   {% if UsePipelineCache %}
   vkDestroyPipelineCache(m_device, m_pipelineCache, nullptr);
   {% endif %}
-  DeleteDeviceData();
 }
 
 void {{MainClassName}}{{MainClassSuffix}}::InitHelpers()
@@ -877,7 +894,8 @@ void {{MainClassName}}{{MainClassSuffix}}::InitBuffers(size_t a_maxThreadsCount,
 void {{MainClassName}}{{MainClassSuffix}}::ReserveEmptyVectors()
 {
   {% for Var in ClassVectorVars %}
-  {% if Var.AccessSymb == "." %}
+  {% if Var.IsHashMap %}
+  {% else if Var.AccessSymb == "." %}
   if({{Var.Name}}{{Var.AccessSymb}}capacity() == 0)
     {{Var.Name}}{{Var.AccessSymb}}reserve(4);
   {% else %}
@@ -1002,7 +1020,11 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
   all_references.resize(1); // need just single element to store all references
   {% endif %}
   {% for Var in ClassVectorVars %}
-  {% if Var.WithBuffRef %}
+  {% if Var.IsHashMap %}
+  m_vdata.{{Var.Name}}Capacity = kslicer_hmap_capacity({{Var.Name}}.bucket_count(), {{Var.Name}}.size()); // use reserve(...) on CPU to increase it
+  m_vdata.{{Var.Name}}Buffer   = vk_utils::createBuffer(m_device, (size_t(m_vdata.{{Var.Name}}Capacity) + 1)*sizeof({{Var.SlotType}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  memberVectors.push_back(m_vdata.{{Var.Name}}Buffer);
+  {% else if Var.WithBuffRef %}
   m_vdata.{{Var.Name}}Buffer = vk_utils::createBuffer(m_device, {{Var.Name}}{{Var.AccessSymb}}capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
   memberVectorsWithDevAddr.push_back(m_vdata.{{Var.Name}}Buffer);
   {% else %}
@@ -1695,26 +1717,19 @@ inline size_t sRoundBlocks(size_t elems, int threadsPerBlock)
 
 std::vector<VkBuffer> {{MainClassName}}{{MainClassSuffix}}::ScanData::InitTempBuffers(VkDevice a_device, size_t a_maxSize)
 {
+  // compute temp buffer layout exactly as InclusiveScanCmd does
+  //
   m_scanMipOffsets.resize(0);
-  size_t currSize = a_maxSize;
   size_t currOffset = 0;
-  for (int i = 0; i < 16; i++)
+  size_t lastWrite  = 256;
+  for (size_t currSize = a_maxSize / 256; currSize > 1; currSize = currSize / 256)
   {
-    size_t size2 = sRoundBlocks(currSize, 256) / 256;
-    if (currSize > 0)
-    {
-      size_t size3 = std::max(size2, size_t(256));
-      m_scanMipOffsets.push_back(currOffset);
-      currOffset += size3;
-    }
-    else
-    {
-      m_scanMipOffsets.push_back(currOffset);
-      currOffset += 256;
-      break;
-    }
-    currSize = currSize / 256;
+    const size_t runSize = sRoundBlocks(currSize, 256);
+    m_scanMipOffsets.push_back(currOffset);
+    currOffset += runSize;
+    lastWrite   = runSize / 256;
   }
+  currOffset = std::max(currOffset + lastWrite, sRoundBlocks(a_maxSize, 256) / 256);
 
   m_scanTempDataBuffer = vk_utils::createBuffer(a_device, currOffset*sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
   m_scanTempDataOffset = 0;
@@ -1784,7 +1799,7 @@ void {{MainClassName}}{{MainClassSuffix}}::ScanData::InclusiveScanCmd(VkCommandB
   bufBars[0].sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
   bufBars[0].pNext               = NULL;
   bufBars[0].srcAccessMask       = VK_ACCESS_SHADER_WRITE_BIT;
-  bufBars[0].dstAccessMask       = VK_ACCESS_SHADER_READ_BIT;
+  bufBars[0].dstAccessMask       = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT; // next pass reads and then writes this part in-place
   bufBars[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
   bufBars[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
   bufBars[0].buffer              = m_scanTempDataBuffer;
@@ -1822,13 +1837,13 @@ void {{MainClassName}}{{MainClassSuffix}}::ScanData::InclusiveScanCmd(VkCommandB
   //
   int currMip = 0;
   size_t currOffset = 0;
-  for (size_t currSize = a_size; currSize > 1; currSize = currSize / 256)
+  for (size_t currSize = a_size; currSize > 1 || (currMip == 0 && currSize > 0); currSize = currSize / 256)
   {
     lastSizeV.push_back(currSize);
 
     const size_t runSize  = sRoundBlocks(currSize, 256);
     const size_t nextSize = runSize / 256;
-    pcData.iNumElementsX  = uint32_t(runSize);
+    pcData.iNumElementsX  = uint32_t((currMip == 0) ? currSize : runSize); // don't go out of input/output buffers bounds
     pcData.currMip        = uint32_t(currMip);
     if(currMip == 0)
     {
@@ -1875,7 +1890,7 @@ void {{MainClassName}}{{MainClassSuffix}}::ScanData::InclusiveScanCmd(VkCommandB
     lastSizeV.pop_back();
 
     const size_t runSize  = sRoundBlocks(currSize, 256);
-    pcData.iNumElementsX  = uint32_t(runSize);
+    pcData.iNumElementsX  = uint32_t((currMip == 0) ? currSize : runSize); // don't go out of output buffer bounds
     pcData.currMip        = uint32_t(currMip);
     if(currMip == 0)
     {

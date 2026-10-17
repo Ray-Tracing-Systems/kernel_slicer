@@ -195,9 +195,10 @@ kslicer still exits with code 0 and writes output, so check its log for `error:`
 "kernels" : { "kernel2D_Convolve" : {"wgSize": [16, 16, 1]} }
 ```
 
-## 17. Member or kernel argument inside a `std::` call (Slang back end)
+## 17. Member or kernel argument inside a `std::` call (Slang back end, old versions only)
 
-Verified with `-shaderCC slang` (GLSL is not affected):
+Fixed in October 2026 (`kslicer::GetRewrittenText` / `ReplaceTextSafe`); the workaround below is
+only needed for older translator versions. Verified with `-shaderCC slang` (GLSL is not affected):
 
 ```cpp
 // WRONG: generated Slang is  max(ubo[0, x)  and  pow(x, kge)  -> slangc error 30027
@@ -213,3 +214,65 @@ a_out[i] = std::pow(x, p);
 The same call without `std::` (`pow(x, a_p)`) is translated correctly, but on the CPU side
 unqualified `abs`/`max` may pick the wrong overload, so local copies are the safer fix.
 The reduction statement `m_max = std::max(m_max, v);` is handled by a separate path and works.
+
+## 18. Float atomics: hardware feature missing
+
+Float `InterlockedAdd`, `InterlockedAdd3f` and `ReduceAdd<float>` request
+`shaderBufferFloat32AtomicAdd`. Without it the application fails at start with
+`VkResult is ERROR_FEATURE_NOT_PRESENT` (AMD RDNA2 with RADV, for example).
+
+```jsonc
+// WRONG: hardware float atomics only, does not start on GPUs without the feature
+"-atomicf_emul" : 0,
+// RIGHT: CAS on 'uint' view of the same buffer, works everywhere ('1' is the same as '2')
+"-atomicf_emul" : 2,
+```
+
+Modes `1` and `2` generate
+
+```slang
+[[vk::binding(0, 0)]] RWStructuredBuffer<float> a_out;
+[[vk::binding(0, 0)]] RWStructuredBuffer<uint>  a_out_asUint; // the same buffer viewed as 'uint'
+...
+InterlockedAddEmul1fU(a_out_asUint, uint(i), val);             // was InterlockedAdd(a_out[i], val)
+```
+
+The target of the atomic must be an element of a buffer: `a_out[i]`, `m_vec[i]`, `m_vec[i].field`,
+or a float value of `std::unordered_map`. For other targets the translator prints a warning and uses
+hardware float atomics there, which again need `shaderBufferFloat32AtomicAdd`: check the log after
+translation. Pointer arithmetic such as `InterlockedAdd(*(a_out + i), v)` is not translated by the
+Slang back end at all; write `a_out[i]`.
+
+
+## 19. Printing time inside a control function
+
+```cpp
+// WRONG: the generated GPU class overrides this function; the message disappears or shows ~0 ms
+void C::Render(int w, int h, uint32_t* a_out)
+{
+  auto start = std::chrono::high_resolution_clock::now();
+  kernel2D_Render(w, h, a_out);
+  const float timeMs = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start).count()/1000.f;
+  std::cout << "[Render]: finished for " << timeMs << " ms" << std::endl;
+}
+
+// RIGHT: store the time in a member, return it by name, print it on the host
+void C::Render(int w, int h, uint32_t* a_out)
+{
+  auto start = std::chrono::high_resolution_clock::now();
+  kernel2D_Render(w, h, a_out);
+  m_timeRender = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start).count()/1000.f;
+}
+void C::GetExecutionTime(const char* a_funcName, float a_out[4])
+{
+  a_out[0] = a_out[1] = a_out[2] = a_out[3] = 0.0f;
+  if(std::string(a_funcName) == "Render" || std::string(a_funcName) == "RenderBlock")
+    a_out[0] = m_timeRender;
+}
+// host
+float t[4];
+pImpl->GetExecutionTime("Render", t);
+std::cout << "Render(exec) = " << t[0] << " ms" << std::endl;
+```
+
+The same applies to RTV `...Block` functions: they are overridden as well.

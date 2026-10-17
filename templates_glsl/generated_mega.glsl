@@ -51,6 +51,18 @@ void main()
   {% for TID in Kernel.ThreadIds %}
   const {{TID.Type}} {{TID.Name}} = {{TID.Type}}({% if Kernel.UseRayGen %}gl_LaunchIDEXT{% else %}gl_GlobalInvocationID{% endif %}[{{ loop.index }}]); 
   {% endfor %}
+  {% if not UsePersistentThreads %}
+  {% if Kernel.threadDim == 3 %}
+  if({{Kernel.threadName1}} >= kgenArgs.{{Kernel.threadSZName1}} || {{Kernel.threadName2}} >= kgenArgs.{{Kernel.threadSZName2}} || {{Kernel.threadName3}} >= kgenArgs.{{Kernel.threadSZName3}})
+    return;
+  {% else if Kernel.threadDim == 2 %}
+  if({{Kernel.threadName1}} >= kgenArgs.{{Kernel.threadSZName1}} || {{Kernel.threadName2}} >= kgenArgs.{{Kernel.threadSZName2}})
+    return;
+  {% else if Kernel.threadDim == 1 %}
+  if({{Kernel.threadName1}} >= kgenArgs.{{Kernel.threadSZName1}})
+    return;
+  {% endif %}
+  {% endif %}
   {% if UsePersistentThreads %}
   g_persistentTotalSize = kgenArgs.{{Kernel.threadSZName1}};
   {%endif%}

@@ -57,8 +57,14 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdatePlainMembersInternal()
   {% endif %}
 ## endfor
 ## for Var in ClassVectorVars
+  {% if Var.IsHashMap %}
+  m_uboData.{{Var.Name}}_size     = uint32_t( {{Var.Name}}{{Var.AccessSymb}}size() ); 
+  m_uboData.{{Var.Name}}_capacity = m_vdata.{{Var.Name}}Capacity;
+  m_uboData.{{Var.Name}}_overflow = 0;
+  {% else %}
   m_uboData.{{Var.Name}}_size     = uint32_t( {{Var.Name}}{{Var.AccessSymb}}size() );     assert( {{Var.Name}}{{Var.AccessSymb}}size() < maxAllowedSize );
   m_uboData.{{Var.Name}}_capacity = uint32_t( {{Var.Name}}{{Var.AccessSymb}}capacity() ); assert( {{Var.Name}}{{Var.AccessSymb}}capacity() < maxAllowedSize );
+  {% endif %}
 ## endfor
 }
 
@@ -141,7 +147,13 @@ void {{MainClassName}}{{MainClassSuffix}}::ReadPlainMembers(std::shared_ptr<vk_u
   {% endif %} {#/* end of if not var.IsConst */#}
   {% endfor %}
   {% for Var in ClassVectorVars %}
+  {% if Var.IsHashMap %}
+  if(m_uboData.{{Var.Name}}_overflow != 0)
+    std::cout << "[{{MainClassName}}{{MainClassSuffix}}]: warning, GPU hash table '{{Var.Name}}' is full, " << m_uboData.{{Var.Name}}_overflow 
+              << " insertions were lost; capacity = " << m_uboData.{{Var.Name}}_capacity << ", use {{Var.Name}}.reserve(...) before CommitDeviceData()" << std::endl;
+  {% else %}
   {{Var.Name}}{{Var.AccessSymb}}resize(m_uboData.{{Var.Name}}_size);
+  {% endif %}
   {% endfor %}
 }
 {% endif %}
@@ -172,6 +184,28 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateVectorMembers(std::shared_ptr<v
       if(odata.size() != 0)
         a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}_dataSBuffer, offset, odata.data(), odata.size());
     }
+  }
+  {% else if Var.IsHashMap %}
+  {
+    // all slots are empty (including the last, garbage one), then insert CPU data the same way as shaders do
+    //
+    const uint32_t mask = m_vdata.{{Var.Name}}Capacity - 1;
+    std::vector<{{Var.SlotType}}> slots(size_t(m_vdata.{{Var.Name}}Capacity) + 1);
+    for(auto& slot : slots)
+    {
+      slot     = {{Var.SlotType}}{};
+      slot.key = {{Var.Sentinel}};
+    }
+    for(const auto& keyVal : {{Var.Name}})
+    {
+      assert(keyVal.first != {{Var.Sentinel}}); // this key value is reserved for empty slots
+      uint32_t slotId = kslicer_hmap_hash(uint32_t(keyVal.first)) & mask;
+      while(slots[slotId].key != {{Var.Sentinel}})
+        slotId = (slotId + 1) & mask;
+      slots[slotId].val = keyVal.second;
+      slots[slotId].key = keyVal.first;
+    }
+    a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}Buffer, 0, slots.data(), slots.size()*sizeof({{Var.SlotType}}));
   }
   {% else %}
   if({{Var.Name}}{{Var.AccessSymb}}size() > 0)
@@ -320,12 +354,19 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Decl}}
   vkCmdDispatch(m_currCmdBuffer, 1, 1, 1);
   VkBufferMemoryBarrier barUBO = BarrierForSingleBuffer(m_classDataBuffer);
   vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &barUBO, 0, nullptr);
+  {% if Kernel.IsIndirect and SlangShaders %}
+  VkBufferMemoryBarrier barIndirectInit = BarrierForIndirectBufferUpdate(m_indirectBuffer); // init pass updates size of indirect dispatch
+  vkCmdPipelineBarrier(m_currCmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, 0, 0, nullptr, 1, &barIndirectInit, 0, nullptr);
+  {% endif %}
   {% endif %}
   {# /* --------------------------------------------------------------------------------------------------------------------------------------- */ #}
   
   {% if Kernel.IsIndirect %}
   vkCmdBindPipeline    (m_currCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, {{Kernel.Name}}Pipeline);
   vkCmdDispatchIndirect(m_currCmdBuffer, m_indirectBuffer, {{Kernel.IndirectOffset}}*sizeof(uint32_t)*4);
+  {% if Kernel.FinishRed %}
+  {% include "inc_reduction_vulkan.cpp" %}
+  {% endif %} {# /* Kernel.FinishRed      */ #}
   {% else %}
   vkCmdBindPipeline(m_currCmdBuffer, {% if Kernel.UseRayGen %}VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR{% else %}VK_PIPELINE_BIND_POINT_COMPUTE{% endif %}, {{Kernel.Name}}Pipeline);
   {% if Kernel.UseRayGen %}

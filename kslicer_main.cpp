@@ -255,8 +255,12 @@ int main(int argc, const char **argv)
   if(params.find("-warpSize") != params.end())
     warpSize = atoi(params["-warpSize"].c_str());
 
+  int subgroupOption = -1;                                  // -1: not set, optimizations which are always correct are enabled if device supports subgroups
   if(params.find("-enableSubgroup") != params.end())
-    enableSubGroupOps = atoi(params["-enableSubgroup"].c_str());
+  {
+    subgroupOption    = atoi(params["-enableSubgroup"].c_str());
+    enableSubGroupOps = (subgroupOption != 0);
+  }
 
   if(params.find("-halfTex") != params.end())
     halfFloatTextures = (params["-halfTex"] == "1");
@@ -360,6 +364,9 @@ int main(int argc, const char **argv)
 
     if(params.find("-mt_shader_compile") != params.end())
       textGenSettings.mtShaderCompile = (atoi(params["-mt_shader_compile"].c_str()) != 0);
+
+    if(params.find("-skip_shader_includes") != params.end())
+      textGenSettings.skipShaderIncludes = (atoi(params["-skip_shader_includes"].c_str()) != 0);
     #ifdef _WIN32
     textGenSettings.mtShaderCompile = false; // generated .bat scripts are always sequential, parallel build is implemented for Linux (bash) only
     #endif
@@ -421,7 +428,8 @@ int main(int argc, const char **argv)
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  std::vector<const char*> argsForClang = ExcludeSlicerParams(argc, argv, params, fileName.u8string().c_str(), defines);
+  const std::string fileNameStr = fileName.u8string(); // must outlive 'argsForClang' which stores pointer to it
+  std::vector<const char*> argsForClang = ExcludeSlicerParams(argc, argv, params, fileNameStr.c_str(), defines);
   llvm::ArrayRef<const char*> args(argsForClang.data(), argsForClang.data() + argsForClang.size());
 
   // Make sure it exists
@@ -485,7 +493,10 @@ int main(int argc, const char **argv)
   }
   else if(shaderCCName == "ispc" || shaderCCName == "ISPC")
   {
-    inputCodeInfo.pShaderCC = std::make_shared<kslicer::ISPCCompiler>(useCppInKernels, inputCodeInfo.mainClassSuffix);
+    auto pISPC = std::make_shared<kslicer::ISPCCompiler>(useCppInKernels, inputCodeInfo.mainClassSuffix);
+    if(params.find("-ispc_target") != params.end())
+      pISPC->m_target = params["-ispc_target"];
+    inputCodeInfo.pShaderCC = pISPC;
     inputCodeInfo.pHostCC   = std::make_shared<kslicer::ISPCCodeGen>();
     inputCodeInfo.ignoreFolders.push_back("include/");
   }
@@ -502,6 +513,27 @@ int main(int argc, const char **argv)
 
   if(params.find("-const_shit") != params.end())
     inputCodeInfo.shitIsAlwaysConst = (atoi(params["-const_shit"].c_str()) != 0);
+
+  if(params.find("-atomicf_emul") != params.end())
+  {
+    const int requestedMode = atoi(params["-atomicf_emul"].c_str());
+    inputCodeInfo.atomicFloatEmul     = (requestedMode != 0);
+    inputCodeInfo.atomicFloatEmulMode = inputCodeInfo.atomicFloatEmul ? 2 : 0; // '-atomicf_emul 1' and '-atomicf_emul 2' are the same: CAS on 'uint' view of the buffer
+    if(requestedMode == 1)                                                      // (the former 'spirv_asm' pointer cast implementation of mode 1 is removed: it does not work on Nvidia)
+      std::cout << "[kslicer]: '-atomicf_emul 1' is the same as '-atomicf_emul 2' (float atomics via CAS on 'uint' view of the buffer)" << std::endl;
+    const bool slangVulkan = (shaderCCName == "slang" || shaderCCName == "SLANG" || shaderCCName == "Slang");
+    if(inputCodeInfo.atomicFloatEmul && !slangVulkan)
+    {
+      std::cout << "[kslicer]: WARNING, '-atomicf_emul' is implemented for '-shaderCC slang' only and will be ignored" << std::endl;
+      inputCodeInfo.atomicFloatEmul     = false;
+      inputCodeInfo.atomicFloatEmulMode = 0;
+    }
+  }
+
+  {
+    const bool slangVulkan = (shaderCCName == "slang" || shaderCCName == "SLANG" || shaderCCName == "Slang");
+    inputCodeInfo.hashMapSubgroups = slangVulkan && (subgroupOption != 0) && (textGenSettings.vulkan_ver >= 11); // subgroup operations are core in Vulkan 1.1
+  }
 
   inputCodeInfo.halfFloatTextures    = halfFloatTextures;
   inputCodeInfo.megakernelRTV        = useMegakernel;
@@ -963,6 +995,47 @@ int main(int argc, const char **argv)
 
   std::cout << "(3) Mark data members, methods and functions which are actually used in kernels." << std::endl;
   std::cout << "{" << std::endl;
+
+  // IPV kernel with several top level loops is split to several kernels ('parts'): one part for each parallel loop;
+  // single-threaded code between loops becomes init pass of the next part; variables declared there are placed to UBO
+  {
+    std::vector<kslicer::KernelInfo> newParts;
+    for(auto& nk : inputCodeInfo.kernels)
+    {
+      auto& kernel = nk.second;
+      const clang::FunctionDecl* pDef = nullptr;
+      if(kernel.pattern != kslicer::PATTERN_TP::PATTERN_IPV || kernel.astNode == nullptr || !kernel.astNode->hasBody(pDef))
+        continue;
+      auto pBody = clang::dyn_cast<clang::CompoundStmt>(pDef->getBody());
+      if(pBody == nullptr)
+        continue;
+      std::vector<const clang::ForStmt*> loops;
+      for(const clang::Stmt* stmt : pBody->body())
+        if(auto pFor = clang::dyn_cast<clang::ForStmt>(stmt))
+          loops.push_back(pFor);
+      if(loops.size() < 2)
+        continue;
+
+      std::cout << "  kernel " << kernel.name.c_str() << " has " << loops.size() << " top level loops, it is split to " << loops.size() << " kernels" << std::endl;
+      kernel.partsNum      = uint32_t(loops.size());
+      kernel.partIndex     = 0;
+      kernel.partLoopRange = loops[0]->getSourceRange();
+      kernel.partNames.clear();
+      for(uint32_t i=1; i<uint32_t(loops.size()); i++)
+      {
+        kslicer::KernelInfo part = kernel;
+        part.funcName      = kernel.name;
+        part.name          = kernel.name + "_Part" + std::to_string(i);
+        part.partIndex     = i;
+        part.partLoopRange = loops[i]->getSourceRange();
+        part.partNames.clear();
+        kernel.partNames.push_back(part.name);
+        newParts.push_back(part);
+      }
+    }
+    for(const auto& part : newParts)
+      inputCodeInfo.kernels[part.name] = part;
+  }
   
   for(auto& nk : inputCodeInfo.kernels)
   {
@@ -1297,6 +1370,32 @@ int main(int argc, const char **argv)
   //    forceUsedInKernel.insert(foundIntersectionShader.accObjName);
   //}
 
+  for(const auto& k : inputCodeInfo.kernels) // local variables of kernels which are declared before the loop
+  {
+    for(const auto& var : k.second.localVarsInUBO)
+    {
+      kslicer::DataMemberInfo member;
+      member.name         = var.uboName;
+      member.type         = var.typeName;
+      member.sizeInBytes  = var.sizeInBytes;
+      member.kind         = kslicer::DATA_KIND::KIND_POD;
+      member.usage        = kslicer::DATA_USAGE::USAGE_KERNEL_LOCAL;
+      member.usedInKernel = true;
+      member.isConst      = false;
+      if(!var.isSupported)
+      {
+        std::cout << "  [kslicer]: ERROR, variable '" << var.name << "' of type '" << member.type << "' in kernel '" << k.first << "' is declared before the loop, but can not be placed to UBO" << std::endl;
+        continue;
+      }
+      auto pExisting = inputCodeInfo.allDataMembers.find(var.uboName);
+      if(pExisting != inputCodeInfo.allDataMembers.end() && pExisting->second.usage == kslicer::DATA_USAGE::USAGE_KERNEL_LOCAL) // the same variable from other part of this kernel
+        continue;
+      if(pExisting != inputCodeInfo.allDataMembers.end())
+        std::cout << "  [kslicer]: ERROR, kernel local variable '" << var.uboName << "' has the same name as class data member" << std::endl;
+      inputCodeInfo.allDataMembers[var.uboName] = member;
+    }
+  }
+
   inputCodeInfo.dataMembers = kslicer::MakeClassDataListAndCalcOffsets(inputCodeInfo.allDataMembers, forceUsedInKernel);
   inputCodeInfo.AppendAllRefsBufferIfNeeded(inputCodeInfo.dataMembers);                       // add abstract to concrete tables
   inputCodeInfo.AppendAccelStructForIntersectionShadersIfNeeded(inputCodeInfo.dataMembers, composeImplName);         // ==> process old style (obsolete) intersection shaders
@@ -1304,6 +1403,7 @@ int main(int argc, const char **argv)
 
   inputCodeInfo.ProcessMemberTypes(firstPassData.rv.GetOtherTypeDecls(), compiler.getSourceManager(), generalDecls);                   // ==> generalDecls
   inputCodeInfo.ProcessMemberTypesAligment(inputCodeInfo.dataMembers, firstPassData.rv.GetOtherTypeDecls(), compiler.getASTContext()); // ==> inputCodeInfo.dataMembers
+  inputCodeInfo.ProcessHashMaps(compiler.getASTContext());                                                                              // ==> inputCodeInfo.hashMaps
 
   std::sort(inputCodeInfo.dataMembers.begin(), inputCodeInfo.dataMembers.end(), kslicer::DataMemberInfo_ByAligment()); // sort by aligment in GLSL
 
@@ -1676,6 +1776,7 @@ int main(int argc, const char **argv)
     json["ClassVectorVars"]     = jsonCPP["ClassVectorVars"];
     json["MainFunctions"]       = jsonCPP["MainFunctions"];
     json["MainInclude"]         = jsonCPP["MainInclude"];
+    json["MainRawName"]         = rawname; // 'mainClassFileName' may point to merged '*_temp.cpp' file
   }
   else if(inputCodeInfo.pShaderCC->IsCUDA()) {
     jsonCPP["KernelList"]         = json["Kernels"];

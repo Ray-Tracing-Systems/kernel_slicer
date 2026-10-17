@@ -372,19 +372,21 @@ std::string kslicer::MainClassInfo::VisitAndRewrite_KF(KernelInfo& a_funcInfo, c
       {
         auto repairedEnd = clang::SourceLocation::getFromRawEncoding(brokenEnd+1);
         a_funcInfo.loopOutsidesInit.setEnd(repairedEnd);
-        a_outLoopInitCode = rewrite2.getRewrittenText(a_funcInfo.loopOutsidesInit)   + ";";
+        a_outLoopInitCode = kslicer::GetRewrittenText(rewrite2, a_funcInfo.loopOutsidesInit)   + ";";
+        if(a_funcInfo.partIndex > 0)                 // code between loops does not begin with '{' of function body
+          a_outLoopInitCode = "{" + a_outLoopInitCode;
       }
     }
   
     if(a_funcInfo.loopOutsidesFinish.isValid())  
-      a_outLoopFinishCode = rewrite2.getRewrittenText(a_funcInfo.loopOutsidesFinish) + ";";
+      a_outLoopFinishCode = kslicer::GetRewrittenText(rewrite2, a_funcInfo.loopOutsidesFinish) + ";";
     
     // new way
     //
     if(funcBodyText != "")
       return funcBodyText;
     else
-      return rewrite2.getRewrittenText(a_funcInfo.loopInsides) + ";"; // old way works
+      return kslicer::GetRewrittenText(rewrite2, a_funcInfo.loopInsides) + ";"; // old way works
   }
 
   return "[MainClassInfo::VisitAndRewrite_KF]::UNREACHED_CODE!";
@@ -527,6 +529,8 @@ void kslicer::ObtainKernelsDecl(std::unordered_map<std::string, KernelInfo>& a_k
     auto posEndBrace = kernelSourceCode.find(")");
 
     std::string kernelCmdDecl = remove_space_before_paren(kernelSourceCode.substr(posBeg, posEndBrace+1-posBeg));   
+    if(k.second.partIndex > 0)                     // part of kernel with several loops: XXX(...) ==> XXX_PartN(...)
+      ReplaceFirst(kernelCmdDecl, funcName, k.second.name);
     kernelCmdDecl = a_codeInfo.RemoveKernelPrefix(kernelCmdDecl);
     
     if(k.second.isMega)
@@ -592,6 +596,6 @@ void kslicer::FunctionRewriter::ReplaceTextOrWorkAround(clang::SourceRange a_ran
   if(a_range.getBegin().getRawEncoding() == a_range.getEnd().getRawEncoding())
     m_workAround[GetHashOfSourceRange(a_range)] = a_text;
   else
-    m_rewriter.ReplaceText(a_range, a_text);
+    kslicer::ReplaceTextSafe(m_rewriter, a_range, a_text);
 }
 

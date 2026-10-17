@@ -1,5 +1,6 @@
 #include "kslicer.h"
 #include "template_rendering.h"
+#include "clang/AST/RecordLayout.h"
 
 #ifdef _WIN32
   #include <sys/types.h>
@@ -255,6 +256,9 @@ bool kslicer::SlangRewriter::VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl
 
 bool kslicer::SlangRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)             
 {
+  if(RewriteHashMapIteratorAccess(expr)) // 'it->second' ==> 'm_items[it].val'
+    return true;
+
   if(m_kernelMode)
   {
     std::string originalText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
@@ -262,7 +266,7 @@ bool kslicer::SlangRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
     if(NeedToRewriteMemberExpr(expr, rewrittenText))
     {
       //ReplaceTextOrWorkAround(expr->getSourceRange(), rewrittenText);
-      m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenText);
+      kslicer::ReplaceTextSafe(m_rewriter, expr->getSourceRange(), rewrittenText);
       MarkRewritten(expr);
     }
   }
@@ -275,7 +279,7 @@ bool kslicer::SlangRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
     const std::string lText = exprText.substr(exprText.find("->")+2);
     const std::string rText = RecursiveRewrite(expr->getBase());
     ReplaceTextOrWorkAround(expr->getSourceRange(), rText + "." + lText);
-    //m_rewriter.ReplaceText(expr->getSourceRange(), rText + "." + lText);
+    //kslicer::ReplaceTextSafe(m_rewriter, expr->getSourceRange(), rText + "." + lText);
     MarkRewritten(expr->getBase());
   }
 
@@ -291,6 +295,9 @@ bool kslicer::SlangRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExp
         std::string fname              = dn.getAsString();
 
   std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler); 
+
+  if(RewriteHashMapMemberCall(call)) // 'm_items.find(key)' ==> 'hmap_m_items_find(key)'
+    return true;
 
   // Get name of "this" type; we should check wherther this member is std::vector<T>  
   //
@@ -481,7 +488,7 @@ bool kslicer::SlangRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr*
     if(hasVarName)
       textRes = varName + " = " + textRes;
     ReplaceTextOrWorkAround(call->getSourceRange(), textRes); //
-    //m_rewriter.ReplaceText(call->getSourceRange(), textRes);
+    //kslicer::ReplaceTextSafe(m_rewriter, call->getSourceRange(), textRes);
     MarkRewritten(call);
   }
 
@@ -496,6 +503,22 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
   
   const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);
   const std::string fname = fDecl->getNameInfo().getName().getAsString();
+
+  if(fname == "InterlockedAdd3f")
+    m_codeInfo->globalShaderFeatures.useInterlockedAdd3f = true; // may be called from non-member function which is not processed by KernelInfoVisitor
+
+  if(fname == "InterlockedAdd3f" && m_codeInfo->atomicFloatEmul && call->getNumArgs() == 3 && WasNotRewrittenYet(call))
+  {
+    // CAS is done on 'uint' view of the same buffer ('out_color_asUint'), declared at the same binding:
+    // no pointer casts and no atomics on 'float' in SPIR-V
+    //
+    const std::string bufferName = RecursiveRewrite(call->getArg(0));
+    m_codeInfo->uintAliasBuffers.insert(bufferName);
+    const std::string text = "InterlockedAdd3f(" + bufferName + "_asUint, " + RecursiveRewrite(call->getArg(1)) + ", " + RecursiveRewrite(call->getArg(2)) + ")";
+    ReplaceTextOrWorkAround(call->getSourceRange(), text);
+    MarkRewritten(call);
+    return true;
+  }
 
   if((fname == "as_int32" || fname == "as_int") && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
   {
@@ -570,7 +593,13 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
       suffix = "U";
     else if(typeName == "int" || typeName == "int32_t")
       suffix = "I";
-    const std::string rewrittenText = "ReduceAdd" + suffix + "(" + argText0 + ", uint(" + argText1 + "), " + argText2 + ", a_localTID.x)";
+    std::string bufferText = argText0;
+    if(suffix == "F" && m_codeInfo->atomicFloatEmul) // CAS on 'uint' view of the same buffer
+    {
+      m_codeInfo->uintAliasBuffers.insert(argText0);
+      bufferText = argText0 + "_asUint";
+    }
+    const std::string rewrittenText = "ReduceAdd" + suffix + "(" + bufferText + ", uint(" + argText1 + "), " + argText2 + ", a_localTID.x)";
 
     if(m_pCurrKernel != nullptr)
     {
@@ -583,7 +612,7 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
         funInfo.types[0]     = typeName;
         m_pCurrKernel->templatedFunctionsLM[funInfo.name] = funInfo;
         if(typeName == "float")
-          m_codeInfo->globalShaderFeatures.useFloatAtomicAdd = true;
+          m_codeInfo->globalShaderFeatures.useFloatAtomicAdd = !m_codeInfo->atomicFloatEmul;
         else if(typeName == "double")
           m_codeInfo->globalShaderFeatures.useDoubleAtomicAdd = true;
       }
@@ -677,7 +706,7 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
       //}
       
       ReplaceTextOrWorkAround(call->getSourceRange(), rewrittenRes);
-      //m_rewriter.ReplaceText(call->getSourceRange(), rewrittenRes);
+      //kslicer::ReplaceTextSafe(m_rewriter, call->getSourceRange(), rewrittenRes);
       MarkRewritten(call);
     }
     else if ((m_pCurrKernel != nullptr) && (m_pCurrKernel->pattern == kslicer::PATTERN_TP::PATTERN_RTV) && rewriteDueToFakeOffset)
@@ -697,7 +726,7 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
       }
       rewrittenRes += ")";
       ReplaceTextOrWorkAround(call->getSourceRange(), rewrittenRes);
-      //m_rewriter.ReplaceText(call->getSourceRange(), rewrittenRes);
+      //kslicer::ReplaceTextSafe(m_rewriter, call->getSourceRange(), rewrittenRes);
       MarkRewritten(call);
     }
   }
@@ -721,8 +750,30 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     //  makeSmth = fname.substr(5);
     /////////////////////////////////////////////////////////////////////////
 
+    const bool isAtomicAdd = (fname == "InterlockedAdd" || fname == "atomicAdd" || fname == "AtomicAdd");
     auto pFoundSmth = m_funReplacements.find(fname);
-    if(pFoundSmth != m_funReplacements.end() && WasNotRewrittenYet(call))
+    if(isAtomicAdd && m_codeInfo->atomicFloatEmul && call->getNumArgs() >= 2 && call->getArg(1)->getType().getAsString() == "float" && WasNotRewrittenYet(call))
+    {
+      std::string bufferName, wordIndex;
+      std::string lastRewrittenText;
+      if(GetUintAliasWord(call->getArg(0), bufferName, wordIndex)) // CAS on 'uint' view of the same buffer
+      {
+        m_codeInfo->uintAliasBuffers.insert(bufferName);
+        lastRewrittenText = "InterlockedAddEmul1fU(" + bufferName + "_asUint, " + wordIndex + ", " + RecursiveRewrite(call->getArg(1));
+        if(call->getNumArgs() >= 3)
+          lastRewrittenText += ", " + RecursiveRewrite(call->getArg(2));
+        lastRewrittenText += ")";
+      }
+      else
+      {
+        kslicer::PrintWarning("'-atomicf_emul' supports only elements of buffers ('a_out[i]', 'm_vec[i].field'); hardware float atomics are used here (shaderBufferFloat32AtomicAdd is required)", call->getSourceRange(), m_compiler.getSourceManager());
+        m_codeInfo->globalShaderFeatures.useFloatAtomicAdd = true;
+        lastRewrittenText = "InterlockedAdd(" + CompleteFunctionCallRewrite(call);
+      }
+      ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
+      MarkRewritten(call);
+    }
+    else if(pFoundSmth != m_funReplacements.end() && WasNotRewrittenYet(call))
     {
       std::string lastRewrittenText = pFoundSmth->second + "(" + CompleteFunctionCallRewrite(call);
       ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
@@ -745,6 +796,12 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
 
 bool kslicer::SlangRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
 { 
+  if(expr->isIncrementDecrementOp() && GetHashMapSubscript(expr->getSubExpr()) != nullptr) // 'm_hist[key]++' ==> 'InterlockedAdd(m_hist[...].val, uint(1))'
+  {
+    RewriteHashMapAtomicAdd(expr, expr->getSubExpr(), expr->isIncrementOp() ? "1" : "-1");
+    return true;
+  }
+
   if(m_kernelMode)
   {
     clang::Expr* subExpr = expr->getSubExpr();
@@ -804,7 +861,7 @@ bool kslicer::SlangRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
   {
     std::string text = RecursiveRewrite(expr->getSubExpr());
     ReplaceTextOrWorkAround(expr->getSourceRange(), text);
-    //m_rewriter.ReplaceText(expr->getSourceRange(), text);
+    //kslicer::ReplaceTextSafe(m_rewriter, expr->getSourceRange(), text);
     MarkRewritten(expr->getSubExpr());
   }
 
@@ -829,6 +886,15 @@ static bool IsMatrixType(const std::string& a_typeName) // TODO: make it more 's
 
 bool kslicer::SlangRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr) 
 { 
+  if(RewriteHashMapSubscript(expr)) // 'm_items[key]' ==> 'm_items[hmap_m_items_insert(key)].val'
+    return true;
+  if(expr->getNumArgs() == 2 && GetHashMapSubscript(expr->getArg(0)) != nullptr && WasNotRewrittenYet(expr))
+  {
+    const std::string op = clang::getOperatorSpelling(expr->getOperator());
+    if(op != "=")
+      kslicer::PrintError("operator '" + op + "' for std::unordered_map value of class type is not supported in GPU code", expr->getSourceRange(), m_compiler.getSourceManager());
+  }
+
   if(m_kernelMode)
   {
     FunctionRewriter2::VisitCXXOperatorCallExpr_Impl(expr);
@@ -852,7 +918,7 @@ bool kslicer::SlangRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCal
       const std::string rightText = RecursiveRewrite(right);
       const std::string text      = "mul(" + leftText + "," + rightText + ")";
       ReplaceTextOrWorkAround(expr->getSourceRange(), text);
-      //m_rewriter.ReplaceText(expr->getSourceRange(), text);
+      //kslicer::ReplaceTextSafe(m_rewriter, expr->getSourceRange(), text);
       MarkRewritten(expr);
     }
   }
@@ -879,13 +945,14 @@ bool kslicer::SlangRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
   }
 
   const clang::Type::TypeClass typeClass = qt->getTypeClass();
-  const bool isAuto = (typeClass == clang::Type::Auto);
-  if(pValue != nullptr && WasNotRewrittenYet(pValue) && (NeedsVectorTypeRewrite(varType) || isAuto))
+  const bool isAuto       = (typeClass == clang::Type::Auto);
+  const bool isMapIterator = kslicer::IsHashMapIteratorType(qt); // std::unordered_map<...>::iterator ==> uint (slot index)
+  if(pValue != nullptr && WasNotRewrittenYet(pValue) && (NeedsVectorTypeRewrite(varType) || isAuto || isMapIterator))
   {
     std::string varName  = decl->getNameAsString();
     std::string varNameOld = varName;
     std::string varValue = RecursiveRewrite(pValue);
-    std::string varType2 = RewriteStdVectorTypeStr(varType, varName);
+    std::string varType2 = isMapIterator ? (qt.isConstQualified() ? "const uint" : "uint") : RewriteStdVectorTypeStr(varType, varName);
     
     std::string lastRewrittenText;
     if(varValue == "" || varNameOld == varValue) // 'float3 deviation;' for some reason !decl->hasInit() does not works
@@ -894,7 +961,7 @@ bool kslicer::SlangRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
       lastRewrittenText = varType2 + " " + varName + " = " + varValue;
   
     ReplaceTextOrWorkAround(decl->getSourceRange(), lastRewrittenText);
-    //m_rewriter.ReplaceText(decl->getSourceRange(), lastRewrittenText);
+    //kslicer::ReplaceTextSafe(m_rewriter, decl->getSourceRange(), lastRewrittenText);
     MarkRewritten(pValue);
   }
   
@@ -904,14 +971,20 @@ bool kslicer::SlangRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
   return true; 
 }
 
-bool kslicer::SlangRewriter::VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)           
-{ 
-  if(m_kernelMode)
+bool kslicer::SlangRewriter::VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)
+{
+  // '(unsigned int)x' ==> '(uint)(x)', rewrite only type names which are absent in Slang
+  //
+  const std::string typeOrig = cast->getTypeAsWritten().getAsString();
+  const std::string typeCast = RewriteStdVectorTypeStr(typeOrig);
+  if(typeCast != typeOrig && WasNotRewrittenYet(cast))
   {
-    // ...
+    const std::string exprText = RecursiveRewrite(cast->getSubExpr());
+    ReplaceTextOrWorkAround(cast->getSourceRange(), "(" + typeCast + ")(" + exprText + ")");
+    MarkRewritten(cast);
   }
 
-  return true;   
+  return true;
 }
 
 bool kslicer::SlangRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast) 
@@ -933,7 +1006,7 @@ bool kslicer::SlangRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr*
     {
       const std::string textRes = RewriteConstructCall(call);
       //ReplaceTextOrWorkAround(call->getSourceRange(), textRes); //
-      m_rewriter.ReplaceText(call->getSourceRange(), textRes);    //
+      kslicer::ReplaceTextSafe(m_rewriter, call->getSourceRange(), textRes);    //
       MarkRewritten(call);
     }
 
@@ -945,12 +1018,102 @@ bool kslicer::SlangRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr*
 
 bool kslicer::SlangRewriter::VisitDeclStmt_Impl(clang::DeclStmt* decl)             
 { 
-  if(m_kernelMode)
+  // variables declared before the loop of IPV kernel are placed to UBO: 'float x = val;' ==> 'ubo[0].Kernel_x = val;' 
+  //
+  if(m_kernelMode && m_pCurrKernel != nullptr && m_pCurrKernel->localVarsInUBO.size() != 0 && WasNotRewrittenYet(decl))
   {
-    // ...
+    std::stringstream strOut;
+    bool found = false;
+    for(auto it = decl->decl_begin(); it != decl->decl_end(); ++it)
+    {
+      const clang::VarDecl* vdecl = clang::dyn_cast<clang::VarDecl>(*it);
+      for(const auto& var : m_pCurrKernel->localVarsInUBO)
+      {
+        if(vdecl == nullptr || var.declLoc != vdecl->getLocation())
+          continue;
+        found = true;
+        const clang::Expr* pInit = vdecl->getInit();
+        if(pInit != nullptr)
+          strOut << m_codeInfo->pShaderCC->UBOAccess(var.uboName) << " = " << RecursiveRewrite(pInit) << "; ";
+      }
+    }
+    if(found)
+    {
+      std::string text = strOut.str();
+      ReplaceTextOrWorkAround(decl->getSourceRange(), (text == "") ? std::string(";") : text);
+      MarkRewritten(decl);
+      return true;
+    }
   }
 
+  // multiple declarations in one statement, like 'uint32_t a = 0, b = 1;'. Source ranges of such VarDecls overlap 
+  // (each of them begins from the type), so we can't rewrite them separately in VisitVarDecl and rewrite the whole statement here
+  //
+  if(decl->isSingleDecl() || !WasNotRewrittenYet(decl))
+    return true;
+
+  struct VarText { std::string type; std::string name; std::string value; };
+  std::vector<VarText> vars;
+  bool needRewrite = false;
+  for(auto it = decl->decl_begin(); it != decl->decl_end(); ++it)
+  {
+    clang::VarDecl* vdecl = clang::dyn_cast<clang::VarDecl>(*it);
+    if(vdecl == nullptr) // struct declaration or something else, don't touch it
+      return true;
+    
+    const auto qt         = vdecl->getType();
+    const auto pValue     = vdecl->getAnyInitializer();
+    const auto varType    = qt.getAsString();
+    const bool isAuto     = (qt->getTypeClass() == clang::Type::Auto);
+    const bool isMapIter  = kslicer::IsHashMapIteratorType(qt);
+    needRewrite = needRewrite || NeedsVectorTypeRewrite(varType) || isAuto || isMapIter;
+
+    VarText var;
+    var.name  = vdecl->getNameAsString();
+    var.type  = isMapIter ? (qt.isConstQualified() ? "const uint" : "uint") : RewriteStdVectorTypeStr(varType, var.name);
+    var.value = (pValue != nullptr) ? RecursiveRewrite(pValue) : "";
+    if(var.value == var.name) // 'float3 deviation;' for some reason !decl->hasInit() does not works
+      var.value = "";
+    vars.push_back(var);
+  }
+
+  if(!needRewrite || vars.size() == 0)
+    return true;
+
+  bool sameTypes = true;
+  for(const auto& var : vars)
+    sameTypes = sameTypes && (var.type == vars[0].type);
+
+  std::stringstream strOut;
+  for(size_t i=0; i<vars.size(); i++)
+  {
+    if(i == 0 || !sameTypes)
+      strOut << vars[i].type << " ";
+    strOut << vars[i].name;
+    if(vars[i].value != "")
+      strOut << " = " << vars[i].value;
+    if(i+1 != vars.size())
+      strOut << (sameTypes ? ", " : "; ");
+  }
+  strOut << ";";
+
+  ReplaceTextOrWorkAround(decl->getSourceRange(), strOut.str());
+  MarkRewritten(decl);
   return true; 
+}
+
+bool kslicer::SlangRewriter::VisitReturnStmt_Impl(clang::ReturnStmt* ret)
+{
+  // RTV kernel which returns bool: 'return expr;' ==> 'kgenExitCond = expr;', thread flags are set in kernel epilog
+  //
+  const bool inKernelBody = m_kernelMode && m_pCurrKernel != nullptr && m_pCurrFuncInfo == nullptr && !processFuncMember;
+  if(!inKernelBody || !m_pCurrKernel->isBoolTyped || m_codeInfo->megakernelRTV || ret->getRetValue() == nullptr || !WasNotRewrittenYet(ret))
+    return true;
+
+  const std::string retExprText = RecursiveRewrite(ret->getRetValue());
+  ReplaceTextOrWorkAround(ret->getSourceRange(), "kgenExitCond = " + retExprText);
+  MarkRewritten(ret);
+  return true;
 }
 
 bool kslicer::SlangRewriter::VisitFloatingLiteral_Impl(clang::FloatingLiteral* expr) 
@@ -963,7 +1126,7 @@ bool kslicer::SlangRewriter::VisitFloatingLiteral_Impl(clang::FloatingLiteral* e
   {
     std::string originalText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
     //ReplaceTextOrWorkAround(expr->getSourceRange(), originalText + "l");
-    m_rewriter.ReplaceText(expr->getSourceRange(), originalText + "l");
+    kslicer::ReplaceTextSafe(m_rewriter, expr->getSourceRange(), originalText + "l");
     MarkRewritten(expr);
   }
 
@@ -995,6 +1158,19 @@ bool kslicer::SlangRewriter::VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExpr
 
 bool kslicer::SlangRewriter::VisitCompoundAssignOperator_Impl(clang::CompoundAssignOperator* expr) 
 { 
+  if(GetHashMapSubscript(expr->getLHS()) != nullptr && WasNotRewrittenYet(expr)) // 'm_hist[key] += 1' ==> 'InterlockedAdd(m_hist[...].val, uint(1))'
+  {
+    const std::string op = std::string(expr->getOpcodeStr());
+    if(op == "+=" || op == "-=")
+    {
+      const std::string rhsText = RecursiveRewrite(expr->getRHS());
+      RewriteHashMapAtomicAdd(expr, expr->getLHS(), (op == "+=") ? rhsText : "-(" + rhsText + ")");
+    }
+    else
+      kslicer::PrintError("operator '" + op + "' for std::unordered_map value is not supported in GPU code, only '+=' and '-=' (they become atomic)", expr->getSourceRange(), m_compiler.getSourceManager());
+    return true;
+  }
+
   if(m_kernelMode)
   {
     return FunctionRewriter2::VisitCompoundAssignOperator_Impl(expr);
@@ -1023,7 +1199,7 @@ bool  kslicer::SlangRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
     if(NeedToRewriteDeclRefExpr(expr,rewrittenText) && WasNotRewrittenYet(expr))
     {
       //ReplaceTextOrWorkAround(expr->getSourceRange(), rewrittenText);
-      m_rewriter.ReplaceText(expr->getSourceRange(), rewrittenText);
+      kslicer::ReplaceTextSafe(m_rewriter, expr->getSourceRange(), rewrittenText);
       MarkRewritten(expr);
     }
   }
@@ -1048,7 +1224,7 @@ std::string kslicer::SlangRewriter::RecursiveRewrite(const clang::Stmt* expr)
   if(p != rvCopy.m_workAround.end())
     return p->second;
   else
-    return m_rewriter.getRewrittenText(range);
+    return kslicer::GetRewrittenText(m_rewriter, range);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1232,7 +1408,8 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
   std::filesystem::path templatesFolder("templates_slang");
   kslicer::ApplyJsonToTemplate(templatesFolder / "common_generated_slang.h", shaderPath / headerCommon, a_kernelsJson);
 
-  const std::filesystem::path templatePath       = templatesFolder / (a_codeInfo->megakernelRTV ? "generated_mega.slang" : "generated.slang");
+  const std::filesystem::path templatePathMega   = templatesFolder / "generated_mega.slang"; // only for megakernels of RTV control functions ("-megakernel 1"); IPV kernels always use usual template
+  const std::filesystem::path templatePathUsual  = templatesFolder / "generated.slang";
   const std::filesystem::path templatePathUpdInd = templatesFolder / "update_indirect.slang";
   const std::filesystem::path templatePathRedFin = templatesFolder / "reduction_finish.slang";
   
@@ -1246,8 +1423,22 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
       copy[el.key()] = a_kernelsJson[el.key()];
   }
 
+  // include folders are needed only if generated shaders include files from them ('Includes' in common header);
+  // '-skip_shader_includes 0' always puts them to build script
+  //
+  const bool hasExternalIncludes = copy.contains("Includes") && copy["Includes"].is_array() && !copy["Includes"].empty();
+  std::string includePaths = " ";
+  if(!a_settings.skipShaderIncludes || hasExternalIncludes)
+  {
+    includePaths = " -I.. ";
+    for(auto folder : ignoreFolders)
+      includePaths += "-I" + folder.u8string() + " ";
+    if(a_settings.skipShaderIncludes)
+      std::cout << "  [kslicer]: shaders include files from external folders, so include paths are put to " << scriptName.c_str() << std::endl;
+  }
+
   std::stringstream buildSH; // script text, written to file by WriteShaderBuildScript at the end
-  #if not __WIN32__
+  #ifndef _WIN32
   buildSH << "#!/bin/sh" << std::endl;
   #endif
   for(auto& kernel : kernels.items())
@@ -1262,6 +1453,8 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
 
     std::string outFileName           = kernelName + ".slang";
     std::filesystem::path outFilePath = shaderPath / outFileName;
+    const bool isMega = a_codeInfo->megakernelsByName.find(kernelName) != a_codeInfo->megakernelsByName.end(); // RTV control function joined to megakernel
+    const std::filesystem::path templatePath = isMega ? templatePathMega : templatePathUsual;
     kslicer::ApplyJsonToTemplate(templatePath.c_str(), outFilePath, currKerneJson);
     
     std::string targetString;
@@ -1277,9 +1470,8 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
       targetSuffix = ".comp.spv";
     }
 
-    buildSH << "slangc " << outFileName.c_str() << targetString.c_str() << kernelName.c_str() << targetSuffix.c_str() << " -I.. ";
-    for(auto folder : ignoreFolders)
-      buildSH << "-I" << folder.u8string().c_str() << " ";
+    buildSH << "slangc " << outFileName.c_str() << targetString.c_str() << kernelName.c_str() << targetSuffix.c_str() << includePaths.c_str();
+    buildSH << "-warnings-disable 39001 "; // several variables at the same binding on purpose: combined image samplers, '-atomicf_emul 2'
     if(a_settings.auxShaderCCOptions != "")
       buildSH << " " << a_settings.auxShaderCCOptions.c_str();
     
@@ -1300,9 +1492,7 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
       outFileName = kernelName + "_UpdateIndirect.slang";
       outFilePath = shaderPath / outFileName;
       kslicer::ApplyJsonToTemplate(templatePathUpdInd.c_str(), outFilePath, currKerneJson);
-      buildSH << "slangc " << outFileName.c_str() << targetString.c_str() << kernelName.c_str() << "_UpdateIndirect" << targetSuffix.c_str() << " -I.. ";
-      for(auto folder : ignoreFolders)
-       buildSH << "-I" << folder.u8string().c_str() << " ";
+      buildSH << "slangc " << outFileName.c_str() << targetString.c_str() << kernelName.c_str() << "_UpdateIndirect" << targetSuffix.c_str() << includePaths.c_str() << "-warnings-disable 39001 ";
       buildSH << std::endl;
     }
 
@@ -1311,9 +1501,7 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
       outFileName = kernelName + "_Reduction.slang";
       outFilePath = shaderPath / outFileName;
       kslicer::ApplyJsonToTemplate(templatePathRedFin.c_str(), outFilePath, currKerneJson);
-      buildSH << "slangc " << outFileName.c_str() << targetString.c_str() << kernelName.c_str() << "_Reduction" << targetSuffix.c_str() << " -I.. ";
-      for(auto folder : ignoreFolders)
-       buildSH << "-I" << folder.u8string().c_str() << " ";
+      buildSH << "slangc " << outFileName.c_str() << targetString.c_str() << kernelName.c_str() << "_Reduction" << targetSuffix.c_str() << includePaths.c_str() << "-warnings-disable 39001 ";
       buildSH << std::endl;
     }
   }
@@ -1322,12 +1510,234 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
   {
     nlohmann::json dummy;
     kslicer::ApplyJsonToTemplate(templatesFolder / "z_memcpy.slang", shaderPath / "z_memcpy.slang", dummy); // just file copy actually
-    buildSH << "slangc z_memcpy.slang -o z_memcpy.comp.spv" << std::endl;
+    buildSH << "slangc z_memcpy.slang -o z_memcpy.comp.spv -warnings-disable 39001" << std::endl;
+  }
+
+  // scan and sort are implemented for Vulkan host only (not for WebGPU)
+  //
+  if(!m_wgpuEnabled && (a_codeInfo->usedServiceCalls.find("exclusive_scan") != a_codeInfo->usedServiceCalls.end() ||
+                        a_codeInfo->usedServiceCalls.find("inclusive_scan") != a_codeInfo->usedServiceCalls.end()))
+  {
+    for(auto scanImpl : a_codeInfo->serviceCalls)
+    {
+      if (scanImpl.second.opName == "scan")
+      {
+        nlohmann::json params;
+        params["Type"] = scanImpl.second.dataTypeName;
+
+        const std::string name = "z_scan_" + scanImpl.second.dataTypeName;
+        kslicer::ApplyJsonToTemplate(templatesFolder / "z_scan_block.slang",     shaderPath / (name + "_block.slang"),     params);
+        kslicer::ApplyJsonToTemplate(templatesFolder / "z_scan_propagate.slang", shaderPath / (name + "_propagate.slang"), params);
+        buildSH << "slangc " << name << "_block.slang     -o " << name << "_block.comp.spv -warnings-disable 39001"     << std::endl;
+        buildSH << "slangc " << name << "_propagate.slang -o " << name << "_propagate.comp.spv -warnings-disable 39001" << std::endl;
+      }
+    }
+  }
+
+  if(!m_wgpuEnabled && a_codeInfo->usedServiceCalls.find("sort") != a_codeInfo->usedServiceCalls.end())
+  {
+    for(auto sortImpl : a_codeInfo->serviceCalls)
+    {
+      if (sortImpl.second.opName == "sort")
+      {
+        nlohmann::json params;
+        params["Type"]   = sortImpl.second.dataTypeName;
+        params["Lambda"] = sortImpl.second.lambdaSource;
+        params["Suffix"] = ToLowerCase(m_suffix);
+
+        const std::string name = "z_bitonic_" + sortImpl.second.dataTypeName;
+        kslicer::ApplyJsonToTemplate(templatesFolder / "z_bitonic_pass.slang", shaderPath / (name + "_pass.slang"), params);
+        buildSH << "slangc " << name << "_pass.slang -o " << name << "_pass.comp.spv -warnings-disable 39001" << std::endl;
+        for(int blockSize : {512, 1024, 2048})
+        {
+          params["BlockSize"] = blockSize;
+          const std::string blockName = name + "_" + std::to_string(blockSize);
+          kslicer::ApplyJsonToTemplate(templatesFolder / "z_bitonic_block.slang", shaderPath / (blockName + ".slang"), params);
+          buildSH << "slangc " << blockName << ".slang -o " << blockName << ".comp.spv -warnings-disable 39001" << std::endl;
+        }
+      }
+    }
   }
 
   kslicer::WriteShaderBuildScript(shaderPath / scriptName, buildSH.str(), a_settings.mtShaderCompile);
 }
 
+
+bool kslicer::HasUserMethods(const clang::CXXRecordDecl* pRecord)
+{
+  if(pRecord == nullptr || !pRecord->hasDefinition())
+    return false;
+  for(const clang::CXXMethodDecl* method : pRecord->methods())
+    if(!method->isImplicit())
+      return true;
+  return false;
+}
+
+// checks if member function modifies fields of 'this' (directly or via call of other such member function); Slang needs '[mutating]' only for them
+//
+class MutatingMethodChecker : public clang::RecursiveASTVisitor<MutatingMethodChecker>
+{
+public:
+  MutatingMethodChecker(int a_depth) : m_depth(a_depth) {}
+  bool modifiesThis = false;
+
+  bool VisitBinaryOperator(clang::BinaryOperator* op)
+  {
+    if(op->isAssignmentOp() && RefersToThisField(op->getLHS())) // also catches CompoundAssignOperator
+      modifiesThis = true;
+    return !modifiesThis;
+  }
+
+  bool VisitUnaryOperator(clang::UnaryOperator* op)
+  {
+    if(op->isIncrementDecrementOp() && RefersToThisField(op->getSubExpr()))
+      modifiesThis = true;
+    return !modifiesThis;
+  }
+
+  bool VisitCXXOperatorCallExpr(clang::CXXOperatorCallExpr* call) // 'color += x' for LiteMath vector types
+  {
+    if(call->isAssignmentOp() || call->getOperator() == clang::OO_PlusPlus || call->getOperator() == clang::OO_MinusMinus)
+      if(call->getNumArgs() > 0 && RefersToThisField(call->getArg(0)))
+        modifiesThis = true;
+    return !modifiesThis;
+  }
+
+  bool VisitCXXMemberCallExpr(clang::CXXMemberCallExpr* call)
+  {
+    const clang::CXXMethodDecl* method = call->getMethodDecl();
+    if(method == nullptr || method->isConst() || method->isStatic() || !RefersToThisField(call->getImplicitObjectArgument()))
+      return true;
+    const clang::FunctionDecl* pDef = nullptr;
+    if(method->hasBody(pDef) && m_depth < 8)
+    {
+      MutatingMethodChecker checker(m_depth+1);
+      checker.TraverseStmt(pDef->getBody());
+      modifiesThis = modifiesThis || checker.modifiesThis;
+    }
+    return !modifiesThis;
+  }
+
+private:
+  int m_depth = 0;
+
+  static bool RefersToThisField(const clang::Expr* a_expr)
+  {
+    const clang::Expr* expr = a_expr;
+    while(expr != nullptr)
+    {
+      expr = expr->IgnoreParenImpCasts();
+      if(llvm::isa<clang::CXXThisExpr>(expr))
+        return true;
+      else if(auto pMember = llvm::dyn_cast<clang::MemberExpr>(expr))
+        expr = pMember->getBase();
+      else if(auto pSubscript = llvm::dyn_cast<clang::ArraySubscriptExpr>(expr))
+        expr = pSubscript->getBase();
+      else if(auto pOpCall = llvm::dyn_cast<clang::CXXOperatorCallExpr>(expr); pOpCall != nullptr && pOpCall->getOperator() == clang::OO_Subscript)
+        expr = pOpCall->getArg(0);
+      else if(auto pMemberCall = llvm::dyn_cast<clang::CXXMemberCallExpr>(expr)) // 'm_data.x()' like accessors returning reference
+        expr = pMemberCall->getImplicitObjectArgument();
+      else
+        return false;
+    }
+    return false;
+  }
+};
+
+// if declaration is followed by ';' (in-class declaration of out-of-line member function), extend the range to it
+//
+static clang::SourceRange ExtendRangeToSemicolon(const clang::SourceRange a_range, const clang::CompilerInstance& a_compiler)
+{
+  const clang::SourceManager& sm = a_compiler.getSourceManager();
+  std::optional<clang::Token> next = clang::Lexer::findNextToken(a_range.getEnd(), sm, a_compiler.getLangOpts());
+  if(next.has_value() && next->is(clang::tok::semi))
+    return clang::SourceRange(a_range.getBegin(), next->getLocation());
+  return a_range;
+}
+
+static bool IsMutatingMethod(const clang::FunctionDecl* a_func)
+{
+  MutatingMethodChecker checker(0);
+  checker.TraverseStmt(a_func->getBody());
+  return checker.modifiesThis;
+}
+
+std::string kslicer::SlangRewriter::RewriteStructWithMethods(const clang::CXXRecordDecl* pRecord)
+{
+  // Slang supports methods inside structures, but their code must be rewritten as for any other function:
+  // (1) 'const' after parameter list is removed (Slang methods are immutable by default),
+  // (2) non-const methods are marked with '[mutating]',
+  // (3) constructors are converted to '__init(...)' with member initializers moved to the body,
+  // (4) bodies are processed with the same rewriter as for ordinary functions.
+  //
+  clang::Rewriter rewrite2;
+  rewrite2.setSourceMgr(m_compiler.getSourceManager(), m_compiler.getLangOpts());
+  auto pVisitor = m_codeInfo->pShaderCC->MakeFuncRewriter(rewrite2, m_compiler, m_codeInfo);
+
+  for(clang::CXXMethodDecl* method : pRecord->methods())
+  {
+    if(method->isImplicit())
+      continue;
+
+    const clang::FunctionDecl* pDefinition = nullptr;
+    const bool hasBody = method->hasBody(pDefinition);
+    clang::SourceRange declRange = method->getSourceRange();
+    if(!method->doesThisDeclarationHaveABody())
+      declRange = ExtendRangeToSemicolon(declRange, m_compiler); // in-class declaration is replaced with full definition
+
+    if(llvm::isa<clang::CXXDestructorDecl>(method) || !hasBody)  // no destructors in Slang; declarations without definition are useless
+    {
+      kslicer::ReplaceTextSafe(rewrite2, declRange, "");
+      continue;
+    }
+
+    clang::FunctionDecl* pFunc = const_cast<clang::FunctionDecl*>(pDefinition);
+    auto pMethod = llvm::dyn_cast<clang::CXXMethodDecl>(pFunc);
+    std::string declText = pVisitor->RewriteFuncDecl(pFunc);
+    std::string bodyText = pVisitor->RecursiveRewrite(pFunc->getBody());
+
+    std::string result;
+    if(auto pCtor = llvm::dyn_cast<clang::CXXConstructorDecl>(pMethod))
+    {
+      if(pCtor->isCopyOrMoveConstructor()) // Slang copies structures by value
+      {
+        kslicer::ReplaceTextSafe(rewrite2, declRange, "");
+        continue;
+      }
+
+      std::stringstream inits;
+      for(const clang::CXXCtorInitializer* init : pCtor->inits())
+      {
+        if(!init->isWritten() || !init->isMemberInitializer())
+          continue;
+        const clang::Expr* pInit = init->getInit();
+        if(auto pConstruct = llvm::dyn_cast<clang::CXXConstructExpr>(pInit))  // 'member(a_value)' is a copy constructor call, its range includes 'member'
+        {
+          if(pConstruct->getConstructor()->isCopyOrMoveConstructor() && pConstruct->getNumArgs() == 1)
+            pInit = pConstruct->getArg(0);
+        }
+        inits << " " << init->getMember()->getNameAsString() << " = " << pVisitor->RecursiveRewrite(pInit) << ";";
+      }
+
+      const auto posArgs  = declText.find("(");
+      const auto posBrace = bodyText.find("{");
+      const std::string args = (posArgs != std::string::npos) ? declText.substr(posArgs) : std::string("()");
+      if(posBrace != std::string::npos)
+        bodyText = bodyText.substr(0, posBrace+1) + inits.str() + bodyText.substr(posBrace+1);
+      result = "__init" + args + " " + bodyText;
+    }
+    else if(pMethod->isStatic())
+      result = "static " + declText + " " + bodyText;
+    else if(!pMethod->isConst() && IsMutatingMethod(pFunc))
+      result = "[mutating] " + declText + " " + bodyText;
+    else
+      result = declText + " " + bodyText;
+
+    kslicer::ReplaceTextSafe(rewrite2, declRange, result);
+  }
+
+  return kslicer::GetRewrittenText(rewrite2, pRecord->getSourceRange());
+}
 
 std::string kslicer::SlangCompiler::PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler, std::shared_ptr<kslicer::FunctionRewriter> a_pRewriter)
 {
@@ -1341,7 +1751,14 @@ std::string kslicer::SlangCompiler::PrintHeaderDecl(const DeclInClass& a_decl, c
   switch(a_decl.kind)
   {
     case kslicer::DECL_IN_CLASS::DECL_STRUCT:
-    result = originalText + ";";
+    {
+      const clang::CXXRecordDecl* pRecord = (a_decl.astNode != nullptr) ? llvm::dyn_cast<clang::CXXRecordDecl>(a_decl.astNode) : nullptr;
+      auto pSlangRewriter = std::dynamic_pointer_cast<kslicer::SlangRewriter>(a_pRewriter);
+      if(pRecord != nullptr && pSlangRewriter != nullptr && kslicer::HasUserMethods(pRecord))
+        result = pSlangRewriter->RewriteStructWithMethods(pRecord) + ";";
+      else
+        result = originalText + ";";
+    }
     ProcessVectorTypesString(result);
     break;
     case kslicer::DECL_IN_CLASS::DECL_CONSTANT:
@@ -1393,3 +1810,71 @@ std::string kslicer::SlangCompiler::RTVGetFakeOffsetExpression(const kslicer::Ke
   else
     return "a_globalTID.x";
 } 
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const clang::Expr* kslicer::GetMemberPathOffset(const clang::Expr* a_expr, const clang::ASTContext& a_astContext, uint64_t& a_offsetInBytes, bool& a_ok)
+{
+  a_offsetInBytes = 0;
+  a_ok            = true;
+  const clang::Expr* expr = a_expr->IgnoreParenImpCasts();
+  while(auto memberExpr = clang::dyn_cast<clang::MemberExpr>(expr))  // 'x[i].vel.x', including anonymous structs and unions inside LiteMath types
+  {
+    auto fieldDecl = clang::dyn_cast<clang::FieldDecl>(memberExpr->getMemberDecl());
+    if(fieldDecl == nullptr || memberExpr->isArrow())
+    {
+      a_ok = false;
+      return expr;
+    }
+    const clang::ASTRecordLayout& layout = a_astContext.getASTRecordLayout(fieldDecl->getParent());
+    a_offsetInBytes += layout.getFieldOffset(fieldDecl->getFieldIndex()) / 8;
+    expr = memberExpr->getBase()->IgnoreParenImpCasts();
+  }
+  return expr;
+}
+
+bool kslicer::SlangRewriter::GetUintAliasWord(const clang::Expr* a_lvalue, std::string& a_bufferName, std::string& a_wordIndex)
+{
+  const clang::ASTContext& astContext = m_compiler.getASTContext();
+
+  uint64_t offset = 0;
+  bool     pathOk = true;
+  const clang::Expr* base = kslicer::GetMemberPathOffset(a_lvalue, astContext, offset, pathOk);
+  if(!pathOk)
+    return false;
+
+  const clang::Expr* bufferExpr = nullptr;
+  const clang::Expr* indexExpr  = nullptr;
+  if(auto arrayExpr = clang::dyn_cast<clang::ArraySubscriptExpr>(base))        // 'a_out[i]', 'a_out' is a pointer argument
+  {
+    bufferExpr = arrayExpr->getBase()->IgnoreParenImpCasts();
+    indexExpr  = arrayExpr->getIdx();
+    if(!clang::isa<clang::DeclRefExpr>(bufferExpr) && !clang::isa<clang::MemberExpr>(bufferExpr))
+      return false;
+  }
+  else if(auto opCall = clang::dyn_cast<clang::CXXOperatorCallExpr>(base))     // 'm_vec[i]', 'm_vec' is std::vector member
+  {
+    if(opCall->getOperator() != clang::OO_Subscript || opCall->getNumArgs() != 2 || kslicer::GetHashMapSubscript(opCall) != nullptr)
+      return false;
+    bufferExpr = opCall->getArg(0)->IgnoreParenImpCasts();
+    indexExpr  = opCall->getArg(1);
+    if(!clang::isa<clang::MemberExpr>(bufferExpr))
+      return false;
+  }
+  else
+    return false;
+
+  const clang::QualType elemType = base->getType().getNonReferenceType();
+  const uint64_t elemSize = astContext.getTypeSizeInChars(elemType).getQuantity();
+  if(elemSize == 0 || elemSize % 4 != 0 || offset % 4 != 0)
+    return false;
+
+  a_bufferName = RecursiveRewrite(bufferExpr);
+  a_wordIndex  = "uint(" + RecursiveRewrite(indexExpr) + ")";
+  if(elemSize != 4)
+    a_wordIndex += "*" + std::to_string(elemSize/4);
+  if(offset != 0)
+    a_wordIndex += " + " + std::to_string(offset/4);
+  return true;
+}

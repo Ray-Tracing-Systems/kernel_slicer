@@ -529,7 +529,7 @@
             "args"   : ["${workspaceFolder}/apps/18_simple_shadow_cast/test_class.cpp",
                         "-mainClass", "TestClass", 
                         "-stdlibfolder", "${workspaceFolder}/TINYSTL",
-                        "-pattern", "rtv",
+                        "-pattern", "ipv",
                         "-shaderCC", "glsl",
                         "-I${workspaceFolder}/apps/LiteMath",   "ignore",
                         "-I${workspaceFolder}/apps/LiteMathAux", "ignore",

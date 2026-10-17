@@ -590,6 +590,27 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   data["HasAllRefs"]         = bool(a_classInfo.m_allRefsFromVFH.size() != 0) || hasBufferReferenceBind;
   data["UsePersistentThreads"] = a_classInfo.persistentRTV;
   data["WGPUMode"]           = a_classInfo.pShaderCC->IsWGPU();
+  data["AtomicFloatEmul"]    = a_classInfo.atomicFloatEmul;
+  data["AtomicFloatEmulMode"]= a_classInfo.atomicFloatEmulMode;
+
+  auto hashMapToJson = [&](const kslicer::MainClassInfo::HashMapInfo& a_map) {
+    json local;
+    local["Name"]      = a_map.name;
+    local["KeyType"]   = a_map.keyType;
+    local["ValueType"] = pShaderRewriter->RewriteStdVectorTypeStr(a_map.valueType);
+    local["SlotType"]  = a_map.slotType;
+    local["Sentinel"]  = a_map.sentinel;
+    local["PadWords"]  = a_map.padWords;
+    local["Size"]      = a_classInfo.pShaderCC->UBOAccess(a_map.name + "_size");
+    local["Capacity"]  = a_classInfo.pShaderCC->UBOAccess(a_map.name + "_capacity");
+    local["Overflow"]  = a_classInfo.pShaderCC->UBOAccess(a_map.name + "_overflow");
+    local["FindFunc"]  = kslicer::HashMapFuncName(a_map.name, "find");
+    local["InsertFunc"]= kslicer::HashMapFuncName(a_map.name, "insert");
+    return local;
+  };
+  data["HashMaps"] = std::vector<json>();
+  for(const auto& map : a_classInfo.hashMaps)
+    data["HashMaps"].push_back(hashMapToJson(map.second));
 
   data["VectorBufferRefs"] = std::vector<json>();
   for(const auto& v : a_classInfo.dataMembers)
@@ -792,6 +813,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     //
     bool usedCombinedImageSamplers = false;
     json rtxNames = std::vector<json>();
+    json kernelHashMaps = std::vector<json>();
     for(const auto& container : k.usedContainers)
     {
       if(container.second.bindWithRef) // do not pass it to shader via descriptor set because we pass it with separate buffer reference
@@ -818,6 +840,12 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
       std::string buffType1 = a_classInfo.pShaderCC->ProcessBufferType(pVecMember->second.containerDataType);
       std::string buffType2 = pShaderRewriter->RewriteStdVectorTypeStr(buffType1);
+      auto pHashMap = a_classInfo.hashMaps.find(pVecMember->second.name);
+      if(pHashMap != a_classInfo.hashMaps.end())        // std::unordered_map<Key,X> ==> buffer of slots {X val; Key key;}
+      {
+        buffType2 = pHashMap->second.slotType;
+        kernelHashMaps.push_back(hashMapToJson(pHashMap->second));
+      }
       if(a_classInfo.pShaderCC->BuffersAsPointersInShaders())
         buffType2 += "*";
 
@@ -1060,7 +1088,13 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["LastArgNF1"]   = VArgsSize + MArgsSize;
     kernelJson["LastArgNF"]    = VArgsSize; // Last Argument No Flags
     kernelJson["LastArgAll"]   = allArgs.size() - 1;
+    for(auto& argj : args) // float buffers used by emulated float atomics ('-atomicf_emul 1|2') are also declared as 'uint' at the same binding
+    {
+      const bool isBuffer = !argj["IsUBO"].get<bool>() && !argj["IsImage"].get<bool>() && !argj["IsAccelStruct"].get<bool>();
+      argj["NeedUintAlias"] = isBuffer && (a_classInfo.uintAliasBuffers.find(argj["Name"].get<std::string>()) != a_classInfo.uintAliasBuffers.end());
+    }
     kernelJson["Args"]         = args;
+    kernelJson["HashMaps"]     = kernelHashMaps;
     kernelJson["UserArgs"]     = userArgs;
     kernelJson["OriginalArgs"] = allArgs;
     kernelJson["Name"]         = k.name;
@@ -1076,6 +1110,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["UniformUBO"]              = a_settings.uboIsAlwaysUniform; 
     kernelJson["WarpSize"]     = k.warpSize;
     kernelJson["InitSource"]   = "";
+    kernelJson["FinishSource"] = "";
+    kernelJson["HasInitISPC"]  = false;
+    kernelJson["HasFinishISPC"]= false;
     
     kernelJson["RTXNames"]        = rtxNames;
     kernelJson["UseAccelS"]       = (rtxNames.size() > 0);
@@ -1219,17 +1256,17 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       if(threadIdNames.size() >= 1)
       {
         kernelJson["threadName1"] = threadIdNames[0];
-        kernelJson["CondLE1"]     = (tidArgs[0].loopIter.condKind == kslicer::KernelInfo::IPV_LOOP_KIND::LOOP_KIND_LESS_EQUAL) ? 1 : 0;
+        kernelJson["CondLE1"]     = (tidArgs[std::min<uint32_t>(threadsOrder[0], tidArgs.size()-1)].loopIter.condKind == kslicer::KernelInfo::IPV_LOOP_KIND::LOOP_KIND_LESS_EQUAL) ? 1 : 0;
       }
       if(threadIdNames.size() >= 2)
       {
         kernelJson["threadName2"] = threadIdNames[1];
-        kernelJson["CondLE2"]     = (tidArgs[1].loopIter.condKind == kslicer::KernelInfo::IPV_LOOP_KIND::LOOP_KIND_LESS_EQUAL) ? 1 : 0;
+        kernelJson["CondLE2"]     = (tidArgs[std::min<uint32_t>(threadsOrder[1], tidArgs.size()-1)].loopIter.condKind == kslicer::KernelInfo::IPV_LOOP_KIND::LOOP_KIND_LESS_EQUAL) ? 1 : 0;
       }
       if(threadIdNames.size() == 3)
       {
         kernelJson["threadName3"] = threadIdNames[2];
-        kernelJson["CondLE3"]     = (tidArgs[2].loopIter.condKind == kslicer::KernelInfo::IPV_LOOP_KIND::LOOP_KIND_LESS_EQUAL) ? 1 : 0;
+        kernelJson["CondLE3"]     = (tidArgs[std::min<uint32_t>(threadsOrder[2], tidArgs.size()-1)].loopIter.condKind == kslicer::KernelInfo::IPV_LOOP_KIND::LOOP_KIND_LESS_EQUAL) ? 1 : 0;
       }
     }
 
@@ -1244,6 +1281,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       for(const auto& iter : k.loopIters)
       {
         uint32_t loopIdReorderd  = threadsOrder[iter.loopNesting];
+        if(loopIdReorderd >= uint32_t(k.loopIters.size()))   // reorder (e.g. '-reorderLoops YX') must not move loops of 1D kernel to Y
+          loopIdReorderd = iter.loopNesting;
         auto pFound = usedVars.find(iter.sizeText);
         if(pFound == usedVars.end())
         {
@@ -1277,6 +1316,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["checkFlagsExpr"]      = "//xxx//";
     kernelJson["ThreadOffset"]        = threadOffsetStr;
     kernelJson["InitKPass"]           = false;
+    kernelJson["UpdateIndirectInInit"]= false;
     kernelJson["IsIndirect"]          = k.isIndirect;
     if(k.isIndirect)
     {
@@ -1287,31 +1327,19 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       kernelJson["IndirectStartY"] = "0";
       kernelJson["IndirectStartZ"] = "0";
 
-      if(k.loopIters.size() > 0)
+      // apply threads order (e.g. '-reorderLoops YX') in the same way as for 'ThreadIds': X dispatch size must correspond to the fastest thread index
+      //
+      const char* sizeNames [3] = {"IndirectSizeX",  "IndirectSizeY",  "IndirectSizeZ"};
+      const char* startNames[3] = {"IndirectStartX", "IndirectStartY", "IndirectStartZ"};
+      const uint32_t loopsNum   = uint32_t(std::min<size_t>(k.loopIters.size(), 3));
+      for(uint32_t dim = 0; dim < loopsNum; dim++)
       {
-        std::string exprContent      = a_classInfo.pShaderCC->ReplaceSizeCapacityExpr(k.loopIters[0].sizeText);
+        const uint32_t loopId   = std::min<uint32_t>(threadsOrder[dim], loopsNum-1);
+        std::string exprContent = a_classInfo.pShaderCC->ReplaceSizeCapacityExpr(k.loopIters[loopId].sizeText);
         if(a_classInfo.pShaderCC->IsCUDA() && a_classInfo.placeVectorsInUBO)
           exprContent = std::string("ubo.") + exprContent;
-        kernelJson["IndirectSizeX"]  = a_classInfo.pShaderCC->UBOAccess(exprContent);
-        kernelJson["IndirectStartX"] = kernelJson["ThreadIds"][0]["Start"];
-      }
-
-      if(k.loopIters.size() > 1)
-      {
-        std::string exprContent      = a_classInfo.pShaderCC->ReplaceSizeCapacityExpr(k.loopIters[1].sizeText);
-        if(a_classInfo.pShaderCC->IsCUDA() && a_classInfo.placeVectorsInUBO)
-          exprContent = std::string("ubo.") + exprContent;
-        kernelJson["IndirectSizeY"]  = a_classInfo.pShaderCC->UBOAccess(exprContent);
-        kernelJson["IndirectStartY"] = kernelJson["ThreadIds"][1]["Start"];
-      }
-
-      if(k.loopIters.size() > 2)
-      {
-        std::string exprContent      = a_classInfo.pShaderCC->ReplaceSizeCapacityExpr(k.loopIters[2].sizeText);
-        if(a_classInfo.pShaderCC->IsCUDA() && a_classInfo.placeVectorsInUBO)
-          exprContent = std::string("ubo.") + exprContent;
-        kernelJson["IndirectSizeZ"]  = a_classInfo.pShaderCC->UBOAccess(exprContent);
-        kernelJson["IndirectStartZ"] = kernelJson["ThreadIds"][2]["Start"];
+        kernelJson[sizeNames[dim]]  = a_classInfo.pShaderCC->UBOAccess(exprContent);
+        kernelJson[startNames[dim]] = kernelJson["ThreadIds"][dim]["Start"];
       }
        
       kernelJson["IndirectOffset"] = k.indirectBlockOffset;
@@ -1485,7 +1513,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       std::string initSourceCode = k.rewrittenInit.substr(k.rewrittenInit.find_first_of('{')+1);
       if(a_classInfo.pShaderCC->IsISPC())
       {
-        original["InitSource"] = initSourceCode;
+        original["InitSource"]  = initSourceCode;
+        original["HasInitISPC"] = true;
       }
       else
       {
@@ -1494,6 +1523,10 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         kernelJson["HasEpilog"] = false;
         kernelJson["FinishRed"] = false;
         kernelJson["InitKPass"] = true;
+        kernelJson["UpdateIndirectInInit"] = k.isIndirect; // init pass may change loop size of indirect kernel, so it updates dispatch size itself
+        kernelJson["IndirectWGSizeX"] = k.wgSize[0];
+        kernelJson["IndirectWGSizeY"] = k.wgSize[1];
+        kernelJson["IndirectWGSizeZ"] = k.wgSize[2];
         kernelJson["WGSizeX"]   = 1;
         kernelJson["WGSizeY"]   = 1;
         kernelJson["WGSizeZ"]   = 1;
@@ -1502,9 +1535,15 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       }
     }
 
+    if(k.hasFinishPassSelf && a_classInfo.pShaderCC->IsISPC()) // ISPC executes finish code in the same function after the loop
+    {
+      original["FinishSource"]  = k.rewrittenFinish;
+      original["HasFinishISPC"] = true;
+    }
+
     data["Kernels"].push_back(original);
 
-    if(k.hasFinishPassSelf)
+    if(k.hasFinishPassSelf && !a_classInfo.pShaderCC->IsISPC())
     {
       kernelJson["Name"]      = k.name + "_Finish";
       kernelJson["Source"]    = k.rewrittenFinish;
@@ -1575,6 +1614,29 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   data["AllMemberFunctions"] = std::vector<json>();
   for(const auto& pair : allUsedMemberFunctions)
     data["AllMemberFunctions"].push_back(pair.second);
+
+  data["HashMapAddFuncs"] = std::vector<json>(); // filled during rewriting of kernels and functions, so we put it at the end
+  for(const auto& func : a_classInfo.hashMapAddFuncs)
+  {
+    json local;
+    local["Name"]       = func.second.name;
+    local["MapName"]    = func.second.mapName;
+    local["Path"]       = func.second.path;
+    local["ValueType"]  = func.second.valueType;
+    local["AtomicFunc"] = func.second.atomicFunc;
+    local["ViaUintAlias"] = func.second.viaUintAlias;
+    local["SlotWords"]    = func.second.slotWords;
+    local["WordOffset"]   = func.second.wordOffset;
+    data["HashMapAddFuncs"].push_back(local);
+  }
+
+  // 'InterlockedAdd3f' calls are found during rewriting of kernels and functions, so we put it at the end;
+  // hardware implementation is put to common header only if it is used: 'InterlockedAdd(float, float)' is not supported by some versions of Slang
+  //
+  bool useInterlockedAdd3f = a_classInfo.globalShaderFeatures.useInterlockedAdd3f;
+  for(const auto& k : a_classInfo.kernels)
+    useInterlockedAdd3f = useInterlockedAdd3f || k.second.shaderFeatures.useInterlockedAdd3f;
+  data["UseInterlockedAdd3f"] = useInterlockedAdd3f;
 
   return data;
 }

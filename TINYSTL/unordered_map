@@ -1,22 +1,106 @@
 #pragma once
 
 #include <cstddef>
+#include <utility>
+#include <initializer_list>
 
 namespace std
 {
 
-  template<typename T> 
+  template<typename T>
   struct hash
-  { 
+  {
     template<typename Key>
     inline unsigned operator()(Key key) { return 0; }
   };
 
-  template<typename _Key, typename _Tp, typename _Hash = hash<_Key> >
+  template<typename _Key>
+  struct equal_to
+  {
+    inline bool operator()(const _Key& a, const _Key& b) const { return a == b; }
+  };
+
+  // interface only (no implementation): enough for clang to build AST from the source code
+  //
+  template<typename _Key, typename _Tp, typename _Hash = hash<_Key>, typename _KeyEqual = equal_to<_Key> >
   class unordered_map
-  { 
+  {
   public:
-    inline size_t size() const { return 0; }
-    _Tp& operator[](const _Key& rhs); 
+    typedef _Key                 key_type;
+    typedef _Tp                  mapped_type;
+    typedef pair<const _Key,_Tp> value_type;
+    typedef _Hash                hasher;
+    typedef _KeyEqual            key_equal;
+
+    struct iterator
+    {
+      value_type& operator*()  const;
+      value_type* operator->() const;
+      iterator&   operator++();
+      iterator    operator++(int);
+      bool operator==(const iterator& rhs) const;
+      bool operator!=(const iterator& rhs) const;
+    };
+
+    struct const_iterator
+    {
+      const_iterator();
+      const_iterator(const iterator& it);
+      const value_type& operator*()  const;
+      const value_type* operator->() const;
+      const_iterator&   operator++();
+      const_iterator    operator++(int);
+      bool operator==(const const_iterator& rhs) const;
+      bool operator!=(const const_iterator& rhs) const;
+    };
+
+    unordered_map();
+    unordered_map(size_t bucket_count);
+    unordered_map(const unordered_map& other);
+    unordered_map(unordered_map&& other);
+    unordered_map(initializer_list<value_type> init);
+    ~unordered_map();
+
+    unordered_map& operator=(const unordered_map& other);
+    unordered_map& operator=(unordered_map&& other);
+
+    iterator       begin();
+    iterator       end();
+    const_iterator begin()  const;
+    const_iterator end()    const;
+    const_iterator cbegin() const;
+    const_iterator cend()   const;
+
+    bool   empty()    const;
+    size_t size()     const;
+    size_t max_size() const;
+
+    void clear();
+    pair<iterator,bool> insert(const value_type& value);
+    template<typename... Args>
+    pair<iterator,bool> emplace(Args&&... args);
+    template<typename... Args>
+    pair<iterator,bool> try_emplace(const _Key& key, Args&&... args);
+    template<typename M>
+    pair<iterator,bool> insert_or_assign(const _Key& key, M&& obj);
+    iterator erase(iterator pos);
+    iterator erase(const_iterator pos);
+    size_t   erase(const _Key& key);
+    void     swap(unordered_map& other);
+
+    _Tp&       at(const _Key& key);
+    const _Tp& at(const _Key& key) const;
+    _Tp&       operator[](const _Key& key);
+    size_t     count(const _Key& key) const;
+    iterator       find(const _Key& key);
+    const_iterator find(const _Key& key) const;
+    bool           contains(const _Key& key) const;
+
+    size_t bucket_count() const;
+    float  load_factor() const;
+    float  max_load_factor() const;
+    void   max_load_factor(float ml);
+    void   rehash(size_t count);
+    void   reserve(size_t count);
   };
 };

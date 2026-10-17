@@ -48,7 +48,7 @@ void kslicer::MainFunctionRewriterVulkan::ReplaceTextOrWorkAround(clang::SourceR
   if(a_range.getBegin().getRawEncoding() == a_range.getEnd().getRawEncoding())
     m_workAround[GetHashOfSourceRange(a_range)] = a_text;
   else
-    m_rewriter.ReplaceText(a_range, a_text);
+    kslicer::ReplaceTextSafe(m_rewriter, a_range, a_text);
 }
 
 bool kslicer::MainFunctionRewriterVulkan::WasNotRewrittenYet(const clang::Stmt* expr) const
@@ -77,7 +77,7 @@ std::string kslicer::MainFunctionRewriterVulkan::RecursiveRewrite(const clang::S
     return p->second;
   else
   {
-    std::string text = m_rewriter.getRewrittenText(range);
+    std::string text = kslicer::GetRewrittenText(m_rewriter, range);
     return (text != "") ? text : kslicer::GetRangeSourceCode(range, m_compiler);
   }
 }
@@ -117,6 +117,19 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
   const DeclarationNameInfo dni = f->getMethodDecl()->getNameInfo();
   const DeclarationName dn      = dni.getName();
   const std::string fname       = dn.getAsString();
+
+  std::string result = MakeKernelCallCmdString(f, fname);
+  const auto pKernelInfo = m_kernels.find(fname);
+  if(pKernelInfo != m_kernels.end())               // kernel with several loops: call all its parts one by one
+  {
+    for(const auto& partName : pKernelInfo->second.partNames)
+      result += std::string("\n  ") + MakeKernelCallCmdString(f, partName);
+  }
+  return result;
+}
+
+std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemberCallExpr* f, const std::string& fname)
+{
 
   const auto pKernelInfo = m_kernels.find(fname);
   assert(pKernelInfo != m_kernels.end());
@@ -418,7 +431,9 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeServiceKernelCallCmdString(
     kslicer::ServiceCall call;
     call.opName       = a_name;
     call.dataTypeName = m_pCodeInfo->pShaderFuncRewriter->RewriteStdVectorTypeStr(SubstrBetween(originArgs[0].type, "<", ">"));
-    call.lambdaSource = FixLamdbaSourceCode(m_pCodeInfo->pShaderFuncRewriter->RecursiveRewrite(originArgs[2].node));
+    call.lambdaSource = m_pCodeInfo->pShaderFuncRewriter->RecursiveRewrite(originArgs[2].node);
+    if(m_pCodeInfo->pShaderCC->Name() != "Slang") // Slang has the same vector types as C++ (uint2, float4, ...)
+      call.lambdaSource = FixLamdbaSourceCode(call.lambdaSource);
     call.lambdaSource = call.lambdaSource.substr(call.lambdaSource.find("[]")+2); // eliminate "[]" from source code
     m_pCodeInfo->serviceCalls[call.key()] = call;
 

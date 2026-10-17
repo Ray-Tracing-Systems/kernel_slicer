@@ -64,6 +64,12 @@ std::vector<kslicer::DataMemberInfo> kslicer::MakeClassDataListAndCalcOffsets(st
       
       resVars.push_back(size);
       resVars.push_back(capacity);
+      if(kslicer::IsHashMapContainer(keyval.second.containerType)) // number of failed insertions to GPU hash table
+      {
+        kslicer::DataMemberInfo overflow = size;
+        overflow.name = keyval.second.name + "_overflow";
+        resVars.push_back(overflow);
+      }
     }
   }
 

@@ -41,7 +41,7 @@ bool kslicer::MainFunctionRewriterCUDA::VisitCXXMemberCallExpr(clang::CXXMemberC
     const std::string exprContent = GetRangeSourceCode(f->getSourceRange(), m_compiler);
     const auto posOfPoint         = exprContent.find(".");
     std::string memberNameA       = exprContent.substr(0, posOfPoint);
-    m_rewriter.ReplaceText(f->getSourceRange(), memberNameA + "_dev.data()");
+    kslicer::ReplaceTextSafe(m_rewriter, f->getSourceRange(), memberNameA + "_dev.data()");
   }
 
   return true;
@@ -68,7 +68,7 @@ bool kslicer::MainFunctionRewriterCUDA::VisitCallExpr(clang::CallExpr* f)
       strOut << exprContent.c_str() << ", ";
     }
     strOut << "cudaMemcpyDeviceToDevice)";
-    m_rewriter.ReplaceText(f->getSourceRange(), strOut.str());
+    kslicer::ReplaceTextSafe(m_rewriter, f->getSourceRange(), strOut.str());
   }
 
   return true;

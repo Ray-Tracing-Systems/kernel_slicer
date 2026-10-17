@@ -18,6 +18,11 @@ static const float FLT_EPSILON = 1e-6f;
 static const float EPSILON     = 1e-6f;
 static const float DEG_TO_RAD  = 0.017453293f; 
 
+#define KGEN_FLAG_RETURN            1
+#define KGEN_FLAG_BREAK             2
+#define KGEN_FLAG_DONT_SET_EXIT     4
+#define KGEN_FLAG_SET_EXIT_NEGATIVE 8
+
 float  SQR(float x)  { return x * x; }
 double SQR(double x) { return x * x; }
 int    SQR(int x)    { return x * x; }
@@ -103,6 +108,29 @@ complex operator/(float a, complex b)
 {{Decl.Text}}
 {% endif %}
 ## endfor
+{% if length(HashMaps) > 0 %}
+
+// std::unordered_map<Key,X> ==> buffer of slots {X val; Key key;}, open addressing with linear probing, capacity is power of 2
+//
+static inline uint kslicer_hmap_hash(uint x) // murmur3 finalizer
+{
+  x ^= x >> 16; x *= 0x85ebca6bu;
+  x ^= x >> 13; x *= 0xc2b2ae35u;
+  x ^= x >> 16;
+  return x;
+}
+{% for Map in HashMaps %}
+
+struct {{Map.SlotType}}
+{
+  {{Map.ValueType}} val;
+  {{Map.KeyType}} key;
+  {% if Map.PadWords > 0 %}
+  uint _pad[{{Map.PadWords}}];
+  {% endif %}
+};
+{% endfor %}
+{% endif %}
 
 {% include "inc_ubo.slang" %}
 
@@ -244,6 +272,72 @@ double3   operator*(double4x4 m,  double3 v) { return mul(m, double4(v,1.0f)).xy
 double3   operator*(double3x3 m,  double3 v) { return mul(m,v); }
 
 static inline uint bitCount(uint x) { return countbits(x); }
+
+{% if AtomicFloatEmul %}
+// '-atomicf_emul 1|2' (float atomics for GPUs without shaderBufferFloat32AtomicAdd): float atomic add via CAS on 'uint' view of the same buffer ('a_out_asUint'), declared at the same binding
+// by kernel_slicer; 'a_word' is index of 32 bit word in buffer: no pointer casts and no atomics on 'float' in SPIR-V.
+// 'a_res' gets the old value, the same as in LiteMath::InterlockedAdd.
+//
+[ForceInline]
+void InterlockedAddEmul1fU(RWStructuredBuffer<uint> pMemU, uint a_word, float data, out float a_res)
+{
+  uint expected = pMemU[a_word];
+  for(;;)
+  {
+    uint original;
+    InterlockedCompareExchange(pMemU[a_word], expected, asuint(asfloat(expected) + data), original);
+    if(original == expected)
+      break;
+    expected = original;
+  }
+  a_res = asfloat(expected);
+}
+
+[ForceInline]
+void InterlockedAddEmul1fU(RWStructuredBuffer<uint> pMemU, uint a_word, float data)
+{
+  float oldVal;
+  InterlockedAddEmul1fU(pMemU, a_word, data, oldVal);
+}
+
+// LiteMath::InterlockedAdd3f: each channel is atomic separately, not the whole triple.
+// 'pMemU' is 'uint' view of the float buffer, declared at the same binding by kernel_slicer ('out_color_asUint'),
+// so CAS is ordinary 'InterlockedCompareExchange' on 'uint': no pointer casts and no atomics on 'float' in SPIR-V.
+// One loop for all 3 channels: CAS for channels which are not done yet are issued one after another
+// without waiting for each other, so their memory latencies overlap (unlike 3 separate CAS loops).
+//
+[ForceInline]
+void InterlockedAdd3f(RWStructuredBuffer<uint> pMemU, int offset, float3 data)
+{
+  uint3 expected = uint3(pMemU[offset+0], pMemU[offset+1], pMemU[offset+2]);
+  bool3 done     = bool3(data.x == 0.0f, data.y == 0.0f, data.z == 0.0f); // adding zero does not change memory
+  while(!all(done))
+  {
+    [unroll]
+    for(int k = 0; k < 3; k++)
+    {
+      if(!done[k])
+      {
+        uint original;
+        InterlockedCompareExchange(pMemU[offset+k], expected[k], asuint(asfloat(expected[k]) + data[k]), original);
+        done[k]     = (original == expected[k]);
+        expected[k] = original;
+      }
+    }
+  }
+}
+{% else if not WGPUMode and UseInterlockedAdd3f %}
+// LiteMath::InterlockedAdd3f: each channel is atomic separately, not the whole triple (hardware float atomics)
+//
+[ForceInline]
+void InterlockedAdd3f(RWStructuredBuffer<float> pMem, int offset, float3 data)
+{
+  InterlockedAdd(pMem[offset+0], data.x);
+  InterlockedAdd(pMem[offset+1], data.y);
+  InterlockedAdd(pMem[offset+2], data.z);
+}
+{% endif %}
+  
 
 ## for LocalDecl in LocalFuncDecls
 {{LocalDecl}};

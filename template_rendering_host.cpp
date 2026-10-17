@@ -636,12 +636,13 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       data["TexArrayMembers"].push_back(var.name);
       hasTextureArray = true;
     }
-    else if(var.isContainer && kslicer::IsVectorContainer(var.containerType))
+    else if(var.isContainer && (kslicer::IsVectorContainer(var.containerType) || kslicer::IsHashMapContainer(var.containerType)))
     {
       std::string cleanName = var.name;
       ReplaceFirst(cleanName, prefixDataName + "_", "");
       json local;
       local["Name"]      = var.name;
+      local["IsHashMap"] = kslicer::IsHashMapContainer(var.containerType);
       local["CleanName"] = cleanName;
       local["Type"]      = var.type;
       local["DataType"]  = kslicer::CleanTypeName(var.containerDataType);
@@ -737,7 +738,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       continue;
     }
 
-    if(v.isContainer)
+    if(v.isContainer || v.usage == kslicer::DATA_USAGE::USAGE_KERNEL_LOCAL) // kernel local variables in UBO are not class members
       continue;
 
     json local;
@@ -761,6 +762,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   }
 
   data["ClassVectorVars"]   = std::vector<json>();
+  data["HasHashMaps"]       = false;
   data["ClassTextureVars"]  = std::vector<json>();
   data["ClassTexArrayVars"] = std::vector<json>();
   for(const auto& v : a_classInfo.dataMembers)
@@ -837,7 +839,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       local["WithBuffRef"] = false;
       data["ClassTextureVars"].push_back(local);
     }
-    else if(v.isContainer && kslicer::IsVectorContainer(v.containerType))
+    else if(v.isContainer && (kslicer::IsVectorContainer(v.containerType) || kslicer::IsHashMapContainer(v.containerType)))
     {
       std::string sizeName     = v.name + "_size";
       std::string capacityName = v.name + "_capacity";
@@ -881,6 +883,25 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       auto pFound = a_classInfo.allDataMembers.find(v.name);
       if(pFound != a_classInfo.allDataMembers.end())
         local["WithBuffRef"] = pFound->second.bindWithRef;
+
+      local["IsHashMap"] = false;
+      auto pHashMap = a_classInfo.hashMaps.find(v.name);
+      if(pHashMap != a_classInfo.hashMaps.end()) // std::unordered_map<Key,X> ==> buffer of slots {X val; Key key;}
+      {
+        const auto& map = pHashMap->second;
+        local["IsHashMap"]   = true;
+        local["WithBuffRef"] = false;
+        local["TypeOfData"]  = map.slotType;
+        local["SlotType"]    = map.slotType;
+        local["SlotSize"]    = map.slotSize;
+        local["PadWords"]    = map.padWords;
+        local["KeyType"]     = (map.keyType == "int") ? "int32_t" : "uint32_t";
+        local["ValueType"]   = map.valueType;
+        local["Sentinel"]    = (map.keyType == "int") ? "INT32_MIN" : "UINT32_MAX";
+        data["HasHashMaps"]  = true;
+      }
+      else if(kslicer::IsHashMapContainer(v.containerType))
+        continue;
 
       data["ClassVectorVars"].push_back(local);
     }
@@ -1166,8 +1187,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     if(threadIdNamesList.size() > 0)
     {
       kernelJson["tidX"] = threadIdNamesList[0];
-      kernelJson["begX"] = tidArgs[0].loopIter.startText == "" ? "0" : tidArgs[0].loopIter.startText;
-      kernelJson["SmplX"] = IsZeroStartLoopStatement(tidArgs[0].loopIter.startNode, compiler);
+      const auto& loopX = tidArgs[std::min<uint32_t>(threadsOrder[0], tidArgs.size()-1)].loopIter; // same order as for 'tidX'
+      kernelJson["begX"] = loopX.startText == "" ? "0" : loopX.startText;
+      kernelJson["SmplX"] = IsZeroStartLoopStatement(loopX.startNode, compiler);
     }
     else
     {
@@ -1179,8 +1201,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     if(threadIdNamesList.size() > 1)
     {
       kernelJson["tidY"] = threadIdNamesList[1];
-      kernelJson["begY"] = tidArgs[1].loopIter.startText;
-      kernelJson["SmplY"] = IsZeroStartLoopStatement(tidArgs[1].loopIter.startNode, compiler);
+      const auto& loopY = tidArgs[std::min<uint32_t>(threadsOrder[1], tidArgs.size()-1)].loopIter; // same order as for 'tidY'
+      kernelJson["begY"] = loopY.startText == "" ? "0" : loopY.startText;
+      kernelJson["SmplY"] = IsZeroStartLoopStatement(loopY.startNode, compiler);
     }
     else
     {
@@ -1192,8 +1215,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     if(threadIdNamesList.size() > 2)
     {
       kernelJson["tidZ"] = threadIdNamesList[2];
-      kernelJson["begZ"] = tidArgs[2].loopIter.startText;
-      kernelJson["SmplZ"] = IsZeroStartLoopStatement(tidArgs[2].loopIter.startNode, compiler);
+      const auto& loopZ = tidArgs[std::min<uint32_t>(threadsOrder[2], tidArgs.size()-1)].loopIter; // same order as for 'tidZ'
+      kernelJson["begZ"] = loopZ.startText == "" ? "0" : loopZ.startText;
+      kernelJson["SmplZ"] = IsZeroStartLoopStatement(loopZ.startNode, compiler);
     }
     else
     {
@@ -1246,6 +1270,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   }
   
   data["UseSubGroups"]  = useSubgroups;
+  data["HashMapSubgroups"] = a_classInfo.hashMapSubgroups && !a_classInfo.hashMaps.empty();
   data["SubGroupSize"]  = subgroupMaxSize;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

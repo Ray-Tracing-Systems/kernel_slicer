@@ -114,6 +114,7 @@ protected:
   std::vector<float4>         spheresPosRadius;   // scene data, read by kernels
   std::vector<SphereMaterial> spheresMaterials;
   std::vector<RandomGen>      m_randomGens;       // per-thread state, indexed by tid
+  float                       m_timePT = 0.0f;    // time of StupidPathTraceBlock, returned by GetExecutionTime
 };
 ```
 
@@ -141,10 +142,14 @@ void TestClass::StupidPathTrace(uint tid, uint a_maxDepth, const uint* in_pakedX
 
 void TestClass::StupidPathTraceBlock(uint tid, uint a_maxDepth, const uint* in_pakedXY, float4* out_color, uint a_passesNum)
 {
+  auto start = std::chrono::high_resolution_clock::now();
   #pragma omp parallel for default(shared)
   for(uint i = 0; i < tid; i++)
     for(uint j = 0; j < a_passesNum; j++)
       StupidPathTrace(i, a_maxDepth, in_pakedXY, out_color);
+  m_timePT = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start).count()/1000.f;
+  // no std::cout here: the generated class overrides this function, the host prints
+  // the time obtained from GetExecutionTime("StupidPathTraceBlock", t)
 }
 ```
 

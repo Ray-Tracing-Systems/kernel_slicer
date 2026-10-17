@@ -403,19 +403,20 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateAllGeneratedDescriptorSets_{{Ma
 {% if length(IndirectDispatches) > 0 %}
 void {{MainClassName}}{{MainClassSuffix}}::InitIndirectDescriptorSets()
 {
-  if(m_indirectUpdateDS != VK_NULL_HANDLE)
-    return;
-
   // (m_classDataBuffer, m_indirectBuffer) ==> m_indirectUpdateDS
+  // descriptor set is allocated once, but updated on each CommitDeviceData() because buffers are re-created
   //
-  VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
-  descriptorSetAllocateInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-  descriptorSetAllocateInfo.descriptorPool     = m_dsPool;
-  descriptorSetAllocateInfo.descriptorSetCount = 1;
-  descriptorSetAllocateInfo.pSetLayouts        = &m_indirectUpdateDSLayout;
+  if(m_indirectUpdateDS == VK_NULL_HANDLE)
+  {
+    VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
+    descriptorSetAllocateInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    descriptorSetAllocateInfo.descriptorPool     = m_dsPool;
+    descriptorSetAllocateInfo.descriptorSetCount = 1;
+    descriptorSetAllocateInfo.pSetLayouts        = &m_indirectUpdateDSLayout;
 
-  auto tmpRes = vkAllocateDescriptorSets(m_device, &descriptorSetAllocateInfo, &m_indirectUpdateDS);
-  VK_CHECK_RESULT(tmpRes);
+    auto tmpRes = vkAllocateDescriptorSets(m_device, &descriptorSetAllocateInfo, &m_indirectUpdateDS);
+    VK_CHECK_RESULT(tmpRes);
+  }
 
   VkDescriptorBufferInfo descriptorBufferInfo[2];
   VkWriteDescriptorSet   writeDescriptorSet[2];
