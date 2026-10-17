@@ -13,7 +13,7 @@ namespace kslicer {
 
     static CompilerInstance* compiler_ = nullptr;
     CompilerInstance* compiler() {
-        REWRITE_ASSERT(compiler_);
+        KSLICER_ACCERT(compiler_);
         return compiler_;
     }
 

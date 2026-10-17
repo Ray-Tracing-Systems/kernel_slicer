@@ -3,7 +3,7 @@
 #include <map>
 #include <vector>
 
-namespace common_rewriter {
+namespace kslicer {
     using namespace clang;
 
     struct KernelInfo {
@@ -46,4 +46,4 @@ namespace common_rewriter {
         void add_struct(const RecordDecl* decl);
     };
 
-} // namespace common_rewriter
+} // namespace kslicer

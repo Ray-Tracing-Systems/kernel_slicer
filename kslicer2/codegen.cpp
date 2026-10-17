@@ -2,7 +2,7 @@
 #include "errors.h"
 #include "utils.h"
 
-namespace common_rewriter {
+namespace kslicer {
     using llvm::outs;
 
     void Codegen::emit_indent(size_t indent) {
@@ -77,7 +77,7 @@ namespace common_rewriter {
                 emit(", ");
         }
         emit(")\n");
-        REWRITE_ASSERT(function->getBody());
+        KSLICER_ACCERT(function->getBody());
         render_statement(function->getBody(), 0);
     }
 
@@ -100,7 +100,7 @@ namespace common_rewriter {
 
             for (auto i : stmt->getDeclGroup()) {
                 auto var = dyn_cast<VarDecl>(i);
-                REWRITE_ASSERT(var);
+                KSLICER_ACCERT(var);
                 emit_indent(indent);
                 render_type(var->getType());
                 emit(" ");
@@ -252,7 +252,7 @@ namespace common_rewriter {
                     error_unknown_overloaded_operator(expr);
                 }
             } else {
-                REWRITE_ASSERT(expr->getNumArgs() == 2);
+                KSLICER_ACCERT(expr->getNumArgs() == 2);
                 std::string s = getOperatorSpelling(expr->getOperator());
 
                 std::string known_binary_operators[] = {
@@ -357,7 +357,7 @@ namespace common_rewriter {
             // }
         } else if (auto expr = dyn_cast<CallExpr>(expr_)) {
             auto func = dyn_cast<FunctionDecl>(expr->getCalleeDecl());
-            REWRITE_ASSERT(func);
+            KSLICER_ACCERT(func);
             if (func->getNameAsString() == "__builtin_popcount") {
                 emit("countbits");
             } else {
@@ -463,4 +463,4 @@ namespace common_rewriter {
         }
     }
 
-} // namespace common_rewriter
+} // namespace kslicer

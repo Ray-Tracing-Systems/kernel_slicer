@@ -2,7 +2,7 @@
 #include "class_info.h"
 #include <clang/AST/AST.h>
 
-namespace common_rewriter {
+namespace kslicer {
     using namespace clang;
 
     class Codegen {
@@ -54,4 +54,4 @@ namespace common_rewriter {
         const CXXMethodDecl* decl_;
     };
 
-} // namespace common_rewriter
+} // namespace kslicer

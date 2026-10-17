@@ -3,13 +3,13 @@
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Lex/Lexer.h>
 
-namespace common_rewriter {
+namespace kslicer {
     using namespace clang;
     using llvm::outs;
 
     std::string string_from_source_range(SourceRange range) {
         // https://stackoverflow.com/questions/11083066/getting-the-source-behind-clangs-ast
-        const SourceManager& source_manager = kslicer::compiler()->getSourceManager();
+        const SourceManager& source_manager = compiler()->getSourceManager();
         SourceLocation true_end(Lexer::getLocForEndOfToken(range.getEnd(), 0, source_manager, {}));
         return std::string(source_manager.getCharacterData(range.getBegin()),
                            source_manager.getCharacterData(true_end) -
@@ -18,8 +18,8 @@ namespace common_rewriter {
 
     const NamedDecl* find_global_declaration(std::string name) {
         TranslationUnitDecl* translation_unit_declaration_context =
-            kslicer::compiler()->getASTContext().getTranslationUnitDecl();
-        IdentifierInfo& identifier_info = kslicer::compiler()->getASTContext().Idents.get(name);
+            compiler()->getASTContext().getTranslationUnitDecl();
+        IdentifierInfo& identifier_info = compiler()->getASTContext().Idents.get(name);
         DeclContext::lookup_result res = translation_unit_declaration_context->lookup(&identifier_info);
 
         if (res.empty()) {
@@ -86,10 +86,10 @@ namespace common_rewriter {
     QualType get_vector_specialization_type(QualType type) {
         type = type.getCanonicalType().getUnqualifiedType();
         auto record = type->getAsRecordDecl();
-        REWRITE_ASSERT(record);
+        KSLICER_ACCERT(record);
         // outs() << record->getNameAsString() << "\n";
         auto template_ = dyn_cast<ClassTemplateSpecializationDecl>(record);
-        REWRITE_ASSERT(template_);
+        KSLICER_ACCERT(template_);
         QualType element_type = template_->getTemplateArgs().get(0).getAsType();
         return element_type;
     }
@@ -145,14 +145,14 @@ namespace common_rewriter {
 
         // if (auto record = type->getAsRecordDecl()) {
 
-        //     // REWRITE_ASSERT(record->getDefinition());
+        //     // KSLICER_ACCERT(record->getDefinition());
         //     // record = dyn_cast<>;
         //     if (auto t = dyn_cast<ClassTemplateSpecializationDecl>(decl)) {
         //         (void)resolve_type(t->getTemplateArgs().get(0).getAsType());
         //         return s;
         //     } else {
         //         decl = decl->getDefinition();
-        //         REWRITE_ASSERT(decl);
+        //         KSLICER_ACCERT(decl);
         //         for (auto i : structs)
         //             if (i == decl)
         //                 return s.substr(6);
@@ -193,8 +193,8 @@ namespace common_rewriter {
             }
             return a;
         } else {
-            REWRITE_ASSERT(false);
+            KSLICER_ACCERT(false);
         }
     }
 
-} // namespace common_rewriter
+} // namespace kslicer

@@ -9,7 +9,7 @@ namespace clang {
     class FunctionDecl;
 } // namespace clang
 
-namespace common_rewriter {
+namespace kslicer {
     using namespace clang;
 
     void note_found(SourceLocation loc, std::string what);
@@ -28,4 +28,4 @@ namespace common_rewriter {
 
     void error_invalid_for_loop_condition(const Expr* expr);
 
-} // namespace common_rewriter
+} // namespace kslicer

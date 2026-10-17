@@ -5,7 +5,7 @@
 #include "utils.h"
 namespace kslicer {
     using namespace clang;
-    using namespace common_rewriter;
+
     void handle_translation_unit() {
         auto decl = find_global_declaration("VolumeRenderer");
         ClassInfo class_info(dyn_cast<CXXRecordDecl>(decl));

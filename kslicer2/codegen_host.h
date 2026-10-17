@@ -1,8 +1,7 @@
 #pragma once
 #include "class_info.h"
 
-
-namespace common_rewriter {
+namespace kslicer {
 
     void codegen(const ClassInfo& info);
 

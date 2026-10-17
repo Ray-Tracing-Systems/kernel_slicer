@@ -6,7 +6,7 @@
 #include "utils.h"
 #include <clang/AST/AST.h>
 #include <inja.hpp>
-namespace common_rewriter {
+namespace kslicer {
     using namespace nlohmann;
     using llvm::outs;
 
@@ -58,7 +58,7 @@ namespace common_rewriter {
                 kernel["WGSizeY"] = 8;
                 kernel["WGSizeZ"] = 8;
             } else {
-                REWRITE_ASSERT(false);
+                KSLICER_ACCERT(false);
             }
 
             kernel["AuxArgs"] = json::array();
@@ -586,7 +586,7 @@ float3   operator*(float3x3 m, float3 v) { return mul(m,v); }
         //         kernel["WGSizeY"] = 8;
         //         kernel["WGSizeZ"] = 8;
         //     } else {
-        //         REWRITE_ASSERT(false);
+        //         KSLICER_ACCERT(false);
         //     }
 
         //     kernel["AuxArgs"] = json::array();
@@ -829,7 +829,6 @@ float3   operator*(float3x3 m, float3 v) { return mul(m,v); }
         data["DefineGetTempBufferSize"] = false;
         data["GenerateSceneRestrictions"] = true;
 
-        // kslicer::ApplyJsonToTemplate("templates/vk_class_init.cpp", fullSuffix + "_init.cpp", jsonHost);
         inja::Environment env;
         env.set_trim_blocks(true);
         env.set_lstrip_blocks(true);
@@ -864,4 +863,4 @@ float3   operator*(float3x3 m, float3 v) { return mul(m,v); }
         }
     }
 
-} // namespace common_rewriter
+} // namespace kslicer

@@ -2,7 +2,7 @@
 #include "errors.h"
 #include "utils.h"
 
-namespace common_rewriter {
+namespace kslicer {
     using llvm::outs;
 
     const KernelInfo* ClassInfo::get_kernel(const CXXMethodDecl* decl) const {
@@ -165,7 +165,8 @@ namespace common_rewriter {
             if (auto def = decl->getDefinition()) {
                 std::string n = def->getNameAsString();
                 if (n == "clamp" || n == "max" || n == "min" || n == "floor" || n == "abs" || n == "dot" ||
-                    n == "length" || n == "normalize" || n == "exp" || n == "sqrt" || n == "copysign" || n == "sign" || n == "pow")
+                    n == "length" || n == "normalize" || n == "exp" || n == "sqrt" || n == "copysign" || n == "sign" ||
+                    n == "pow")
                     return;
                 for (auto i : used_functions)
                     if (i == def)
@@ -269,4 +270,4 @@ namespace common_rewriter {
         }
     }
 
-} // namespace common_rewriter
+} // namespace kslicer

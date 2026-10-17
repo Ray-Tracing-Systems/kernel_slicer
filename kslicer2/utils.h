@@ -4,13 +4,13 @@
 #include <string>
 #include <vector>
 
-#define REWRITE_ASSERT(cond) (!!(cond) ? (void)0 : (fprintf(stderr, "Assertion failed: %s\n", #cond), abort()))
+#define KSLICER_ACCERT(cond) (!!(cond) ? (void)0 : (fprintf(stderr, "Assertion failed: %s\n", #cond), abort()))
 
 namespace clang {
     class CompilerInstance;
 } // namespace clang
 
-namespace common_rewriter {
+namespace kslicer {
     using namespace clang;
 
     // extern const clang::CompilerInstance* compiler_instance;
@@ -51,4 +51,4 @@ namespace common_rewriter {
 
     size_t get_type_alignment(QualType type);
 
-} // namespace common_rewriter
+} // namespace kslicer
