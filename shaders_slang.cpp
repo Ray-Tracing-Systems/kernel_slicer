@@ -971,14 +971,20 @@ bool kslicer::SlangRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
   return true; 
 }
 
-bool kslicer::SlangRewriter::VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)           
-{ 
-  if(m_kernelMode)
+bool kslicer::SlangRewriter::VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)
+{
+  // '(unsigned int)x' ==> '(uint)(x)', rewrite only type names which are absent in Slang
+  //
+  const std::string typeOrig = cast->getTypeAsWritten().getAsString();
+  const std::string typeCast = RewriteStdVectorTypeStr(typeOrig);
+  if(typeCast != typeOrig && WasNotRewrittenYet(cast))
   {
-    // ...
+    const std::string exprText = RecursiveRewrite(cast->getSubExpr());
+    ReplaceTextOrWorkAround(cast->getSourceRange(), "(" + typeCast + ")(" + exprText + ")");
+    MarkRewritten(cast);
   }
 
-  return true;   
+  return true;
 }
 
 bool kslicer::SlangRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast) 
@@ -1094,6 +1100,20 @@ bool kslicer::SlangRewriter::VisitDeclStmt_Impl(clang::DeclStmt* decl)
   ReplaceTextOrWorkAround(decl->getSourceRange(), strOut.str());
   MarkRewritten(decl);
   return true; 
+}
+
+bool kslicer::SlangRewriter::VisitReturnStmt_Impl(clang::ReturnStmt* ret)
+{
+  // RTV kernel which returns bool: 'return expr;' ==> 'kgenExitCond = expr;', thread flags are set in kernel epilog
+  //
+  const bool inKernelBody = m_kernelMode && m_pCurrKernel != nullptr && m_pCurrFuncInfo == nullptr && !processFuncMember;
+  if(!inKernelBody || !m_pCurrKernel->isBoolTyped || m_codeInfo->megakernelRTV || ret->getRetValue() == nullptr || !WasNotRewrittenYet(ret))
+    return true;
+
+  const std::string retExprText = RecursiveRewrite(ret->getRetValue());
+  ReplaceTextOrWorkAround(ret->getSourceRange(), "kgenExitCond = " + retExprText);
+  MarkRewritten(ret);
+  return true;
 }
 
 bool kslicer::SlangRewriter::VisitFloatingLiteral_Impl(clang::FloatingLiteral* expr) 

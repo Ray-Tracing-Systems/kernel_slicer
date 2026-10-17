@@ -1110,6 +1110,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["UniformUBO"]              = a_settings.uboIsAlwaysUniform; 
     kernelJson["WarpSize"]     = k.warpSize;
     kernelJson["InitSource"]   = "";
+    kernelJson["FinishSource"] = "";
+    kernelJson["HasInitISPC"]  = false;
+    kernelJson["HasFinishISPC"]= false;
     
     kernelJson["RTXNames"]        = rtxNames;
     kernelJson["UseAccelS"]       = (rtxNames.size() > 0);
@@ -1510,7 +1513,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       std::string initSourceCode = k.rewrittenInit.substr(k.rewrittenInit.find_first_of('{')+1);
       if(a_classInfo.pShaderCC->IsISPC())
       {
-        original["InitSource"] = initSourceCode;
+        original["InitSource"]  = initSourceCode;
+        original["HasInitISPC"] = true;
       }
       else
       {
@@ -1531,9 +1535,15 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       }
     }
 
+    if(k.hasFinishPassSelf && a_classInfo.pShaderCC->IsISPC()) // ISPC executes finish code in the same function after the loop
+    {
+      original["FinishSource"]  = k.rewrittenFinish;
+      original["HasFinishISPC"] = true;
+    }
+
     data["Kernels"].push_back(original);
 
-    if(k.hasFinishPassSelf)
+    if(k.hasFinishPassSelf && !a_classInfo.pShaderCC->IsISPC())
     {
       kernelJson["Name"]      = k.name + "_Finish";
       kernelJson["Source"]    = k.rewrittenFinish;

@@ -18,6 +18,11 @@ static const float FLT_EPSILON = 1e-6f;
 static const float EPSILON     = 1e-6f;
 static const float DEG_TO_RAD  = 0.017453293f; 
 
+#define KGEN_FLAG_RETURN            1
+#define KGEN_FLAG_BREAK             2
+#define KGEN_FLAG_DONT_SET_EXIT     4
+#define KGEN_FLAG_SET_EXIT_NEGATIVE 8
+
 float  SQR(float x)  { return x * x; }
 double SQR(double x) { return x * x; }
 int    SQR(int x)    { return x * x; }

@@ -470,50 +470,42 @@ std::shared_ptr<kslicer::KernelRewriter> kslicer::ISPCCompiler::MakeKernRewriter
 
 std::string kslicer::ISPCCompiler::BuildCommand(const std::string& a_inputFile) const
 {
-  return std::string("ispc ") + a_inputFile + " --target=\"avx2-i32x8\" -O2 ";
+  return std::string("ispc ") + a_inputFile + " --target=" + m_target + " -O2 ";
 }
 
 void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings)
 {
-  const auto& mainIncluideName  = a_codeInfo->mainClassFileInclude;
-  const auto& mainClassFileName = a_codeInfo->mainClassFileName;
   const auto& ignoreFolders     = a_codeInfo->ignoreFolders;
 
-  {
-    const auto nameRel  = mainIncluideName.substr(mainIncluideName.find_last_of("/")+1);
-    const auto dotPos   = nameRel.find_last_of(".");
-    const auto ispcName = nameRel.substr(0, dotPos) + "_kernels.h";
-    a_kernelsJson["MainISPCFile"] = ispcName;
-  }
+  // output names are based on original input file name (without extension), not on merged '*_temp.cpp' file
+  //
+  const std::filesystem::path rawName = a_kernelsJson["MainRawName"].get<std::string>();
+  a_kernelsJson["MainISPCFile"] = rawName.filename().u8string() + "_kernels.h";
 
-  std::filesystem::path folderPath = mainClassFileName.parent_path();
+  std::filesystem::path folderPath = rawName.parent_path();
   std::filesystem::path incUBOPath = folderPath / "include";
   std::filesystem::create_directory(incUBOPath);
 
   const std::string templatePath = "templates_ispc/generated.ispc";
-  std::filesystem::path outFileName = mainClassFileName;
-  outFileName.replace_extension("");
+  std::filesystem::path outFileName = rawName;
   outFileName.concat("_kernels.ispc");
-  std::filesystem::path outCppName = mainClassFileName;
-  outCppName.replace_extension("");
+  std::filesystem::path outCppName = rawName;
   outCppName.concat("_ispc.cpp");
 
   kslicer::ApplyJsonToTemplate(templatePath, outFileName, a_kernelsJson);
   kslicer::ApplyJsonToTemplate("templates_ispc/ispc_class.cpp", outCppName, a_kernelsJson);
 
   #ifdef _WIN32
-  std::ofstream buildSH(mainClassFileName.parent_path() / "z_build_ispc.bat");
+  std::ofstream buildSH(folderPath / "z_build_ispc.bat");
   #else
-  std::ofstream buildSH(mainClassFileName.parent_path() / "z_build_ispc.sh");
+  std::ofstream buildSH(folderPath / "z_build_ispc.sh");
   #endif
   #ifndef _WIN32
   buildSH << "#!/bin/sh" << std::endl;
   #endif
-  std::filesystem::path kernelTarget = mainClassFileName;
-  kernelTarget.replace_extension("");
+  std::filesystem::path kernelTarget = rawName;
   kernelTarget.concat("_kernels.o");
-  std::filesystem::path kernelHeader = mainClassFileName;
-  kernelHeader.replace_extension("");
+  std::filesystem::path kernelHeader = rawName;
   kernelHeader.concat("_kernels.h");
   std::string build = this->BuildCommand(outFileName.u8string()) + " -o " + kernelTarget.u8string() + " -h " + kernelHeader.u8string();
   buildSH << build.c_str() << " ";

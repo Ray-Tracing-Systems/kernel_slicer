@@ -428,7 +428,8 @@ int main(int argc, const char **argv)
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  std::vector<const char*> argsForClang = ExcludeSlicerParams(argc, argv, params, fileName.u8string().c_str(), defines);
+  const std::string fileNameStr = fileName.u8string(); // must outlive 'argsForClang' which stores pointer to it
+  std::vector<const char*> argsForClang = ExcludeSlicerParams(argc, argv, params, fileNameStr.c_str(), defines);
   llvm::ArrayRef<const char*> args(argsForClang.data(), argsForClang.data() + argsForClang.size());
 
   // Make sure it exists
@@ -492,7 +493,10 @@ int main(int argc, const char **argv)
   }
   else if(shaderCCName == "ispc" || shaderCCName == "ISPC")
   {
-    inputCodeInfo.pShaderCC = std::make_shared<kslicer::ISPCCompiler>(useCppInKernels, inputCodeInfo.mainClassSuffix);
+    auto pISPC = std::make_shared<kslicer::ISPCCompiler>(useCppInKernels, inputCodeInfo.mainClassSuffix);
+    if(params.find("-ispc_target") != params.end())
+      pISPC->m_target = params["-ispc_target"];
+    inputCodeInfo.pShaderCC = pISPC;
     inputCodeInfo.pHostCC   = std::make_shared<kslicer::ISPCCodeGen>();
     inputCodeInfo.ignoreFolders.push_back("include/");
   }
@@ -1772,6 +1776,7 @@ int main(int argc, const char **argv)
     json["ClassVectorVars"]     = jsonCPP["ClassVectorVars"];
     json["MainFunctions"]       = jsonCPP["MainFunctions"];
     json["MainInclude"]         = jsonCPP["MainInclude"];
+    json["MainRawName"]         = rawname; // 'mainClassFileName' may point to merged '*_temp.cpp' file
   }
   else if(inputCodeInfo.pShaderCC->IsCUDA()) {
     jsonCPP["KernelList"]         = json["Kernels"];

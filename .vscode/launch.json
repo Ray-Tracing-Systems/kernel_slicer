@@ -252,6 +252,36 @@
         },
 
         {
+            "name"   : "Launch (app_18/Slang)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["${workspaceFolder}/apps/18_simple_shadow_cast/test_class.cpp",
+                        "-mainClass", "TestClass", 
+                        "-stdlibfolder", "${workspaceFolder}/TINYSTL",
+                        "-pattern", "ipv",
+                        "-shaderCC", "slang",
+                        "-I${workspaceFolder}/apps/LiteMath",   "ignore",
+                        "-I${workspaceFolder}/apps/LiteMathAux", "ignore",
+                        "-I${workspaceFolder}/TINYSTL",         "ignore",
+                        "-I${workspaceFolder}/apps/RayTracing", "process",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
             "name"   : "Launch (app_20/Slang)",
             "type"   : "cppdbg",
             "request": "launch",

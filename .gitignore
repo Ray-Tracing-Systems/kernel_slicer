@@ -156,3 +156,6 @@ apps/tests/018_compos_v1/include/TestClass_ubo.h
 apps/volk
 build_debug/
 build_release/
+apps/18_simple_shadow_cast/ispc_proto/test_class_kernels.o
+apps/18_simple_shadow_cast/ispc_proto/test_class_kernels.h
+apps/18_simple_shadow_cast/build_ispc/

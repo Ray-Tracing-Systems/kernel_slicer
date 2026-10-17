@@ -63,6 +63,10 @@ protected:
   { 
     {% if Kernel.OpenMPAndISPC %}
     constexpr int BLOCK_SIZE = 64;
+    [[maybe_unused]] auto* ubo = &m_uboData; // loop bounds may refer to class members as 'ubo[0].m_member'
+    {% if Kernel.HasInitISPC %}
+    ispc::{{Kernel.Name}}_Init_ISPC({% for Arg in Kernel.Args %}{% if Arg.IsPointer and Arg.IsMember %}{{Arg.NameISPC}}.data(){% else %}{{Arg.NameISPC}}{%endif%}{% if loop.index1 != Kernel.LastArgNF1 %},{% endif %}{% endfor %},&m_uboData);
+    {% endif %}
     {% if Kernel.threadDim == 1 %}
     #pragma omp parallel for 
     for(int {{Kernel.ThreadId0.Name}} = {{Kernel.ThreadId0.Start}}; {{Kernel.ThreadId0.Name}} < {{Kernel.ThreadId0.Size}}; {{Kernel.ThreadId0.Name}} += BLOCK_SIZE) {
@@ -77,6 +81,9 @@ protected:
         ispc::{{Kernel.Name}}_ISPC({% for Arg in Kernel.Args %}{% if Arg.IsPointer and Arg.IsMember %}{{Arg.NameISPC}}.data(){% else %}{{Arg.NameISPC}}{%endif%}{% if loop.index1 != Kernel.LastArgNF1 %},{% endif %}{% endfor %},&m_uboData,{{Kernel.ThreadId1.Name}},end,{{Kernel.ThreadId0.Name}});  
       }
     }
+    {% endif %}
+    {% if Kernel.HasFinishISPC %}
+    ispc::{{Kernel.Name}}_Finish_ISPC({% for Arg in Kernel.Args %}{% if Arg.IsPointer and Arg.IsMember %}{{Arg.NameISPC}}.data(){% else %}{{Arg.NameISPC}}{%endif%}{% if loop.index1 != Kernel.LastArgNF1 %},{% endif %}{% endfor %},&m_uboData);
     {% endif %}
     {% else %}
     ispc::{{Kernel.Name}}_ISPC({% for Arg in Kernel.Args %}{% if Arg.IsPointer and Arg.IsMember %}{{Arg.NameISPC}}.data(){% else %}{{Arg.NameISPC}}{%endif%}{% if loop.index1 != Kernel.LastArgNF1 %},{% endif %}{% endfor %},&m_uboData); 
@@ -136,10 +143,8 @@ void {{MainClassName}}_ISPC::GetExecutionTime(const char* a_funcName, float a_ou
 {
   float res = 0.0f;
   {% for MainFunc in MainFunctions %}
-  {% if MainFunc.OverrideMe %}
   if(std::string(a_funcName) == "{{MainFunc.Name}}" || std::string(a_funcName) == "{{MainFunc.Name}}Block")
     res = m_exTimeISPC["{{MainFunc.Name}}"];
-  {% endif %}
   {% endfor %}
   a_out[0] = res;
   a_out[1] = 0.0f;

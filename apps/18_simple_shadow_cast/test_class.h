@@ -28,27 +28,26 @@ public:
   void InitRandomGens(int a_maxThreads);
   virtual int LoadScene(const char* meshPath); ///< Fix/Update this function to
 
-  void PackXY(uint tidX, uint tidY, uint* out_pakedXY __attribute__((size("tidX", "tidY"))) );
-  void CastSingleRay(uint tid, const uint* in_pakedXY __attribute__((size("tid"))), 
-                                     uint* out_color  __attribute__((size("tid"))) );
-  
-  virtual void PackXYBlock(uint tidX, uint tidY, uint* out_pakedXY, uint a_passNum);
-  virtual void CastSingleRayBlock(uint tid, const uint* in_pakedXY, uint* out_color, uint a_passNum);
+  virtual void PackXY(uint tidX, uint tidY, uint* out_pakedXY __attribute__((size("tidX", "tidY"))) );
+  virtual void CastSingleRay(uint tid, const uint* in_pakedXY __attribute__((size("tid"))),
+                                             uint* out_color  __attribute__((size("tid"))) );
 
   virtual void CommitDeviceData() {}                                     // will be overriden in generated class
   virtual void GetExecutionTime(const char* a_funcName, float a_out[4]); // will be overriden in generated class
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  void kernel_PackXY(uint tidX, uint tidY, uint* out_pakedXY);
-  void kernel_InitEyeRay(uint tid, const uint* packedXY, float4* rayPosAndNear, float4* rayDirAndFar);      
+  virtual void kernel2D_PackXY(uint tidX, uint tidY, uint* out_pakedXY);
+  virtual void kernel1D_CastSingleRay(uint tid, const uint* in_pakedXY, uint* out_color); ///< all computations for a ray in one kernel
 
-  bool kernel_RayTrace(uint tid, const float4* rayPosAndNear, float4* rayDirAndFar,
-                       Lite_Hit* out_hit, float4* out_surfPos);
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  void kernel_CalcShadow(uint tid, const float4* in_pos, float* out_shadow);
-
-  void kernel_GetTestColor(uint tid, const Lite_Hit* in_hit, const float* in_shadow, uint* out_color);
+  // ordinary member functions called from 'kernel1D_CastSingleRay'
+  //
+  Lite_Hit RayTrace(float4 rayPosAndNear, float4 rayDirAndFar);
+  float4   ShadowRayOrigin(float4 rayPosAndNear, float4 rayDirAndFar, float hitT);
+  float    CalcShadow(uint tid, float4 surfPos);
+  uint     GetTestColor(Lite_Hit hit, float shadow);
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

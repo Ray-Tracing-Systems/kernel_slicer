@@ -53,9 +53,9 @@ export void {{Kernel.Name}}_ISPC(
   {% endfor %}
   uniform struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo[1])
 {
-  {# /* declare varyings which are subjected to reduction */ #}
+  {# /* declare varyings which are subjected to reduction, they are initialized with neutral element of reduction */ #}
   {% for Var in Kernel.SubjToRed %}
-  {{Var.Type}} {{Var.Name}};
+  {{Var.Type}} {{Var.Name}} = {{Var.Init}};
   {% endfor %}
   {{Kernel.InitSource}}
   {% if Kernel.ExplicitIdISPC %}
@@ -75,10 +75,32 @@ export void {{Kernel.Name}}_ISPC(
   }
   {% endif %}
   {% for Var in Kernel.SubjToRed %}
-  ubo[0].{{Var.Name}} = {{Var.Op}}({{Var.Name}});
+  {% if Var.Op2 == "add" %}
+  ubo[0].{{Var.Name}} += {{Var.Op}}({{Var.Name}});
+  {% else %}
+  ubo[0].{{Var.Name}} = {{Var.Op2}}(ubo[0].{{Var.Name}}, {{Var.Op}}({{Var.Name}}));
+  {% endif %}
   {% endfor %}
+  {{Kernel.FinishSource}}
 }
 {% else %} {% if Kernel.OpenMPAndISPC %}
+{% if Kernel.HasInitISPC %}
+export void {{Kernel.Name}}_Init_ISPC( // executed once before parallel loop
+  {% for Arg in Kernel.Args %}
+  {% if not Arg.IsUBO %} 
+  {% if Arg.IsPointer %}
+  uniform {{Arg.Type}} {{Arg.Name}}[], 
+  {% else %}
+  uniform {{Arg.Type}} {{Arg.Name}},
+  {% endif %}
+  {% endif %}
+  {% endfor %}
+  uniform struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo[1])
+{
+  {{Kernel.InitSource}}
+}
+
+{% endif %}
 export void {{Kernel.Name}}_ISPC(
   {% for Arg in Kernel.Args %}
   {% if not Arg.IsUBO %} 
@@ -92,16 +114,15 @@ export void {{Kernel.Name}}_ISPC(
   uniform struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo[1],
   uniform int _start, uniform int _end, uniform int _ycoord)
 {
-  {# /* declare varyings which are subjected to reduction */ #}
+  {# /* declare varyings which are subjected to reduction, they are initialized with neutral element of reduction */ #}
   {% for Var in Kernel.SubjToRed %}
-  {{Var.Type}} {{Var.Name}};
+  {{Var.Type}} {{Var.Name}} = {{Var.Init}};
   {% endfor %}
-  {{Kernel.InitSource}}
   {% if Kernel.threadDim == 1 %}
   foreach({{Kernel.ThreadId0.Name}} = _start ... _end) {
   {% else %}
-  const uniform int {{Kernel.ThreadId1.Name}} = _ycoord;
-  foreach({{Kernel.ThreadId0.Name}} = _start ... _end) {
+  const uniform int {{Kernel.ThreadId0.Name}} = _ycoord;
+  foreach({{Kernel.ThreadId1.Name}} = _start ... _end) {
   {% endif %}
   {{Kernel.Source}}
   }
@@ -109,6 +130,23 @@ export void {{Kernel.Name}}_ISPC(
   atomic_{{Var.Op2}}_global(&ubo[0].{{Var.Name}}, {{Var.Op}}({{Var.Name}}));
   {% endfor %}
 }
+{% if Kernel.HasFinishISPC %}
+
+export void {{Kernel.Name}}_Finish_ISPC( // executed once after parallel loop
+  {% for Arg in Kernel.Args %}
+  {% if not Arg.IsUBO %} 
+  {% if Arg.IsPointer %}
+  uniform {{Arg.Type}} {{Arg.Name}}[], 
+  {% else %}
+  uniform {{Arg.Type}} {{Arg.Name}},
+  {% endif %}
+  {% endif %}
+  {% endfor %}
+  uniform struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo[1])
+{
+  {{Kernel.FinishSource}}
+}
+{% endif %}
 {% else %}
 task void {{Kernel.Name}}_Task(
   {% for Arg in Kernel.Args %}
@@ -123,11 +161,10 @@ task void {{Kernel.Name}}_Task(
   uniform struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo[1],
   uniform int _start, uniform int _end, uniform int _span)
 {
-  {# /* declare varyings which are subjected to reduction */ #}
+  {# /* declare varyings which are subjected to reduction, they are initialized with neutral element of reduction */ #}
   {% for Var in Kernel.SubjToRed %}
-  {{Var.Type}} {{Var.Name}};
+  {{Var.Type}} {{Var.Name}} = {{Var.Init}};
   {% endfor %}
-  {{Kernel.InitSource}}
   {% if Kernel.threadDim == 1 %}
   const uniform int xstart = _start + taskIndex * _span;
   const uniform int xend   = _start + min((uniform int)((taskIndex+1) * _span), _end);
@@ -156,19 +193,20 @@ export void {{Kernel.Name}}_ISPC(
   {% endfor %}
   uniform struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo[1])
 { 
+  {{Kernel.InitSource}}
   {% for TID in Kernel.ThreadIds %}
   const uniform int l_start{{loop.index}} = {{TID.Start}};
   const uniform int l_size{{loop.index}}  = {{TID.Size}};
   {% endfor %}
   {% if Kernel.threadDim == 1 %}
-  const uniform int width = l_size0-l_start0;
-  const uniform int span  = 1024;
-  launch[width/span] {{Kernel.Name}}_Task({% for Arg in Kernel.Args %}{{Arg.Name}},{% endfor %}ubo,l_start0,l_size0,span);
+  const uniform int span   = 1024;
   {% else %}
   const uniform int span   = 4;
-  const uniform int height = l_size0-l_start0;
-  launch[height/span] {{Kernel.Name}}_Task({% for Arg in Kernel.Args %}{{Arg.Name}},{% endfor %}ubo,l_start0,l_size0, span);
   {% endif %}
+  const uniform int length = l_size0-l_start0;
+  launch[(length + span - 1)/span] {{Kernel.Name}}_Task({% for Arg in Kernel.Args %}{{Arg.Name}},{% endfor %}ubo,l_start0,l_size0,span);
+  sync;
+  {{Kernel.FinishSource}}
 }
 {% endif %}
 {% endif %}

@@ -110,6 +110,9 @@ void main(uint3 a_globalTID: SV_DispatchThreadID, {% if Kernel.HasEpilog or Kern
   {% endif %}
   {% endfor %}
   {% else %}
+  {% if Kernel.IsBoolean %}
+  bool kgenExitCond = false;
+  {% endif %}
   // KERNEL BODY:
   //
   {% if not Kernel.IsSingleThreaded %}
@@ -126,6 +129,13 @@ void main(uint3 a_globalTID: SV_DispatchThreadID, {% if Kernel.HasEpilog or Kern
   {% if Kernel.HasEpilog %}
   // GENERATED EPILOG:
   //
+  {% if Kernel.IsBoolean %}
+  {
+    const bool exitHappened = (kgenArgs.tFlagsMask & KGEN_FLAG_SET_EXIT_NEGATIVE) != 0 ? !kgenExitCond : kgenExitCond;
+    if(runThisThread && (kgenArgs.tFlagsMask & KGEN_FLAG_DONT_SET_EXIT) == 0 && exitHappened)
+      kgen_threadFlags[{{Kernel.ThreadOffset}}] = ((kgenArgs.tFlagsMask & KGEN_FLAG_BREAK) != 0) ? KGEN_FLAG_BREAK : KGEN_FLAG_RETURN;
+  }
+  {% endif %}
   {% if length(Kernel.SubjToRed) > 0 or length(Kernel.ArrsToRed) > 0 %}                      
   {% include "inc_red_finish.slang" %}
   {% endif %}

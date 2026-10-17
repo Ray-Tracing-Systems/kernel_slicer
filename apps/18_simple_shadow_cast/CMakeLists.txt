@@ -6,6 +6,8 @@ add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 
 set (CMAKE_CXX_STANDARD 17)
 
+option(USE_ISPC "Enable ISPC implementation (hand-written prototype in 'ispc_proto', run 'bash ispc_proto/z_build_ispc.sh' first)" OFF)
+
 include_directories(".")
 if(WIN32)
   link_directories(${ADDITIONAL_LIBRARY_DIRS})
@@ -56,6 +58,14 @@ add_executable(testapp main.cpp
                        ../LiteScene/hydraxml.cpp
                        ../LiteScene/scene_mgr.cpp
                        ../LiteScene/cmesh4.cpp)
+
+if(USE_ISPC)
+  target_sources(testapp PRIVATE ispc_proto/test_class_ispc.cpp
+                                 ispc_proto/test_class_kernels.o
+                                 ../LiteMathAux/ispc_tasksys.cpp)
+  target_include_directories(testapp PRIVATE ispc_proto)
+  target_compile_definitions(testapp PRIVATE USE_ISPC)
+endif()
 
 set_target_properties(testapp PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 target_link_libraries(testapp LINK_PUBLIC ${Vulkan_LIBRARY} CrossRT OpenMP::OpenMP_CXX volk dl) 

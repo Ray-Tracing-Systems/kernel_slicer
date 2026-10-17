@@ -170,7 +170,7 @@ bool kslicer::FunctionRewriter2::NeedToRewriteMemberExpr(const clang::MemberExpr
   const bool subjectedToRed = m_pCurrKernel->subjectedToReduction.find(fieldName) != m_pCurrKernel->subjectedToReduction.end();
   const bool checkContainer = !pMember->second.isContainer || m_codeInfo->placeVectorsInUBO; // || CUDA_ENABLE_UBO 
 
-  if(m_codeInfo->pShaderCC->IsISPC() && subjectedToRed)
+  if(m_codeInfo->pShaderCC->IsISPC() && subjectedToRed && !isInLoopInitPart && !isInLoopFinishPart) // inside loop ISPC uses local varying variable
     return false;
   
   if(checkContainer && WasNotRewrittenYet(expr) && (isInLoopInitPart || isInLoopFinishPart || !subjectedToRed) && 

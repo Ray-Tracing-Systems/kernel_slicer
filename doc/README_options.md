@@ -86,7 +86,8 @@ root or pass `-selfdir <repository root>`.
 |--------|---------|---------|
 | `-useCUB 0` | `1` | CUDA: do not use CUB for scan and sort |
 | `-skip_ubo_read 1` | `0` | CUDA: do not read class data back from the GPU after control functions |
-| `-ispc_threads <0\|1\|2>` | `0` | ISPC threading model: `1` single thread, `2` OpenMP over ISPC tasks |
+| `-ispc_threads <0\|1\|2>` | `0` | ISPC threading model: `0` ISPC tasks (`launch`, needs `ispc_tasksys.cpp`), `1` single thread, `2` OpenMP loop over blocks, each block is an ISPC call |
+| `-ispc_target <target>` | `avx2-i32x8` | ISPC `--target` written to `z_build_ispc.sh`, e.g. `avx512skx-x16` |
 | `-ispc_explicit_id 1` | `0` | ISPC: explicit thread indices |
 | `-wgpu_ver <n>` | `30` | WebGPU: API version of the generated code |
 

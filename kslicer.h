@@ -991,6 +991,7 @@ namespace kslicer
     bool VisitCompoundAssignOperator_Impl(clang::CompoundAssignOperator* expr) override;
     bool VisitBinaryOperator_Impl(clang::BinaryOperator* expr)                 override;
     bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)                       override;
+    bool VisitReturnStmt_Impl(clang::ReturnStmt* ret)                          override;
 
     // Also important functions to use(!)
     //
@@ -1450,6 +1451,7 @@ namespace kslicer
     ISPCCompiler(bool a_useCPP, const std::string& a_prefix);
     std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo[0].") + a_name; };
     std::string Name() const override { return "ISPC"; }
+    std::string m_target = "avx2-i32x8"; ///<! ISPC '--target', set by '-ispc_target'
     void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings) override;
     bool        IsISPC() const override { return true; }
     std::string BuildCommand(const std::string& a_inputFile) const override;
