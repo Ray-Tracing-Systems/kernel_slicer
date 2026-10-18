@@ -41,39 +41,26 @@ namespace kslicer {
     class MyFrontendActionFactory : public FrontendActionFactory {
     public:
         MyFrontendActionFactory(std::function<void()> callback) : callback_(callback) {}
-        std::unique_ptr<clang::FrontendAction> create() override {
-            return std::make_unique<MyASTFrontedAction>(callback_);
-        }
+        std::unique_ptr<FrontendAction> create() override { return std::make_unique<MyASTFrontedAction>(callback_); }
 
     private:
         std::function<void()> callback_;
     };
 
-    int invoke_compiler(const std::vector<std::string>& sources, const std::vector<std::string>& params,
-                        std::function<void()> callback) {
-        FixedCompilationDatabase db(".", params);
-        ClangTool tool(db, sources);
-        MyFrontendActionFactory action_factory(callback);
-        int res = tool.run(&action_factory);
-        compiler_ = nullptr;
-        return res;
-    }
-
-    int invoke_compiler(const InvocationParams& params, std::function<void()> callback) {
-
-        std::vector<std::string> sources;
+    int invoke_compiler(const CompilerParams& params, std::function<void()> callback) {
         std::vector<std::string> args;
-
-        for (auto i : params.sources) {
-            sources.push_back(i.string());
-        }
 
         for (auto i : params.include_directories) {
             args.push_back("-I");
             args.push_back(i.string());
         }
 
-        return invoke_compiler(sources, args, callback);
+        FixedCompilationDatabase db(".", args);
+        ClangTool tool(db, {params.source.string()});
+        MyFrontendActionFactory action_factory(callback);
+        int res = tool.run(&action_factory);
+        compiler_ = nullptr;
+        return res;
     }
 
 } // namespace kslicer

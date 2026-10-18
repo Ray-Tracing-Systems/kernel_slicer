@@ -7,6 +7,8 @@ add_executable(kslicer2
     class_info.cpp
     codegen.cpp
     compiler.cpp
+    command_line.cpp
+    config.cpp
 )
 
 target_compile_definitions(kslicer2 PRIVATE ${LLVM_DEFINITIONS} ${CLANG_DEFINITIONS})

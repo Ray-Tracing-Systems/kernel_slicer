@@ -10,7 +10,10 @@ namespace kslicer {
     using namespace nlohmann;
     using llvm::outs;
 
-    void codegen(const ClassInfo& info) {
+    void codegen(const Config& config, const ClassInfo& info) {
+
+        auto base = (config.config_path.parent_path() / config.base_directory).lexically_normal();
+        auto class_directory = (base / config.sources[0]).parent_path().lexically_normal();
 
         json data = json::object();
 
@@ -221,8 +224,8 @@ float3   operator*(float3x3 m, float3 v) { return mul(m,v); }
                 codegen.buffer += ")\n";
                 codegen.render_statement(i.body, 1);
                 codegen.buffer += "}\n";
-                std::ofstream file("D:/gml_private/VolumeRenderer/shaders_slang/" + i.decl->getNameAsString() +
-                                   ".slang");
+                std::ofstream file(base / config.shaders_directory / ("shaders" + config.suffix) /
+                                   (i.decl->getNameAsString() + ".slang"));
                 file << codegen.buffer;
             }
 
@@ -457,6 +460,7 @@ float3   operator*(float3x3 m, float3 v) { return mul(m,v); }
             buffer["AccessSymb"] = ".";
             buffer["WithBuffRef"] = false;
             buffer["TypeOfData"] = render_type_name(get_vector_specialization_type(i->getType()));
+            buffer["IsHashMap"] = false;
             data["ClassVectorVars"].push_back(buffer);
         }
 
@@ -467,6 +471,7 @@ float3   operator*(float3x3 m, float3 v) { return mul(m,v); }
             buffer["IsVFHBuffer"] = false;
             buffer["VFHLevel"] = 0;
             buffer["HasPrefix"] = false;
+            buffer["IsHashMap"] = false;
             data["VectorMembers"].push_back(buffer);
         }
 
@@ -474,7 +479,7 @@ float3   operator*(float3x3 m, float3 v) { return mul(m,v); }
         data["UseServiceSort"] = false;
         data["HasAllRefs"] = false;
         data["UseRayGen"] = false;
-        data["IncludeClassDecl"] = "D:/kernel_slicer/class_slang.h";
+        data["IncludeClassDecl"] = config.main_class + config.suffix + ".h";
         data["SceneMembers"] = json::array();
         data["ForceProxy"] = false;
         data["IntersectionHierarhcy"] = json::object();
@@ -484,12 +489,12 @@ float3   operator*(float3x3 m, float3 v) { return mul(m,v); }
         {
             auto ctor = json::object();
             ctor["NumParams"] = 0;
-            ctor["ClassName"] = "VolumeRenderer";
+            ctor["ClassName"] = config.main_class;
             data["Constructors"].push_back(ctor);
         }
 
-        data["MainClassName"] = "VolumeRenderer";
-        data["MainClassSuffix"] = "_slang";
+        data["MainClassName"] = config.main_class;
+        data["MainClassSuffix"] = config.suffix;
 
         data["SlangShaders"] = true;
         data["UseVulkan11"] = false;
@@ -541,7 +546,7 @@ float3   operator*(float3x3 m, float3 v) { return mul(m,v); }
         data["IndirectDispatches"] = json::array();
 
         data["MultipleSourceShaders"] = true;
-        data["ShaderFolder"] = "./shaders_slang/";
+        data["ShaderFolder"] = "./shaders" + config.suffix + "/";
 
         // data["Kernels"] = json::array();
         // for (auto i : kernels) {
@@ -783,7 +788,7 @@ float3   operator*(float3x3 m, float3 v) { return mul(m,v); }
         data["TotalAccels"] = 0;
         // data["TotalDSNumber"] = 13; // WHY???
 
-        data["MainInclude"] = "D:/gml_private/VolumeRenderer/VolumeRenderer.h";
+        data["MainInclude"] = config.main_class + ".h";
         data["GenGpuApi"] = false;
         data["AdditionalIncludes"] = json::array();
 
@@ -822,43 +827,46 @@ float3   operator*(float3x3 m, float3 v) { return mul(m,v); }
         data["UpdateMembersVectorData"] = true;
         data["UpdateMembersTextureData"] = false;
         data["HasGetResDirFunc"] = false;
-        data["ShaderFolderPrefix"] = "VolumeRenderer/";
+        data["ShaderFolderPrefix"] = config.shaders_directory.string();
         data["PlainMembersUpdateFunctions"] = json::array();
         data["VectorMembersUpdateFunctions"] = json::array();
         data["SetterVars"] = json::array();
         data["DefineGetTempBufferSize"] = false;
         data["GenerateSceneRestrictions"] = true;
 
+        data["HasHashMaps"] = false;
+        data["HashMapSubgroups"] = false;
+
         inja::Environment env;
         env.set_trim_blocks(true);
         env.set_lstrip_blocks(true);
 
         {
-            inja::Template t = env.parse_template("templates/vk_class.h");
+            inja::Template t = env.parse_template((config.kslicer_directory / "templates/vk_class.h").string());
             std::string result = env.render(t, data);
 
-            std::ofstream out("class_slang.h");
+            std::ofstream out(class_directory / (config.main_class + config.suffix + ".h"));
             out << result << std::endl;
         }
         {
-            inja::Template t = env.parse_template("templates/vk_class.cpp");
+            inja::Template t = env.parse_template((config.kslicer_directory / "templates/vk_class.cpp").string());
             std::string result = env.render(t, data);
 
-            std::ofstream out("class_slang.cpp");
+            std::ofstream out(class_directory / (config.main_class + config.suffix + ".cpp"));
             out << result << std::endl;
         }
         {
-            inja::Template t = env.parse_template("templates/vk_class_init.cpp");
+            inja::Template t = env.parse_template((config.kslicer_directory / "templates/vk_class_init.cpp").string());
             std::string result = env.render(t, data);
 
-            std::ofstream out("class_slang_init.cpp");
+            std::ofstream out(class_directory / (config.main_class + config.suffix + "_init.cpp"));
             out << result << std::endl;
         }
         {
-            inja::Template t = env.parse_template("templates/vk_class_ds.cpp");
+            inja::Template t = env.parse_template((config.kslicer_directory / "templates/vk_class_ds.cpp").string());
             std::string result = env.render(t, data);
 
-            std::ofstream out("class_slang_ds.cpp");
+            std::ofstream out(class_directory / (config.main_class + config.suffix + "_ds.cpp"));
             out << result << std::endl;
         }
     }
