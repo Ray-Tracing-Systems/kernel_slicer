@@ -118,8 +118,19 @@ protected:
    best passed as extra `const T* [[size("n")]]` arguments: they are uploaded on every call.
    Member vectors reach the GPU only through `CommitDeviceData()`, so changing them between
    calls requires another commit.
-8. Scalar class members written by kernels (e.g. a reduction result) are read back to the CPU
-   after the control function returns, so host code can read `pImpl->m_summ`.
+8. **Class members do not flow between the control function body and kernels.** On the GPU the
+   control function becomes host code that records kernel launches, and kernels see their own copy
+   of the class data:
+   - A member **assigned in a control function** (`m_radius = a_radius;`) is **not visible** in
+     kernels launched by it: they see the value from the last `CommitDeviceData()`. Pass such
+     values to kernels as **kernel arguments**.
+   - A member **written by a kernel** (a reduction result, a counter) gets its new value only for
+     the **following kernels** and, after the control function returns, for the **host**: it is read
+     back, so host code can read `pImpl->m_summ`. Code of the control function itself between kernel
+     calls (`if(m_count > 0)`, `x = m_maxValue*2`) still sees the old value; move such logic into
+     a kernel.
+   - Exception: an RTV control function translated as a megakernel (`-megakernel 1`) runs entirely
+     on the GPU, so its body and kernels share the values. Do not rely on it in IPV code.
 9. **Measure time, never print it.** A control function (and an RTV `...Block` function) stores
    the measured time in a class member; `GetExecutionTime(name, t)` returns it by function name,
    and the **host** prints it. The generated class overrides control functions, `...Block`
@@ -301,6 +312,8 @@ Always pass `-shaderCC slang`. It is the current back end; `glsl` is legacy (its
       a `...Block(..., uint a_passesNum)` virtual function exists for each RTV control function.
 - [ ] No kernel calls a kernel; no control function calls a control function.
 - [ ] Every control-function pointer has `[[size(...)]]`; inputs are `const`; no in-out pointers.
+- [ ] No member is assigned in a control function to pass a value to a kernel (use kernel
+      arguments), and no control function code reads a member written by a kernel it launched.
 - [ ] No `std::vector` declared inside control functions or kernels; all buffers are members
       sized before `CommitDeviceData()`.
 - [ ] Only LiteMath vector types; `using LiteMath::...` for each one used.

@@ -276,3 +276,39 @@ std::cout << "Render(exec) = " << t[0] << " ms" << std::endl;
 ```
 
 The same applies to RTV `...Block` functions: they are overridden as well.
+
+## 20. Passing values between a control function and kernels through class members
+
+```cpp
+// WRONG: works on the CPU, but on the GPU the kernel sees the old m_radius / m_scale,
+// and the 'if' in the control function sees the old m_count
+void C::Blur(int w, int h, int a_radius, const float4* a_in, float4* a_out)
+{
+  m_radius = a_radius;                       // host-side assignment, not visible in kernels
+  kernel1D_CountBright(w*h, a_in);           // writes m_count on the GPU
+  if(m_count > 0)                            // still the old value here
+    m_scale = 1.0f/float(m_count);
+  kernel2D_Blur(w, h, a_in, a_out);          // reads m_radius and m_scale
+}
+
+// RIGHT: values go to kernels as arguments; logic that depends on a kernel result runs in a kernel
+void C::Blur(int w, int h, int a_radius, const float4* a_in, float4* a_out)
+{
+  kernel1D_CountBright(w*h, a_in);           // writes m_count
+  kernel2D_Blur(w, h, a_radius, a_in, a_out);
+}
+void C::kernel2D_Blur(int w, int h, int a_radius, const float4* a_in, float4* a_out)
+{
+  for(int y = 0; y < h; y++)
+    for(int x = 0; x < w; x++)
+    {
+      const uint  count = m_count;           // written by the previous kernel: visible here
+      const float scale = (count > 0) ? 1.0f/float(count) : 0.0f;
+      ...
+    }
+}
+// host, after Blur() returns: pImpl->m_count holds the GPU result (members written by kernels are read back)
+```
+
+An RTV control function translated as a megakernel (`-megakernel 1`) is the only exception: it runs
+entirely on the GPU together with its kernels.
