@@ -1,0 +1,41 @@
+{
+  // Open this sample folder as the VS Code workspace. Build folders: build_debug/ and build_release/.
+  "version": "2.0.0",
+  "tasks"  : [
+    {
+      "label"         : "Build Release",
+      "type"          : "shell",
+      "command"       : "cmake -S . -B build_release -DCMAKE_BUILD_TYPE=Release && cmake --build build_release -j 8",
+      "group"         : { "kind": "build", "isDefault": true },
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label"         : "Build Debug",
+      "type"          : "shell",
+      "command"       : "cmake -S . -B build_debug -DCMAKE_BUILD_TYPE=Debug && cmake --build build_debug -j 8",
+      "group"         : "build",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label"         : "Translate (kslicer, Slang)",
+      "type"          : "shell",
+      "command"       : "mkdir -p shaders_generated && ${workspaceFolder}/../../cmake-build-release/kslicer ${workspaceFolder}/kmake.json -selfdir ${workspaceFolder}/../.. > shaders_generated/kslicer.log 2>&1; ! grep -n 'error:' shaders_generated/kslicer.log",
+      "group"         : "build",
+      "problemMatcher": []
+    },
+    {
+      "label"         : "Build Kernels (Slang)",
+      "type"          : "shell",
+      "command"       : "cd shaders_generated && bash build_slang.sh",
+      "group"         : "build",
+      "problemMatcher": []
+    },
+    {
+      "label"         : "Translate + Kernels + Build Release",
+      "dependsOrder"  : "sequence",
+      "dependsOn"     : ["Translate (kslicer, Slang)", "Build Kernels (Slang)", "Build Release"],
+      "group"         : "build",
+      "problemMatcher": []
+    }
+  ]
+}

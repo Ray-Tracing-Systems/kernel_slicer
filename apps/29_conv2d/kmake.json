@@ -1,0 +1,17 @@
+{
+    "mainClass"     : "Convolution2D",
+    "baseClasses"   : [],
+    "composClasses" : {},
+    "kernels" : {
+        "kernel2D_Convolve" : {"wgSize": [16, 16, 1]}   // only 2D kernels; a 2D "default" would break the 1D reduction kernel
+    },
+    "options" : {
+        "-shaderCC"   : "slang",
+        "-timestamps" : "1",
+        "-reorderLoops": "YX"
+    },
+    "source" : ["conv2d.cpp"],
+    "includeProcess" : [],
+    "includeIgnore"  : ["../LiteMath", "../LiteMathAux", "../../TINYSTL"],
+    "end" : ""
+}
