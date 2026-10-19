@@ -443,6 +443,52 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateDescriptorSetsForAppendGroup(ui
   if(!writes.empty())
     vkUpdateDescriptorSets(m_device, uint32_t(writes.size()), writes.data(), 0, nullptr);
 }
+{% if HasRTXAccelStruct %}
+
+void {{MainClassName}}{{MainClassSuffix}}::UpdateDescriptorSetsForAccelStructs()
+{
+  std::vector<VkDescriptorSet>            sets;
+  std::vector<uint32_t>                   bindings;
+  std::vector<VkAccelerationStructureKHR> accels;
+## for MainFunc in MainFunctions
+## for DescriptorSet in MainFunc.DescriptorSets
+## for Arg in DescriptorSet.Args
+  {% if Arg.IsAccelStruct %}
+  {
+    VulkanRTX* pScene = dynamic_cast<VulkanRTX*>({{Arg.Name}}->UnderlyingImpl(1)); // descriptor set #{{DescriptorSet.Id}}: {{DescriptorSet.KernelName}}Cmd, binding {{Arg.Id}}
+    if(pScene != nullptr && pScene->GetSceneAccelStruct() != VK_NULL_HANDLE)
+    {
+      sets.push_back(m_allGeneratedDS[{{DescriptorSet.Id}}]);
+      bindings.push_back({{Arg.Id}});
+      accels.push_back(pScene->GetSceneAccelStruct());
+    }
+  }
+  {% endif %}
+## endfor
+## endfor
+## endfor
+
+  std::vector<VkWriteDescriptorSetAccelerationStructureKHR> accelInfos(accels.size());
+  std::vector<VkWriteDescriptorSet>                         writes(accels.size());
+  for(size_t i = 0; i < accels.size(); i++)
+  {
+    accelInfos[i]       = VkWriteDescriptorSetAccelerationStructureKHR{};
+    accelInfos[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+    accelInfos[i].accelerationStructureCount = 1;
+    accelInfos[i].pAccelerationStructures    = &accels[i];
+
+    writes[i]                 = VkWriteDescriptorSet{};
+    writes[i].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writes[i].pNext           = &accelInfos[i];
+    writes[i].dstSet          = sets[i];
+    writes[i].dstBinding      = bindings[i];
+    writes[i].descriptorCount = 1;
+    writes[i].descriptorType  = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+  }
+  if(!writes.empty())
+    vkUpdateDescriptorSets(m_device, uint32_t(writes.size()), writes.data(), 0, nullptr);
+}
+{% endif %}
 
 {% endif %}
 {% if length(IndirectDispatches) > 0 %}

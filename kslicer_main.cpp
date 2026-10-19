@@ -821,6 +821,16 @@ int main(int argc, const char **argv)
     }
   }
 
+  // groups whose vectors are copied entirely by every 'CommitAppendedData()' (data which is rebuilt rather than appended), 
+  // "appendRewriteGroups" : ["otherGroup"]
+  //
+  if(inputOptions["appendRewriteGroups"].is_array())
+  {
+    for(const auto& name : inputOptions["appendRewriteGroups"])
+      if(name.is_string())
+        inputCodeInfo.appendRewriteGroups.insert(name.get<std::string>());
+  }
+
   // create default Shader Rewriter, don't delete it please!
   //
   clang::Rewriter rewrite2;

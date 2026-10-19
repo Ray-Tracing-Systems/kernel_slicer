@@ -10,6 +10,7 @@
     "appendGroups" : {              // groups of member vectors for CommitAppendedData(), other vectors are in 'otherGroup'
         "geom" : ["m_a", "m_b"]
     },
+    "appendRewriteGroups" : ["otherGroup"], // 'm_c' is copied entirely by every CommitAppendedData()
     "source" : ["test_class.cpp"],
     "includeProcess" : [],
     "includeIgnore"  : ["../../LiteMath"],

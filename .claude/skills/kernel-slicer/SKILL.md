@@ -121,7 +121,10 @@ protected:
    editing, streaming), also declare `virtual void CommitAppendedData() {}` and call it instead:
    the generated version copies only the new elements and re-allocates GPU buffers only when they
    overflow (`appendGroups` in `kmake.json`, see `doc/README_options.md` and
-   `apps/tests/064_commit_appended`).
+   `apps/tests/064_commit_appended`). Changed old elements can be marked with
+   `InvalidateAppendedData("m_vec", first)`, and small often rewritten groups listed in
+   `appendRewriteGroups`. New meshes and instances of a ray tracing scene (`ISceneObject`) are
+   committed the same way: `apps/tests/065_scene_append`.
 8. **Class members do not flow between the control function body and kernels.** On the GPU the
    control function becomes host code that records kernel launches, and kernels see their own copy
    of the class data:

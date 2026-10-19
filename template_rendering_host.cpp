@@ -921,8 +921,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       else if(kslicer::IsHashMapContainer(v.containerType))
         continue;
 
-      local["AppendId"]    = -1;
-      local["AppendGroup"] = -1;
+      local["AppendId"]      = -1;
+      local["AppendGroup"]   = -1;
+      local["AppendRewrite"] = false;
       if(hasCommitAppended)
       {
         const bool plainVector = !local["IsHashMap"].get<bool>() && !isVFHBuffer && !local["WithBuffRef"].get<bool>();
@@ -930,8 +931,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         {
           auto pGroup        = appendGroupInConfig.find(v.name);
           const int groupId  = (pGroup == appendGroupInConfig.end()) ? appendOtherGroupId : pGroup->second;
-          local["AppendId"]    = int(data["AppendVectors"].size());
-          local["AppendGroup"] = groupId;
+          local["AppendId"]      = int(data["AppendVectors"].size());
+          local["AppendGroup"]   = groupId;
+          local["AppendRewrite"] = (a_classInfo.appendRewriteGroups.count(appendGroupNames[groupId]) != 0);
+          local["AppendGroupName"] = appendGroupNames[groupId];
           appendGroupOfVector[v.name] = groupId;
           data["AppendVectors"].push_back(local);
         }
@@ -953,11 +956,15 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       group["Id"]      = groupId;
       group["Name"]    = appendGroupNames[groupId];
       group["Vectors"] = std::vector<json>();
+      group["Rewrite"] = (a_classInfo.appendRewriteGroups.count(appendGroupNames[groupId]) != 0);
       for(const auto& vec : data["AppendVectors"])
         if(vec["AppendGroup"].get<int>() == groupId)
           group["Vectors"].push_back(vec);
       data["AppendGroups"].push_back(group);
     }
+    for(const auto& groupName : a_classInfo.appendRewriteGroups)
+      if(std::find(appendGroupNames.begin(), appendGroupNames.end(), groupName) == appendGroupNames.end())
+        std::cout << "  [kslicer]: warning, 'appendRewriteGroups' contains unknown group '" << groupName.c_str() << "'" << std::endl;
     for(const auto& vecGroup : appendGroupInConfig)
       if(appendGroupOfVector.find(vecGroup.first) == appendGroupOfVector.end())
         std::cout << "  [kslicer]: warning, 'appendGroups/" << appendGroupNames[vecGroup.second].c_str() << "' contains '" << vecGroup.first.c_str() << "', which is not a member vector used on GPU" << std::endl;
@@ -1350,6 +1357,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         fun["VectorName"] = member.name;
         fun["TypeOfData"] = member.containerDataType;
         fun["NumParams"]  = pUpdateFun->second->getNumParams();
+        fun["AppendId"]   = -1; // vector is tracked by 'CommitAppendedData()': copy only if the range fits its GPU buffer, otherwise defer to the commit
+        for(const auto& vec : data["AppendVectors"])
+          if(vec["Name"].get<std::string>() == member.name)
+            fun["AppendId"] = vec["AppendId"];
         data["UpdateVectorFun"].push_back(fun);
         std::cout << "  [kslicer]: override '" << funName.c_str() << "' update member-function " << std::endl;
       }

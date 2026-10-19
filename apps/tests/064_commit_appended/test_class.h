@@ -5,7 +5,8 @@
 using LiteMath::uint2;
 
 // Checks CommitAppendedData(): appending to member vectors without full CommitDeviceData().
-// Vectors 'm_a' and 'm_b' form group 'geom' ("appendGroups" in kmake.json), 'm_c' is in 'otherGroup'.
+// Vectors 'm_a' and 'm_b' form group 'geom' ("appendGroups" in kmake.json), 'm_c' is in 'otherGroup',
+// which is in "appendRewriteGroups", so 'm_c' is copied entirely by every CommitAppendedData().
 // Dump() copies all vectors (and their sizes as seen on GPU) to output arrays, loops are bounded by member vector sizes.
 class AppendTest
 {

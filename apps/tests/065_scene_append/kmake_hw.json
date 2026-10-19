@@ -1,0 +1,15 @@
+{
+    "mainClass"     : "SceneAppend",
+    "baseClasses"   : [],
+    "composClasses" : {},           // hardware ray tracing: 'm_pAccelStruct' is replaced with VulkanRTX (wrapped with RTX_Proxy)
+    "options" : {
+        "-shaderCC"     : "slang",
+        "-reorderLoops" : "YX",
+        "-bothrt"       : 1,
+        "end" : ""
+    },
+    "source" : ["test_class.cpp"],
+    "includeProcess" : ["../../RayTracing"],
+    "includeIgnore"  : ["../../LiteMath"],
+    "end" : ""
+}

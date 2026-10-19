@@ -218,6 +218,13 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateVectorMembers(std::shared_ptr<v
 {% if UpdateFun.NumParams == 2 %}
 void {{MainClassName}}{{MainClassSuffix}}::{{UpdateFun.Name}}(size_t a_first, size_t a_size)
 {
+  {% if HasCommitAppendedFunc and UpdateFun.AppendId >= 0 %}
+  if(a_first + a_size > m_appendVectors[{{UpdateFun.AppendId}}].gpuCapacity) // does not fit GPU buffer: CommitAppendedData() re-allocates and copies it
+  {
+    m_appendVectors[{{UpdateFun.AppendId}}].dirtyFrom = std::min(m_appendVectors[{{UpdateFun.AppendId}}].dirtyFrom, a_first);
+    return;
+  }
+  {% endif %}
   if({{UpdateFun.VectorName}}.size() != 0 && m_pLastCopyHelper != nullptr)
     m_pLastCopyHelper->UpdateBuffer(m_vdata.{{UpdateFun.VectorName}}Buffer, a_first*sizeof({{UpdateFun.TypeOfData}}), {{UpdateFun.VectorName}}.data() + a_first, a_size*sizeof({{UpdateFun.TypeOfData}}) );
 }

@@ -254,6 +254,10 @@ public:
   float    GetAppendGrowFactor() const         { return m_appendGrowFactor; }
   uint32_t GetAppendGroupReallocCount(const char* a_groupName) const; ///< how many times CommitAppendedData() re-allocated the group
   size_t   GetAppendGpuCapacity(const char* a_vectorName) const;      ///< how many elements of the vector fit its current GPU buffer
+
+  /// Marks elements [a_first, size()) of a tracked member vector as changed, the next CommitAppendedData() copies them together with
+  /// appended elements. Use it when data was rewritten after the last commit (e.g. tail of a vector was rebuilt). Returns false for unknown name.
+  bool     InvalidateAppendedData(const char* a_vectorName, size_t a_first);
   {% endif %}
   {% if HasGetTimeFunc %}
   void GetExecutionTime(const char* a_funcName, float a_out[4]) override;
@@ -345,6 +349,7 @@ protected:
     size_t size        = 0; ///<! size()     at the last commit
     size_t capacity    = 0; ///<! capacity() at the last commit
     size_t gpuCapacity = 0; ///<! number of elements that fit the GPU buffer
+    size_t dirtyFrom   = size_t(-1); ///<! first element changed after the last commit (InvalidateAppendedData), size_t(-1) if none
   };
   struct AppendGroupState
   {
@@ -358,6 +363,9 @@ protected:
   virtual void CreateAppendGroupBuffers(uint32_t a_groupId, bool a_withReserve); ///< create buffers of the group vectors and allocate memory for them
   virtual void DeleteAppendGroupBuffers(uint32_t a_groupId);
   virtual void UpdateDescriptorSetsForAppendGroup(uint32_t a_groupId);          ///< rewrite bindings of the group vectors in all descriptor sets
+  {% if HasRTXAccelStruct %}
+  virtual void UpdateDescriptorSetsForAccelStructs();                           ///< rewrite bindings of acceleration structures (TLAS may be re-created by CommitScene)
+  {% endif %}
   {% endif %}
 
   VkBufferMemoryBarrier BarrierForClearFlags(VkBuffer a_buffer);

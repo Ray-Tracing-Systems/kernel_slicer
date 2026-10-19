@@ -1180,6 +1180,9 @@ void {{MainClassName}}{{MainClassSuffix}}::CommitAppendedData(std::shared_ptr<vk
     CommitDeviceData(a_pCopyHelper);
     return;
   }
+  {% if HasPrefixData %}
+  UpdatePrefixPointers();
+  {% endif %}
 
   // (1) re-allocate groups in which data of at least one vector does not fit its GPU buffer anymore
   //
@@ -1204,18 +1207,23 @@ void {{MainClassName}}{{MainClassSuffix}}::CommitAppendedData(std::shared_ptr<vk
     m_appendGroups[groupId].reallocCount++;
   }
 
-  // (2) copy whole vectors of re-allocated groups and appended elements of other vectors
+  // (2) copy whole vectors of re-allocated groups and of 'appendRewriteGroups', changed (InvalidateAppendedData) and appended elements of other vectors
   //
   {% for Vec in AppendVectors %}
   {
     auto& state         = m_appendVectors[{{Vec.AppendId}}];
     const size_t size   = {{Vec.Name}}{{Vec.AccessSymb}}size();
-    const size_t first  = reallocated[{{Vec.AppendGroup}}] ? 0 : std::min(state.size, size);
+    {% if Vec.AppendRewrite %}
+    const size_t first  = 0; // group '{{Vec.AppendGroupName}}' is in 'appendRewriteGroups'
+    {% else %}
+    const size_t first  = reallocated[{{Vec.AppendGroup}}] ? 0 : std::min(std::min(state.size, size), state.dirtyFrom);
+    {% endif %}
     const size_t offset = (first*sizeof({{Vec.TypeOfData}})) & ~size_t(3); // copy offset must be a multiple of 4
     if(size > first)
       a_pCopyHelper->UpdateBuffer(m_vdata.{{Vec.Name}}Buffer, offset, ((const char*){{Vec.Name}}{{Vec.AccessSymb}}data()) + offset, size*sizeof({{Vec.TypeOfData}}) - offset);
-    state.size     = size;
-    state.capacity = {{Vec.Name}}{{Vec.AccessSymb}}capacity();
+    state.size      = size;
+    state.capacity  = {{Vec.Name}}{{Vec.AccessSymb}}capacity();
+    state.dirtyFrom = size_t(-1);
   }
   {% endfor %}
 
@@ -1224,6 +1232,9 @@ void {{MainClassName}}{{MainClassSuffix}}::CommitAppendedData(std::shared_ptr<vk
   for(uint32_t groupId = 0; groupId < uint32_t(m_appendGroups.size()); groupId++)
     if(reallocated[groupId])
       UpdateDescriptorSetsForAppendGroup(groupId);
+  {% if HasRTXAccelStruct %}
+  UpdateDescriptorSetsForAccelStructs();
+  {% endif %}
   UpdatePlainMembers(a_pCopyHelper);
   m_pLastCopyHelper = a_pCopyHelper;
 }
@@ -1236,6 +1247,19 @@ uint32_t {{MainClassName}}{{MainClassSuffix}}::GetAppendGroupReallocCount(const 
     return m_appendGroups[{{Group.Id}}].reallocCount;
   {% endfor %}
   return 0;
+}
+
+bool {{MainClassName}}{{MainClassSuffix}}::InvalidateAppendedData(const char* a_vectorName, size_t a_first)
+{
+  const std::string name(a_vectorName);
+  {% for Vec in AppendVectors %}
+  if(name == "{{Vec.Name}}")
+  {
+    m_appendVectors[{{Vec.AppendId}}].dirtyFrom = std::min(m_appendVectors[{{Vec.AppendId}}].dirtyFrom, a_first);
+    return true;
+  }
+  {% endfor %}
+  return false;
 }
 
 size_t {{MainClassName}}{{MainClassSuffix}}::GetAppendGpuCapacity(const char* a_vectorName) const

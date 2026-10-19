@@ -142,6 +142,7 @@ variants, e.g. `apps/tests/042_atomic_add_float/kmake_hw.json` and `kmake_emul.j
 | `excludedControlFunctions` | Names of public methods that must not be treated as control functions |
 | `additionaIncludes` | Extra `#include` lines for the generated header, like `-cpp_include` (the key is spelled this way) |
 | `appendGroups` | Groups of member vectors for `CommitAppendedData()`: `{"group": ["m_vec1", "m_vec2"]}`. See below |
+| `appendRewriteGroups` | Names of append groups that `CommitAppendedData()` copies entirely, not only appended elements: `["otherGroup"]`. See below |
 
 Work group sizes: the defaults (256 for 1D kernels, 32×8 for 2D) are good in most cases. Set
 `wgSize` for named kernels or with `default1D`/`default2D`/`default3D`. The keys `default` and
@@ -170,14 +171,53 @@ implements `CommitAppendedData()`:
 }
 ```
 
+Changes of already committed elements are not detected automatically. There are two ways to copy
+them without a full `CommitDeviceData()`:
+- `InvalidateAppendedData("m_vec", first)` of the generated class marks elements of `m_vec` from
+  `first` to the end as changed; the next `CommitAppendedData()` copies them. It returns `false`
+  for an unknown or untracked vector name.
+- `appendRewriteGroups` lists groups that are small and often rewritten on the host (materials,
+  lights, settings): `CommitAppendedData()` copies all vectors of such groups entirely.
+
+```jsonc
+"appendGroups"        : {"geometry" : ["m_vertPos", "m_indices"]},
+"appendRewriteGroups" : ["otherGroup"]   // all vectors which are not listed in "appendGroups"
+```
+
+The generated `Update_m_vec(first, size)` functions, which copy a range of a vector immediately, also
+work for tracked vectors: if the range does not fit the current GPU buffer, it is only marked as
+changed and copied by the next `CommitAppendedData()`.
+
 Notes:
-- Changes of already committed elements are not detected: call `CommitDeviceData()` for them.
+- Other changes of committed elements need `CommitDeviceData()`.
 - Hash maps, vectors of objects with virtual functions and vectors accessed via buffer reference
   are not tracked (the translator prints a warning): call `CommitDeviceData()` after changing them.
 - When you record command buffers yourself (`...Cmd` functions), re-record them after
   `CommitAppendedData()`. After a full `CommitDeviceData()` call `SetVulkanInOutFor_...()` again.
 - `GetAppendGroupReallocCount("group")` and `GetAppendGpuCapacity("m_vec")` of the generated class
   show what happened. Example and test: `apps/tests/064_commit_appended`.
+
+#### Adding geometry to a ray tracing scene
+
+`CommitAppendedData()` also handles new meshes and instances added to an `ISceneObject` after the
+first commit (`AddGeom_Triangles3f`, `AddInstance`, `CommitScene`), for both kinds of ray tracing:
+- Hardware ray tracing (`-bothrt 1` or RTX): BLAS and TLAS are built on the host side by `VulkanRTX`;
+  `CommitAppendedData()` updates the acceleration structure bindings in all descriptor sets, because
+  TLAS may be re-created when it grows.
+- Software ray tracing (`composClasses` with `BVH2CommonRT`): BVH vectors of the implementation are
+  prefixed members of the generated class (`m_pAccelStruct_m_allNodes`, ...). List them in an append
+  group and mark the rewritten TLAS range with `InvalidateAppendedData`, for example from the update
+  hook `m_pAccelStruct->m_pUpdate_m_allNodes` of `BVH2CommonRT`:
+
+```jsonc
+"appendGroups" : {
+  "bvh" : ["m_pAccelStruct_m_allNodes", "m_pAccelStruct_m_vertPos", "m_pAccelStruct_m_indices",
+           "m_pAccelStruct_m_primIndices", "m_pAccelStruct_m_geomOffsets", "m_pAccelStruct_m_bvhOffsets"]
+},
+"appendRewriteGroups" : ["otherGroup"]  // instance matrices, geometry ids by instance, ...
+```
+
+Test with both variants (`kmake_sw.json`, `kmake_hw.json`): `apps/tests/065_scene_append`.
 
 ### Composition and custom intersection
 

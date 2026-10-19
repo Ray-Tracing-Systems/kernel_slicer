@@ -1,0 +1,19 @@
+{
+    "mainClass"     : "SceneAppend",
+    "baseClasses"   : [],
+    "composClasses" : [{"interface" : "ISceneObject", "implementation": "BVH2CommonRT"}], // software ray tracing, BVH data are member vectors
+    "options" : {
+        "-shaderCC"     : "slang",
+        "-reorderLoops" : "YX",
+        "end" : ""
+    },
+    "appendGroups" : {                 // BLAS data of BVH2CommonRT are only appended; TLAS in 'm_allNodes' is reported via Update_m_allNodes
+        "bvh" : ["m_pAccelStruct_m_allNodes", "m_pAccelStruct_m_vertPos", "m_pAccelStruct_m_indices", "m_pAccelStruct_m_primIndices",
+                 "m_pAccelStruct_m_geomOffsets", "m_pAccelStruct_m_bvhOffsets"]
+    },
+    "appendRewriteGroups" : ["otherGroup"], // instance data are rebuilt by every CommitScene()
+    "source" : ["test_class.cpp", "../../RayTracing/BVH2CommonRT.cpp"],
+    "includeProcess" : ["../../RayTracing"],
+    "includeIgnore"  : ["../../LiteMath"],
+    "end" : ""
+}

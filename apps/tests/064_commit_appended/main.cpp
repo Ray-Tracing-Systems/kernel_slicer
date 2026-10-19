@@ -260,13 +260,32 @@ int main(int argc, const char** argv)
     pImpl->CommitAppendedData();
     Step("s8_after_full_commit");
 
-    // (9) usual (non Cmd) call of the control function after all re-allocations
+    // (9) changes of already committed elements: 'm_c' is rewritten entirely by every CommitAppendedData() ("appendRewriteGroups"),
+    //     changed elements of 'm_a' are reported with InvalidateAppendedData(), together with appended ones
+    {
+      for(size_t i = 0; i < pImpl->m_c.size(); i += 7)
+        pImpl->m_c[i] = uint32_t(gen());
+      const size_t firstChanged = pImpl->m_a.size()/3;
+      for(size_t i = firstChanged; i < pImpl->m_a.size(); i += 5)
+        pImpl->m_a[i] = uint32_t(gen());
+      Append(*pImpl, 0, 100, gen);
+      auto pGen = dynamic_cast<AppendTest_Generated*>(pImpl.get());
+      if(pGen != nullptr)
+      {
+        Expect(pGen->InvalidateAppendedData("m_a", firstChanged), "step 9: 'm_a' must be a tracked vector");
+        Expect(!pGen->InvalidateAppendedData("m_unknown", 0), "step 9: unknown vector name must be rejected");
+      }
+      pImpl->CommitAppendedData();
+      Step("s9_changed_elements");
+    }
+
+    // (10) usual (non Cmd) call of the control function after all re-allocations
     {
       DumpResult res;
       res.a.resize(MAX_SIZE); res.b.resize(MAX_SIZE); res.c.resize(MAX_SIZE); res.sizes.resize(4);
       pImpl->Dump(MAX_SIZE, res.a.data(), res.b.data(), res.c.data(), res.sizes.data());
       res.a.resize(pImpl->m_a.size()); res.b.resize(pImpl->m_b.size()); res.c.resize(pImpl->m_c.size());
-      allOk = Check(*pImpl, res, "s9_usual_call") && allOk;
+      allOk = Check(*pImpl, res, "s10_usual_call") && allOk;
     }
     pDumper = nullptr;
   }
