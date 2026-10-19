@@ -1,0 +1,17 @@
+{
+    "mainClass"     : "AppendTest", // must explicitly specify main class as main process 'unit' for slicer
+    "baseClasses"   : [],           // specify all base clases in  reverse order from leaf to root
+    "composClasses" : {},           // specify all classes for composition pattern 
+    "options" : {
+        "-pattern"  : "ipv",
+        "-shaderCC" : "slang",
+        "end" : ""
+    },
+    "appendGroups" : {              // groups of member vectors for CommitAppendedData(), other vectors are in 'otherGroup'
+        "geom" : ["m_a", "m_b"]
+    },
+    "source" : ["test_class.cpp"],
+    "includeProcess" : [],
+    "includeIgnore"  : ["../../LiteMath"],
+    "end" : ""
+}

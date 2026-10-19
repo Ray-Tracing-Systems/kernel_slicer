@@ -117,7 +117,11 @@ protected:
 7. Small per-call parameter arrays (filter weights, coefficients, a transform matrix list) are
    best passed as extra `const T* [[size("n")]]` arguments: they are uploaded on every call.
    Member vectors reach the GPU only through `CommitDeviceData()`, so changing them between
-   calls requires another commit.
+   calls requires another commit. If the program only **appends** to member vectors (scene
+   editing, streaming), also declare `virtual void CommitAppendedData() {}` and call it instead:
+   the generated version copies only the new elements and re-allocates GPU buffers only when they
+   overflow (`appendGroups` in `kmake.json`, see `doc/README_options.md` and
+   `apps/tests/064_commit_appended`).
 8. **Class members do not flow between the control function body and kernels.** On the GPU the
    control function becomes host code that records kernel launches, and kernels see their own copy
    of the class data:

@@ -141,11 +141,43 @@ variants, e.g. `apps/tests/042_atomic_add_float/kmake_hw.json` and `kmake_emul.j
 | `includeProcess`, `includeIgnore` | Folders, as `-I<dir> process` and `-I<dir> ignore` |
 | `excludedControlFunctions` | Names of public methods that must not be treated as control functions |
 | `additionaIncludes` | Extra `#include` lines for the generated header, like `-cpp_include` (the key is spelled this way) |
+| `appendGroups` | Groups of member vectors for `CommitAppendedData()`: `{"group": ["m_vec1", "m_vec2"]}`. See below |
 
 Work group sizes: the defaults (256 for 1D kernels, 32×8 for 2D) are good in most cases. Set
 `wgSize` for named kernels or with `default1D`/`default2D`/`default3D`. The keys `default` and
 `all` apply one size to **every** kernel regardless of its dimension, and they also override
 named entries. A 2D size under `default` breaks 1D reductions, so do not use it.
+
+### Appending to member vectors: CommitAppendedData()
+
+If the main class declares `virtual void CommitAppendedData() {}` (next to `CommitDeviceData()`), the
+generated class tracks `size()` and `capacity()` of the plain member vectors used on GPU and
+implements `CommitAppendedData()`:
+
+- Elements appended since the last `CommitDeviceData()` / `CommitAppendedData()` are copied to GPU;
+  sizes in class data (UBO) are updated together with all other plain members.
+- If data of a vector does not fit its GPU buffer anymore, the whole **group** of this vector is
+  re-allocated, copied again, and the bindings of the group vectors are updated in all descriptor
+  sets. Like `std::vector`, the new GPU capacity has a reserve: `max(capacity(), oldGpuCapacity*factor)`,
+  the factor is `SetAppendGrowFactor(float)` / `GetAppendGrowFactor()` of the generated class (default 2).
+- Every group has its own memory allocation. Groups are listed in the config; vectors that are not
+  listed form the group `otherGroup`:
+
+```jsonc
+"appendGroups" : {
+  "geometry"  : ["m_vertPos", "m_indices"],
+  "materials" : ["m_materials"]
+}
+```
+
+Notes:
+- Changes of already committed elements are not detected: call `CommitDeviceData()` for them.
+- Hash maps, vectors of objects with virtual functions and vectors accessed via buffer reference
+  are not tracked (the translator prints a warning): call `CommitDeviceData()` after changing them.
+- When you record command buffers yourself (`...Cmd` functions), re-record them after
+  `CommitAppendedData()`. After a full `CommitDeviceData()` call `SetVulkanInOutFor_...()` again.
+- `GetAppendGroupReallocCount("group")` and `GetAppendGpuCapacity("m_vec")` of the generated class
+  show what happened. Example and test: `apps/tests/064_commit_appended`.
 
 ### Composition and custom intersection
 

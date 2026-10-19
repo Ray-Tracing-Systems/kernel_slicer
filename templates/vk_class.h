@@ -240,6 +240,21 @@ public:
   {% if HasCommitDeviceFunc %}
   void CommitDeviceData() override { CommitDeviceData(m_ctx.pCopyHelper); }
   {% endif %}
+  {% if HasCommitAppendedFunc %}
+  /// Copies to GPU only elements appended to member vectors since the last CommitDeviceData() / CommitAppendedData()
+  /// and updates sizes of vectors in class data (UBO, together with all other plain members).
+  /// If data of a vector does not fit its GPU buffer anymore, the whole group of this vector ("appendGroups" in config,
+  /// 'otherGroup' for the rest) is re-allocated with reserve (see SetAppendGrowFactor), copied again, and bindings of
+  /// the group vectors are updated in all descriptor sets. Re-record command buffers after it.
+  /// Changes of already committed elements are not detected: use CommitDeviceData() for them.
+  void CommitAppendedData() override { CommitAppendedData(m_ctx.pCopyHelper); }
+  virtual void CommitAppendedData(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyHelper);
+
+  void     SetAppendGrowFactor(float a_factor) { m_appendGrowFactor = std::max(a_factor, 1.0f); } ///< GPU capacity of re-allocated vector is max(capacity(), oldGpuCapacity*factor)
+  float    GetAppendGrowFactor() const         { return m_appendGrowFactor; }
+  uint32_t GetAppendGroupReallocCount(const char* a_groupName) const; ///< how many times CommitAppendedData() re-allocated the group
+  size_t   GetAppendGpuCapacity(const char* a_vectorName) const;      ///< how many elements of the vector fit its current GPU buffer
+  {% endif %}
   {% if HasGetTimeFunc %}
   void GetExecutionTime(const char* a_funcName, float a_out[4]) override;
   {% endif %}
@@ -321,6 +336,29 @@ protected:
   std::vector<MemLoc>        m_internalMems; ///< memory for internal buffers (RTV local, reduction, scan, ...), allocated once in InitVulkanObjects
   VkPhysicalDeviceProperties m_devProps;
   size_t                     m_commitCount = 0;
+  {% if HasCommitAppendedFunc %}
+
+  // CommitAppendedData(): state of tracked member vectors at the last commit and memory of vector groups
+  //
+  struct AppendVectorState
+  {
+    size_t size        = 0; ///<! size()     at the last commit
+    size_t capacity    = 0; ///<! capacity() at the last commit
+    size_t gpuCapacity = 0; ///<! number of elements that fit the GPU buffer
+  };
+  struct AppendGroupState
+  {
+    VkDeviceMemory memory       = VK_NULL_HANDLE; ///<! single allocation for all buffers of the group
+    uint32_t       reallocCount = 0;
+  };
+  std::array<AppendVectorState, {{length(AppendVectors)}}> m_appendVectors;
+  std::array<AppendGroupState,  {{length(AppendGroups)}}> m_appendGroups;
+  float m_appendGrowFactor = 2.0f;
+
+  virtual void CreateAppendGroupBuffers(uint32_t a_groupId, bool a_withReserve); ///< create buffers of the group vectors and allocate memory for them
+  virtual void DeleteAppendGroupBuffers(uint32_t a_groupId);
+  virtual void UpdateDescriptorSetsForAppendGroup(uint32_t a_groupId);          ///< rewrite bindings of the group vectors in all descriptor sets
+  {% endif %}
 
   VkBufferMemoryBarrier BarrierForClearFlags(VkBuffer a_buffer);
   VkBufferMemoryBarrier BarrierForSingleBuffer(VkBuffer a_buffer);

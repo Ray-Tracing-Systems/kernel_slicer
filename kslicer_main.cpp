@@ -801,6 +801,26 @@ int main(int argc, const char **argv)
   inputCodeInfo.mainClassName     = mainClassName;
   inputCodeInfo.mainClassFileName = fileName;
 
+  // groups of member vectors for 'CommitAppendedData()': each group has a separate memory allocation and is re-allocated as a whole,
+  // "appendGroups" : { "geometry" : ["m_vertPos", "m_indices"], "materials" : ["m_materials"] }; other vectors form the group 'otherGroup'
+  //
+  if(inputOptions["appendGroups"].is_object())
+  {
+    for(const auto& group : inputOptions["appendGroups"].items())
+    {
+      std::vector<std::string> names;
+      if(group.value().is_array())
+      {
+        for(const auto& name : group.value())
+          if(name.is_string())
+            names.push_back(name.get<std::string>());
+      }
+      else
+        std::cout << "[kslicer]: WARNING, 'appendGroups/" << group.key().c_str() << "' must be an array of member vector names" << std::endl;
+      inputCodeInfo.appendGroups.push_back(std::make_pair(group.key(), names));
+    }
+  }
+
   // create default Shader Rewriter, don't delete it please!
   //
   clang::Rewriter rewrite2;

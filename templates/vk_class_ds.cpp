@@ -400,6 +400,51 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateAllGeneratedDescriptorSets_{{Ma
 
 ## endfor
 
+{% if HasCommitAppendedFunc %}
+void {{MainClassName}}{{MainClassSuffix}}::UpdateDescriptorSetsForAppendGroup(uint32_t a_groupId)
+{
+  struct BindingToUpdate
+  {
+    VkDescriptorSet  set;
+    uint32_t         binding;
+    VkBuffer         buffer;
+    VkDeviceSize     offset;
+    VkDescriptorType type;
+  };
+  std::vector<BindingToUpdate> bindings;
+## for MainFunc in MainFunctions
+## for DescriptorSet in MainFunc.DescriptorSets
+## for Arg in DescriptorSet.Args
+  {% if Arg.AppendGroup >= 0 %}
+  if(a_groupId == {{Arg.AppendGroup}}) // descriptor set #{{DescriptorSet.Id}}: {{DescriptorSet.KernelName}}Cmd, binding {{Arg.Id}}
+    bindings.push_back({m_allGeneratedDS[{{DescriptorSet.Id}}], {{Arg.Id}}, {{Arg.Name}}Buffer, {{Arg.Name}}Offset, {% if HaveLocalContainers and not MainFunc.IsRTV %}VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC{% else %}VK_DESCRIPTOR_TYPE_STORAGE_BUFFER{% endif %}});
+  {% endif %}
+## endfor
+## endfor
+## endfor
+
+  std::vector<VkDescriptorBufferInfo> bufferInfos(bindings.size());
+  std::vector<VkWriteDescriptorSet>   writes(bindings.size());
+  for(size_t i = 0; i < bindings.size(); i++)
+  {
+    bufferInfos[i]        = VkDescriptorBufferInfo{};
+    bufferInfos[i].buffer = bindings[i].buffer;
+    bufferInfos[i].offset = bindings[i].offset;
+    bufferInfos[i].range  = VK_WHOLE_SIZE;
+
+    writes[i]                 = VkWriteDescriptorSet{};
+    writes[i].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writes[i].dstSet          = bindings[i].set;
+    writes[i].dstBinding      = bindings[i].binding;
+    writes[i].descriptorCount = 1;
+    writes[i].descriptorType  = bindings[i].type;
+    writes[i].pBufferInfo     = &bufferInfos[i];
+  }
+  if(!writes.empty())
+    vkUpdateDescriptorSets(m_device, uint32_t(writes.size()), writes.data(), 0, nullptr);
+}
+
+{% endif %}
 {% if length(IndirectDispatches) > 0 %}
 void {{MainClassName}}{{MainClassSuffix}}::InitIndirectDescriptorSets()
 {

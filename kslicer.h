@@ -1848,6 +1848,7 @@ namespace kslicer
     bool atomicFloatEmul    = false; ///<! '-atomicf_emul 1|2': emulate float InterlockedAdd via CAS loop (Slang/Vulkan only), shaderBufferFloat32AtomicAdd is not required
     int  atomicFloatEmulMode = 0;    ///<! 0: hardware float atomics; 2: CAS on 'uint' view of the same buffer, declared at the same binding ('-atomicf_emul 1' is mapped to 2)
     std::unordered_set<std::string> uintAliasBuffers; ///<! float buffers which are also declared as 'uint' at the same binding for CAS (float atomics emulation)
+    std::vector< std::pair<std::string, std::vector<std::string> > > appendGroups; ///<! 'appendGroups' from config: group name and its member vectors, used by generated 'CommitAppendedData()' 
     bool hasLocalContainers = false;
 
     struct HashMapInfo

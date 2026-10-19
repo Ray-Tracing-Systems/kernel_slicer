@@ -423,6 +423,14 @@ void {{MainClassName}}{{MainClassSuffix}}::DeleteDeviceData()
   m_indirectBuffer = VK_NULL_HANDLE;
   {% endif %}
   FreeAllAllocations(m_allMems); // only memory allocated in InitDeviceData; internal buffers memory (InitBuffers) is in m_internalMems
+  {% if HasCommitAppendedFunc %}
+  for(auto& group : m_appendGroups) // buffers of tracked vectors are destroyed above, together with other member vectors
+  {
+    if(group.memory != VK_NULL_HANDLE)
+      vkFreeMemory(m_device, group.memory, nullptr);
+    group.memory = VK_NULL_HANDLE;
+  }
+  {% endif %}
   {% if UseRayGen %}
   for(size_t i=0;i<m_allShaderTableBuffers.size();i++)
     vkDestroyBuffer(m_device, m_allShaderTableBuffers[i], nullptr);
@@ -1027,6 +1035,8 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
   {% else if Var.WithBuffRef %}
   m_vdata.{{Var.Name}}Buffer = vk_utils::createBuffer(m_device, {{Var.Name}}{{Var.AccessSymb}}capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
   memberVectorsWithDevAddr.push_back(m_vdata.{{Var.Name}}Buffer);
+  {% else if HasCommitAppendedFunc and Var.AppendId >= 0 %}
+  // '{{Var.Name}}' is created in CreateAppendGroupBuffers({{Var.AppendGroup}}): each group of CommitAppendedData() has its own allocation
   {% else %}
   m_vdata.{{Var.Name}}Buffer = vk_utils::createBuffer(m_device, {{Var.Name}}{{Var.AccessSymb}}capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
   memberVectors.push_back(m_vdata.{{Var.Name}}Buffer);
@@ -1071,6 +1081,10 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
   memberVectors.push_back(m_vdata.localTempBuffer);
   {% endif %}
   AllocMemoryForMemberBuffersAndImages(memberVectors, memberTextures);
+  {% if HasCommitAppendedFunc %}
+  for(uint32_t groupId = 0; groupId < uint32_t(m_appendGroups.size()); groupId++)
+    CreateAppendGroupBuffers(groupId, false); // also remembers size() and capacity() of vectors: they are copied to GPU by UpdateDeviceData()
+  {% endif %}
   if(memberVectorsWithDevAddr.size() != 0)
     AllocAndBind(memberVectorsWithDevAddr, VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT);
   {% if HasAllRefs %}
@@ -1103,6 +1117,137 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
   InitIndirectDescriptorSets();
   {% endif %}
 }
+{% if HasCommitAppendedFunc %}
+
+void {{MainClassName}}{{MainClassSuffix}}::CreateAppendGroupBuffers(uint32_t a_groupId, bool a_withReserve)
+{
+  std::vector<VkBuffer> buffers;
+  switch(a_groupId)
+  {
+  {% for Group in AppendGroups %}
+    case {{Group.Id}}: // '{{Group.Name}}'
+    {
+      {% for Vec in Group.Vectors %}
+      {
+        auto& state        = m_appendVectors[{{Vec.AppendId}}];
+        size_t gpuCapacity = {{Vec.Name}}{{Vec.AccessSymb}}capacity();
+        if(a_withReserve && gpuCapacity > state.gpuCapacity)  // the vector has outgrown its buffer: grow like std::vector does
+          gpuCapacity = std::max(gpuCapacity, size_t(double(state.gpuCapacity)*double(m_appendGrowFactor)));
+        else if(a_withReserve)                                 // re-allocated together with other vector of the group: keep its reserve
+          gpuCapacity = std::max(gpuCapacity, state.gpuCapacity);
+        gpuCapacity        = std::max(gpuCapacity, size_t(4));
+        state.size         = {{Vec.Name}}{{Vec.AccessSymb}}size();
+        state.capacity     = {{Vec.Name}}{{Vec.AccessSymb}}capacity();
+        state.gpuCapacity  = gpuCapacity;
+        m_vdata.{{Vec.Name}}Buffer = vk_utils::createBuffer(m_device, gpuCapacity*sizeof({{Vec.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+        m_vdata.{{Vec.Name}}Offset = 0;
+        buffers.push_back(m_vdata.{{Vec.Name}}Buffer);
+      }
+      {% endfor %}
+    }
+    break;
+  {% endfor %}
+    default:
+    break;
+  };
+  m_appendGroups[a_groupId].memory = buffers.empty() ? VK_NULL_HANDLE : vk_utils::allocateAndBindWithPadding(m_device, m_physicalDevice, buffers);
+}
+
+void {{MainClassName}}{{MainClassSuffix}}::DeleteAppendGroupBuffers(uint32_t a_groupId)
+{
+  switch(a_groupId)
+  {
+  {% for Group in AppendGroups %}
+    case {{Group.Id}}: // '{{Group.Name}}'
+    {% for Vec in Group.Vectors %}
+    vkDestroyBuffer(m_device, m_vdata.{{Vec.Name}}Buffer, nullptr);
+    m_vdata.{{Vec.Name}}Buffer = VK_NULL_HANDLE;
+    {% endfor %}
+    break;
+  {% endfor %}
+    default:
+    break;
+  };
+  if(m_appendGroups[a_groupId].memory != VK_NULL_HANDLE)
+    vkFreeMemory(m_device, m_appendGroups[a_groupId].memory, nullptr);
+  m_appendGroups[a_groupId].memory = VK_NULL_HANDLE;
+}
+
+void {{MainClassName}}{{MainClassSuffix}}::CommitAppendedData(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyHelper)
+{
+  if(m_commitCount == 0) // nothing is on GPU yet
+  {
+    CommitDeviceData(a_pCopyHelper);
+    return;
+  }
+
+  // (1) re-allocate groups in which data of at least one vector does not fit its GPU buffer anymore
+  //
+  std::array<bool, {{length(AppendGroups)}}> reallocated;
+  reallocated.fill(false);
+  {% for Vec in AppendVectors %}
+  if({{Vec.Name}}{{Vec.AccessSymb}}capacity() > m_appendVectors[{{Vec.AppendId}}].gpuCapacity)
+    reallocated[{{Vec.AppendGroup}}] = true;
+  {% endfor %}
+  bool deviceIsIdle = false;
+  for(uint32_t groupId = 0; groupId < uint32_t(m_appendGroups.size()); groupId++)
+  {
+    if(!reallocated[groupId])
+      continue;
+    if(!deviceIsIdle)       // buffers of the group may still be used by GPU
+    {
+      vkDeviceWaitIdle(m_device);
+      deviceIsIdle = true;
+    }
+    DeleteAppendGroupBuffers(groupId);
+    CreateAppendGroupBuffers(groupId, true);
+    m_appendGroups[groupId].reallocCount++;
+  }
+
+  // (2) copy whole vectors of re-allocated groups and appended elements of other vectors
+  //
+  {% for Vec in AppendVectors %}
+  {
+    auto& state         = m_appendVectors[{{Vec.AppendId}}];
+    const size_t size   = {{Vec.Name}}{{Vec.AccessSymb}}size();
+    const size_t first  = reallocated[{{Vec.AppendGroup}}] ? 0 : std::min(state.size, size);
+    const size_t offset = (first*sizeof({{Vec.TypeOfData}})) & ~size_t(3); // copy offset must be a multiple of 4
+    if(size > first)
+      a_pCopyHelper->UpdateBuffer(m_vdata.{{Vec.Name}}Buffer, offset, ((const char*){{Vec.Name}}{{Vec.AccessSymb}}data()) + offset, size*sizeof({{Vec.TypeOfData}}) - offset);
+    state.size     = size;
+    state.capacity = {{Vec.Name}}{{Vec.AccessSymb}}capacity();
+  }
+  {% endfor %}
+
+  // (3) bindings of re-allocated vectors in descriptor sets, sizes and capacities of vectors in class data
+  //
+  for(uint32_t groupId = 0; groupId < uint32_t(m_appendGroups.size()); groupId++)
+    if(reallocated[groupId])
+      UpdateDescriptorSetsForAppendGroup(groupId);
+  UpdatePlainMembers(a_pCopyHelper);
+  m_pLastCopyHelper = a_pCopyHelper;
+}
+
+uint32_t {{MainClassName}}{{MainClassSuffix}}::GetAppendGroupReallocCount(const char* a_groupName) const
+{
+  const std::string name(a_groupName);
+  {% for Group in AppendGroups %}
+  if(name == "{{Group.Name}}")
+    return m_appendGroups[{{Group.Id}}].reallocCount;
+  {% endfor %}
+  return 0;
+}
+
+size_t {{MainClassName}}{{MainClassSuffix}}::GetAppendGpuCapacity(const char* a_vectorName) const
+{
+  const std::string name(a_vectorName);
+  {% for Vec in AppendVectors %}
+  if(name == "{{Vec.Name}}")
+    return m_appendVectors[{{Vec.AppendId}}].gpuCapacity;
+  {% endfor %}
+  return 0;
+}
+{% endif %}
 
 {% if length(IndirectDispatches) > 0 %}
 void {{MainClassName}}{{MainClassSuffix}}::InitIndirectBufferUpdateResources(const char* a_filePath)

@@ -761,6 +761,24 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data["ClassVars"].push_back(local);
   }
 
+  // 'CommitAppendedData()': plain member vectors are tracked (size, capacity) and split to groups ("appendGroups" in config),
+  // each group has a separate memory allocation and is re-allocated as a whole; vectors not listed in config form 'otherGroup'
+  //
+  const bool hasCommitAppended = (a_classInfo.allMemberFunctions.find("CommitAppendedData") != a_classInfo.allMemberFunctions.end());
+  std::unordered_map<std::string, int> appendGroupOfVector; // tracked vector name ==> group id
+  std::unordered_map<std::string, int> appendGroupInConfig; // vector name from config ==> group id
+  std::vector<std::string>             appendGroupNames;
+  for(const auto& group : a_classInfo.appendGroups)
+  {
+    for(const auto& vecName : group.second)
+      appendGroupInConfig[vecName] = int(appendGroupNames.size());
+    appendGroupNames.push_back(group.first);
+  }
+  const int appendOtherGroupId = int(appendGroupNames.size());
+  appendGroupNames.push_back("otherGroup");
+  data["AppendVectors"] = std::vector<json>();
+  data["AppendGroups"]  = std::vector<json>();
+
   data["ClassVectorVars"]   = std::vector<json>();
   data["HasHashMaps"]       = false;
   data["ClassTextureVars"]  = std::vector<json>();
@@ -903,11 +921,50 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       else if(kslicer::IsHashMapContainer(v.containerType))
         continue;
 
+      local["AppendId"]    = -1;
+      local["AppendGroup"] = -1;
+      if(hasCommitAppended)
+      {
+        const bool plainVector = !local["IsHashMap"].get<bool>() && !isVFHBuffer && !local["WithBuffRef"].get<bool>();
+        if(plainVector)
+        {
+          auto pGroup        = appendGroupInConfig.find(v.name);
+          const int groupId  = (pGroup == appendGroupInConfig.end()) ? appendOtherGroupId : pGroup->second;
+          local["AppendId"]    = int(data["AppendVectors"].size());
+          local["AppendGroup"] = groupId;
+          appendGroupOfVector[v.name] = groupId;
+          data["AppendVectors"].push_back(local);
+        }
+        else
+          std::cout << "  [kslicer]: warning, 'CommitAppendedData' does not track '" << v.name.c_str() << "' (hash map, virtual objects or buffer reference), call 'CommitDeviceData' after changing it" << std::endl;
+      }
+
       data["ClassVectorVars"].push_back(local);
     }
     // TODO: add processing for Scene/Acceleration structures
 
   }
+
+  if(hasCommitAppended)
+  {
+    for(int groupId = 0; groupId < int(appendGroupNames.size()); groupId++)
+    {
+      json group;
+      group["Id"]      = groupId;
+      group["Name"]    = appendGroupNames[groupId];
+      group["Vectors"] = std::vector<json>();
+      for(const auto& vec : data["AppendVectors"])
+        if(vec["AppendGroup"].get<int>() == groupId)
+          group["Vectors"].push_back(vec);
+      data["AppendGroups"].push_back(group);
+    }
+    for(const auto& vecGroup : appendGroupInConfig)
+      if(appendGroupOfVector.find(vecGroup.first) == appendGroupOfVector.end())
+        std::cout << "  [kslicer]: warning, 'appendGroups/" << appendGroupNames[vecGroup.second].c_str() << "' contains '" << vecGroup.first.c_str() << "', which is not a member vector used on GPU" << std::endl;
+  }
+  else if(!a_classInfo.appendGroups.empty())
+    std::cout << "  [kslicer]: warning, 'appendGroups' is set in config, but function 'CommitAppendedData' is not found in class" << std::endl;
+  data["HasCommitAppendedFunc"] = hasCommitAppended;
 
   data["RedVectorVars"] = std::vector<std::string>();
   for(const auto& v : a_classInfo.dataMembers)
@@ -1485,6 +1542,13 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         arg["Id"]            = realId;
         arg["Name"]          = dsArgName;
         arg["NameOriginal"]  = dsArgs.descriptorSetsInfo[j].name;
+        arg["AppendGroup"]   = -1; // member vector tracked by 'CommitAppendedData()': its binding is updated when the group is re-allocated
+        if(dsArgName.find("m_vdata.") == 0)
+        {
+          auto pTracked = appendGroupOfVector.find(dsArgName.substr(8));
+          if(pTracked != appendGroupOfVector.end())
+            arg["AppendGroup"] = pTracked->second;
+        }
         arg["Offset"]        = 0;
         arg["IsTexture"]     = dsArgs.descriptorSetsInfo[j].isTexture();
         arg["IsAccelStruct"] = dsArgs.descriptorSetsInfo[j].isAccelStruct();
@@ -1553,6 +1617,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           arg["Id"]            = realId;
           arg["Name"]          = "m_vdata." + container.second.name;
           arg["NameOriginal"]  = container.second.name;
+          arg["AppendGroup"]   = -1;
           arg["IsTexture"]     = container.second.isTexture();
           arg["IsAccelStruct"] = container.second.isAccelStruct();
           arg["IsTextureArray"]= false;
@@ -1600,6 +1665,12 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           {
             if(container.second.isSetter)
               arg["Name"] = container.second.setterPrefix + "Vulkan." + container.second.setterSuffix;
+            else
+            {
+              auto pTracked = appendGroupOfVector.find(container.second.name);
+              if(pTracked != appendGroupOfVector.end())
+                arg["AppendGroup"] = pTracked->second;
+            }
             totalBuffersUsed++;
           }
 
@@ -1613,6 +1684,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           json arg;
           arg["Id"]        = realId;
           arg["Name"]      = "m_indirect";
+          arg["AppendGroup"]   = -1;
           arg["IsTexture"]     = false;
           arg["IsTextureArray"]= false;
           arg["IsAccelStruct"] = false;

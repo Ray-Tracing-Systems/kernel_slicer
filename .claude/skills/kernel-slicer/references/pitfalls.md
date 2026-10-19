@@ -161,7 +161,9 @@ pImpl->SetMaxImageSize(w, h);
 pImpl->CommitDeviceData();
 ```
 
-Every later change of member data on the host needs another `CommitDeviceData()`.
+Every later change of member data on the host needs another `CommitDeviceData()`. If elements were
+only appended to member vectors, `CommitAppendedData()` is enough and much cheaper (declare it in the
+class as `virtual void CommitAppendedData() {}`).
 
 ## 13. Using RTV names by accident
 

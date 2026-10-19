@@ -340,7 +340,8 @@ cd apps/30_metaballs
 
 A config can also list base classes of the main class (`baseClasses`), describe composition with a
 ray tracing scene and custom intersection functions (`composClasses`), set defines and default work
-group sizes. A sample may keep several configs for different variants, for example
+group sizes, and groups of member vectors for `CommitAppendedData()` (`appendGroups`), which copies
+only appended elements to GPU instead of a full `CommitDeviceData()`. A sample may keep several configs for different variants, for example
 `apps/tests/042_atomic_add_float/kmake_hw.json` and `kmake_emul.json`. All keys are described in
 [doc/README_options.md](doc/README_options.md#config-file-kmakejson).
 
