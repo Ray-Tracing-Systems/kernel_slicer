@@ -54,4 +54,10 @@ namespace kslicer {
         diagnostic_engine.Report(expr->getExprLoc(), id);
     }
 
+    void error_missing_size_annotation(const ParmVarDecl* param) {
+        DiagnosticsEngine& diagnostic_engine = compiler()->getDiagnostics();
+        uint32_t id = diagnostic_engine.getCustomDiagID(DiagnosticsEngine::Error, "Missing size annotation");
+        diagnostic_engine.Report(param->getLocation(), id);
+    }
+
 } // namespace kslicer

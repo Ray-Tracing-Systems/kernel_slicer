@@ -4,6 +4,7 @@
 #include "codegen.h"
 #include "errors.h"
 #include "utils.h"
+#include "clang/AST/Attr.h"
 #include <clang/AST/AST.h>
 #include <inja.hpp>
 namespace kslicer {
@@ -312,10 +313,30 @@ float3   operator*(float3x3 m, float3 v) { return mul(m,v); }
             for (size_t j = 0; j < i.decl->getNumParams(); j++) {
                 auto p = i.decl->getParamDecl(j);
                 if (p->getType()->isPointerType()) {
+                    bool found_size_annotation = false;
+                    std::string size_value;
+                    for (const AnnotateAttr* attr : p->specific_attrs<AnnotateAttr>()) {
+                        if (attr->getAnnotation() == StringRef{"kslicer::size"}) {
+                            KSLICER_ACCERT(attr->args_size() == 1);
+                            const StringLiteral* value = dyn_cast<StringLiteral>(*attr->args_begin());
+                            KSLICER_ACCERT(value);
+                            std::string text = string_from_source_range(value->getSourceRange());
+                            text = text.substr(1, text.length() - 2);
+                            outs() << i.decl->getNameAsString() << ": " << p->getNameAsString() << ".size = " << text
+                                   << "\n";
+                            size_value = text;
+                            found_size_annotation = true;
+                        }
+                    }
+
+                    if (!found_size_annotation) {
+                        error_missing_size_annotation(p);
+                    }
+
                     auto var = json::object();
                     var["IsTexture"] = false;
                     var["Name"] = p->getNameAsString();
-                    var["DataSize"] = "width * height";
+                    var["DataSize"] = size_value;
                     var["DataType"] = render_type_name(p->getType()->getPointeeType());
                     out["FullImpl"]["OutputData"].push_back(var);
                     in_out += p->getNameAsString() + "GPU" + ", 0, ";

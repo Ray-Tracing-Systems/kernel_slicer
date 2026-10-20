@@ -7,6 +7,7 @@ namespace clang {
     class CXXOperatorCallExpr;
     class Expr;
     class FunctionDecl;
+    class ParmVarDecl;
 } // namespace clang
 
 namespace kslicer {
@@ -27,5 +28,7 @@ namespace kslicer {
     void error_function_without_definition(const FunctionDecl* function);
 
     void error_invalid_for_loop_condition(const Expr* expr);
+
+    void error_missing_size_annotation(const ParmVarDecl* param);
 
 } // namespace kslicer
