@@ -4,6 +4,6 @@
 
 namespace kslicer {
 
-    void codegen(const Config& config, const ClassInfo& info);
+    void codegen(std::filesystem::path kslicer_directory, const Config& config, const ClassInfo& info);
 
 }

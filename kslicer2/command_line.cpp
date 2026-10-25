@@ -1,8 +1,8 @@
 #include "command_line.h"
 #include "utils.h"
-
+#include <iostream>
 namespace kslicer {
-    CommandLine parse_command_line(int argc, char** argv) {
+    CommandLine CommandLine::from_args(int argc, char** argv) {
         CommandLine out{};
         bool selfdir_set = false;
         bool config_set = false;
@@ -16,7 +16,7 @@ namespace kslicer {
                     fprintf(stderr, "error: Expected value for -selfdir.\n");
                     break;
                 }
-                out.selfdir = argv[i + 1];
+                out.kslicer_directory = argv[i + 1];
                 selfdir_set = true;
                 i++;
             } else if (key == "-config") {
@@ -24,7 +24,7 @@ namespace kslicer {
                     error = 1;
                     fprintf(stderr, "error: Expected value for -config.\n");
                 }
-                out.config = argv[i + 1];
+                out.config_path = argv[i + 1];
                 config_set = true;
                 i++;
             }
@@ -44,4 +44,10 @@ namespace kslicer {
 
         return out;
     }
+
+    void CommandLine::dump() const {
+        std::cout << "kslicer_directory: " << kslicer_directory << std::endl;
+        std::cout << "config_path: " << config_path << std::endl;
+    }
+
 } // namespace kslicer

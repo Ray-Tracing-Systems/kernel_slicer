@@ -4,16 +4,15 @@
 
 namespace kslicer {
     struct Config {
-        std::filesystem::path config_path;
-        std::filesystem::path kslicer_directory;
-        std::string main_class;
+        explicit Config(std::filesystem::path config_path);
+        void dump() const;
+
+        std::string class_name;
         std::string suffix;
-        std::filesystem::path base_directory;
-        std::filesystem::path shaders_directory;
+        std::string shaders_directory_prefix;
         std::vector<std::filesystem::path> sources;
         std::vector<std::filesystem::path> include_directories;
+        std::filesystem::path shaders_directory;
     };
-
-    Config read_config_from_file(std::filesystem::path path);
 
 } // namespace kslicer

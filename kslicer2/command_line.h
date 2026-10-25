@@ -4,10 +4,11 @@
 namespace kslicer {
 
     struct CommandLine {
-        std::filesystem::path selfdir;
-        std::filesystem::path config;
-    };
+        static CommandLine from_args(int argc, char** argv);
+        void dump() const;
 
-    CommandLine parse_command_line(int argc, char** argv);
+        std::filesystem::path kslicer_directory;
+        std::filesystem::path config_path;
+    };
 
 } // namespace kslicer

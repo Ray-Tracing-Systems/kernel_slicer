@@ -11,10 +11,9 @@ namespace kslicer {
     using namespace nlohmann;
     using llvm::outs;
 
-    void codegen(const Config& config, const ClassInfo& info) {
+    void codegen(std::filesystem::path kslicer_directory, const Config& config, const ClassInfo& info) {
 
-        auto base = (config.config_path.parent_path() / config.base_directory).lexically_normal();
-        auto class_directory = (base / config.sources[0]).parent_path().lexically_normal();
+        auto class_directory = config.sources[0].parent_path();
 
         json data = json::object();
 
@@ -225,8 +224,7 @@ float3   operator*(float3x3 m, float3 v) { return mul(m,v); }
                 codegen.buffer += ")\n";
                 codegen.render_statement(i.body, 1);
                 codegen.buffer += "}\n";
-                std::ofstream file(base / config.shaders_directory / ("shaders" + config.suffix) /
-                                   (i.decl->getNameAsString() + ".slang"));
+                std::ofstream file(config.shaders_directory / (i.decl->getNameAsString() + ".slang"));
                 file << codegen.buffer;
             }
 
@@ -500,7 +498,7 @@ float3   operator*(float3x3 m, float3 v) { return mul(m,v); }
         data["UseServiceSort"] = false;
         data["HasAllRefs"] = false;
         data["UseRayGen"] = false;
-        data["IncludeClassDecl"] = config.main_class + config.suffix + ".h";
+        data["IncludeClassDecl"] = config.class_name + config.suffix + ".h";
         data["SceneMembers"] = json::array();
         data["ForceProxy"] = false;
         data["IntersectionHierarhcy"] = json::object();
@@ -510,11 +508,11 @@ float3   operator*(float3x3 m, float3 v) { return mul(m,v); }
         {
             auto ctor = json::object();
             ctor["NumParams"] = 0;
-            ctor["ClassName"] = config.main_class;
+            ctor["ClassName"] = config.class_name;
             data["Constructors"].push_back(ctor);
         }
 
-        data["MainClassName"] = config.main_class;
+        data["MainClassName"] = config.class_name;
         data["MainClassSuffix"] = config.suffix;
 
         data["SlangShaders"] = true;
@@ -809,7 +807,7 @@ float3   operator*(float3x3 m, float3 v) { return mul(m,v); }
         data["TotalAccels"] = 0;
         // data["TotalDSNumber"] = 13; // WHY???
 
-        data["MainInclude"] = config.main_class + ".h";
+        data["MainInclude"] = config.class_name + ".h";
         data["GenGpuApi"] = false;
         data["AdditionalIncludes"] = json::array();
 
@@ -848,7 +846,7 @@ float3   operator*(float3x3 m, float3 v) { return mul(m,v); }
         data["UpdateMembersVectorData"] = true;
         data["UpdateMembersTextureData"] = false;
         data["HasGetResDirFunc"] = false;
-        data["ShaderFolderPrefix"] = config.shaders_directory.string();
+        data["ShaderFolderPrefix"] = config.shaders_directory_prefix;
         data["PlainMembersUpdateFunctions"] = json::array();
         data["VectorMembersUpdateFunctions"] = json::array();
         data["SetterVars"] = json::array();
@@ -863,31 +861,31 @@ float3   operator*(float3x3 m, float3 v) { return mul(m,v); }
         env.set_lstrip_blocks(true);
 
         {
-            inja::Template t = env.parse_template((config.kslicer_directory / "templates/vk_class.h").string());
+            inja::Template t = env.parse_template((kslicer_directory / "templates/vk_class.h").string());
             std::string result = env.render(t, data);
 
-            std::ofstream out(class_directory / (config.main_class + config.suffix + ".h"));
+            std::ofstream out(class_directory / (config.class_name + config.suffix + ".h"));
             out << result << std::endl;
         }
         {
-            inja::Template t = env.parse_template((config.kslicer_directory / "templates/vk_class.cpp").string());
+            inja::Template t = env.parse_template((kslicer_directory / "templates/vk_class.cpp").string());
             std::string result = env.render(t, data);
 
-            std::ofstream out(class_directory / (config.main_class + config.suffix + ".cpp"));
+            std::ofstream out(class_directory / (config.class_name + config.suffix + ".cpp"));
             out << result << std::endl;
         }
         {
-            inja::Template t = env.parse_template((config.kslicer_directory / "templates/vk_class_init.cpp").string());
+            inja::Template t = env.parse_template((kslicer_directory / "templates/vk_class_init.cpp").string());
             std::string result = env.render(t, data);
 
-            std::ofstream out(class_directory / (config.main_class + config.suffix + "_init.cpp"));
+            std::ofstream out(class_directory / (config.class_name + config.suffix + "_init.cpp"));
             out << result << std::endl;
         }
         {
-            inja::Template t = env.parse_template((config.kslicer_directory / "templates/vk_class_ds.cpp").string());
+            inja::Template t = env.parse_template((kslicer_directory / "templates/vk_class_ds.cpp").string());
             std::string result = env.render(t, data);
 
-            std::ofstream out(class_directory / (config.main_class + config.suffix + "_ds.cpp"));
+            std::ofstream out(class_directory / (config.class_name + config.suffix + "_ds.cpp"));
             out << result << std::endl;
         }
     }
