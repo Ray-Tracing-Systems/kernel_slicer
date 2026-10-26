@@ -93,8 +93,28 @@ uint64_t kslicer::GetHashOfSourceRange(const clang::SourceRange& a_range)
 }
 
 
+bool kslicer::IsInsideLoopOrSwitch(const clang::Stmt* a_stmt, clang::ASTContext& a_context)
+{
+  clang::DynTypedNodeList parents = a_context.getParents(*a_stmt);
+  while(!parents.empty())
+  {
+    const clang::DynTypedNode& parent = parents[0];
+    if(parent.get<clang::FunctionDecl>() != nullptr || parent.get<clang::LambdaExpr>() != nullptr)
+      return false;
+    if(parent.get<clang::ForStmt>() != nullptr || parent.get<clang::WhileStmt>() != nullptr || parent.get<clang::DoStmt>() != nullptr ||
+       parent.get<clang::SwitchStmt>() != nullptr || parent.get<clang::CXXForRangeStmt>() != nullptr)
+      return true;
+    parents = a_context.getParents(parent);
+  }
+  return false;
+}
+
+static uint32_t g_errorCount = 0;
+uint32_t kslicer::GetErrorCount() { return g_errorCount; }
+
 void kslicer::PrintError(const std::string& a_msg, const clang::SourceRange& a_range, const clang::SourceManager& a_sm)
 {
+  g_errorCount++;
   const auto beginLoc  = a_range.getBegin();
   const auto inFileLoc = a_sm.getPresumedLoc(beginLoc);
 
@@ -386,7 +406,8 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
                                                                    std::vector<std::string>& allFiles,
                                                                    std::vector<std::string>& ignoreFiles,
                                                                    std::vector<std::string>& processFiles,
-                                                                   std::vector<std::string>& cppIncludes)
+                                                                   std::vector<std::string>& cppIncludes,
+                                                                   const std::unordered_map<std::string, std::string>& a_configParams)
 {
   std::unordered_map<std::string, std::string> cmdLineParams;
   for(int i=0; i<argc; i++)
@@ -440,7 +461,7 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
   if(allFiles.size() == 0)
   {
     std::cout << "[main]: no input file is specified " << std::endl;
-    exit(0);
+    exit(1);
   }
   //else if(allFiles.size() == 1)
   //  fileName = allFiles[0];
@@ -452,11 +473,15 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
     auto folderPath = fileName.parent_path();
     auto fileName2  = fileName.filename();
     fileName2.replace_extension("");
-    
-    if (cmdLineParams.find("-temp_suffix") != cmdLineParams.end())
+
+    std::unordered_map<std::string, std::string> mergeParams = a_configParams; // options from config, overridden by command line
+    for(const auto& param : cmdLineParams)
+      mergeParams[param.first] = param.second;
+
+    if (mergeParams.find("-temp_suffix") != mergeParams.end())
     {
-      std::cout << "[kslicer] Found custom temp file suffix \"" << cmdLineParams["-temp_suffix"] << "\"" << std::endl;
-      fileName2.concat("_" + cmdLineParams["-temp_suffix"] + "_temp.cpp");
+      std::cout << "[kslicer] Found custom temp file suffix \"" << mergeParams["-temp_suffix"] << "\"" << std::endl;
+      fileName2.concat("_" + mergeParams["-temp_suffix"] + "_temp.cpp");
     }
     else {
       fileName2.concat("_temp.cpp");
@@ -469,8 +494,8 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
     for(auto def : defines)
       fout << "#define " << def.first << " " << def.second << std::endl;
 
-    auto pExpand = cmdLineParams.find("-expand_macro");
-    if(pExpand != cmdLineParams.end() && (pExpand->second == "1" || pExpand->second == "true")) // merging with macro expansion
+    auto pExpand = mergeParams.find("-expand_macro");
+    if(pExpand != mergeParams.end() && (pExpand->second == "1" || pExpand->second == "true")) // merging with macro expansion
     {
       std::cout << "[kslicer]: expand multiline macro defs; please note kslicer calls separate clang installation!" << std::endl;
       

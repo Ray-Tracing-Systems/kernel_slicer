@@ -1938,6 +1938,8 @@ namespace kslicer
 
   void PrintError(const std::string& a_msg, const clang::SourceRange& a_range, const clang::SourceManager& a_sm);
   void PrintWarning(const std::string& a_msg, const clang::SourceRange& a_range, const clang::SourceManager& a_sm);
+  uint32_t GetErrorCount(); ///<! number of errors printed via PrintError; kslicer returns non zero exit code if it is not 0
+  bool IsInsideLoopOrSwitch(const clang::Stmt* a_stmt, clang::ASTContext& a_context); ///<! is there a loop or switch between statement and its function
   void ExtractTypeAndVarNameFromConstructor(clang::CXXConstructExpr* constructExpr, clang::ASTContext* astContext, std::string& varName, std::string& typeName);
 
 
@@ -2045,7 +2047,8 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
                                                                    std::vector<std::string>& allFiles,
                                                                    std::vector<std::string>& ignoreFiles,
                                                                    std::vector<std::string>& processFiles,
-                                                                   std::vector<std::string>& cppIncludes);
+                                                                   std::vector<std::string>& cppIncludes,
+                                                                   const std::unordered_map<std::string, std::string>& a_configParams);
 
 std::vector<const char*> ExcludeSlicerParams(int argc, const char** argv, const std::unordered_map<std::string,std::string>& params, const char* a_mainFileName,  const std::unordered_map<std::string,std::string>& defines);
 

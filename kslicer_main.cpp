@@ -170,17 +170,37 @@ int main(int argc, const char **argv)
 
   std::vector<std::string> allFiles = ListProcessedFiles(inputOptions["source"], baseProjectPath);
 
+  // options which may be specified several times (like '-intersectionWhiteList A -intersectionWhiteList B')
+  // are written in config as arrays: "-intersectionWhiteList" : ["A", "B"]
+  //
+  std::unordered_map<std::string, std::string>     paramsFromConfigMap;
+  std::vector<std::pair<std::string, std::string>> multiParams; // all key-value pairs in order: config first, command line next
+  for(const auto& param : paramsFromConfig.items())
+  {
+    if(param.value().is_array())
+    {
+      for(const auto& elem : param.value())
+        multiParams.push_back(std::make_pair(param.key(), elem.is_string() ? elem.get<std::string>() : elem.dump()));
+      continue;
+    }
+    const std::string value = param.value().is_string() ? param.value().get<std::string>() : param.value().dump();
+    paramsFromConfigMap[param.key()] = value;
+    multiParams.push_back(std::make_pair(param.key(), value));
+  }
+  for(int argId = 1; argId+1 < argc; argId++)
+    multiParams.push_back(std::make_pair(std::string(argv[argId]), std::string(argv[argId+1])));
+
   std::vector<std::string> ignoreFiles;
   std::vector<std::string> processFiles;
   std::vector<std::string> cppIncludesAdditional;
   std::filesystem::path    fileName;
-  auto paramsFromCmdLine = ReadCommandLineParams(argc, argv, defines, fileName,  allFiles, ignoreFiles, processFiles, cppIncludesAdditional);
+  auto paramsFromCmdLine = ReadCommandLineParams(argc, argv, defines, fileName,  allFiles, ignoreFiles, processFiles, cppIncludesAdditional, paramsFromConfigMap);
 
   std::unordered_map<std::string, std::string> params;
   {
-    for(const auto& param : paramsFromConfig.items()) // take params initially from config
-      params[param.key()] = param.value().is_string() ? param.value().get<std::string>() : param.value().dump();
-                                                  
+    for(const auto& param : paramsFromConfigMap)      // take params initially from config
+      params[param.first] = param.second;
+
     for(const auto& param : paramsFromCmdLine)        // and overide them from command line
       params[param.first] = param.second;
   }
@@ -397,7 +417,7 @@ int main(int argc, const char **argv)
 
     std::filesystem::path path(folder.get<std::string>());
     if(!path.is_absolute())
-      path = std::filesystem::absolute(baseProjectPath / path);
+      path = std::filesystem::absolute(baseProjectPath / path).lexically_normal();
 
     if(std::filesystem::exists(path) && std::filesystem::is_directory(path))
       processFolders.push_back(path);
@@ -412,7 +432,7 @@ int main(int argc, const char **argv)
 
     std::filesystem::path path(folder.get<std::string>());
     if(!path.is_absolute())
-      path = std::filesystem::absolute(baseProjectPath / path);
+      path = std::filesystem::absolute(baseProjectPath / path).lexically_normal();
 
     if(std::filesystem::exists(path) && std::filesystem::is_directory(path))
       ignoreFolders.push_back(path);
@@ -437,7 +457,7 @@ int main(int argc, const char **argv)
   if(!fin.is_open())
   {
     std::cout << "[main]: error, input file " << fileName.c_str() << " not found!" << std::endl;
-    return 0;
+    return 1;
   }
   fin.close();
 
@@ -547,56 +567,58 @@ int main(int argc, const char **argv)
 
   std::vector<std::string> baseClases;
 
-  for(int argId = 1; argId < argc; argId++ )
+  for(const auto& keyVal : multiParams)
   {
-    if(std::string(argv[argId]) == "-intersectionShader" && argId+1 < argc) {
-      std::string shaderClassAndFunc = argv[argId+1];
+    const std::string& key   = keyVal.first;
+    const std::string& value = keyVal.second;
+    if(key == "-intersectionShader") {
+      std::string shaderClassAndFunc = value;
       auto splitPos = shaderClassAndFunc.find("::");
       std::string className = shaderClassAndFunc.substr(0, splitPos);
       std::string funcName  = shaderClassAndFunc.substr(splitPos + 2);
       inputCodeInfo.intersectionShaders.push_back( std::make_pair(className, funcName) );
     }
-    else if(std::string(argv[argId]) == "-intersectionTriangle" && argId+1 < argc) {
-      const std::string className = argv[argId+1];
+    else if(key == "-intersectionTriangle") {
+      const std::string className = value;
       inputCodeInfo.intersectionTriangle.push_back( std::make_pair(className, className) );
     }
-    else if(std::string(argv[argId]) == "-intersectionWhiteList" && argId+1 < argc) {
-      const std::string className = argv[argId+1];
+    else if(key == "-intersectionWhiteList") {
+      const std::string className = value;
       inputCodeInfo.intersectionWhiteList.insert(className);
     }
-    else if(std::string(argv[argId]) == "-intersectionBlackList" && argId+1 < argc) {
-      const std::string className = argv[argId+1];
+    else if(key == "-intersectionBlackList") {
+      const std::string className = value;
       inputCodeInfo.intersectionBlackList.insert(className);
     }
-    else if (std::string(argv[argId]) == "-baseClass" && argId+1 < argc) {
-      baseClases.push_back(argv[argId+1]);
+    else if (key == "-baseClass") {
+      baseClases.push_back(value);
     }
-    else if(std::string(argv[argId]) == "-with_buffer_reference" && argId+1 < argc)
+    else if(key == "-with_buffer_reference")
     {
-      const std::string buffName = argv[argId+1];
+      const std::string buffName = value;
       if(buffName == "all")
         inputCodeInfo.withBufferReferenceAll = true;
       else if(buffName != "")
         inputCodeInfo.withBufferReference.insert(buffName);
     }
-    else if(std::string(argv[argId]) == "-without_buffer_reference" && argId+1 < argc)
+    else if(key == "-without_buffer_reference")
     {
-      const std::string buffName = argv[argId+1];
+      const std::string buffName = value;
       if(buffName != "")
         inputCodeInfo.withoutBufferReference.insert(buffName);
     }
-    else if(std::string(argv[argId]) == "-typedef" && argId+1 < argc)
+    else if(key == "-typedef")
     {
-      const std::string buffName = argv[argId+1];
+      const std::string buffName = value;
       std::stringstream strIn(buffName);
       char original[64];
       char replace[64];
       strIn >> original >> replace;
       inputCodeInfo.userTypedefs.push_back(std::make_pair(std::string(original), std::string(replace)));
     }
-    else if(std::string(argv[argId]) == "-intersectionShaderPlace" && argId+1 < argc)
+    else if(key == "-intersectionShaderPlace")
     {
-      composeIntersections.push_back(argv[argId+1]);
+      composeIntersections.push_back(value);
     }
   }
 
@@ -867,7 +889,7 @@ int main(int argc, const char **argv)
   if(firstPassData.rv.mci.astNode == nullptr)
   {
     std::cout << "  [main]: critical error, main class '" << mainClassName.c_str() << "' not found" << std::endl;
-    return 0;
+    return 1;
   }
 
   // вызов compiler.getDiagnosticClient().EndSourceFile() 
@@ -955,7 +977,7 @@ int main(int argc, const char **argv)
   if(inputCodeInfo.mainClassASTNode == nullptr)
   {
     std::cout << "[main]: ERROR, main class " << mainClassName.c_str() << " not found" << std::endl;
-    return 0;
+    return 1;
   }
 
   std::cout << "}" << std::endl;
@@ -1447,6 +1469,8 @@ int main(int argc, const char **argv)
   uint32_t defaultWgSize[3][3] = {{256, 1, 1}, {32,  8, 1}, {8,   8, 8}};
 
   auto kernelsOptionsAll = inputOptions["kernels"];
+  if(!kernelsOptionsAll.is_object())                   // operator[] below turns null into object and invalidates 'pDefaultOpts'
+    kernelsOptionsAll = nlohmann::json::object();
   auto pDefaultOpts = kernelsOptionsAll.find("all");
   if(pDefaultOpts == kernelsOptionsAll.end())
     pDefaultOpts = kernelsOptionsAll.find("default");
@@ -1839,6 +1863,12 @@ int main(int argc, const char **argv)
   {
     std::cout << "(10) Removing tmp file " << mainFileNameStr.c_str() << std::endl;
     std::filesystem::remove(fileName);
+  }
+
+  if(kslicer::GetErrorCount() != 0)
+  {
+    std::cout << "(10) Finished with " << kslicer::GetErrorCount() << " error(s)! " << std::endl;
+    return 1;
   }
 
   std::cout << "(10) Finished! " << std::endl;  

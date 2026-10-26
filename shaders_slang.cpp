@@ -1104,14 +1104,17 @@ bool kslicer::SlangRewriter::VisitDeclStmt_Impl(clang::DeclStmt* decl)
 
 bool kslicer::SlangRewriter::VisitReturnStmt_Impl(clang::ReturnStmt* ret)
 {
-  // RTV kernel which returns bool: 'return expr;' ==> 'kgenExitCond = expr;', thread flags are set in kernel epilog
+  // RTV kernel which returns bool: 'return expr;' ==> '{ kgenExitCond = expr; break; }', thread flags are set in kernel epilog;
+  // the kernel body is placed inside 'do { ... } while(false)' (see 'generated.slang'), so 'break' leaves it
   //
   const bool inKernelBody = m_kernelMode && m_pCurrKernel != nullptr && m_pCurrFuncInfo == nullptr && !processFuncMember;
   if(!inKernelBody || !m_pCurrKernel->isBoolTyped || m_codeInfo->megakernelRTV || ret->getRetValue() == nullptr || !WasNotRewrittenYet(ret))
     return true;
 
+  if(kslicer::IsInsideLoopOrSwitch(ret, m_compiler.getASTContext()))
+    kslicer::PrintError("'return' inside a loop or switch of RTV kernel which returns bool is not supported, assign result to a variable and return it after the loop", ret->getSourceRange(), m_compiler.getSourceManager());
   const std::string retExprText = RecursiveRewrite(ret->getRetValue());
-  ReplaceTextOrWorkAround(ret->getSourceRange(), "kgenExitCond = " + retExprText);
+  ReplaceTextOrWorkAround(ret->getSourceRange(), "{ kgenExitCond = " + retExprText + "; break; }");
   MarkRewritten(ret);
   return true;
 }

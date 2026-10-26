@@ -119,9 +119,15 @@ void main(uint3 a_globalTID: SV_DispatchThreadID, {% if Kernel.HasEpilog or Kern
   if(runThisThread)
   {
   {% endif %}  
+  {% if Kernel.IsBoolean %}
+  do { // 'return x;' of the kernel is rewritten to '{ kgenExitCond = x; break; }'
+  {% endif %}
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
   {{Kernel.Source}}
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
+  {% if Kernel.IsBoolean %}
+  } while(false);
+  {% endif %}
   {% if not Kernel.IsSingleThreaded %}
   }
   {% endif %}  

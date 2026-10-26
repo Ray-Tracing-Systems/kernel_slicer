@@ -512,8 +512,12 @@ bool kslicer::KernelRewriter::VisitReturnStmt_Impl(ReturnStmt* ret)
   
   if(WasNotRewrittenYet(ret) && m_kernelIsBoolTyped && !m_codeInfo->megakernelRTV)
   {
+    // the kernel body is placed inside 'do { ... } while(false)' (see 'generated.glsl'), so 'break' leaves it; GLSL does not support goto
+    //
+    if(kslicer::IsInsideLoopOrSwitch(ret, m_compiler.getASTContext()))
+      kslicer::PrintError("'return' inside a loop or switch of RTV kernel which returns bool is not supported, assign result to a variable and return it after the loop", ret->getSourceRange(), m_compiler.getSourceManager());
     std::string retExprText = RecursiveRewrite(retExpr);
-    ReplaceTextOrWorkAround(ret->getSourceRange(), std::string("kgenExitCond = ") + retExprText + ";"); // "; goto KGEN_EPILOG"); !!! GLSL DOE NOT SUPPPRT GOTOs!!!
+    ReplaceTextOrWorkAround(ret->getSourceRange(), std::string("{ kgenExitCond = ") + retExprText + "; break; }");
     MarkRewritten(ret);
     return true;
   }

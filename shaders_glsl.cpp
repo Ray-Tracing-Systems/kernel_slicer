@@ -1188,11 +1188,8 @@ void kslicer::FunctionRewriter::CkeckAndProcessForThreadLocalVarDecl(clang::VarD
       clang::QualType elementType = arrayType->getElementType();
       
       int arraySize = 0;
-      if (const clang::ConstantArrayType* constantArrayType = llvm::dyn_cast<clang::ConstantArrayType>(arrayType)) {
-        clang::SmallVector<char, 16> tmpBuf;
-        constantArrayType->getSize().toStringUnsigned(tmpBuf, 10);
-        arraySize = std::atoi(tmpBuf.data());
-      }
+      if (const clang::ConstantArrayType* constantArrayType = llvm::dyn_cast<clang::ConstantArrayType>(arrayType))
+        arraySize = int(constantArrayType->getSize().getLimitedValue());
 
       const clang::DeclStmt* declStmt = getParentDeclContext(decl, m_compiler.getASTContext());
       if(declStmt != nullptr && WasNotRewrittenYet(declStmt))

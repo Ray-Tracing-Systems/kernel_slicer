@@ -109,9 +109,15 @@ void main()
   {% else %}
   if(runThisThread)
   {
+  {% if Kernel.IsBoolean %}
+  do { // 'return x;' of the kernel is rewritten to '{ kgenExitCond = x; break; }'
+  {% endif %}
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
   {{Kernel.Source}}
   {# /*------------------------------------------------------------- KERNEL SOURCE ------------------------------------------------------------- */ #}
+  {% if Kernel.IsBoolean %}
+  } while(false);
+  {% endif %}
   }
   {% endif %} {# /* EnableBlockExpansion */ #}
   {% if Kernel.HasEpilog %}
@@ -119,7 +125,7 @@ void main()
   {% if Kernel.IsBoolean %}
   {
     const bool exitHappened = (kgenArgs.tFlagsMask & KGEN_FLAG_SET_EXIT_NEGATIVE) != 0 ? !kgenExitCond : kgenExitCond;
-    if((kgenArgs.tFlagsMask & KGEN_FLAG_DONT_SET_EXIT) == 0 && exitHappened)
+    if(runThisThread && (kgenArgs.tFlagsMask & KGEN_FLAG_DONT_SET_EXIT) == 0 && exitHappened)
       kgen_threadFlags[tid] = ((kgenArgs.tFlagsMask & KGEN_FLAG_BREAK) != 0) ? KGEN_FLAG_BREAK : KGEN_FLAG_RETURN;
   };
   {% endif %}
