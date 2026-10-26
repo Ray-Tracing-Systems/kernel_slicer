@@ -1,0 +1,18 @@
+{
+    "mainClass": "TestClass",
+    "options": {},
+    "source": [
+        "test_class.cpp"
+    ],
+    "includeProcess": [
+        "../RayTracing"
+    ],
+    "includeIgnore": [
+        "../LiteMath",
+        "../LiteMathAux"
+    ],
+    "defines": {
+        "KERNEL_SLICER": ""
+    },
+    "end": ""
+}

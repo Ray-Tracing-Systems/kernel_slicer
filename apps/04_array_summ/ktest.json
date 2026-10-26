@@ -1,0 +1,9 @@
+{
+    "variants": [
+        {"name": "slang_v1", "backend": "slang", "kmake": "kmake.json", "options": {"-enableSubgroup": 0}},
+        {"name": "slang_v2", "backend": "slang", "kmake": "kmake.json", "options": {"-enableSubgroup": 1}},
+        {"name": "glsl", "backend": "glsl", "kmake": "kmake.json", "options": {"-enableSubgroup": 1, "-gen_gpu_api": 1}},
+        {"name": "ispc", "backend": "ispc", "kmake": "kmake.json", "options": {"-ispc_threads": 1}},
+        {"name": "cuda", "backend": "cuda", "kmake": "kmake.json", "options": {"-enableSubgroup": 0}}
+    ]
+}

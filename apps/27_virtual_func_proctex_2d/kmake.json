@@ -1,0 +1,20 @@
+{
+    "mainClass": "ProcRender2D",
+    "options": {
+        "-force_ray_tracing_pipeline": 1,
+        "-enable_callable_shaders": 1,
+        "-timestamps": 1
+    },
+    "source": [
+        "render2d.cpp"
+    ],
+    "includeProcess": [],
+    "includeIgnore": [
+        "../LiteMath",
+        "../LiteMathAux"
+    ],
+    "defines": {
+        "KERNEL_SLICER": ""
+    },
+    "end": ""
+}

@@ -298,7 +298,8 @@ Always pass `-shaderCC slang`. It is the current back end; `glsl` is legacy (its
 6. Write `CMakeLists.txt` (and optionally `kmake.json`) from the template.
 7. Build and run the CPU version first (`cmake -DUSE_VULKAN=OFF`, the generated files are not
    needed). Then run kslicer, compile shaders, build and run `--compare`.
-8. kslicer returns exit code 0 even when it failed. Check two places: its log for `error:`,
+8. kslicer returns a non-zero exit code when it reports an error (older versions always returned
+   0), but many problems are not reported as errors. Check two places: its log for `error:`,
    and the output of `build_slang.sh`, where a pattern violation often surfaces only as a
    compile error in a generated shader. A failed shader leaves no `.spv`, and the application
    then fails at start with `can't open file shaders_generated/....spv`.

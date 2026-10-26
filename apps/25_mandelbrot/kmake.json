@@ -1,0 +1,18 @@
+{
+    "mainClass": "Mandelbrot",
+    "options": {
+        "-reorderLoops": "YX"
+    },
+    "source": [
+        "mandelbrot.cpp"
+    ],
+    "includeProcess": [],
+    "includeIgnore": [
+        "../LiteMath",
+        "../LiteMathAux"
+    ],
+    "defines": {
+        "KERNEL_SLICER": ""
+    },
+    "end": ""
+}

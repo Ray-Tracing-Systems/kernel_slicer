@@ -1,5 +1,9 @@
 # Python autotests
 
+> This is the **old** test system. The new one is `ktest.py` in the repository root
+> ([ktest/README.md](ktest/README.md)): it needs no packages besides Python itself, does not use
+> `.vscode/launch.json` and runs tests in parallel. The old system is kept for now.
+
 `tests.py` is the main script which performs next steps:
 
 * downloads external resources from github repos (check `download_resources.py`).

@@ -1,0 +1,20 @@
+{
+    "mainClass": "TestClass",
+    "options": {
+        "-pattern": "rtv"
+    },
+    "source": [
+        "test_class.cpp"
+    ],
+    "includeProcess": [
+        "../RayTracing"
+    ],
+    "includeIgnore": [
+        "../LiteMath",
+        "../LiteMathAux"
+    ],
+    "defines": {
+        "KERNEL_SLICER": ""
+    },
+    "end": ""
+}

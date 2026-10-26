@@ -1,0 +1,8 @@
+{
+    "variants": [
+        {"name": "slang",           "backend": "slang", "kmake": "kmake.json"},
+        {"name": "slang_const_ubo", "backend": "slang", "kmake": "kmake.json", "options": {"-const_ubo": 1}},
+        {"name": "slang_wgsize",    "backend": "slang", "kmake": "kmake_wgsize.json"},
+        {"name": "glsl",            "backend": "glsl",  "kmake": "kmake.json"}
+    ]
+}

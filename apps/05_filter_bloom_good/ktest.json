@@ -1,0 +1,8 @@
+{
+    "variants": [
+        {"name": "slang", "backend": "slang", "kmake": "kmake.json", "options": {"-reorderLoops": "YX", "-suffix": "_GPU", "-timestamps": 1}},
+        {"name": "glsl", "backend": "glsl", "kmake": "kmake.json", "options": {"-reorderLoops": "YX", "-suffix": "_GPU", "-timestamps": 1}},
+        {"name": "ispc", "backend": "ispc", "kmake": "kmake.json", "options": {"-ispc_threads": 0}},
+        {"name": "cuda", "backend": "cuda", "kmake": "kmake.json", "options": {"-reorderLoops": "YX", "-suffix": "_CUDA"}}
+    ]
+}

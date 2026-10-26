@@ -1,0 +1,7 @@
+{
+    "variants": [
+        {"name": "slang", "backend": "slang", "kmake": "kmake.json",
+         "skip": "virtual functions hierarchies are implemented only in GLSL back-end (templates_glsl), Slang shaders miss the hierarchy"},
+        {"name": "glsl",  "backend": "glsl",  "kmake": "kmake.json"}
+    ]
+}

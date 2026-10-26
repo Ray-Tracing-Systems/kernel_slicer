@@ -1,0 +1,6 @@
+{
+    "variants": [
+        {"name": "slang", "backend": "slang", "kmake": "kmake.json"},
+        {"name": "glsl", "backend": "glsl", "kmake": "kmake.json"}
+    ]
+}

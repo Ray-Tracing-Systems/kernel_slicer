@@ -1,0 +1,5 @@
+{
+    "variants": [
+        {"name": "slang", "backend": "slang", "kmake": "kmake.json"}
+    ]
+}

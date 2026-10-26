@@ -1,0 +1,20 @@
+{
+    "mainClass": "TestClass",
+    "options": {
+        "-pattern": "rtv",
+        "-force_ray_tracing_pipeline": 1,
+        "-enable_callable_shaders": 1
+    },
+    "source": [
+        "test_class.cpp"
+    ],
+    "includeProcess": [],
+    "includeIgnore": [
+        "../LiteMath",
+        "../LiteMathAux"
+    ],
+    "defines": {
+        "KERNEL_SLICER": ""
+    },
+    "end": ""
+}

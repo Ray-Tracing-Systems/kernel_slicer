@@ -1,0 +1,16 @@
+{
+    "mainClass": "TestCombinedImage",
+    "options": {},
+    "source": [
+        "test_class.cpp"
+    ],
+    "includeProcess": [],
+    "includeIgnore": [
+        "../../LiteMath",
+        "../../LiteMathAux"
+    ],
+    "defines": {
+        "KERNEL_SLICER": ""
+    },
+    "end": ""
+}

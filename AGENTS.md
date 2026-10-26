@@ -37,14 +37,12 @@ inja errors such as `variable 'X' not found`.
 ## Running the translator
 
 Run from the repository root (templates are found relative to the current directory), or pass
-`-selfdir <repo root>`. The command line for every test and sample is in
-`.vscode/launch_slang.json` (Slang) and `.vscode/launch_glsl.json` (GLSL). Typical form:
+`-selfdir <repo root>`. Every test and sample folder has `ktest.json` with its variants and
+`kmake.json` config(s); `python3 ktest.py --list -b all -s all` prints the exact command line of every
+variant. Typical form:
 
 ```bash
-./cmake-build-release/kslicer $PWD/apps/tests/023_prefix_summ/test_class.cpp -mainClass PrefSummTest \
-  -stdlibfolder $PWD/TINYSTL -pattern ipv \
-  -I$PWD/apps/LiteMath ignore -I$PWD/apps/LiteMathAux ignore -I$PWD/TINYSTL ignore \
-  -shaderCC slang -DKERNEL_SLICER -v > kslicer.log 2>&1
+./cmake-build-release/kslicer $PWD/apps/tests/023_prefix_summ/kmake.json -shaderCC slang > kslicer.log 2>&1
 grep -n "error:" kslicer.log
 cd apps/tests/023_prefix_summ/shaders_generated && bash build_slang.sh   # GLSL: bash build.sh
 ```
@@ -55,8 +53,9 @@ are loaded relative to the working directory. Tests write `zout_cpu.json` / `zou
 compare them.
 
 Pitfalls:
-- **kslicer returns exit code 0 even on failure.** Check its log for `error:` and check that
-  `build_slang.sh` compiled every shader.
+- kslicer returns a non-zero exit code when it reports an error, but some problems are visible only
+  as warnings in its log or as shader compile errors. Check the log for `error:` and check that
+  `build_slang.sh` compiled every shader (`ktest.py` does both).
 - The Slang and GLSL back ends write into the same `shaders_generated/` folder. Before testing one
   back end, delete the folder so that stale `.spv` files of the other back end are not picked up.
 - The sample apps need `apps/volk` built once (`cd apps/volk && cmake . && make`).
@@ -65,13 +64,20 @@ Pitfalls:
 
 - `apps/tests/NNN_name/`: one feature per test (hand-written `test_class.h/.cpp`, `main.cpp`,
   `CMakeLists.txt`). `apps/NN_name/`: larger samples.
-- The test runner `python_scripts/tests.py` takes its list of tests from `.vscode/launch.json`.
-  Copy `launch_slang.json` or `launch_glsl.json` over it, then
-  `cd python_scripts && python3 gen_sample_list.py && bash run_tests.bat`. See
-  `python_scripts/README.md`.
-- When you add a test, add its launch configuration to `.vscode/launch_slang.json` and
-  `.vscode/launch.json` (and `launch_glsl.json` if GLSL applies). Keep the numeric order and the
-  style of neighbouring entries.
+- Run tests with `python3 ktest.py` from the repository root (standard library only; Linux and
+  Windows). It does not build kslicer: rebuild it first. Examples: `python3 ktest.py -b slang`,
+  `python3 ktest.py -b slang,glsl -s all`, `python3 ktest.py -b glsl --only 23-26 --stage build`,
+  `python3 ktest.py --rerun-failed --write-launch`. Each run prints `[GEN|BUILD|CMP]` statuses; logs
+  are in `ktest_logs/`. See `python_scripts/ktest/README.md`.
+- Variants of a test are listed in its `ktest.json`: back-end, `kmake.json` config, extra kslicer
+  `options`, `"megakernel": true` to test both `-megakernel 0` and `1`, and `"skip": "<reason>"` for a
+  known unsupported combination (reported as SKIP; `--no-skip` runs it). When you fix such a problem,
+  remove its `skip`.
+- When you add a test, create `ktest.json` and `kmake.json` in its folder. The old runner
+  `python_scripts/tests.py` (configurations from `.vscode/launch.json`, see `python_scripts/README.md`)
+  is still kept: also add launch configurations to `.vscode/launch_slang.json` and `.vscode/launch.json`
+  (and `launch_glsl.json` if GLSL applies), keeping the numeric order and the style of neighbouring
+  entries.
 - Verify GPU changes on a real GPU, not only by building. Parallel primitives (scan, sort,
   reductions) must also be checked on large inputs (millions of elements, random sizes, many runs):
   races between workgroups often show up only there.

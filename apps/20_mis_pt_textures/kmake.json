@@ -1,0 +1,19 @@
+{
+    "mainClass": "Integrator",
+    "options": {},
+    "source": [
+        "test_class.cpp",
+        "test_class2.cpp"
+    ],
+    "includeProcess": [
+        "../RayTracing"
+    ],
+    "includeIgnore": [
+        "../LiteMath",
+        "../LiteMathAux"
+    ],
+    "defines": {
+        "KERNEL_SLICER": ""
+    },
+    "end": ""
+}

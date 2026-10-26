@@ -1,0 +1,8 @@
+{
+    "variants": [
+        {"name": "slang_cs_sw", "backend": "slang", "kmake": "kmake_cs.json"},
+        {"name": "slang_cs_hw", "backend": "slang", "kmake": "kmake_rq.json"},
+        {"name": "glsl_cs_sw", "backend": "glsl", "kmake": "kmake_cs.json"},
+        {"name": "glsl_cs_hw", "backend": "glsl", "kmake": "kmake_rq.json"}
+    ]
+}

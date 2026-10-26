@@ -1,0 +1,12 @@
+{
+    "mainClass": "PlainUpdate",
+    "kernels": {
+        "kernel1D_Transform": {"wgSize": [64, 1, 1]}
+    },
+    "options": {},
+    "source": ["test_class.cpp"],
+    "includeProcess": [],
+    "includeIgnore": ["../../LiteMath", "../../LiteMathAux"],
+    "defines": {"KERNEL_SLICER": ""},
+    "end": ""
+}

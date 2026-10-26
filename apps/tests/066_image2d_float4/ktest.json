@@ -1,0 +1,8 @@
+{
+    "variants": [
+        {"name": "slang",         "backend": "slang", "kmake": "kmake.json",
+         "skip": "Slang back-end declares every texture as read-only Texture2D<float4> and handles sampled member textures as texture arrays"},
+        {"name": "glsl",          "backend": "glsl",  "kmake": "kmake.json"},
+        {"name": "glsl_half_tex", "backend": "glsl",  "kmake": "kmake.json", "options": {"-halfTex": 1}}
+    ]
+}

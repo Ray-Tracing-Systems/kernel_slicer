@@ -1,0 +1,16 @@
+{
+    "mainClass": "ReinhardTM",
+    "options": {},
+    "source": [
+        "reinhard.cpp"
+    ],
+    "includeProcess": [],
+    "includeIgnore": [
+        "../LiteMath",
+        "../LiteMathAux"
+    ],
+    "defines": {
+        "KERNEL_SLICER": ""
+    },
+    "end": ""
+}

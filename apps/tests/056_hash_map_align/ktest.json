@@ -1,0 +1,8 @@
+{
+    "variants": [
+        {"name": "slang_v1", "backend": "slang", "kmake": "kmake_emul_nosubgroup.json"},
+        {"name": "slang_v2", "backend": "slang", "kmake": "kmake_emul.json"},
+        {"name": "slang_v3", "backend": "slang", "kmake": "kmake_hw.json"},
+        {"name": "slang_v4", "backend": "slang", "kmake": "kmake_emul2.json"}
+    ]
+}

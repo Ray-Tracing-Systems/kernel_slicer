@@ -1,0 +1,20 @@
+{
+    "mainClass": "RayMarcher",
+    "options": {
+        "-pattern": "rtv"
+    },
+    "source": [
+        "raymarch.cpp"
+    ],
+    "includeProcess": [
+        "../RayTracing"
+    ],
+    "includeIgnore": [
+        "../LiteMath",
+        "../LiteMathAux"
+    ],
+    "defines": {
+        "KERNEL_SLICER": ""
+    },
+    "end": ""
+}

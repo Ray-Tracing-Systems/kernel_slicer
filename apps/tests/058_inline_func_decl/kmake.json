@@ -1,0 +1,14 @@
+{
+    "mainClass": "InlineFuncs",
+    "options": {
+        "-reorderLoops": "YX"
+    },
+    "source": [
+        "test_class.cpp"
+    ],
+    "includeProcess": [],
+    "includeIgnore": [
+        "../../LiteMath"
+    ],
+    "end": ""
+}

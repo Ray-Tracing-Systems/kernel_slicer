@@ -1,0 +1,6 @@
+{
+    "variants": [
+        {"name": "glsl", "backend": "glsl", "kmake": "kmake.json", "megakernel": true}
+    ],
+    "requires": ["../resources/msu-graphics-group/scenes"]
+}

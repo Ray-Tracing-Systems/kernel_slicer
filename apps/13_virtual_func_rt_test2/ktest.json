@@ -1,0 +1,5 @@
+{
+    "variants": [
+        {"name": "glsl", "backend": "glsl", "kmake": "kmake.json", "megakernel": true}
+    ]
+}

@@ -1,0 +1,37 @@
+{
+    "mainClass": "TestClass",
+    "options": {
+        "-composInterface": "ISceneObject",
+        "-composImplementation": "BFRayTrace",
+        "-intersectionShader": [
+            "AbtractPrimitive::Intersect"
+        ],
+        "-intersectionTriangle": [
+            "TrianglePrim"
+        ],
+        "-intersectionBlackList": [
+            "TrianglePrim"
+        ],
+        "-intersectionWhiteList": [
+            "SpherePrim",
+            "AABBPrim",
+            "EmptyPrim"
+        ],
+        "-enable_ray_tracing_pipeline": 0,
+        "-pattern": "rtv"
+    },
+    "source": [
+        "test_class.cpp"
+    ],
+    "includeProcess": [
+        "../../RayTracing"
+    ],
+    "includeIgnore": [
+        "../../LiteMath",
+        "../../LiteMathAux"
+    ],
+    "defines": {
+        "KERNEL_SLICER": ""
+    },
+    "end": ""
+}

@@ -1,0 +1,7 @@
+{
+    "variants": [
+        {"name": "glsl_cs_sw", "backend": "glsl", "kmake": "kmake.json", "megakernel": true},
+        {"name": "glsl_cs_hw", "backend": "glsl", "kmake": "kmake.json", "options": {"-intersectionShader": ["AbtractPrimitive::Intersect"], "-intersectionTriangle": ["TrianglePrim"], "-enable_ray_tracing_pipeline": 0}, "megakernel": true},
+        {"name": "glsl_rt", "backend": "glsl", "kmake": "kmake.json", "options": {"-intersectionShader": ["AbtractPrimitive::Intersect"], "-intersectionTriangle": ["TrianglePrim"], "-enable_ray_tracing_pipeline": 1}, "megakernel": true}
+    ]
+}

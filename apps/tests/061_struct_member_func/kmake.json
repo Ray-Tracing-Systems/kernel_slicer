@@ -1,0 +1,12 @@
+{
+    "mainClass": "StructMembers",
+    "options": {},
+    "source": [
+        "test_class.cpp"
+    ],
+    "includeProcess": [],
+    "includeIgnore": [
+        "../../LiteMath"
+    ],
+    "end": ""
+}

@@ -1,0 +1,12 @@
+{
+    "mainClass": "Numbers",
+    "options": {},
+    "source": [
+        "test_class.cpp"
+    ],
+    "includeProcess": [],
+    "includeIgnore": [
+        "../../LiteMath"
+    ],
+    "end": ""
+}

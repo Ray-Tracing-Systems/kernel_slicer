@@ -381,8 +381,21 @@ The repository contains:
 
 ## Tests
 
-Tests are in `apps/tests/` (one feature per test) and the samples in `apps/`. The test runner
-reads translator command lines from `.vscode/launch.json`:
+Tests are in `apps/tests/` (one feature per test) and the test applications in `apps/`. Each folder
+has `ktest.json` with the list of variants (back-end, `kmake.json` config, options). Build kslicer,
+then run from the repository root (Python 3 standard library only, Linux and Windows):
+
+```bash
+python3 ktest.py                          # menu: back-ends, tests or applications, number of jobs
+python3 ktest.py -b slang,glsl -s all     # without questions
+python3 ktest.py --rerun-failed --write-launch   # rerun failed ones, write .vscode/launch_failed.json
+```
+
+For every variant it prints `[generation|build|comparison with CPU]` statuses, for example
+`[ OK | OK | OK ] test_023_prefix_summ/slang`. Folders are processed in parallel and build folders
+are reused, so a repeated run is fast. See [python_scripts/ktest/README.md](python_scripts/ktest/README.md).
+
+The old test runner is still available. It reads translator command lines from `.vscode/launch.json`:
 
 ```bash
 cp .vscode/launch_slang.json .vscode/launch.json      # choose the set of configurations
@@ -408,14 +421,15 @@ runs CPU and GPU versions and compares their `zout_*` outputs. Logs of failed te
 | `TINYSTL/` | minimal standard library used for parsing |
 | `apps/` | samples; `apps/tests/` feature tests |
 | `apps/LiteMath`, `apps/vkutils`, `apps/volk`, `apps/LiteScene`, `apps/RayTracing` | submodules: math library, Vulkan helpers, loader, scene loading, ray tracing interface |
-| `python_scripts/` | test runner |
+| `ktest.py`, `python_scripts/ktest/` | test system; `python_scripts/tests.py` is the old test runner |
 | `doc/` | older tutorials and [internal documentation](doc/README_internal.md) |
 
 ## Troubleshooting
 
-- **kslicer returns exit code 0 even if parsing failed.** Save the log and check it for `error:`.
-  Then check the output of `build_slang.sh`: a pattern violation often shows up only as a shader
-  compile error.
+- **kslicer finished, but the sample does not work.** kslicer returns a non-zero exit code when it
+  reports an error, but not every problem is an error. Save the log and check it for `error:` and
+  warnings. Then check the output of `build_slang.sh`: a pattern violation often shows up only as a
+  shader compile error.
 - **`no member named 'X' in namespace 'std'`.** kslicer parses with its own minimal standard
   library in `TINYSTL/`. Use an available function, for example `std::abs` instead of `std::fabs`,
   or add a declaration to `TINYSTL/`: an interface is enough.
