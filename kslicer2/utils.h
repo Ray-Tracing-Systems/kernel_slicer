@@ -3,8 +3,10 @@
 #include <functional>
 #include <string>
 #include <vector>
+#include "printing.h"
 
-#define KSLICER_ACCERT(cond) (!!(cond) ? (void)0 : (fprintf(stderr, "Assertion failed: %s\n", #cond), abort()))
+#define KSLICER_ACCERT(cond)                                                                                           \
+    (!!(cond) ? (void)0 : (::kslicer::kslicer_error() << "assertion failed: " << #cond << "\n", abort()))
 
 namespace clang {
     class CompilerInstance;

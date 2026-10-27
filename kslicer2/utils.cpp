@@ -5,7 +5,6 @@
 
 namespace kslicer {
     using namespace clang;
-    using llvm::outs;
 
     std::string string_from_source_range(SourceRange range) {
         // https://stackoverflow.com/questions/11083066/getting-the-source-behind-clangs-ast
@@ -76,7 +75,7 @@ namespace kslicer {
 
     bool is_vector_specialization(QualType type) {
         if (auto record = type->getAsRecordDecl()) {
-            if (auto template_ = dyn_cast<ClassTemplateSpecializationDecl>(record)) {
+            if (dyn_cast<ClassTemplateSpecializationDecl>(record)) {
                 return true;
             }
         }

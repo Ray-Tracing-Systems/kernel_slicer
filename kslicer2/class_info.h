@@ -8,17 +8,15 @@ namespace kslicer {
 
     struct KernelInfo {
         const CXXMethodDecl* decl = nullptr;
-        std::vector<const ParmVarDecl*> bounds_args;
-        std::vector<const VarDecl*> index_vars;
+        std::vector<const ParmVarDecl*> bounds_args = {};
+        std::vector<const VarDecl*> index_vars = {};
         const Stmt* body = nullptr;
-        std::vector<const ValueDecl*> bindings;
-        std::string shader;
+        std::vector<const ValueDecl*> bindings = {};
     };
 
     struct ControlFunctionInfo {
         const CXXMethodDecl* decl = nullptr;
-        std::vector<const CXXMemberCallExpr*> kernel_calls;
-        std::string body;
+        std::vector<const CXXMemberCallExpr*> kernel_calls = {};
     };
 
     struct ClassInfo {

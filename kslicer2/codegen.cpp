@@ -34,7 +34,7 @@ namespace kslicer {
         }
         emit(expr->getMethodDecl()->getNameAsString());
         emit("(");
-        for (int i = 0; i < expr->getNumArgs(); i++) {
+        for (size_t i = 0; i < expr->getNumArgs(); i++) {
             render_expression(expr->getArg(i));
             if (i < expr->getNumArgs() - 1)
                 emit(", ");
@@ -60,7 +60,7 @@ namespace kslicer {
         emit(" ");
         emit(function->getNameAsString());
         emit("(");
-        for (int i = 0; i < function->getNumParams(); i++) {
+        for (size_t i = 0; i < function->getNumParams(); i++) {
             auto decl = function->getParamDecl(i);
             // if (decl->getOriginalType()->isArrayType()) {
             // note_found(decl->getLocation(), "array arg!");
@@ -144,10 +144,10 @@ namespace kslicer {
             render_expression(stmt->getInc());
             emit(")\n");
             render_statement(stmt->getBody(), indent);
-        } else if (auto stmt = dyn_cast<BreakStmt>(stmt_)) {
+        } else if (dyn_cast<BreakStmt>(stmt_)) {
             emit_indent(indent);
             emit("break;\n");
-        } else if (auto stmt = dyn_cast<ContinueStmt>(stmt_)) {
+        } else if (dyn_cast<ContinueStmt>(stmt_)) {
             emit_indent(indent);
             emit("continue;\n");
         } else if (auto stmt = dyn_cast<ReturnStmt>(stmt_)) {
@@ -364,7 +364,7 @@ namespace kslicer {
                 emit(func->getNameAsString());
             }
             emit("(");
-            for (int i = 0; i < expr->getNumArgs(); i++) {
+            for (size_t i = 0; i < expr->getNumArgs(); i++) {
                 render_expression(expr->getArg(i));
                 if (i < expr->getNumArgs() - 1)
                     emit(", ");
@@ -414,7 +414,7 @@ namespace kslicer {
 
                 emit(kernel->decl->getNameAsString().substr(9) + "Cmd");
                 emit("(");
-                for (int i = 0; i < expr->getNumArgs(); i++) {
+                for (size_t i = 0; i < expr->getNumArgs(); i++) {
                     render_expression(expr->getArg(i));
                     if (i < expr->getNumArgs() - 1)
                         emit(", ");

@@ -99,7 +99,7 @@ namespace kslicer {
             kernel["IsRTV"] = false;
 
             {
-                KernelCodegen codegen(info, i.decl);
+                KernelCodegen codegen;
 
                 for (auto i : info.used_structs) {
                     codegen.buffer += "struct " + i->getNameAsString() + "\n{\n";

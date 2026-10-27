@@ -43,15 +43,10 @@ namespace kslicer {
 
     class KernelCodegen : public Codegen {
     public:
-        KernelCodegen(const ClassInfo& info, const CXXMethodDecl* decl) : info_(info), decl_(decl) {}
-
     private:
         // void render_function_param(const ParmVarDecl* param) override;
         void render_field_access(const MemberExpr* expr) override;
         void render_method_call(const CXXMemberCallExpr* expr) override;
-
-        const ClassInfo& info_;
-        const CXXMethodDecl* decl_;
     };
 
 } // namespace kslicer

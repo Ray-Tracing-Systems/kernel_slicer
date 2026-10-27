@@ -7,7 +7,6 @@
 #include <llvm/Support/CommandLine.h>
 
 namespace kslicer {
-    using namespace llvm;
     using namespace clang;
     using namespace clang::tooling;
 

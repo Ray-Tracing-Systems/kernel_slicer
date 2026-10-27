@@ -1,7 +1,6 @@
 #include "config.h"
 #include "utils.h"
 #include <fstream>
-#include <iostream>
 #include <nlohmann/json.hpp>
 namespace kslicer {
 
@@ -30,17 +29,17 @@ namespace kslicer {
 
     void Config::dump() const {
 
-        std::cout << "class_name: " << class_name << std::endl;
-        std::cout << "suffix: " << suffix << std::endl;
-        std::cout << "shaders_directory_prefix: " << shaders_directory_prefix << std::endl;
-        std::cout << "shader_compiler: " << shader_compiler << std::endl;
+        outs() << "class_name: " << class_name << "\n";
+        outs() << "suffix: " << suffix << "\n";
+        outs() << "shaders_directory_prefix: " << shaders_directory_prefix << "\n";
+        outs() << "shader_compiler: " << shader_compiler << "\n";
         for (size_t i = 0; i < sources.size(); ++i) {
-            std::cout << "sources[" << i << "]: " << sources[i] << std::endl;
+            outs() << "sources[" << i << "]: " << sources[i] << "\n";
         }
         for (size_t i = 0; i < include_directories.size(); ++i) {
-            std::cout << "include_directories[" << i << "]: " << include_directories[i] << std::endl;
+            outs() << "include_directories[" << i << "]: " << include_directories[i] << "\n";
         }
-        std::cout << "shaders_directory: " << shaders_directory << std::endl;
+        outs() << "shaders_directory: " << shaders_directory << "\n";
     }
 
 } // namespace kslicer
