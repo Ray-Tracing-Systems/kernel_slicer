@@ -5,12 +5,13 @@
 #include <nlohmann/json.hpp>
 namespace kslicer {
 
-    Config::Config(std::filesystem::path config_path) {
+    bool Config::from_file(std::filesystem::path config_path) {
         std::ifstream file(config_path);
         auto data = nlohmann::json::parse(file);
         class_name = data["mainClass"];
         suffix = data["options"]["-suffix"];
         shaders_directory_prefix = data["options"]["-shaderFolderPrefix"].get<std::string>();
+        shader_compiler = data["options"]["-shaderCC"];
 
         std::filesystem::path config_directory = config_path.parent_path();
         std::filesystem::path base_directory = config_directory / data["baseDirectory"].get<std::string>();
@@ -24,6 +25,7 @@ namespace kslicer {
             include_directories.push_back((base_directory / i.get<std::string>()).lexically_normal());
         }
         shaders_directory = (base_directory / shaders_directory_prefix / ("shaders" + suffix)).lexically_normal();
+        return true;
     }
 
     void Config::dump() const {
@@ -31,6 +33,7 @@ namespace kslicer {
         std::cout << "class_name: " << class_name << std::endl;
         std::cout << "suffix: " << suffix << std::endl;
         std::cout << "shaders_directory_prefix: " << shaders_directory_prefix << std::endl;
+        std::cout << "shader_compiler: " << shader_compiler << std::endl;
         for (size_t i = 0; i < sources.size(); ++i) {
             std::cout << "sources[" << i << "]: " << sources[i] << std::endl;
         }

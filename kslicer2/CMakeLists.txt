@@ -8,6 +8,7 @@ add_executable(kslicer2
     codegen.cpp
     compiler.cpp
     command_line.cpp
+    command_line_parser.cpp
     config.cpp
     kslicer_cpp_attributes.cpp
 )

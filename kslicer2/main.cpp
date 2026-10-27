@@ -21,10 +21,17 @@ namespace kslicer {
 int main(int argc, char** argv) {
     using namespace kslicer;
 
-    CommandLine command_line = CommandLine::from_args(argc, argv);
+    CommandLine command_line{};
+    if (!command_line.from_args(argc, argv)) {
+        return 1;
+    }
     command_line.dump();
 
-    Config config{command_line.config_path};
+    Config config;
+    if (!config.from_file(command_line.config_path)) {
+        return 1;
+    }
+    config.shader_compiler = command_line.shader_compiler.value_or(config.shader_compiler);
     config.dump();
 
     CompilerParams params;
