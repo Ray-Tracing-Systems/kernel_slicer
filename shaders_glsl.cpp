@@ -470,7 +470,7 @@ std::vector<std::pair<std::string, std::string> > kslicer::SortByKeysByLen(const
   res.reserve(a_map.size());
   for(auto p : a_map)
     res.push_back(p);
-  std::sort(res.begin(), res.end(), [](auto& a, auto& b) { return a.first.size() > b.first.size(); });
+  std::sort(res.begin(), res.end(), [](auto& a, auto& b) { return (a.first.size() != b.first.size()) ? (a.first.size() > b.first.size()) : (a.first < b.first); });
   return res;
 }
 

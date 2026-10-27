@@ -1219,7 +1219,7 @@ int main(int argc, const char **argv)
   }
 
   if(usedFunctions.size() != oldSizeOfFunctions)
-    std::sort(usedFunctions.begin(), usedFunctions.end(), [](const auto& a, const auto& b) { return a.depthUse > b.depthUse; });
+    std::stable_sort(usedFunctions.begin(), usedFunctions.end(), [](const auto& a, const auto& b) { return a.depthUse > b.depthUse; });
 
   std::vector<std::string> usedDefines = kslicer::ExtractDefines(compiler);
   //for(auto def : defines) 

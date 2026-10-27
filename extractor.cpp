@@ -10,6 +10,7 @@
 #include <queue>
 #include <stack>
 #include <algorithm>
+#include <tuple>
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -337,7 +338,7 @@ std::vector<kslicer::FuncData> kslicer::SortByDepthInUse(const std::unordered_ma
   for(const auto& f : usedFunctions)
     result.push_back(f.second);
 
-  std::sort(result.begin(), result.end(), [](const auto& a, const auto& b) { return a.depthUse > b.depthUse; });
+  std::stable_sort(result.begin(), result.end(), [](const auto& a, const auto& b) { return a.depthUse > b.depthUse; });
 
   return result;
 }
@@ -1529,8 +1530,10 @@ std::vector<std::string> kslicer::ExtractDefines(const clang::CompilerInstance& 
 {
   auto predefined = ListPredefinedMacro();
 
-  std::vector<std::string> res;
-  res.reserve(32);
+  // preprocessor stores macros in a hash map with pointer keys, so its order changes from run to run;
+  // collect definitions with their source locations and sort them in the order of the source code
+  std::vector< std::tuple<clang::SourceLocation, std::string, std::string> > found;
+  found.reserve(32);
   for(auto macro = a_compiler.getPreprocessor().macro_begin(); macro != a_compiler.getPreprocessor().macro_end(); macro++) {
     auto first = macro->first;
     std::string name = first->getNameStart();
@@ -1548,11 +1551,28 @@ std::vector<std::string> kslicer::ExtractDefines(const clang::CompilerInstance& 
             strout << temp.c_str();
           }
 
-          res.push_back(strout.str());
+          found.push_back(std::make_tuple(MI->getDefinitionLoc(), name, strout.str()));
         }
       }
     }
   }
+
+  const clang::SourceManager& sm = a_compiler.getSourceManager();
+  std::sort(found.begin(), found.end(), [&sm](const auto& a, const auto& b) 
+  { 
+    const clang::SourceLocation locA = std::get<0>(a);
+    const clang::SourceLocation locB = std::get<0>(b);
+    if(locA.isValid() != locB.isValid())
+      return locB.isValid();
+    if(locA.isValid() && locA != locB)
+      return sm.isBeforeInTranslationUnit(locA, locB);
+    return std::get<1>(a) < std::get<1>(b);
+  });
+
+  std::vector<std::string> res;
+  res.reserve(found.size());
+  for(const auto& f : found)
+    res.push_back(std::get<2>(f));
 
   return res;
 }

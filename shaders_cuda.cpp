@@ -535,14 +535,14 @@ std::string kslicer::CudaCompiler::PrintHeaderDecl(const DeclInClass& a_decl, co
     //ReplaceFirst(typeInCL, "unsigned int", "uint");
     //ReplaceFirst(typeInCL, "unsigned", "uint");
     //ReplaceFirst(typeInCL, "_Bool", "bool");
-    for(const auto& pair : m_typesReplacement)
+    for(const auto& pair : kslicer::SortByKeysByLen(m_typesReplacement)) // longest first: "unsigned int" before "unsigned"
       ReplaceFirst(typeInCL, pair.first, pair.second);
     if(originalText == "")
       originalText = a_decl.lostValue;
     result = "static " + typeInCL + " " + a_decl.name + " = " + originalText + ";";
     break;
     case kslicer::DECL_IN_CLASS::DECL_TYPEDEF:
-    for(const auto& pair : m_typesReplacement)
+    for(const auto& pair : kslicer::SortByKeysByLen(m_typesReplacement)) // longest first: "unsigned int" before "unsigned"
       ReplaceFirst(typeInCL, pair.first, pair.second);
     result = "typealias " + a_decl.name + " = " + typeInCL + ";";
     break;

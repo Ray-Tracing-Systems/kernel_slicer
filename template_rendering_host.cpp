@@ -1947,7 +1947,7 @@ nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo,
  
   if(a_settings.sortUBOMode != 0) 
   {
-    std::sort(podMembers.begin(), podMembers.end(), [](const auto& a, const auto & b) { 
+    std::stable_sort(podMembers.begin(), podMembers.end(), [](const auto& a, const auto & b) { 
       if(a.sizeInBytes == b.sizeInBytes)
         return a.type < b.type; // sort second order by name
       else
