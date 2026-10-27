@@ -117,6 +117,10 @@ fix something in `templates_glsl/` or `shaders_glsl.cpp`, check whether `templat
   output of other experiments.
 - Slang is the main back end and GLSL is legacy, but both must keep working. The WebGPU back end
   (`tr_host_wgpu.cpp`, `templates_wk/`) is experimental: do not change it unless the task is about it.
+- Code generation must be deterministic. In translator sources use `kslicer::umap` / `kslicer::uset`
+  ([kslicer_containers.h](kslicer_containers.h), insertion-ordered) instead of `std::unordered_map` /
+  `std::unordered_set`. Do not let generated code depend on the iteration order of containers with
+  pointer keys (including clang/llvm `DenseMap`): sort such data by source location or by name.
 - Match the surrounding code style: 2-space indentation, opening braces on their own line for
   functions and blocks, `if(` / `for(` without a space, `m_` prefix for members, `a_` prefix for
   function arguments, comment density similar to neighbouring code.
