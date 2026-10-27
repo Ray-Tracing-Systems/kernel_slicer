@@ -1,6 +1,6 @@
 #include "kslicer.h"
 #include "template_rendering.h"
-#include <iostream>
+#include <fstream>
 
 #ifndef _WIN32
   #include <sys/types.h>

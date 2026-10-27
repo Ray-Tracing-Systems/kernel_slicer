@@ -8,7 +8,7 @@
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsuggest-override"
-#include <inja.hpp>
+#include <inja/inja.hpp>
 #pragma GCC diagnostic pop
 
 #include <algorithm>

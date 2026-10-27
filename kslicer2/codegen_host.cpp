@@ -6,7 +6,7 @@
 #include "utils.h"
 #include "clang/AST/Attr.h"
 #include <clang/AST/AST.h>
-#include <inja.hpp>
+#include <inja/inja.hpp>
 namespace kslicer {
     using namespace nlohmann;
     using llvm::outs;
