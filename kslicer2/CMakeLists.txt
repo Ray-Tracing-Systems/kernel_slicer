@@ -1,6 +1,7 @@
 
 add_executable(kslicer2
     main.cpp
+    io.cpp
     utils.cpp
     errors.cpp
     codegen_host.cpp

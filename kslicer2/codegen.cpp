@@ -3,7 +3,6 @@
 #include "utils.h"
 
 namespace kslicer {
-    using llvm::outs;
 
     void Codegen::emit_indent(size_t indent) {
         for (size_t i = 0; i < indent; i++) {

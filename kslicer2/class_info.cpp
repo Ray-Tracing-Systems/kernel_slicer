@@ -3,7 +3,6 @@
 #include "utils.h"
 
 namespace kslicer {
-    using llvm::outs;
 
     const KernelInfo* ClassInfo::get_kernel(const CXXMethodDecl* decl) const {
         if (auto def = decl->getDefinition()) {
