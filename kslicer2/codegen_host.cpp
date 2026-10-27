@@ -848,8 +848,8 @@ float3   operator*(float3x3 m, float3 v) { return mul(m,v); }
         data["UpdateMembersTextureData"] = false;
         data["HasGetResDirFunc"] = false;
         data["ShaderFolderPrefix"] = config.shaders_directory_prefix;
-        data["PlainMembersUpdateFunctions"] = json::array();
-        data["VectorMembersUpdateFunctions"] = json::array();
+        data["PlainMembersUpdateFunctions"] = "";
+        data["VectorMembersUpdateFunctions"] = "";
         data["SetterVars"] = json::array();
         data["DefineGetTempBufferSize"] = false;
         data["GenerateSceneRestrictions"] = true;
