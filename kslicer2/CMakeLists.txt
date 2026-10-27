@@ -12,6 +12,7 @@ add_executable(kslicer2
     command_line_parser.cpp
     config.cpp
     kslicer_cpp_attributes.cpp
+    template_rendering.cpp
 )
 
 target_compile_options(kslicer2 PRIVATE -include ${CMAKE_CURRENT_SOURCE_DIR}/do_not_use_printf_and_cout_use_kslicer_outs_intead.h)

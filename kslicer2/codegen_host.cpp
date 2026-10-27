@@ -3,15 +3,16 @@
 #include "class_info.h"
 #include "codegen.h"
 #include "errors.h"
+#include "template_rendering.h"
 #include "utils.h"
 #include "clang/AST/Attr.h"
 #include <clang/AST/AST.h>
-#include <inja/inja.hpp>
+
 namespace kslicer {
     using namespace nlohmann;
     using llvm::outs;
 
-    void codegen(std::filesystem::path kslicer_directory, const Config& config, const ClassInfo& info) {
+    bool codegen(std::filesystem::path kslicer_directory, const Config& config, const ClassInfo& info) {
 
         auto class_directory = config.sources[0].parent_path();
 
@@ -224,8 +225,8 @@ float3   operator*(float3x3 m, float3 v) { return mul(m,v); }
                 codegen.buffer += ")\n";
                 codegen.render_statement(i.body, 1);
                 codegen.buffer += "}\n";
-                std::ofstream file(config.shaders_directory / (i.decl->getNameAsString() + ".slang"));
-                file << codegen.buffer;
+                write_entire_text_file(config.shaders_directory / (i.decl->getNameAsString() + ".slang"),
+                                       codegen.buffer);
             }
 
             data["Kernels"].push_back(kernel);
@@ -856,38 +857,19 @@ float3   operator*(float3x3 m, float3 v) { return mul(m,v); }
         data["HasHashMaps"] = false;
         data["HashMapSubgroups"] = false;
 
-        inja::Environment env;
-        env.set_trim_blocks(true);
-        env.set_lstrip_blocks(true);
+        std::filesystem::path templates_directory = kslicer_directory / "templates";
+        std::string file_name = config.class_name + config.suffix;
 
-        {
-            inja::Template t = env.parse_template((kslicer_directory / "templates/vk_class.h").string());
-            std::string result = env.render(t, data);
-
-            std::ofstream out(class_directory / (config.class_name + config.suffix + ".h"));
-            out << result << std::endl;
-        }
-        {
-            inja::Template t = env.parse_template((kslicer_directory / "templates/vk_class.cpp").string());
-            std::string result = env.render(t, data);
-
-            std::ofstream out(class_directory / (config.class_name + config.suffix + ".cpp"));
-            out << result << std::endl;
-        }
-        {
-            inja::Template t = env.parse_template((kslicer_directory / "templates/vk_class_init.cpp").string());
-            std::string result = env.render(t, data);
-
-            std::ofstream out(class_directory / (config.class_name + config.suffix + "_init.cpp"));
-            out << result << std::endl;
-        }
-        {
-            inja::Template t = env.parse_template((kslicer_directory / "templates/vk_class_ds.cpp").string());
-            std::string result = env.render(t, data);
-
-            std::ofstream out(class_directory / (config.class_name + config.suffix + "_ds.cpp"));
-            out << result << std::endl;
-        }
+        if (!render_template(data, templates_directory / "vk_class.h", class_directory / (file_name + ".h")))
+            return false;
+        if (!render_template(data, templates_directory / "vk_class.cpp", class_directory / (file_name + ".cpp")))
+            return false;
+        if (!render_template(data, templates_directory / "vk_class_init.cpp",
+                             class_directory / (file_name + "_init.cpp")))
+            return false;
+        if (!render_template(data, templates_directory / "vk_class_ds.cpp", class_directory / (file_name + "_ds.cpp")))
+            return false;
+        return true;
     }
 
 } // namespace kslicer
