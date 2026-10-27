@@ -448,7 +448,7 @@ bool kslicer::MainFunctionRewriterWGPU::VisitMemberExpr(MemberExpr* expr)
 
 std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriterWGPU::ExtractArgumentsOfAKernelCall(CallExpr* f, const MainFuncInfo& a_controlFunc)
 {
-  const std::unordered_set<std::string>& a_excludeList = a_controlFunc.ExcludeList;
+  const kslicer::uset<std::string>& a_excludeList = a_controlFunc.ExcludeList;
   std::vector<kslicer::ArgReferenceOnCall> args;
   args.reserve(20);
 

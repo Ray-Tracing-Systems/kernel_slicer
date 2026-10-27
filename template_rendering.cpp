@@ -36,9 +36,9 @@ bool kslicer::MainClassInfo::HasBufferReferenceBind() const
   return hasBufferReferenceBind;
 }
 
-static std::unordered_map<std::string, std::string> MakeMapForKernelsDeclByName(const std::vector<std::string>& kernelsCallCmdDecl)
+static kslicer::umap<std::string, std::string> MakeMapForKernelsDeclByName(const std::vector<std::string>& kernelsCallCmdDecl)
 {
-  std::unordered_map<std::string,std::string> kernelDeclByName;
+  kslicer::umap<std::string,std::string> kernelDeclByName;
   for(size_t i=0;i<kernelsCallCmdDecl.size();i++)
   {
     std::string kernDecl = kernelsCallCmdDecl[i];
@@ -277,7 +277,7 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::VFHHier
   if(h.implementations.size()!= 0 && !emptyIsFound)
     std::cout << "  VFH::ALERT! Empty implementation is not found! You need to declate a default implementation class with 'Empty' prefix in its name " << std::endl; // Don't add any functions except 'GetTag()' to EmptyImpl class
 
-  std::unordered_map<std::string, const clang::CXXRecordDecl*> retDeclHash;
+  kslicer::umap<std::string, const clang::CXXRecordDecl*> retDeclHash;
   hierarchy["VirtualFunctions"] = std::vector<json>();
   for(const auto& vf : h.virtualFunctions)
   {
@@ -328,7 +328,7 @@ nlohmann::json kslicer::PutHierarchyToJson(const kslicer::MainClassInfo::VFHHier
   return hierarchy;
 }
 
-nlohmann::json kslicer::PutHierarchiesDataToJson(const std::unordered_map<std::string, kslicer::MainClassInfo::VFHHierarchy>& hierarchies,
+nlohmann::json kslicer::PutHierarchiesDataToJson(const kslicer::umap<std::string, kslicer::MainClassInfo::VFHHierarchy>& hierarchies,
                                                  const clang::CompilerInstance& compiler,
                                                  const MainClassInfo& a_classInfo)
 {
@@ -354,7 +354,7 @@ nlohmann::json kslicer::FindIntersectionHierarchy(nlohmann::json a_hierarchies)
   return result;
 }
 
-nlohmann::json kslicer::ListCallableStructures(const std::unordered_map<std::string, kslicer::MainClassInfo::VFHHierarchy>& hierarchies,
+nlohmann::json kslicer::ListCallableStructures(const kslicer::umap<std::string, kslicer::MainClassInfo::VFHHierarchy>& hierarchies,
                                                const clang::CompilerInstance& compiler,
                                                const MainClassInfo& a_classInfo,
                                                uint32_t& a_totalShaders)
@@ -479,7 +479,7 @@ static json ReductionAccessFill(const kslicer::KernelInfo::ReductionAccess& seco
   return varJ;
 }
 
-std::unordered_map<std::string, std::string> ListISPCVectorReplacements();
+kslicer::umap<std::string, std::string> ListISPCVectorReplacements();
 
 const std::string ConvertVecTypesToISPC(const std::string& a_typeName,
                                         const std::string& a_argName);
@@ -517,7 +517,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   if(pDefaultOpts == kernelOptions.end())
     pDefaultOpts = kernelOptions.find("default");
 
-  std::unordered_map<std::string, DataMemberInfo> dataMembersCached;
+  kslicer::umap<std::string, DataMemberInfo> dataMembersCached;
   dataMembersCached.reserve(a_classInfo.dataMembers.size());
   for(const auto& member : a_classInfo.dataMembers)
     dataMembersCached[member.name] = member;
@@ -561,7 +561,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   //  }
   //}
 
-  std::unordered_map<std::string, kslicer::ShittyFunction> shittyFunctions; //
+  kslicer::umap<std::string, kslicer::ShittyFunction> shittyFunctions; //
   if(!a_classInfo.pShaderCC->BuffersAsPointersInShaders())
   {
     for(const auto& k : a_classInfo.kernels)
@@ -652,7 +652,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   //
   auto excludedNames = a_classInfo.GetExcludedNames();
 
-  std::unordered_set<std::string> excludedConstantsFromVFH;
+  kslicer::uset<std::string> excludedConstantsFromVFH;
   {
     for(const auto& p : a_classInfo.m_vhierarchy)
       for(const auto& decl : p.second.usedDecls)
@@ -701,7 +701,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
   // (3) local functions preprocess
   //
-  std::unordered_map<std::string, kslicer::FuncData> cachedFunc;
+  kslicer::umap<std::string, kslicer::FuncData> cachedFunc;
   {
     for (const auto& f : usedFunctions)
     {
@@ -725,7 +725,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
   // (4) put kernels
   //
-  std::unordered_map<std::string, KernelInfo> kernels; // #TODO: Put this to virtual function and override it for RTV
+  kslicer::umap<std::string, KernelInfo> kernels; // #TODO: Put this to virtual function and override it for RTV
   {
     if(a_classInfo.megakernelRTV)
     {
@@ -747,7 +747,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   }
 
   std::map<uint64_t, json>        allUsedMemberFunctions;
-  std::unordered_set<std::string> excludedMemberFunctions;
+  kslicer::uset<std::string> excludedMemberFunctions;
  
   if(a_classInfo.persistentRTV)
   {
@@ -963,8 +963,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
     // extract all arrays access in seperate map
     //
-    std::unordered_map<std::string, KernelInfo::ReductionAccess> subjToRedCopy; subjToRedCopy.reserve(k.subjectedToReduction.size());
-    std::unordered_map<std::string, KernelInfo::ReductionAccess> subjToRedArray;
+    kslicer::umap<std::string, KernelInfo::ReductionAccess> subjToRedCopy; subjToRedCopy.reserve(k.subjectedToReduction.size());
+    kslicer::umap<std::string, KernelInfo::ReductionAccess> subjToRedArray;
     for(const auto& var : k.subjectedToReduction)
     {
       if(!var.second.leftIsArray)
@@ -1277,7 +1277,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
     if(k.loopIters.size() != 0)
     {
-      std::unordered_set<std::string> usedVars;
+      kslicer::uset<std::string> usedVars;
       for(const auto& iter : k.loopIters)
       {
         uint32_t loopIdReorderd  = threadsOrder[iter.loopNesting];
@@ -1422,7 +1422,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     }
 
     kernelJson["ShityFunctions"] = std::vector<std::string>();
-    std::unordered_map<std::string, kslicer::ShittyFunction> shitByName;
+    kslicer::umap<std::string, kslicer::ShittyFunction> shitByName;
     for(auto shit : k.shittyFunctions) {
       shitByName[shit.ShittyName()] = shit;
       shittyFunctions[shit.originalName] = shit;

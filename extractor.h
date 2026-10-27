@@ -6,7 +6,7 @@
 
 #include <string>
 #include <vector>
-#include <unordered_map>
+#include "kslicer_containers.h"
 #include <sstream>
 #include <iostream>
 
@@ -16,17 +16,17 @@ namespace kslicer
   using namespace clang;
 
   std::vector<kslicer::FuncData>    ExtractUsedFunctions(MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler);
-  std::vector<kslicer::FuncData>    ExtractUsedFromVFH(MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler, std::unordered_map<uint64_t, kslicer::FuncData>& usedFunctions);
+  std::vector<kslicer::FuncData>    ExtractUsedFromVFH(MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler, kslicer::umap<uint64_t, kslicer::FuncData>& usedFunctions);
 
   std::vector<kslicer::DeclInClass> ExtractUsedTC(const  std::vector<kslicer::DeclInClass>& a_listedNames, const clang::CXXRecordDecl* classAstNode, const clang::CompilerInstance& a_compiler);
   std::vector<kslicer::DeclInClass> ExtractTCFromClass(const std::string& a_className, const clang::CXXRecordDecl* classAstNode, 
                                                        const clang::CompilerInstance& compiler, clang::tooling::ClangTool& Tool);
 
-  std::unordered_map<std::string, kslicer::DataMemberInfo> ExtractUsedMemberData(kslicer::KernelInfo* pKernel, const kslicer::FuncData& a_funcData, const std::vector<kslicer::FuncData>& a_otherMambers,
-                                                                                 std::unordered_map<std::string, kslicer::UsedContainerInfo>& a_auxContainers, 
+  kslicer::umap<std::string, kslicer::DataMemberInfo> ExtractUsedMemberData(kslicer::KernelInfo* pKernel, const kslicer::FuncData& a_funcData, const std::vector<kslicer::FuncData>& a_otherMambers,
+                                                                                 kslicer::umap<std::string, kslicer::UsedContainerInfo>& a_auxContainers, 
                                                                                  MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler);
 
-  std::vector< std::unordered_map<std::string, std::string> > ArgMatchTraversal(kslicer::KernelInfo* pKernel, const kslicer::FuncData& a_funcData, const std::vector<kslicer::FuncData>& a_otherMambers,
+  std::vector< kslicer::umap<std::string, std::string> > ArgMatchTraversal(kslicer::KernelInfo* pKernel, const kslicer::FuncData& a_funcData, const std::vector<kslicer::FuncData>& a_otherMambers,
                                                                                 MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler);
 
   std::vector<std::string> ExtractDefines(const clang::CompilerInstance& a_compiler);      
@@ -38,11 +38,11 @@ namespace kslicer
   class NodesMarker : public RecursiveASTVisitor<NodesMarker> // mark all subsequent nodes to be rewritten, put their ash codes in 'rewrittenNodes'
   {
   public:
-    NodesMarker(std::unordered_set<uint64_t>& a_rewrittenNodes) : m_rewrittenNodes(a_rewrittenNodes){}
+    NodesMarker(kslicer::uset<uint64_t>& a_rewrittenNodes) : m_rewrittenNodes(a_rewrittenNodes){}
     bool VisitStmt(Stmt* expr);
 
   private:
-    std::unordered_set<uint64_t>& m_rewrittenNodes;
+    kslicer::uset<uint64_t>& m_rewrittenNodes;
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -156,7 +156,7 @@ bool kslicer::FunctionRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperator
   std::string op        = kslicer::GetRangeSourceCode(clang::SourceRange(expr->getOperatorLoc()), m_compiler); 
   std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);   
 
-  static std::unordered_map<std::string, std::string> remapOp = {{"+","add"}, {"-","sub"}, {"*","mul"}, {"/","div"}};
+  static kslicer::umap<std::string, std::string> remapOp = {{"+","add"}, {"-","sub"}, {"*","mul"}, {"/","div"}};
 
   if((op == "+" || op == "-" || op == "*" || op == "/") && WasNotRewrittenYet(expr))
   {
@@ -226,13 +226,13 @@ std::string kslicer::FunctionRewriter::RewriteFuncDecl(clang::FunctionDecl* fDec
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void kslicer::MarkRewrittenRecursive(const clang::Stmt* currNode, std::unordered_set<uint64_t>& a_rewrittenNodes)
+void kslicer::MarkRewrittenRecursive(const clang::Stmt* currNode, kslicer::uset<uint64_t>& a_rewrittenNodes)
 {
   kslicer::NodesMarker rv(a_rewrittenNodes); 
   rv.TraverseStmt(const_cast<clang::Stmt*>(currNode));
 }
 
-void kslicer::MarkRewrittenRecursive(const clang::Decl* currNode, std::unordered_set<uint64_t>& a_rewrittenNodes)
+void kslicer::MarkRewrittenRecursive(const clang::Decl* currNode, kslicer::uset<uint64_t>& a_rewrittenNodes)
 {
   kslicer::NodesMarker rv(a_rewrittenNodes); 
   rv.TraverseDecl(const_cast<clang::Decl*>(currNode));

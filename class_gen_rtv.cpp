@@ -55,12 +55,12 @@ void kslicer::MainClassInfo::VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang:
 }
 
 
-void kslicer::MainClassInfo::AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, std::unordered_map<std::string, KernelInfo>& a_kernelList)
+void kslicer::MainClassInfo::AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, kslicer::umap<std::string, KernelInfo>& a_kernelList)
 {
   // (1) first scan all main functions, if no one needed just exit
   //
-  std::unordered_set<std::string> kernelsToAddFlags;
-  std::unordered_set<std::string> kernelsAddedFlags;
+  kslicer::uset<std::string> kernelsToAddFlags;
+  kslicer::uset<std::string> kernelsAddedFlags;
 
   for(auto& mainFunc : a_mainFuncList)
   {
@@ -172,12 +172,12 @@ void kslicer::MainClassInfo::AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFun
 }
 
 void kslicer::MainClassInfo::PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo>&                   a_mainFuncList, 
-                                                    const std::unordered_map<std::string, KernelInfo>& a_kernelList,
+                                                    const kslicer::umap<std::string, KernelInfo>& a_kernelList,
                                                     std::vector<KernelCallInfo>&                       a_kernelCalls)
 {
   // list kernels and main functions
   //
-  std::unordered_map<std::string, size_t> mainFuncIdByName;
+  kslicer::umap<std::string, size_t> mainFuncIdByName;
   for(size_t i=0;i<a_mainFuncList.size();i++)
     mainFuncIdByName[a_mainFuncList[i].Name] = i;
 

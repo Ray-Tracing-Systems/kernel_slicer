@@ -254,14 +254,14 @@ public:
   
   std::ostream&                   m_out;
   const std::string&              m_mainClassName;
-  std::unordered_set<std::string> m_baseClassInfo;
+  kslicer::uset<std::string> m_baseClassInfo;
 
   const clang::ASTContext&      m_astContext;
         kslicer::MainClassInfo& m_codeInfo;
-  std::unordered_map<std::string, kslicer::CFNameInfo> m_mainFunctions;
+  kslicer::umap<std::string, kslicer::CFNameInfo> m_mainFunctions;
 }; 
 
-std::unordered_map<std::string, kslicer::CFNameInfo> kslicer::ListAllMainRTFunctions(clang::tooling::ClangTool& Tool, 
+kslicer::umap<std::string, kslicer::CFNameInfo> kslicer::ListAllMainRTFunctions(clang::tooling::ClangTool& Tool, 
                                                                                      const std::string& a_mainClassName, std::vector<std::string> baseClases,
                                                                                      const clang::ASTContext& a_astContext, MainClassInfo& a_codeInfo)
 {

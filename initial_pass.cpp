@@ -57,7 +57,7 @@ kslicer::KernelInfo::ArgInfo kslicer::ProcessParameter(const clang::ParmVarDecl 
   return arg;
 }
 
-bool kslicer::InitialPassRecursiveASTVisitor::ProcessKernelDef(const CXXMethodDecl *f, std::unordered_map<std::string, KernelInfo>& a_funcList, const std::string& a_className)
+bool kslicer::InitialPassRecursiveASTVisitor::ProcessKernelDef(const CXXMethodDecl *f, kslicer::umap<std::string, KernelInfo>& a_funcList, const std::string& a_className)
 {
   if (!f || !f->hasBody())
     return false;
@@ -149,9 +149,9 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXRecordDecl(CXXRecordDecl* 
   return true;
 }
 
-static std::unordered_set<std::string> ListExcludedTypes()
+static kslicer::uset<std::string> ListExcludedTypes()
 {
-  std::unordered_set<std::string> res = kslicer::ListPredefinedMathTypes();
+  kslicer::uset<std::string> res = kslicer::ListPredefinedMathTypes();
   res.insert("float3x3");
   res.insert("RowTmp");
   res.insert("uchar4");

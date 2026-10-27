@@ -470,9 +470,9 @@ std::vector<kslicer::ArgFinal> kslicer::MainClassInfo::GetKernelCommonArgs(const
   return args;
 }
 
-std::unordered_set<std::string> kslicer::MainClassInfo::GetExcludedNames() const
+kslicer::uset<std::string> kslicer::MainClassInfo::GetExcludedNames() const
 {
-  std::unordered_set<std::string> excludedNames;
+  kslicer::uset<std::string> excludedNames;
   for(auto pair : m_setterVars)
     excludedNames.insert(kslicer::CleanTypeName(pair.second));
   for(auto pair : mainClassNames)
@@ -515,7 +515,7 @@ std::string remove_space_before_paren(const std::string& src) ///< remove spaces
     return result;
 }
 
-void kslicer::ObtainKernelsDecl(std::unordered_map<std::string, KernelInfo>& a_kernelsData, const clang::CompilerInstance& compiler, const std::string& a_mainClassName, const MainClassInfo& a_codeInfo)
+void kslicer::ObtainKernelsDecl(kslicer::umap<std::string, KernelInfo>& a_kernelsData, const clang::CompilerInstance& compiler, const std::string& a_mainClassName, const MainClassInfo& a_codeInfo)
 {
   for (auto& k : a_kernelsData)  
   {

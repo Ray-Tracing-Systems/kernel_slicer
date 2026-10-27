@@ -21,9 +21,9 @@ using namespace inja;
 using json = nlohmann::json;
 
 
-static std::unordered_map<std::string, std::string> MakeMapForKernelsDeclByName(const std::vector<std::string>& kernelsCallCmdDecl)
+static kslicer::umap<std::string, std::string> MakeMapForKernelsDeclByName(const std::vector<std::string>& kernelsCallCmdDecl)
 {
-  std::unordered_map<std::string,std::string> kernelDeclByName;
+  kslicer::umap<std::string,std::string> kernelDeclByName;
   for(size_t i=0;i<kernelsCallCmdDecl.size();i++)
   {
     std::string kernDecl = kernelsCallCmdDecl[i];
@@ -56,8 +56,8 @@ struct DSTextureAccess
   std::string SamplerName;
 };
 
-typedef typename std::unordered_map<std::string, kslicer::TEX_ACCESS>::const_iterator FlagsPointerType;
-typedef typename std::unordered_map<std::string, std::string>::const_iterator         SamplerPointerType;
+typedef typename kslicer::umap<std::string, kslicer::TEX_ACCESS>::const_iterator FlagsPointerType;
+typedef typename kslicer::umap<std::string, std::string>::const_iterator         SamplerPointerType;
 
 DSTextureAccess ObtainDSTextureAccess(const kslicer::KernelInfo& kernel, FlagsPointerType pAccessFlags, SamplerPointerType pSampler, bool isConstAccess)
 {
@@ -726,7 +726,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
   data["AllClassVarsSize"]  = allClassVarsSizeInBytes;
 
-  std::unordered_map<std::string, DataMemberInfo> containersInfo;
+  kslicer::umap<std::string, DataMemberInfo> containersInfo;
   containersInfo.reserve(a_classInfo.dataMembers.size());
 
   data["ClassVars"] = std::vector<std::string>();
@@ -765,8 +765,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   // each group has a separate memory allocation and is re-allocated as a whole; vectors not listed in config form 'otherGroup'
   //
   const bool hasCommitAppended = (a_classInfo.allMemberFunctions.find("CommitAppendedData") != a_classInfo.allMemberFunctions.end());
-  std::unordered_map<std::string, int> appendGroupOfVector; // tracked vector name ==> group id
-  std::unordered_map<std::string, int> appendGroupInConfig; // vector name from config ==> group id
+  kslicer::umap<std::string, int> appendGroupOfVector; // tracked vector name ==> group id
+  kslicer::umap<std::string, int> appendGroupInConfig; // vector name from config ==> group id
   std::vector<std::string>             appendGroupNames;
   for(const auto& group : a_classInfo.appendGroups)
   {
@@ -1025,7 +1025,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["Kernels"]            = std::vector<json>();
   data["ISV2"]               = std::vector<json>();
 
-  std::unordered_set<std::string> ISAccels;
+  kslicer::uset<std::string> ISAccels;
 
   bool useSubgroups = false;
   int subgroupMaxSize = 0;

@@ -39,11 +39,11 @@ namespace kslicer
                                     const MainClassInfo& a_classInfo,
                                     size_t& fnGroupOffset);
 
-  nlohmann::json PutHierarchiesDataToJson(const std::unordered_map<std::string, kslicer::MainClassInfo::VFHHierarchy>& hierarchies,
+  nlohmann::json PutHierarchiesDataToJson(const kslicer::umap<std::string, kslicer::MainClassInfo::VFHHierarchy>& hierarchies,
                                           const clang::CompilerInstance& compiler,
                                           const MainClassInfo& a_classInfo);
 
-  nlohmann::json ListCallableStructures(const std::unordered_map<std::string, kslicer::MainClassInfo::VFHHierarchy>& hierarchies,
+  nlohmann::json ListCallableStructures(const kslicer::umap<std::string, kslicer::MainClassInfo::VFHHierarchy>& hierarchies,
                                         const clang::CompilerInstance& compiler,
                                         const MainClassInfo& a_classInfo, 
                                         uint32_t& a_totalShaders);                                         
@@ -52,7 +52,7 @@ namespace kslicer
 
   nlohmann::json GetOriginalKernelJson(const KernelInfo& k, const MainClassInfo& a_classInfo);
 
-  std::vector<std::pair<std::string, std::string> > SortByKeysByLen(const std::unordered_map<std::string, std::string>& a_map);
+  std::vector<std::pair<std::string, std::string> > SortByKeysByLen(const kslicer::umap<std::string, std::string>& a_map);
 }
 
 #endif

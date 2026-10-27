@@ -616,7 +616,7 @@ bool kslicer::MainFunctionRewriterVulkan::VisitMemberExpr(MemberExpr* expr)
 
 std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriterVulkan::ExtractArgumentsOfAKernelCall(CallExpr* f, const MainFuncInfo& a_controlFunc)
 {
-  const std::unordered_set<std::string>& a_excludeList = a_controlFunc.ExcludeList;
+  const kslicer::uset<std::string>& a_excludeList = a_controlFunc.ExcludeList;
 
   std::vector<kslicer::ArgReferenceOnCall> args;
   args.reserve(20);

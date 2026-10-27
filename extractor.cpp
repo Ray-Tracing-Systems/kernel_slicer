@@ -287,7 +287,7 @@ public:
     return true;
   }
 
-  std::unordered_map<uint64_t, kslicer::FuncData> usedFunctions;
+  kslicer::umap<uint64_t, kslicer::FuncData> usedFunctions;
 
 private:
   const clang::CompilerInstance& m_compiler;
@@ -297,7 +297,7 @@ private:
 };
 
 void kslicer::ProcessFunctionsInQueueBFS(kslicer::MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler, 
-                                         std::queue<kslicer::FuncData>& functionsToProcess, std::unordered_map<uint64_t, kslicer::FuncData>& usedFunctions)
+                                         std::queue<kslicer::FuncData>& functionsToProcess, kslicer::umap<uint64_t, kslicer::FuncData>& usedFunctions)
 {
   FuncExtractor visitor(a_compiler, a_codeInfo); // (2) then repeat this recursivelly in a breadth first manner ...
   while(!functionsToProcess.empty())
@@ -332,7 +332,7 @@ void kslicer::ProcessFunctionsInQueueBFS(kslicer::MainClassInfo& a_codeInfo, con
   }
 }
 
-std::vector<kslicer::FuncData> kslicer::SortByDepthInUse(const std::unordered_map<uint64_t, kslicer::FuncData>& usedFunctions)
+std::vector<kslicer::FuncData> kslicer::SortByDepthInUse(const kslicer::umap<uint64_t, kslicer::FuncData>& usedFunctions)
 {
   std::vector<kslicer::FuncData> result; result.reserve(usedFunctions.size());
   for(const auto& f : usedFunctions)
@@ -358,14 +358,14 @@ kslicer::FuncData kslicer::FuncDataFromKernel(const kslicer::KernelInfo& k)
 
 std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(kslicer::MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler)
 {
-  std::unordered_map<uint64_t, kslicer::FuncData> a_usedFunctions;
+  kslicer::umap<uint64_t, kslicer::FuncData> a_usedFunctions;
   a_usedFunctions.reserve(1000);
 
   // (1) first traverse kernels as used functions
   for(auto& k : a_codeInfo.kernels)  
   {
     std::queue<kslicer::FuncData>                   functionsToProcess; 
-    std::unordered_map<uint64_t, kslicer::FuncData> usedFunctions;
+    kslicer::umap<uint64_t, kslicer::FuncData> usedFunctions;
     functionsToProcess.push(FuncDataFromKernel(k.second));
 
     //if(k.first == "kernel_ContributeToImagePM")
@@ -386,7 +386,7 @@ std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(kslicer::MainClassI
     }
   }
   
-  std::unordered_set<uint64_t> controlFunctions;
+  kslicer::uset<uint64_t> controlFunctions;
   if(a_codeInfo.megakernelRTV) 
   {
     for(auto& m : a_codeInfo.mainFunc) 
@@ -395,7 +395,7 @@ std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(kslicer::MainClassI
          continue;
 
        std::queue<FuncData>                            functionsToProcess; 
-       std::unordered_map<uint64_t, kslicer::FuncData> usedFunctions;
+       kslicer::umap<uint64_t, kslicer::FuncData> usedFunctions;
        kslicer::FuncData func; // FuncDataFromControlFunction
        func.name     = m.Name;
        func.astNode  = m.Node;
@@ -425,7 +425,7 @@ std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(kslicer::MainClassI
   return kslicer::SortByDepthInUse(a_usedFunctions);
 }
 
-std::vector<kslicer::FuncData> kslicer::ExtractUsedFromVFH(kslicer::MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler, std::unordered_map<uint64_t, kslicer::FuncData>& usedFunctions)
+std::vector<kslicer::FuncData> kslicer::ExtractUsedFromVFH(kslicer::MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler, kslicer::umap<uint64_t, kslicer::FuncData>& usedFunctions)
 {
   std::queue<FuncData> functionsToProcess;
 
@@ -463,7 +463,7 @@ public:
   kslicer::FuncData* pCurrFuncData = nullptr;
 
   DataExtractor(const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo& a_codeInfo,
-                std::unordered_map<std::string, kslicer::DataMemberInfo>& a_members, std::unordered_map<std::string, kslicer::UsedContainerInfo>& a_auxContainers) :
+                kslicer::umap<std::string, kslicer::DataMemberInfo>& a_members, kslicer::umap<std::string, kslicer::UsedContainerInfo>& a_auxContainers) :
                 m_compiler(a_compiler), m_sm(a_compiler.getSourceManager()), m_codeInfo(a_codeInfo), m_usedMembers(a_members), m_auxContainers(a_auxContainers)
   {
 
@@ -563,17 +563,17 @@ private:
   const clang::CompilerInstance& m_compiler;
   const clang::SourceManager&    m_sm;
   kslicer::MainClassInfo&        m_codeInfo;
-  std::unordered_map<std::string, kslicer::DataMemberInfo>& m_usedMembers;
-  std::unordered_map<std::string, kslicer::UsedContainerInfo>& m_auxContainers;
+  kslicer::umap<std::string, kslicer::DataMemberInfo>& m_usedMembers;
+  kslicer::umap<std::string, kslicer::UsedContainerInfo>& m_auxContainers;
 
 };
 
-std::unordered_map<std::string, kslicer::DataMemberInfo> kslicer::ExtractUsedMemberData(kslicer::KernelInfo* pKernel, const kslicer::FuncData& a_funcData, const std::vector<kslicer::FuncData>& a_otherMembers,
-                                                                                        std::unordered_map<std::string, kslicer::UsedContainerInfo>& a_auxContainers, 
+kslicer::umap<std::string, kslicer::DataMemberInfo> kslicer::ExtractUsedMemberData(kslicer::KernelInfo* pKernel, const kslicer::FuncData& a_funcData, const std::vector<kslicer::FuncData>& a_otherMembers,
+                                                                                        kslicer::umap<std::string, kslicer::UsedContainerInfo>& a_auxContainers, 
                                                                                         MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler)
 {
-  std::unordered_map<std::string, kslicer::DataMemberInfo> result;
-  std::unordered_map<std::string, kslicer::FuncData>       allMembers;
+  kslicer::umap<std::string, kslicer::DataMemberInfo> result;
+  kslicer::umap<std::string, kslicer::FuncData>       allMembers;
 
   for(auto f : a_otherMembers)
     allMembers[f.name] = f;
@@ -668,7 +668,7 @@ class ArgMatcher : public clang::RecursiveASTVisitor<ArgMatcher>
 {
 public:
 
-  ArgMatcher(const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo& a_codeInfo, std::vector< std::unordered_map<std::string, std::string> >& a_match, std::string a_funcName) :
+  ArgMatcher(const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo& a_codeInfo, std::vector< kslicer::umap<std::string, std::string> >& a_match, std::string a_funcName) :
              m_compiler(a_compiler), m_sm(a_compiler.getSourceManager()), m_patternImpl(a_codeInfo), m_argMatch(a_match), m_currFuncName(a_funcName)
   {
 
@@ -684,7 +684,7 @@ public:
     if(fname != m_currFuncName)
       return true;
 
-    std::unordered_map<std::string, std::string> agrMap;
+    kslicer::umap<std::string, std::string> agrMap;
     for(size_t i=0;i<call->getNumArgs();i++)
     {
       const clang::ParmVarDecl* formalArg = fDecl->getParamDecl(i);
@@ -720,15 +720,15 @@ private:
   const clang::CompilerInstance& m_compiler;
   const clang::SourceManager&    m_sm;
   kslicer::MainClassInfo&        m_patternImpl;
-  std::vector< std::unordered_map<std::string, std::string> >& m_argMatch;
+  std::vector< kslicer::umap<std::string, std::string> >& m_argMatch;
   std::string                    m_currFuncName;
 };
 
 
-std::vector< std::unordered_map<std::string, std::string> > kslicer::ArgMatchTraversal(kslicer::KernelInfo* pKernel, const kslicer::FuncData& a_funcData, const std::vector<kslicer::FuncData>& a_otherMambers,
+std::vector< kslicer::umap<std::string, std::string> > kslicer::ArgMatchTraversal(kslicer::KernelInfo* pKernel, const kslicer::FuncData& a_funcData, const std::vector<kslicer::FuncData>& a_otherMambers,
                                                                                        MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler)
 {
-  std::vector< std::unordered_map<std::string, std::string> > result;
+  std::vector< kslicer::umap<std::string, std::string> > result;
   ArgMatcher visitor(a_compiler, a_codeInfo, result, a_funcData.name);
   visitor.TraverseDecl(const_cast<clang::CXXMethodDecl*>(pKernel->astNode));
   return result;
@@ -793,7 +793,7 @@ public:
       usedDecls[decl.name] = decl;
   }
 
-  std::unordered_map<std::string, kslicer::DeclInClass> usedDecls;
+  kslicer::umap<std::string, kslicer::DeclInClass> usedDecls;
 
   bool VisitCXXRecordDecl(clang::CXXRecordDecl* record)
   {
@@ -907,7 +907,7 @@ std::vector<kslicer::DeclInClass> kslicer::ExtractTCFromClass(const std::string&
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::vector<const kslicer::KernelInfo*> kslicer::extractUsedKernelsByName(const std::unordered_set<std::string>& a_usedNames, const std::unordered_map<std::string, KernelInfo>& a_kernels)
+std::vector<const kslicer::KernelInfo*> kslicer::extractUsedKernelsByName(const kslicer::uset<std::string>& a_usedNames, const kslicer::umap<std::string, KernelInfo>& a_kernels)
 {
   std::vector<const kslicer::KernelInfo*> result;
   result.reserve(16);
@@ -1125,14 +1125,14 @@ struct TypePair
   size_t aligment = sizeof(int);
 };
 
-void kslicer::MainClassInfo::ProcessMemberTypes(const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls, clang::SourceManager& a_srcMgr,
+void kslicer::MainClassInfo::ProcessMemberTypes(const kslicer::umap<std::string, kslicer::DeclInClass>& a_otherDecls, clang::SourceManager& a_srcMgr,
                                                 std::vector<kslicer::DeclInClass>& generalDecls)
 {
   const auto& a_members           = this->dataMembers;
   const auto  a_additionalTypes   = this->ExtractTypesFromUsedContainers(a_otherDecls);
   const auto& a_allDataMembers    = this->allDataMembers;
 
-  std::unordered_map<std::string, kslicer::DeclInClass> declsByName;
+  kslicer::umap<std::string, kslicer::DeclInClass> declsByName;
   for(const auto& decl : generalDecls)
     declsByName[decl.name] = decl;
 
@@ -1224,9 +1224,9 @@ void kslicer::MainClassInfo::ProcessMemberTypes(const std::unordered_map<std::st
   std::reverse_copy(auxDecls.begin(), auxDecls.end(), std::back_inserter(generalDecls));
 }
 
-std::unordered_map<std::string, size_t> ListPredefinedAligmentTypes()
+kslicer::umap<std::string, size_t> ListPredefinedAligmentTypes()
 {
-  std::unordered_map<std::string, size_t> res;
+  kslicer::umap<std::string, size_t> res;
   res["float2"]   = sizeof(float)*2;
   res["float3"]   = sizeof(float)*4;
   res["float4"]   = sizeof(float)*4;
@@ -1256,9 +1256,9 @@ std::unordered_map<std::string, size_t> ListPredefinedAligmentTypes()
   return res;
 }
 
-std::unordered_map<std::string, size_t> ListForbiddenTypes()
+kslicer::umap<std::string, size_t> ListForbiddenTypes()
 {
-  std::unordered_map<std::string, size_t> res;
+  kslicer::umap<std::string, size_t> res;
   res["float3"]   = sizeof(float)*3;
   res["int3"]     = sizeof(int)*3;
   res["uint3"]    = sizeof(unsigned)*4;
@@ -1284,8 +1284,8 @@ std::unordered_map<std::string, size_t> ListForbiddenTypes()
 
 
 size_t GetBaseAligmentForGLSL(TypePair* pCurrType,
-                              const std::unordered_map<std::string, TypePair>& a_typeToProcess,
-                              const std::unordered_map<std::string, size_t>& a_endTypes, int a_level)
+                              const kslicer::umap<std::string, TypePair>& a_typeToProcess,
+                              const kslicer::umap<std::string, size_t>& a_endTypes, int a_level)
 {
   auto pEndType = a_endTypes.find(pCurrType->typeName);
   if(pEndType != a_endTypes.end())
@@ -1332,7 +1332,7 @@ static inline size_t Padding(size_t a_size, size_t a_alignment)
 }
 
 void kslicer::MainClassInfo::ProcessMemberTypesAligment(std::vector<DataMemberInfo>& a_members,
-                                                        const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls,
+                                                        const kslicer::umap<std::string, kslicer::DeclInClass>& a_otherDecls,
                                                         const clang::ASTContext& a_astContext)
 {
   const auto  a_additionalTypes = this->ExtractTypesFromUsedContainers(a_otherDecls);
@@ -1347,7 +1347,7 @@ void kslicer::MainClassInfo::ProcessMemberTypesAligment(std::vector<DataMemberIn
       internalTypes.erase(p);
   }
 
-  std::unordered_map<std::string, TypePair> typesToProcess;
+  kslicer::umap<std::string, TypePair> typesToProcess;
   for(const auto& member : a_members)
   {
     std::string typeName = kslicer::CleanTypeName(member.type);
@@ -1408,9 +1408,9 @@ void kslicer::MainClassInfo::ProcessMemberTypesAligment(std::vector<DataMemberIn
 
 }
 
-std::unordered_set<std::string> kslicer::MainClassInfo::ExtractTypesFromUsedContainers(const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls)
+kslicer::uset<std::string> kslicer::MainClassInfo::ExtractTypesFromUsedContainers(const kslicer::umap<std::string, kslicer::DeclInClass>& a_otherDecls)
 {
-  std::unordered_set<std::string> res;
+  kslicer::uset<std::string> res;
   for(const auto& k : this->kernels) // fix this flag for members that were used in member functions but not in kernels directly
   {
     for(const auto& c : k.second.usedContainers)
@@ -1458,9 +1458,9 @@ std::unordered_set<std::string> kslicer::MainClassInfo::ExtractTypesFromUsedCont
   return res;
 }
 
-static std::unordered_set<std::string> ListPredefinedMacro()
+static kslicer::uset<std::string> ListPredefinedMacro()
 {
-  std::unordered_set<std::string> predefined;
+  kslicer::uset<std::string> predefined;
   predefined.insert("TINYSTL_NEW_H");
   predefined.insert("stderr");
   predefined.insert("TINYSTL_BUFFER_H");
@@ -1653,7 +1653,7 @@ private:
   const clang::CompilerInstance& m_compiler;
   const clang::SourceManager&    m_sm;
 
-  std::unordered_set<uint64_t>   m_visitedNodes;
+  kslicer::uset<uint64_t>   m_visitedNodes;
   clang::Stmt*                   m_lastVisitedStmt = nullptr;
 };
 

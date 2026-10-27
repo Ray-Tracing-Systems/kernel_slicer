@@ -218,9 +218,9 @@ std::string ToLowerCase(std::string a_str)
   return a_str;
 }
 
-std::unordered_set<std::string> kslicer::GetAllServiceKernels()
+kslicer::uset<std::string> kslicer::GetAllServiceKernels()
 {
-  std::unordered_set<std::string> names;
+  kslicer::uset<std::string> names;
   names.insert("copyKernelFloat");
   names.insert("matMulTranspose");
   return names;
@@ -400,16 +400,16 @@ std::vector<kslicer::NameFlagsPair> kslicer::ListAccessedTextures(const std::vec
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, const char** argv, 
-                                                                   std::unordered_map<std::string, std::string>& defines,
+kslicer::umap<std::string, std::string> ReadCommandLineParams(int argc, const char** argv, 
+                                                                   kslicer::umap<std::string, std::string>& defines,
                                                                    std::filesystem::path& fileName,
                                                                    std::vector<std::string>& allFiles,
                                                                    std::vector<std::string>& ignoreFiles,
                                                                    std::vector<std::string>& processFiles,
                                                                    std::vector<std::string>& cppIncludes,
-                                                                   const std::unordered_map<std::string, std::string>& a_configParams)
+                                                                   const kslicer::umap<std::string, std::string>& a_configParams)
 {
-  std::unordered_map<std::string, std::string> cmdLineParams;
+  kslicer::umap<std::string, std::string> cmdLineParams;
   for(int i=0; i<argc; i++)
   {
     std::string key(argv[i]);
@@ -474,7 +474,7 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
     auto fileName2  = fileName.filename();
     fileName2.replace_extension("");
 
-    std::unordered_map<std::string, std::string> mergeParams = a_configParams; // options from config, overridden by command line
+    kslicer::umap<std::string, std::string> mergeParams = a_configParams; // options from config, overridden by command line
     for(const auto& param : cmdLineParams)
       mergeParams[param.first] = param.second;
 
@@ -587,9 +587,9 @@ std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, con
   return cmdLineParams;
 }
 
-std::vector<const char*> ExcludeSlicerParams(int argc, const char** argv, const std::unordered_map<std::string,std::string>& params, const char* a_mainFileName,  const std::unordered_map<std::string,std::string>& defines)
+std::vector<const char*> ExcludeSlicerParams(int argc, const char** argv, const kslicer::umap<std::string,std::string>& params, const char* a_mainFileName,  const kslicer::umap<std::string,std::string>& defines)
 {
-  std::unordered_set<std::string> values;
+  kslicer::uset<std::string> values;
   for(auto p : params)
     values.insert(p.second);
 

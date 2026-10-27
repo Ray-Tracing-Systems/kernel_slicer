@@ -9,9 +9,9 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::unordered_map<std::string, std::string> kslicer::ListSlangStandartTypeReplacements(bool a_NeedConstCopy)
+kslicer::umap<std::string, std::string> kslicer::ListSlangStandartTypeReplacements(bool a_NeedConstCopy)
 {
-  std::unordered_map<std::string, std::string> m_vecReplacements;
+  kslicer::umap<std::string, std::string> m_vecReplacements;
   m_vecReplacements["_Bool"]              = "bool";
   m_vecReplacements["long int"]           = "int";
   m_vecReplacements["unsigned long"]      = "uint";
@@ -31,7 +31,7 @@ std::unordered_map<std::string, std::string> kslicer::ListSlangStandartTypeRepla
   
   if(a_NeedConstCopy)
   {
-    std::unordered_map<std::string, std::string> m_vecReplacementsConst;
+    kslicer::umap<std::string, std::string> m_vecReplacementsConst;
     for(auto r : m_vecReplacements)
       m_vecReplacementsConst[std::string("const ") + r.first] = std::string("const ") + m_vecReplacements[r.first];
     

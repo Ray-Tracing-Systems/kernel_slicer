@@ -165,7 +165,7 @@ std::vector<const clang::CXXRecordDecl*> kslicer::ExtractAndSortBaseClasses(cons
       if(derived->isDerivedFrom(classes[i]))
         result.push_back(classes[i]);
     
-    std::unordered_map<const clang::CXXRecordDecl*, int> depth;
+    kslicer::umap<const clang::CXXRecordDecl*, int> depth;
     for(auto node : result)
       depth[node] = GetClassDepth(node);
   

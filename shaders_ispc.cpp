@@ -230,7 +230,7 @@ bool kslicer::ISPCRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* 
     return true;
 
   const std::string typeName = ctorDecl->getNameInfo().getName().getAsString();
-  static const std::unordered_set<std::string> vecTypes = {"float2", "float3", "float4", "int2", "int3", "int4", "uint2", "uint3", "uint4"};
+  static const kslicer::uset<std::string> vecTypes = {"float2", "float3", "float4", "int2", "int3", "int4", "uint2", "uint3", "uint4"};
   if(vecTypes.find(typeName) == vecTypes.end())
     return true;
 
@@ -613,9 +613,9 @@ void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   buildSH.close();
 }
 
-std::unordered_map<std::string, std::string> ListISPCVectorReplacements()
+kslicer::umap<std::string, std::string> ListISPCVectorReplacements()
 {
-  std::unordered_map<std::string, std::string> m_vecReplacements;
+  kslicer::umap<std::string, std::string> m_vecReplacements;
   m_vecReplacements["float2"] = "float2";
   m_vecReplacements["float3"] = "float3";
   m_vecReplacements["float4"] = "float4";
@@ -639,7 +639,7 @@ const std::string ConvertVecTypesToISPC(const std::string& a_typeName,
   ReplaceFirst(nameToSearch, "const ", "");
   while(nameToSearch[nameToSearch.size()-1] == ' ')
     nameToSearch = nameToSearch.substr(0, nameToSearch.size()-1);
-  static const std::unordered_set<std::string> scalarTypes = {"float", "double", "int", "uint", "unsigned", "unsigned int", "bool", "_Bool", "char", "unsigned char", "short", "unsigned short",
+  static const kslicer::uset<std::string> scalarTypes = {"float", "double", "int", "uint", "unsigned", "unsigned int", "bool", "_Bool", "char", "unsigned char", "short", "unsigned short",
                                                                "int8_t", "uint8_t", "int16_t", "uint16_t", "int32_t", "uint32_t", "int64_t", "uint64_t", "size_t"};
   if(scalarTypes.find(nameToSearch) == scalarTypes.end()) // vector types and user structures have their own declarations in ISPC header 
   {

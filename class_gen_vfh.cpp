@@ -296,9 +296,9 @@ public:
     return true; 
   } 
 
-  std::unordered_map<std::string, ArgList>     argsByName;
-  std::unordered_map<std::string, std::string> declByName; 
-  const std::unordered_set<std::string>&       dataClassNames; 
+  kslicer::umap<std::string, ArgList>     argsByName;
+  kslicer::umap<std::string, std::string> declByName; 
+  const kslicer::uset<std::string>&       dataClassNames; 
 
 private:
     
@@ -364,8 +364,8 @@ void kslicer::MainClassInfo::ProcessVFH(const std::vector<const clang::CXXRecord
 
     // find all derived classes for target base class
     //
-    std::unordered_map<std::string, std::string>             declByName;
-    std::unordered_map<std::string, MemberRewriter::ArgList> argsByName;
+    kslicer::umap<std::string, std::string>             declByName;
+    kslicer::umap<std::string, MemberRewriter::ArgList> argsByName;
 
     clang::Rewriter rewrite2;
     rewrite2.setSourceMgr(a_compiler.getSourceManager(), a_compiler.getLangOpts());
@@ -443,7 +443,7 @@ class TagSeeker : public clang::RecursiveASTVisitor<TagSeeker>
 {
 public:
   
-  TagSeeker(const clang::CompilerInstance& a_compiler, std::vector<kslicer::DeclInClass>& a_constants, std::unordered_map<std::string, kslicer::MainClassInfo::VFHTagInfo>& a_tagByName) : 
+  TagSeeker(const clang::CompilerInstance& a_compiler, std::vector<kslicer::DeclInClass>& a_constants, kslicer::umap<std::string, kslicer::MainClassInfo::VFHTagInfo>& a_tagByName) : 
             m_compiler(a_compiler), m_sm(a_compiler.getSourceManager()), m_knownConstants(a_constants), m_tagByClassName(a_tagByName) { m_tagByClassName.clear(); }
 
   bool VisitCXXMethodDecl(const clang::CXXMethodDecl* f)
@@ -505,7 +505,7 @@ private:
   const clang::CompilerInstance& m_compiler;
   const clang::SourceManager&    m_sm;
   std::vector<kslicer::DeclInClass>& m_knownConstants;
-  std::unordered_map<std::string, kslicer::MainClassInfo::VFHTagInfo>& m_tagByClassName; 
+  kslicer::umap<std::string, kslicer::MainClassInfo::VFHTagInfo>& m_tagByClassName; 
 };
 
 
@@ -900,7 +900,7 @@ void kslicer::MainClassInfo::AppendAccelStructForIntersectionShadersIfNeeded(std
     }
   }
 
-  std::unordered_set<std::string> alreadyAdded;
+  kslicer::uset<std::string> alreadyAdded;
 
   // add to kernel.usedContainers to bind it to shaders further 
   //
@@ -968,7 +968,7 @@ void kslicer::MainClassInfo::AppendAccelStructForIntersectionShadersIfNeeded(std
   
 }
 
-std::unordered_map<std::string, kslicer::MainClassInfo::VFHHierarchy> kslicer::MainClassInfo::SelectVFHOnlyUsedByKernel(const std::unordered_map<std::string, VFHHierarchy>& a_hierarhices, const KernelInfo& k) const
+kslicer::umap<std::string, kslicer::MainClassInfo::VFHHierarchy> kslicer::MainClassInfo::SelectVFHOnlyUsedByKernel(const kslicer::umap<std::string, VFHHierarchy>& a_hierarhices, const KernelInfo& k) const
 {
   auto copy = a_hierarhices; 
   {

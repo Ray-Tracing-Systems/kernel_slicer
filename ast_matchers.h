@@ -11,7 +11,7 @@
 
 #include <string>
 #include <vector>
-#include <unordered_map>
+#include "kslicer_containers.h"
 #include <algorithm>
 
 #include <sstream>
@@ -43,7 +43,7 @@ namespace kslicer
   clang::ast_matchers::DeclarationMatcher MakeMatch_VarDeclInsideClass(std::string const& className);
   clang::ast_matchers::DeclarationMatcher MakeMatch_TypedefInsideClass(std::string const& className);
 
-  std::unordered_map<std::string, CFNameInfo> ListAllMainRTFunctions(clang::tooling::ClangTool& Tool, 
+  kslicer::umap<std::string, CFNameInfo> ListAllMainRTFunctions(clang::tooling::ClangTool& Tool, 
                                                                      const std::string& a_mainClassName, std::vector<std::string> baseClases,
                                                                      const clang::ASTContext& a_astContext, kslicer::MainClassInfo& a_codeInfo);
 
@@ -517,7 +517,7 @@ namespace kslicer
     const clang::ASTContext&       m_astContext;
     int m_currId = 0;
 
-    std::unordered_map<std::string, kslicer::DeclInClass> foundDecl;
+    kslicer::umap<std::string, kslicer::DeclInClass> foundDecl;
 
   };  // class UsedCodeFilter
 

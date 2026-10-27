@@ -82,7 +82,7 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
       //file << std::setw(2) << currKerneJson; //
       //file.close();
       
-      std::unordered_set<std::string> intersectionShaders;
+      kslicer::uset<std::string> intersectionShaders;
       for(auto impl : currKerneJson["Kernel"]["IntersectionHierarhcy"]["Implementations"]) 
       {
         nlohmann::json intersectionShader;
@@ -383,9 +383,9 @@ std::string kslicer::GLSLCompiler::RewritePushBack(const std::string& memberName
 ////////////////////////////////////////  GLSLFunctionRewriter  ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::unordered_map<std::string, std::string> kslicer::ListGLSLVectorReplacements()
+kslicer::umap<std::string, std::string> kslicer::ListGLSLVectorReplacements()
 {
-  std::unordered_map<std::string, std::string> m_vecReplacements;
+  kslicer::umap<std::string, std::string> m_vecReplacements;
   m_vecReplacements["double2"] ="dvec2";
   m_vecReplacements["double3"] ="dvec3";
   m_vecReplacements["double4"] ="dvec4";
@@ -414,7 +414,7 @@ std::unordered_map<std::string, std::string> kslicer::ListGLSLVectorReplacements
   m_vecReplacements["uint32_t"]       = "uint";
   m_vecReplacements["size_t"]         = "uint64_t";
   
-  std::unordered_map<std::string, std::string> m_vecReplacementsConst;
+  kslicer::umap<std::string, std::string> m_vecReplacementsConst;
   for(auto r : m_vecReplacements)
     m_vecReplacementsConst[std::string("const ") + r.first] = std::string("const ") + m_vecReplacements[r.first];
   
@@ -424,10 +424,10 @@ std::unordered_map<std::string, std::string> kslicer::ListGLSLVectorReplacements
   return m_vecReplacements;
 }
 
-std::unordered_set<std::string> kslicer::ListPredefinedMathTypes()
+kslicer::uset<std::string> kslicer::ListPredefinedMathTypes()
 {
   auto types = kslicer::ListGLSLVectorReplacements();
-  std::unordered_set<std::string> res;
+  kslicer::uset<std::string> res;
   for(auto p : types)
   {
     res.insert(p.first);
@@ -464,7 +464,7 @@ std::string kslicer::CleanTypeName(const std::string& a_str)
   return typeName;
 }
 
-std::vector<std::pair<std::string, std::string> > kslicer::SortByKeysByLen(const std::unordered_map<std::string, std::string>& a_map)
+std::vector<std::pair<std::string, std::string> > kslicer::SortByKeysByLen(const kslicer::umap<std::string, std::string>& a_map)
 {
   std::vector<std::pair<std::string, std::string> > res;
   res.reserve(a_map.size());
@@ -1483,12 +1483,12 @@ protected:
 
   kslicer::GLSLFunctionRewriter m_glslRW;
   std::string RecursiveRewriteImpl(const clang::Stmt* expr) override { return RecursiveRewrite(expr); }
-  std::unordered_set<uint64_t> GetVisitedNodes() const override { return *m_pRewrittenNodes; }
+  kslicer::uset<uint64_t> GetVisitedNodes() const override { return *m_pRewrittenNodes; }
 
   bool IsGLSL() const override { return true; }
 
   void RewriteTextureAccess(clang::CXXOperatorCallExpr* expr, clang::Expr* a_assignOp, const std::string& rhsText);
-  std::unordered_set<std::string> m_userArgs;
+  kslicer::uset<std::string> m_userArgs;
 };
 
 std::string GLSLKernelRewriter::RecursiveRewrite(const clang::Stmt* expr)

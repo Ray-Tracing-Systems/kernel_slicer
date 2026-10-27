@@ -5,7 +5,7 @@
 #include <fstream>
 #include <sstream>
 
-#include <unordered_map>
+#include "kslicer_containers.h"
 #include <iomanip>
 
 #include "kslicer.h"
@@ -15,7 +15,7 @@ class SetterVisitor : public clang::RecursiveASTVisitor<SetterVisitor>
 {
 public:
   
-  SetterVisitor(const clang::CompilerInstance& a_compiler, clang::Rewriter &R, const std::unordered_map<std::string, const clang::CXXRecordDecl*>& a_types) : 
+  SetterVisitor(const clang::CompilerInstance& a_compiler, clang::Rewriter &R, const kslicer::umap<std::string, const clang::CXXRecordDecl*>& a_types) : 
                 m_compiler(a_compiler), m_sm(a_compiler.getSourceManager()), m_rewriter(R), m_targetTypes(a_types)
   { 
     
@@ -36,21 +36,21 @@ public:
     return true;
   }
 
-  const std::unordered_map<std::string, std::string>& GetMembers() const { return m_foundMembers; }
+  const kslicer::umap<std::string, std::string>& GetMembers() const { return m_foundMembers; }
 
 private:
   const clang::CompilerInstance& m_compiler;
   const clang::SourceManager&    m_sm;
   clang::Rewriter&               m_rewriter;
 
-  const std::unordered_map<std::string, const clang::CXXRecordDecl*>& m_targetTypes;
-  std::unordered_map<std::string, std::string>                        m_foundMembers; ///<! member name --> member type name
+  const kslicer::umap<std::string, const clang::CXXRecordDecl*>& m_targetTypes;
+  kslicer::umap<std::string, std::string>                        m_foundMembers; ///<! member name --> member type name
 };
 
 
-std::unordered_map<std::string, const clang::CXXRecordDecl*> ListStructParamTypes(const clang::CXXMethodDecl* node)
+kslicer::umap<std::string, const clang::CXXRecordDecl*> ListStructParamTypes(const clang::CXXMethodDecl* node)
 {
-  std::unordered_map<std::string, const clang::CXXRecordDecl*> structTypeNames; 
+  kslicer::umap<std::string, const clang::CXXRecordDecl*> structTypeNames; 
   for(unsigned paramId = 0; paramId < node->getNumParams(); paramId++)
   {
     const clang::ParmVarDecl* pParam  = node->getParamDecl(paramId);
@@ -63,7 +63,7 @@ std::unordered_map<std::string, const clang::CXXRecordDecl*> ListStructParamType
   return structTypeNames;
 }
 
-void kslicer::MainClassInfo::ProcessAllSetters(const std::unordered_map<std::string, const clang::CXXMethodDecl*>& a_setterFunc, clang::CompilerInstance& a_compiler)
+void kslicer::MainClassInfo::ProcessAllSetters(const kslicer::umap<std::string, const clang::CXXMethodDecl*>& a_setterFunc, clang::CompilerInstance& a_compiler)
 {
   auto& a_rewrittenDecls = m_setterStructDecls;
   auto& a_rewrittenFuncs = m_setterFuncDecls;
@@ -73,7 +73,7 @@ void kslicer::MainClassInfo::ProcessAllSetters(const std::unordered_map<std::str
   a_rewrittenFuncs.clear();
   a_variables.clear();
 
-  std::unordered_map<std::string, const clang::CXXRecordDecl*> allStructTypes;
+  kslicer::umap<std::string, const clang::CXXRecordDecl*> allStructTypes;
 
   for(const auto kv : a_setterFunc)
   {

@@ -14,7 +14,7 @@
 // 'key' has offset sizeof(X); explicit '_pad' makes slot size the same in C++ and in std430.
 // Open addressing with linear probing, capacity is power of 2, empty slot has 'key == sentinel'.
 
-std::unordered_map<std::string, size_t> ListPredefinedAligmentTypes(); // extractor.cpp
+kslicer::umap<std::string, size_t> ListPredefinedAligmentTypes(); // extractor.cpp
 
 bool kslicer::IsHashMapContainer(const std::string& a_typeName)
 {

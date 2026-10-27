@@ -4,8 +4,7 @@
 #include <string>
 #include <vector>
 #include <map>
-#include <unordered_map>
-#include <unordered_set>
+#include "kslicer_containers.h"
 #include <algorithm>
 #include <sstream>
 #include <filesystem>
@@ -218,7 +217,7 @@ namespace kslicer
                                         ///!< please note that if function is called under different depth, maximum depth should be stored in this variable;
     bool hasPrefix = false;
     std::string prefixName;
-    std::unordered_set<std::string> calledMembers;
+    kslicer::uset<std::string> calledMembers;
   
     std::string thisTypeName;                                ///!< currently filled for VFH only, TODO: fill for other
     std::string declRewritten;                               ///!< currently filled for VFH only, TODO: fill for other
@@ -398,17 +397,17 @@ namespace kslicer
     std::string RetType;                         ///<! kernel return type
     std::string DeclCmd;                         ///<! used during class header to print declaration of current 'XXXCmd' for current 'kernel_XXX'
     std::map<std::string, UsedContainerInfo>     usedContainers;      ///<! list of all std::vector<T> member names which is referenced inside kernel
-    std::unordered_set<std::string>                        usedMembers;         ///<! list of all other variables used inside kernel
-    std::unordered_map<uint64_t, FuncData>                 usedMemberFunctions; ///<! list of all used member functions from this kernel
+    kslicer::uset<std::string>                        usedMembers;         ///<! list of all other variables used inside kernel
+    kslicer::umap<uint64_t, FuncData>                 usedMemberFunctions; ///<! list of all used member functions from this kernel
 
-    std::unordered_map<std::string, ReductionAccess>   subjectedToReduction; ///<! if member is used in reduction expression
-    std::unordered_map<std::string, TEX_ACCESS>        texAccessInArgs;
-    std::unordered_map<std::string, TEX_ACCESS>        texAccessInMemb;
-    std::unordered_map<std::string, std::string>       texAccessSampler;
+    kslicer::umap<std::string, ReductionAccess>   subjectedToReduction; ///<! if member is used in reduction expression
+    kslicer::umap<std::string, TEX_ACCESS>        texAccessInArgs;
+    kslicer::umap<std::string, TEX_ACCESS>        texAccessInMemb;
+    kslicer::umap<std::string, std::string>       texAccessSampler;
     std::vector<ShittyFunction>                        shittyFunctions;     ///<! functions with input pointers accesed global memory, they should be rewritten for GLSL
     std::vector<const KernelInfo*>                     subkernels;          ///<! for RTV pattern only, when joing everything to mega-kernel this array store pointers to used kernels
     ShittyFunction                                     currentShit;         ///<!
-    std::unordered_map<std::string, ArrayData>         threadLocalArrays;
+    kslicer::umap<std::string, ArrayData>         threadLocalArrays;
     std::map<std::string, TemplatedFunctionLM>         templatedFunctionsLM;
    
     struct BEBlock
@@ -574,7 +573,7 @@ namespace kslicer
   };
 
   InOutVarInfo GetParamInfo(const clang::ParmVarDecl* currParam, const clang::CompilerInstance& compiler);
-  std::unordered_set<std::string> ListPredefinedMathTypes();
+  kslicer::uset<std::string> ListPredefinedMathTypes();
 
   // assume there could be only 4 form of kernel arg when kernel is called
   //
@@ -638,15 +637,15 @@ namespace kslicer
     PATTERN_TP                                        pattern = PATTERN_TP::PATTERN_IPV;
     std::string                                       Name;
     const clang::CXXMethodDecl*                       Node;
-    std::unordered_map<std::string, DataLocalVarInfo> Locals;
-    std::unordered_map<std::string, DataLocalVarInfo> LocalConst;
+    kslicer::umap<std::string, DataLocalVarInfo> Locals;
+    kslicer::umap<std::string, DataLocalVarInfo> LocalConst;
     std::vector<InOutVarInfo>                         InOuts;
-    std::unordered_set<std::string>                   ExcludeList;
-    std::unordered_set<std::string>                   UsedKernels;
+    kslicer::uset<std::string>                   ExcludeList;
+    kslicer::uset<std::string>                   UsedKernels;
 
-    std::unordered_map<std::string, UsedContainerInfo> usedContainers;      ///<! list of all std::vector<T> member names which is referenced inside ControlFunc
-    std::unordered_set<std::string>                    usedMembers;         ///<! list of all other variables used inside ControlFunc
-    std::unordered_map<uint64_t,          FuncData>    usedMemberFunctions; ///<! list of all used member functions from this kernel
+    kslicer::umap<std::string, UsedContainerInfo> usedContainers;      ///<! list of all std::vector<T> member names which is referenced inside ControlFunc
+    kslicer::uset<std::string>                    usedMembers;         ///<! list of all other variables used inside ControlFunc
+    kslicer::umap<uint64_t,          FuncData>    usedMemberFunctions; ///<! list of all used member functions from this kernel
 
     std::string ReturnType;
     std::string GeneratedDecl;
@@ -661,9 +660,9 @@ namespace kslicer
 
     // RT template specific
     //
-    std::unordered_map<uint64_t, KernelStatementInfo> ExitExprIfCond;
-    std::unordered_map<uint64_t, KernelStatementInfo> ExitExprIfCall;
-    std::unordered_map<uint64_t, KernelStatementInfo> CallsInsideFor;
+    kslicer::umap<uint64_t, KernelStatementInfo> ExitExprIfCond;
+    kslicer::umap<uint64_t, KernelStatementInfo> ExitExprIfCall;
+    kslicer::umap<uint64_t, KernelStatementInfo> CallsInsideFor;
 
     bool   needToAddThreadFlags = false;
     bool   usePersistentThreads = false;
@@ -702,8 +701,8 @@ namespace kslicer
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   class MainClassInfo;
-  void MarkRewrittenRecursive(const clang::Stmt* currNode, std::unordered_set<uint64_t>& a_rewrittenNodes);
-  void MarkRewrittenRecursive(const clang::Decl* currNode, std::unordered_set<uint64_t>& a_rewrittenNodes);
+  void MarkRewrittenRecursive(const clang::Stmt* currNode, kslicer::uset<uint64_t>& a_rewrittenNodes);
+  void MarkRewrittenRecursive(const clang::Decl* currNode, kslicer::uset<uint64_t>& a_rewrittenNodes);
   bool IsVectorContructorNeedsReplacement(const std::string& a_typeName);
 
   /**
@@ -716,7 +715,7 @@ namespace kslicer
     FunctionRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo) :
                      m_rewriter(R), m_compiler(a_compiler), m_codeInfo(a_codeInfo)
     {
-      m_pRewrittenNodes = std::make_shared< std::unordered_set<uint64_t> >();
+      m_pRewrittenNodes = std::make_shared< kslicer::uset<uint64_t> >();
     }
 
     virtual ~FunctionRewriter(){}
@@ -767,21 +766,21 @@ namespace kslicer
 
     mutable ShaderFeatures sFeatures;
     virtual ShaderFeatures GetShaderFeatures() const { return sFeatures; }
-    std::shared_ptr< std::unordered_set<uint64_t> > m_pRewrittenNodes = nullptr;
+    std::shared_ptr< kslicer::uset<uint64_t> > m_pRewrittenNodes = nullptr;
 
     virtual void SetCurrFuncInfo  (kslicer::FuncData* a_pInfo) { m_pCurrFuncInfo = a_pInfo; }
     virtual void ResetCurrFuncInfo()                           { m_pCurrFuncInfo = nullptr; }
     
     virtual bool NeedsVectorTypeRewrite(const std::string& a_str) { return false; }
 
-    std::unordered_map<uint64_t, std::string>& WorkAroundRef() { return m_workAround; }
+    kslicer::umap<uint64_t, std::string>& WorkAroundRef() { return m_workAround; }
   protected:
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     clang::Rewriter&               m_rewriter;
     const clang::CompilerInstance& m_compiler;
     MainClassInfo*                 m_codeInfo;
     kslicer::FuncData*             m_pCurrFuncInfo = nullptr;
-    std::unordered_map<uint64_t, std::string> m_workAround;
+    kslicer::umap<uint64_t, std::string> m_workAround;
     ///////////////////////////////////////////////////////////////////////////////////////////////////
   
     void ReplaceTextOrWorkAround(clang::SourceRange a_range, const std::string& a_text);
@@ -876,16 +875,16 @@ namespace kslicer
     virtual void DARExpr_TextureAccess(clang::BinaryOperator* expr);
     virtual void DARExpr_TextureAccess(clang::CXXMemberCallExpr* call);
 
-    std::unordered_set<uint64_t> m_visitedTexAccessNodes;
+    kslicer::uset<uint64_t> m_visitedTexAccessNodes;
 
     // for kernel processing only
     //
     void InitKernelData(kslicer::KernelInfo& a_kernelRef, const std::string& a_fakeOffsetExp);
     bool                            m_kernelMode = false; ///!< if proccesed function is kernel or nor
     kslicer::KernelInfo*            m_pCurrKernel = nullptr;
-    std::unordered_set<std::string> m_kernelUserArgs;
+    kslicer::uset<std::string> m_kernelUserArgs;
     std::string                     m_fakeOffsetExp;
-    std::unordered_map<std::string, kslicer::DataMemberInfo> m_variables;
+    kslicer::umap<std::string, kslicer::DataMemberInfo> m_variables;
     bool                            processFuncMember = false; ///<! when process function members in the same way as kernels
 
     // general rewrite functions, same for all new backends
@@ -908,7 +907,7 @@ namespace kslicer
   {
     virtual std::string RecursiveRewriteImpl(const clang::Stmt* expr) = 0;
     virtual kslicer::ShaderFeatures GetShaderFeatures() const { return kslicer::ShaderFeatures(); }
-    virtual std::unordered_set<uint64_t> GetVisitedNodes() const = 0;
+    virtual kslicer::uset<uint64_t> GetVisitedNodes() const = 0;
   };
 
   /**
@@ -942,8 +941,8 @@ namespace kslicer
     std::string RewriteStdVectorTypeStr(const std::string& a_typeName, std::string& varName) const override;
     std::string RewriteImageType(const std::string& a_containerType, const std::string& a_containerDataType, kslicer::TEX_ACCESS a_accessType, std::string& outImageFormat) const override;
   
-    std::unordered_map<std::string, std::string> m_vecReplacements;
-    std::unordered_map<std::string, std::string> m_funReplacements;
+    kslicer::umap<std::string, std::string> m_vecReplacements;
+    kslicer::umap<std::string, std::string> m_funReplacements;
     std::vector<std::pair<std::string, std::string> > m_vecReplacements2;
 
   
@@ -1012,8 +1011,8 @@ namespace kslicer
     std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
   private:
     void Init();
-    std::unordered_map<std::string, std::string> m_typesReplacement;
-    std::unordered_map<std::string, std::string> m_funReplacements;
+    kslicer::umap<std::string, std::string> m_typesReplacement;
+    kslicer::umap<std::string, std::string> m_funReplacements;
 
     // std::unordered_map<Key,X> members, see hashmap.cpp
     //
@@ -1071,8 +1070,8 @@ namespace kslicer
     std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
   private:
     void Init();
-    std::unordered_map<std::string, std::string> m_typesReplacement;
-    std::unordered_map<std::string, std::string> m_funReplacements;
+    kslicer::umap<std::string, std::string> m_typesReplacement;
+    kslicer::umap<std::string, std::string> m_funReplacements;
   };
 
   class ISPCRewriter : public FunctionRewriter2 ///!< BASE CLASS FOR ALL NEW BACKENDS
@@ -1118,11 +1117,11 @@ namespace kslicer
     std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
   private:
     void Init();
-    std::unordered_map<std::string, std::string> m_typesReplacement;
-    std::unordered_map<std::string, std::string> m_funReplacements;
+    kslicer::umap<std::string, std::string> m_typesReplacement;
+    kslicer::umap<std::string, std::string> m_funReplacements;
   };
 
-  std::unordered_map<std::string, std::string> ListSlangStandartTypeReplacements(bool a_NeedConstCopy = true);
+  kslicer::umap<std::string, std::string> ListSlangStandartTypeReplacements(bool a_NeedConstCopy = true);
   
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////  KernelRewriter  //////////////////////////////////////////////////////////
@@ -1164,10 +1163,10 @@ namespace kslicer
     kslicer::KernelInfo&           m_currKernel;
     bool                           m_onlyShaderFeatures;
   
-    std::unordered_set<uint64_t> m_visitedTexAccessNodes;
+    kslicer::uset<uint64_t> m_visitedTexAccessNodes;
   };
   
-  void DisplayVisitedNodes(const std::unordered_set<uint64_t>& a_nodes);
+  void DisplayVisitedNodes(const kslicer::uset<uint64_t>& a_nodes);
   bool CheckSettersAccess(const clang::MemberExpr* expr, const MainClassInfo* a_codeInfo, const clang::CompilerInstance& a_compiler,
                           std::string* setterS, std::string* setterM);
 
@@ -1198,12 +1197,12 @@ namespace kslicer
     bool VisitArraySubscriptExpr(clang::ArraySubscriptExpr* arrayExpr)    { if(WasRewritten(arrayExpr))        return true; else return VisitArraySubscriptExpr_Impl(arrayExpr);  }
     bool VisitUnaryExprOrTypeTraitExpr(clang::UnaryExprOrTypeTraitExpr* szOfExpr) { if(WasRewritten(szOfExpr)) return true; else return VisitUnaryExprOrTypeTraitExpr_Impl(szOfExpr); }
 
-    std::shared_ptr<std::unordered_set<uint64_t> > m_pRewrittenNodes = nullptr;
+    std::shared_ptr<kslicer::uset<uint64_t> > m_pRewrittenNodes = nullptr;
     virtual std::string RecursiveRewrite (const clang::Stmt* expr);
     virtual void ReplaceTextOrWorkAround(clang::SourceRange a_range, const std::string& a_text);
     virtual void ApplyDefferedWorkArounds();
     
-    std::unordered_map<uint64_t, std::string>  m_workAround;
+    kslicer::umap<uint64_t, std::string>  m_workAround;
 
     virtual void ClearUserArgs() { }
     virtual ShaderFeatures GetKernelShaderFeatures() const { return ShaderFeatures(); }
@@ -1239,7 +1238,7 @@ namespace kslicer
     const clang::CompilerInstance&                           m_compiler;
     MainClassInfo*                                           m_codeInfo;
     std::string                                              m_mainClassName;
-    std::unordered_map<std::string, kslicer::DataMemberInfo> m_variables;
+    kslicer::umap<std::string, kslicer::DataMemberInfo> m_variables;
     const std::vector<kslicer::KernelInfo::ArgInfo>&         m_args;
     const std::string&                                       m_fakeOffsetExp;
     std::vector<std::string>                                 m_threadIdArgs;
@@ -1248,7 +1247,7 @@ namespace kslicer
     kslicer::KernelInfo&                                     m_currKernel;
     bool                                                     m_explicitIdISPC = false;
 
-    std::unordered_set<uint64_t>                             m_visitedTexAccessNodes;
+    kslicer::uset<uint64_t>                             m_visitedTexAccessNodes;
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1544,7 +1543,7 @@ namespace kslicer
   private:
     void ProcessVectorTypesString(std::string& a_str);
     const std::string& m_suffix;
-    std::unordered_map<std::string, std::string> m_typesReplacement;
+    kslicer::umap<std::string, std::string> m_typesReplacement;
     bool m_wgpuEnabled;
   };
 
@@ -1592,7 +1591,7 @@ namespace kslicer
 
   private:
     const std::string& m_suffix;
-    std::unordered_map<std::string, std::string> m_typesReplacement;
+    kslicer::umap<std::string, std::string> m_typesReplacement;
   };
 
   struct IHostCodeGen
@@ -1658,19 +1657,19 @@ namespace kslicer
   */
   struct MainClassInfo
   {
-    std::unordered_map<std::string, const clang::CXXRecordDecl*> allASTNodes; ///<! AST nodes for all considered classes in program
-    std::unordered_map<std::string, KernelInfo>     allKernels;       ///<! list of all kernels; used only on the second pass to identify Control Functions; it is not recommended to use it anywhere else
-    std::unordered_map<std::string, DataMemberInfo> allDataMembers;   ///<! list of all class data members;
-    std::unordered_map<std::string, ProbablyUsed>   usedProbably;     ///<! variables which are used in virtual functions and *probably* will be used in *SOME* kernels if they call these virtual functions
+    kslicer::umap<std::string, const clang::CXXRecordDecl*> allASTNodes; ///<! AST nodes for all considered classes in program
+    kslicer::umap<std::string, KernelInfo>     allKernels;       ///<! list of all kernels; used only on the second pass to identify Control Functions; it is not recommended to use it anywhere else
+    kslicer::umap<std::string, DataMemberInfo> allDataMembers;   ///<! list of all class data members;
+    kslicer::umap<std::string, ProbablyUsed>   usedProbably;     ///<! variables which are used in virtual functions and *probably* will be used in *SOME* kernels if they call these virtual functions
 
-    std::unordered_set<std::string>                 usedServiceCalls; ///<! memcpy, memset, scan, sort and e.t.c.
-    std::unordered_map<std::string, ServiceCall>    serviceCalls;     ///<! actual list of used service calls
+    kslicer::uset<std::string>                 usedServiceCalls; ///<! memcpy, memset, scan, sort and e.t.c.
+    kslicer::umap<std::string, ServiceCall>    serviceCalls;     ///<! actual list of used service calls
 
-    std::unordered_map<std::string, const clang::CXXMethodDecl*> allMemberFunctions;  ///<! in fact this is used for a specific case, RTV pattern, full impl function, check for user define 'XXXBlock' function for control function 'XXX'
+    kslicer::umap<std::string, const clang::CXXMethodDecl*> allMemberFunctions;  ///<! in fact this is used for a specific case, RTV pattern, full impl function, check for user define 'XXXBlock' function for control function 'XXX'
                                                                                       ///<! and we do not support overloading here ...
 
-    std::unordered_map<std::string, KernelInfo> kernels;            ///<! only those kernels which are called from 'Main'/'Control' functions
-    std::unordered_map<std::string, KernelInfo> megakernelsByName;  ///<! megakernels for RTV pattern
+    kslicer::umap<std::string, KernelInfo> kernels;            ///<! only those kernels which are called from 'Main'/'Control' functions
+    kslicer::umap<std::string, KernelInfo> megakernelsByName;  ///<! megakernels for RTV pattern
 
     std::optional<std::pair<std::string, kslicer::KernelInfo>> FindKernelByName(const std::string& a_name) const;
     
@@ -1679,20 +1678,20 @@ namespace kslicer
     std::vector<MainFuncInfo>                   mainFunc;        ///<! list of all control functions
   
     
-    std::unordered_map<std::string, ArrayData>      m_threadLocalArrays;
-    std::unordered_map<uint64_t, RewrittenFunction> m_functionsDone;
+    kslicer::umap<std::string, ArrayData>      m_threadLocalArrays;
+    kslicer::umap<uint64_t, RewrittenFunction> m_functionsDone;
 
     std::string                                        mainClassName;         ///<! Current main class (derived)
-    std::unordered_map<std::string, int>               mainClassNames;        ///<! All main classes (derived + base) 
-    std::unordered_set<std::string>                    dataClassNames; 
+    kslicer::umap<std::string, int>               mainClassNames;        ///<! All main classes (derived + base) 
+    kslicer::uset<std::string>                    dataClassNames; 
 
     std::vector< std::pair<std::string, std::string> > intersectionShaders;
     std::vector< std::pair<std::string, std::string> > intersectionTriangle;
-    std::unordered_set<std::string>                    intersectionWhiteList;
-    std::unordered_set<std::string>                    intersectionBlackList;
+    kslicer::uset<std::string>                    intersectionWhiteList;
+    kslicer::uset<std::string>                    intersectionBlackList;
 
-    std::unordered_set<std::string>                    withBufferReference;
-    std::unordered_set<std::string>                    withoutBufferReference;
+    kslicer::uset<std::string>                    withBufferReference;
+    kslicer::uset<std::string>                    withoutBufferReference;
     bool                                               withBufferReferenceAll = false;
     std::vector< std::pair<std::string, std::string> > userTypedefs;
 
@@ -1700,8 +1699,8 @@ namespace kslicer
     std::string           mainClassFileInclude;
     std::string           mainClassSuffix;
     
-    std::unordered_map<std::string, std::string> composPrefix;
-    std::unordered_set<std::string>              composIntersection;
+    kslicer::umap<std::string, std::string> composPrefix;
+    kslicer::uset<std::string>              composIntersection;
     const clang::CXXRecordDecl* mainClassASTNode = nullptr;
     std::vector<const clang::CXXConstructorDecl* > ctors;
     std::string shaderFolderPrefix = "";
@@ -1717,9 +1716,9 @@ namespace kslicer
     bool NeedToProcessDeclInFile(const std::string a_fileName) const;
     bool IsInExcludedFolder(const std::string& fileName);
 
-    std::unordered_set<std::string> GetExcludedNames() const;
+    kslicer::uset<std::string> GetExcludedNames() const;
 
-    std::unordered_map<std::string, bool> allIncludeFiles; // true if we need to include it in to CL, false otherwise
+    kslicer::umap<std::string, bool> allIncludeFiles; // true if we need to include it in to CL, false otherwise
     std::vector<KernelCallInfo>           allDescriptorSetsInfo;
 
     std::shared_ptr<IShaderCompiler>            pShaderCC           = nullptr;
@@ -1744,10 +1743,10 @@ namespace kslicer
     virtual MHandlerCFPtr MatcherHandler_CF(kslicer::MainFuncInfo& a_mainFuncRef, const clang::CompilerInstance& a_compiler);
     virtual void          VisitAndRewrite_CF(MainFuncInfo& a_mainFunc, clang::CompilerInstance& compiler);
 
-    virtual void AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, std::unordered_map<std::string, KernelInfo>& a_kernelList);
+    virtual void AddSpecVars_CF(std::vector<MainFuncInfo>& a_mainFuncList, kslicer::umap<std::string, KernelInfo>& a_kernelList);
 
     virtual void PlugSpecVarsInCalls_CF(const std::vector<MainFuncInfo>&                      a_mainFuncList,
-                                        const std::unordered_map<std::string, KernelInfo>&    a_kernelList,
+                                        const kslicer::umap<std::string, KernelInfo>&    a_kernelList,
                                         std::vector<KernelCallInfo>&                          a_kernelCalls);
 
     virtual void ProcessVFH(const std::vector<const clang::CXXRecordDecl*>& a_decls, const clang::CompilerInstance& a_compiler);
@@ -1827,7 +1826,7 @@ namespace kslicer
       bool                        hasIntersection = false;
 
       std::vector<kslicer::DeclInClass>            usedDecls;
-      std::unordered_map<std::string, VFHTagInfo>  tagByClassName;
+      kslicer::umap<std::string, VFHTagInfo>  tagByClassName;
       std::map<std::string, kslicer::FuncData>     virtualFunctions;
     };
 
@@ -1847,9 +1846,9 @@ namespace kslicer
     bool shitIsAlwaysConst  = false;
     bool atomicFloatEmul    = false; ///<! '-atomicf_emul 1|2': emulate float InterlockedAdd via CAS loop (Slang/Vulkan only), shaderBufferFloat32AtomicAdd is not required
     int  atomicFloatEmulMode = 0;    ///<! 0: hardware float atomics; 2: CAS on 'uint' view of the same buffer, declared at the same binding ('-atomicf_emul 1' is mapped to 2)
-    std::unordered_set<std::string> uintAliasBuffers; ///<! float buffers which are also declared as 'uint' at the same binding for CAS (float atomics emulation)
+    kslicer::uset<std::string> uintAliasBuffers; ///<! float buffers which are also declared as 'uint' at the same binding for CAS (float atomics emulation)
     std::vector< std::pair<std::string, std::vector<std::string> > > appendGroups; ///<! 'appendGroups' from config: group name and its member vectors, used by generated 'CommitAppendedData()' 
-    std::unordered_set<std::string> appendRewriteGroups; ///<! 'appendRewriteGroups' from config: vectors of these groups are copied entirely by every 'CommitAppendedData()' 
+    kslicer::uset<std::string> appendRewriteGroups; ///<! 'appendRewriteGroups' from config: vectors of these groups are copied entirely by every 'CommitAppendedData()' 
     bool hasLocalContainers = false;
 
     struct HashMapInfo
@@ -1880,26 +1879,26 @@ namespace kslicer
     std::map<std::string, HashMapAddFunc> hashMapAddFuncs;
     bool hashMapSubgroups = false; ///<! aggregate atomic updates of hash map values inside subgroup, needs Vulkan 1.1; '-enableSubgroup 0' disables it
 
-    std::unordered_map<std::string, VFHHierarchy> m_vhierarchy;
+    kslicer::umap<std::string, VFHHierarchy> m_vhierarchy;
     std::vector<BufferReference>                  m_allRefsFromVFH;
     bool IsVFHBuffer(const std::string& a_name, VFH_LEVEL* pOutLevel = nullptr, VFHHierarchy* pHierarchy = nullptr) const;
 
-    std::unordered_set<std::string> ExtractTypesFromUsedContainers(const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls);
+    kslicer::uset<std::string> ExtractTypesFromUsedContainers(const kslicer::umap<std::string, kslicer::DeclInClass>& a_otherDecls);
     void ProcessHashMaps(const clang::ASTContext& a_astContext); ///<! ==> hashMaps; must be called after ProcessMemberTypesAligment
-    void ProcessMemberTypes(const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls, clang::SourceManager& a_srcMgr,
+    void ProcessMemberTypes(const kslicer::umap<std::string, kslicer::DeclInClass>& a_otherDecls, clang::SourceManager& a_srcMgr,
                             std::vector<kslicer::DeclInClass>& generalDecls);
 
-    void ProcessMemberTypesAligment(std::vector<DataMemberInfo>& a_members, const std::unordered_map<std::string, kslicer::DeclInClass>& a_otherDecls, const clang::ASTContext& a_astContext);
+    void ProcessMemberTypesAligment(std::vector<DataMemberInfo>& a_members, const kslicer::umap<std::string, kslicer::DeclInClass>& a_otherDecls, const clang::ASTContext& a_astContext);
 
-    std::unordered_map<std::string, VFHHierarchy> SelectVFHOnlyUsedByKernel(const std::unordered_map<std::string, VFHHierarchy>& a_hierarhices, const KernelInfo& k) const;
+    kslicer::umap<std::string, VFHHierarchy> SelectVFHOnlyUsedByKernel(const kslicer::umap<std::string, VFHHierarchy>& a_hierarhices, const KernelInfo& k) const;
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     std::vector<std::string>                           m_setterStructDecls;
     std::vector<std::string>                           m_setterFuncDecls;
-    std::unordered_map<std::string, std::string>       m_setterVars;
-    std::unordered_map<std::string, DataMemberInfo>    m_setterData;
+    kslicer::umap<std::string, std::string>       m_setterVars;
+    kslicer::umap<std::string, DataMemberInfo>    m_setterData;
 
-    void ProcessAllSetters(const std::unordered_map<std::string, const clang::CXXMethodDecl*>& a_setterFunc, clang::CompilerInstance& a_compiler);
+    void ProcessAllSetters(const kslicer::umap<std::string, const clang::CXXMethodDecl*>& a_setterFunc, clang::CompilerInstance& a_compiler);
     void ProcessBlockExpansionKernel(KernelInfo& a_kernel, const clang::CompilerInstance& compiler);
 
     std::vector< std::pair<std::string, std::string> > GetFieldsFromStruct(const clang::CXXRecordDecl* recordDecl, size_t* pSummOfFiledsSize = nullptr) const;
@@ -1910,7 +1909,7 @@ namespace kslicer
   /**
   \brief select local variables of main class that can be placed in auxilary buffer
   */
-  std::vector<DataMemberInfo> MakeClassDataListAndCalcOffsets(std::unordered_map<std::string, DataMemberInfo>& vars, const std::unordered_set<std::string>& a_forceUsed);
+  std::vector<DataMemberInfo> MakeClassDataListAndCalcOffsets(kslicer::umap<std::string, DataMemberInfo>& vars, const kslicer::uset<std::string>& a_forceUsed);
   std::vector<kslicer::KernelInfo::ArgInfo> GetUserKernelArgs(const std::vector<kslicer::KernelInfo::ArgInfo>& a_allArgs);
 
   std::vector<std::string> GetAllPredefinedThreadIdNamesRTV();
@@ -1969,7 +1968,7 @@ namespace kslicer
 
   std::vector<kslicer::ArgMatch> MatchCallArgsForKernel(clang::CallExpr* call, const KernelInfo& k, const clang::CompilerInstance& a_compiler);
 
-  std::vector<const KernelInfo*> extractUsedKernelsByName(const std::unordered_set<std::string>& a_usedNames, const std::unordered_map<std::string, KernelInfo>& a_kernels);
+  std::vector<const KernelInfo*> extractUsedKernelsByName(const kslicer::uset<std::string>& a_usedNames, const kslicer::umap<std::string, KernelInfo>& a_kernels);
   KernelInfo                     joinToMegaKernel        (const std::vector<const KernelInfo*>& a_kernels, const MainFuncInfo& cf);
   std::string                    GetCFMegaKernelCall     (const MainFuncInfo& a_mainFunc);
 
@@ -1985,7 +1984,7 @@ namespace kslicer
   ShaderFeatures GetStorageFeaturesFromType(clang::QualType a_type);                  ///<! 8/16 bit storage features for data of this type placed in a buffer (fields of structures are analyzed recursively)
   ShaderFeatures GetStorageFeaturesFromDataMember(const DataMemberInfo& a_member);        ///<! 8/16 bit storage features for class data member (std::vector<T> or plain member in UBO)
 
-  std::unordered_set<std::string> GetAllServiceKernels();
+  kslicer::uset<std::string> GetAllServiceKernels();
 
   std::string GetRangeSourceCode(const clang::SourceRange a_range, const clang::CompilerInstance& compiler);
   std::string GetRangeSourceCode(const clang::SourceRange a_range, const clang::SourceManager& sm);
@@ -1995,7 +1994,7 @@ namespace kslicer
   std::string CutOffFileExt(const std::string& a_filePath);
   std::string CutOffStructClass(const std::string& a_typeName);
 
-  std::unordered_map<std::string, std::string> ListGLSLVectorReplacements();
+  kslicer::umap<std::string, std::string> ListGLSLVectorReplacements();
   const clang::Expr* RemoveImplicitCast(const clang::Expr* a_expr);
   clang::Expr* RemoveImplicitCast(clang::Expr* a_expr);
 
@@ -2004,8 +2003,8 @@ namespace kslicer
 
   void ExtractBlockSizeFromCall(clang::CXXMemberCallExpr* f, kslicer::KernelInfo& kernel, const clang::CompilerInstance& compiler);
 
-  void ProcessFunctionsInQueueBFS(kslicer::MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler, std::queue<kslicer::FuncData>& functionsToProcess, std::unordered_map<uint64_t, kslicer::FuncData>& usedFunctions);
-  std::vector<kslicer::FuncData> SortByDepthInUse(const std::unordered_map<uint64_t, kslicer::FuncData>& usedFunctions);
+  void ProcessFunctionsInQueueBFS(kslicer::MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler, std::queue<kslicer::FuncData>& functionsToProcess, kslicer::umap<uint64_t, kslicer::FuncData>& usedFunctions);
+  std::vector<kslicer::FuncData> SortByDepthInUse(const kslicer::umap<uint64_t, kslicer::FuncData>& usedFunctions);
 
   struct VFHAccessNodes 
   {
@@ -2041,16 +2040,16 @@ namespace kslicer
   std::string MakeKernellCallSignature(const std::string& a_mainFuncName, const std::vector<ArgReferenceOnCall>& a_args, const std::map<std::string, UsedContainerInfo>& a_usedContainers);
 }
 
-std::unordered_map<std::string, std::string> ReadCommandLineParams(int argc, const char** argv, 
-                                                                   std::unordered_map<std::string, std::string>& defines,
+kslicer::umap<std::string, std::string> ReadCommandLineParams(int argc, const char** argv, 
+                                                                   kslicer::umap<std::string, std::string>& defines,
                                                                    std::filesystem::path& fileName,
                                                                    std::vector<std::string>& allFiles,
                                                                    std::vector<std::string>& ignoreFiles,
                                                                    std::vector<std::string>& processFiles,
                                                                    std::vector<std::string>& cppIncludes,
-                                                                   const std::unordered_map<std::string, std::string>& a_configParams);
+                                                                   const kslicer::umap<std::string, std::string>& a_configParams);
 
-std::vector<const char*> ExcludeSlicerParams(int argc, const char** argv, const std::unordered_map<std::string,std::string>& params, const char* a_mainFileName,  const std::unordered_map<std::string,std::string>& defines);
+std::vector<const char*> ExcludeSlicerParams(int argc, const char** argv, const kslicer::umap<std::string,std::string>& params, const char* a_mainFileName,  const kslicer::umap<std::string,std::string>& defines);
 
 void MakeAbsolutePathRelativeTo(std::filesystem::path& a_filePath, const std::filesystem::path& a_folderPath);
 

@@ -25,7 +25,7 @@ std::string kslicer::FunctionRewriter::RewriteStdVectorTypeStr(const std::string
 
 bool kslicer::IsVectorContructorNeedsReplacement(const std::string& a_typeName)
 {
-  static std::unordered_set<std::string> m_ctorReplacement;
+  static kslicer::uset<std::string> m_ctorReplacement;
   static bool first = true;
   if(first)
   {
@@ -239,7 +239,7 @@ kslicer::KernelRewriter::KernelRewriter(clang::Rewriter &R, const clang::Compile
                                         m_args(a_kernel.args), m_fakeOffsetExp(a_fakeOffsetExpr), m_kernelIsBoolTyped(a_kernel.isBoolTyped),
                                         m_currKernel(a_kernel)
 {
-  m_pRewrittenNodes = std::make_shared< std::unordered_set<uint64_t> >();
+  m_pRewrittenNodes = std::make_shared< kslicer::uset<uint64_t> >();
   const auto& a_variables = a_codeInfo->dataMembers;
   m_variables.reserve(a_variables.size());
   for(const auto& var : a_variables)
@@ -269,7 +269,7 @@ void kslicer::KernelRewriter::MarkRewritten(const clang::Stmt* expr)
   kslicer::MarkRewrittenRecursive(expr, *m_pRewrittenNodes);
 }
 
-void kslicer::DisplayVisitedNodes(const std::unordered_set<uint64_t>& a_nodes)
+void kslicer::DisplayVisitedNodes(const kslicer::uset<uint64_t>& a_nodes)
 {
   std::vector<uint64_t> allNodes;
   allNodes.reserve(a_nodes.size());

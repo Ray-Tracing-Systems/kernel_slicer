@@ -5,7 +5,7 @@
 #include <fstream>
 #include <filesystem>
 
-#include <unordered_map>
+#include "kslicer_containers.h"
 #include <iomanip>
 #include <cctype>
 #include <queue>
@@ -131,8 +131,8 @@ int main(int argc, const char **argv)
       optionsPath = argv[1];
   }
   
-  std::unordered_map<std::string, std::string> defines;
-  std::unordered_set<std::string>              excludedCFSet;
+  kslicer::umap<std::string, std::string> defines;
+  kslicer::uset<std::string>              excludedCFSet;
   nlohmann::json inputOptions;
   bool emptyConfig = true; // need this because inputOptions["sms"] actually creates empty node and thing are not working
   std::ifstream ifs(optionsPath);
@@ -173,7 +173,7 @@ int main(int argc, const char **argv)
   // options which may be specified several times (like '-intersectionWhiteList A -intersectionWhiteList B')
   // are written in config as arrays: "-intersectionWhiteList" : ["A", "B"]
   //
-  std::unordered_map<std::string, std::string>     paramsFromConfigMap;
+  kslicer::umap<std::string, std::string>     paramsFromConfigMap;
   std::vector<std::pair<std::string, std::string>> multiParams; // all key-value pairs in order: config first, command line next
   for(const auto& param : paramsFromConfig.items())
   {
@@ -196,7 +196,7 @@ int main(int argc, const char **argv)
   std::filesystem::path    fileName;
   auto paramsFromCmdLine = ReadCommandLineParams(argc, argv, defines, fileName,  allFiles, ignoreFiles, processFiles, cppIncludesAdditional, paramsFromConfigMap);
 
-  std::unordered_map<std::string, std::string> params;
+  kslicer::umap<std::string, std::string> params;
   {
     for(const auto& param : paramsFromConfigMap)      // take params initially from config
       params[param.first] = param.second;
@@ -922,7 +922,7 @@ int main(int argc, const char **argv)
   //
   auto pComposAPI  = firstPassData.rv.m_composedClassInfo.find(composeAPIName);
   auto pComposImpl = firstPassData.rv.m_composedClassInfo.find(composeImplName);
-  std::unordered_set<std::string> myComposClassNames; 
+  kslicer::uset<std::string> myComposClassNames; 
 
   if(pComposAPI != firstPassData.rv.m_composedClassInfo.end() && pComposImpl != firstPassData.rv.m_composedClassInfo.end()) // if compos classes are found
   {
@@ -1178,7 +1178,7 @@ int main(int argc, const char **argv)
   // process virtual functions
   // 
   std::cout << "  (4.0) Process Virtual-Functions-Hierarchies:" << std::endl;
-  std::unordered_map<const clang::FunctionDecl*, kslicer::FuncData> procesedFunctions;
+  kslicer::umap<const clang::FunctionDecl*, kslicer::FuncData> procesedFunctions;
   for(auto f  : usedFunctions)
     procesedFunctions[f.astNode] = f;
   
@@ -1257,7 +1257,7 @@ int main(int argc, const char **argv)
 
         // list all input parameters for each call of member function inside kernel; in this way we know which textures, vectors and samplers were actually used by these functions
         //
-        std::unordered_map<std::string, kslicer::UsedContainerInfo> auxContainers;
+        kslicer::umap<std::string, kslicer::UsedContainerInfo> auxContainers;
         auto machedParams = kslicer::ArgMatchTraversal    (&k.second, f, usedFunctions, inputCodeInfo, compiler);
         auto usedMembers  = kslicer::ExtractUsedMemberData(&k.second, f, usedFunctions, auxContainers, inputCodeInfo, compiler);
 
@@ -1416,7 +1416,7 @@ int main(int argc, const char **argv)
   std::cout << "(6) Calc offsets for all class members; ingore unused members that were not marked on previous step" << std::endl;
   std::cout << "{" << std::endl;
 
-  std::unordered_set<std::string> forceUsedInKernel;
+  kslicer::uset<std::string> forceUsedInKernel;
   //{
   //  if(foundIntersectionShader.accObjName != "")
   //    forceUsedInKernel.insert(foundIntersectionShader.accObjName);
@@ -1768,7 +1768,7 @@ int main(int argc, const char **argv)
       // so we should update subkernels and apply transform inside "VisitArraySubscriptExpr_Impl" to kernels in the same way we did for functions
       //
       auto oldKernels = cf.subkernels;
-      std::unordered_set<std::string> processed;
+      kslicer::uset<std::string> processed;
       cf.subkernelsData.clear();
       for(const auto& name : cf.UsedKernels)
       {

@@ -8,7 +8,7 @@
 #include "clang/AST/DeclTemplate.h"
 #include "clang/Parse/ParseAST.h"
 
-#include <unordered_set>
+#include "kslicer_containers.h"
 
 namespace kslicer
 {
@@ -27,11 +27,11 @@ namespace kslicer
     ClassInfo(const std::string& a_name) : name(a_name) {}
     std::string                                                  name;
     const clang::CXXRecordDecl*                                  astNode = nullptr;
-    std::unordered_map<std::string, KernelInfo>                  funKernels;
-    std::unordered_map<std::string, const clang::CXXMethodDecl*> funMembers;
-    std::unordered_map<std::string, MainFuncNodeInfo>            funControls;
-    std::unordered_map<std::string, DataMemberInfo>              dataMembers;
-    std::unordered_map<std::string, const clang::CXXMethodDecl*> m_setters;
+    kslicer::umap<std::string, KernelInfo>                  funKernels;
+    kslicer::umap<std::string, const clang::CXXMethodDecl*> funMembers;
+    kslicer::umap<std::string, MainFuncNodeInfo>            funControls;
+    kslicer::umap<std::string, DataMemberInfo>              dataMembers;
+    kslicer::umap<std::string, const clang::CXXMethodDecl*> m_setters;
     std::vector<const clang::CXXConstructorDecl* >               ctors;
     int                                                          baseClassOrder = 0;
   };
@@ -77,27 +77,27 @@ namespace kslicer
     bool VisitVarDecl      (VarDecl* pTargetVar);
 
     ClassInfo mci; // main class info
-    std::unordered_map<std::string, ClassInfo>  m_composedClassInfo;
-    std::unordered_map<std::string, ClassInfo>  m_baseClassInfo;
+    kslicer::umap<std::string, ClassInfo>  m_composedClassInfo;
+    kslicer::umap<std::string, ClassInfo>  m_baseClassInfo;
 
     std::vector<const clang::CXXRecordDecl*> m_classList;
     std::vector<kslicer::DeclInClass> GetExtractedDecls();
 
-    const std::unordered_map<std::string, kslicer::DeclInClass>& GetOtherTypeDecls() const { return m_storedDecl;}
+    const kslicer::umap<std::string, kslicer::DeclInClass>& GetOtherTypeDecls() const { return m_storedDecl;}
 
   private:
-    bool ProcessKernelDef(const CXXMethodDecl *f,  std::unordered_map<std::string, KernelInfo>& a_funcList, const std::string& a_className);
+    bool ProcessKernelDef(const CXXMethodDecl *f,  kslicer::umap<std::string, KernelInfo>& a_funcList, const std::string& a_className);
 
     CompilerInstance&     m_compiler;
     const ASTContext&     m_astContext;
     clang::SourceManager& m_sourceManager;
 
-    std::unordered_set<std::string> m_mainFuncts;
+    kslicer::uset<std::string> m_mainFuncts;
     MainClassInfo&                  m_codeInfo;
 
     uint32_t m_currId = 0;
-    std::unordered_map<std::string, kslicer::DeclInClass> m_transferredDecl;
-    std::unordered_map<std::string, kslicer::DeclInClass> m_storedDecl;
+    kslicer::umap<std::string, kslicer::DeclInClass> m_transferredDecl;
+    kslicer::umap<std::string, kslicer::DeclInClass> m_storedDecl;
   };
 
   class InitialPassASTConsumer : public ASTConsumer

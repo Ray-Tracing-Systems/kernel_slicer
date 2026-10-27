@@ -12,7 +12,7 @@
 
 #include <string>
 #include <vector>
-#include <unordered_map>
+#include "kslicer_containers.h"
 #include <sstream>
 #include <iostream>
 
@@ -34,7 +34,7 @@ namespace kslicer
       for(const auto& arg : a_args) 
         m_argsOfMainFunc[arg.name] = arg;
 
-      m_pRewrittenNodes = std::make_shared< std::unordered_set<uint64_t> > ();
+      m_pRewrittenNodes = std::make_shared< kslicer::uset<uint64_t> > ();
     }
     
     bool VisitCXXMethodDecl(CXXMethodDecl* f);
@@ -44,7 +44,7 @@ namespace kslicer
     bool VisitMemberExpr(MemberExpr* expr);
   
     std::string                               mainFuncCmdName;
-    std::unordered_map<std::string, uint32_t> dsIdBySignature;
+    kslicer::umap<std::string, uint32_t> dsIdBySignature;
 
   private:
 
@@ -60,18 +60,18 @@ namespace kslicer
   public:
 
     std::string                                              m_mainFuncName;
-    const std::unordered_map<std::string, DataLocalVarInfo>& m_mainFuncLocals;
+    const kslicer::umap<std::string, DataLocalVarInfo>& m_mainFuncLocals;
     MainClassInfo*                                           m_pCodeInfo = nullptr;
-    std::unordered_map<std::string, DataMemberInfo>&         m_allClassMembers;
+    kslicer::umap<std::string, DataMemberInfo>&         m_allClassMembers;
     std::vector< KernelCallInfo >&                           allDescriptorSetsInfo;
 
   private:
     
-    std::unordered_map<std::string, KernelInfo>&       m_kernels;
-    std::unordered_map<std::string, InOutVarInfo>      m_argsOfMainFunc;
+    kslicer::umap<std::string, KernelInfo>&       m_kernels;
+    kslicer::umap<std::string, InOutVarInfo>      m_argsOfMainFunc;
     MainFuncInfo&                                      m_mainFunc;
-    std::shared_ptr< std::unordered_set<uint64_t> >    m_pRewrittenNodes;
-    std::unordered_map<uint64_t, std::string>          m_workAround;
+    std::shared_ptr< kslicer::uset<uint64_t> >    m_pRewrittenNodes;
+    kslicer::umap<uint64_t, std::string>          m_workAround;
 
     void ReplaceTextOrWorkAround(clang::SourceRange a_range, const std::string& a_text);
     bool WasNotRewrittenYet(const clang::Stmt* expr) const;
@@ -92,7 +92,7 @@ namespace kslicer
       for(const auto& arg : a_args) 
         m_argsOfMainFunc[arg.name] = arg;
 
-      m_pRewrittenNodes = std::make_shared< std::unordered_set<uint64_t> > ();
+      m_pRewrittenNodes = std::make_shared< kslicer::uset<uint64_t> > ();
     }
     
     bool VisitCXXMethodDecl(CXXMethodDecl* f);
@@ -101,7 +101,7 @@ namespace kslicer
     bool VisitMemberExpr(MemberExpr* expr);
   
     std::string                                              mainFuncCmdName;
-    std::unordered_map<std::string, uint32_t>                dsIdBySignature;
+    kslicer::umap<std::string, uint32_t>                dsIdBySignature;
 
   private:
 
@@ -116,18 +116,18 @@ namespace kslicer
   public:
 
     std::string                                              m_mainFuncName;
-    const std::unordered_map<std::string, DataLocalVarInfo>& m_mainFuncLocals;
+    const kslicer::umap<std::string, DataLocalVarInfo>& m_mainFuncLocals;
     MainClassInfo*                                           m_pCodeInfo = nullptr;
-    std::unordered_map<std::string, DataMemberInfo>&         m_allClassMembers;
+    kslicer::umap<std::string, DataMemberInfo>&         m_allClassMembers;
     std::vector< KernelCallInfo >&                           allDescriptorSetsInfo;
 
   private:
     
-    std::unordered_map<std::string, KernelInfo>&       m_kernels;
-    std::unordered_map<std::string, InOutVarInfo>      m_argsOfMainFunc;
+    kslicer::umap<std::string, KernelInfo>&       m_kernels;
+    kslicer::umap<std::string, InOutVarInfo>      m_argsOfMainFunc;
     MainFuncInfo&                                      m_mainFunc;
-    std::shared_ptr< std::unordered_set<uint64_t> >    m_pRewrittenNodes;
-    std::unordered_map<uint64_t, std::string>          m_workAround;
+    std::shared_ptr< kslicer::uset<uint64_t> >    m_pRewrittenNodes;
+    kslicer::umap<uint64_t, std::string>          m_workAround;
 
     void ReplaceTextOrWorkAround(clang::SourceRange a_range, const std::string& a_text);
     bool WasNotRewrittenYet(const clang::Stmt* expr) const;
@@ -159,7 +159,7 @@ namespace kslicer
   std::string GetControlFuncDeclCUDA(const clang::FunctionDecl* fDecl, clang::CompilerInstance& compiler, bool a_gpuSuffix = false);
 
   std::vector<InOutVarInfo> ListParamsOfMainFunc(const CXXMethodDecl* a_node, const clang::CompilerInstance& compiler);
-  void ObtainKernelsDecl(std::unordered_map<std::string, KernelInfo>& a_kernelsData, const clang::CompilerInstance& compiler, const std::string& a_mainClassName, const MainClassInfo& a_codeInfo);
+  void ObtainKernelsDecl(kslicer::umap<std::string, KernelInfo>& a_kernelsData, const clang::CompilerInstance& compiler, const std::string& a_mainClassName, const MainClassInfo& a_codeInfo);
 }
 
 #endif

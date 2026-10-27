@@ -36,7 +36,7 @@ static inline size_t AlignedSize(const size_t a_size)
   return currSize;
 }
 
-std::vector<kslicer::DataMemberInfo> kslicer::MakeClassDataListAndCalcOffsets(std::unordered_map<std::string, DataMemberInfo>& a_vars, const std::unordered_set<std::string>& a_forceUsed)
+std::vector<kslicer::DataMemberInfo> kslicer::MakeClassDataListAndCalcOffsets(kslicer::umap<std::string, DataMemberInfo>& a_vars, const kslicer::uset<std::string>& a_forceUsed)
 {
   std::vector<kslicer::DataMemberInfo> resVars;
   resVars.reserve(a_vars.size());
