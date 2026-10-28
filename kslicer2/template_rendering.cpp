@@ -5,7 +5,8 @@
 
 namespace kslicer {
 
-    bool render_template(nlohmann::json data, std::filesystem::path template_path, std::filesystem::path output_path) {
+    bool render_template(const nlohmann::json& data, std::filesystem::path template_path,
+                         std::filesystem::path output_path) {
         std::string result;
         try {
             inja::Environment env;

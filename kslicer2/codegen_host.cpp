@@ -7,6 +7,7 @@
 #include "utils.h"
 #include "clang/AST/Attr.h"
 #include <clang/AST/AST.h>
+#include <nlohmann/json.hpp>
 
 namespace kslicer {
     using namespace nlohmann;
