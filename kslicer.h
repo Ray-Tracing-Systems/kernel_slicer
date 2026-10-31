@@ -773,17 +773,15 @@ namespace kslicer
     
     virtual bool NeedsVectorTypeRewrite(const std::string& a_str) { return false; }
 
-    kslicer::umap<uint64_t, std::string>& WorkAroundRef() { return m_workAround; }
   protected:
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     clang::Rewriter&               m_rewriter;
     const clang::CompilerInstance& m_compiler;
     MainClassInfo*                 m_codeInfo;
     kslicer::FuncData*             m_pCurrFuncInfo = nullptr;
-    kslicer::umap<uint64_t, std::string> m_workAround;
     ///////////////////////////////////////////////////////////////////////////////////////////////////
   
-    void ReplaceTextOrWorkAround(clang::SourceRange a_range, const std::string& a_text);
+    void ReplaceText(clang::SourceRange a_range, const std::string& a_text);
 
     void MarkRewritten(const clang::Stmt* expr);
     bool WasNotRewrittenYet(const clang::Stmt* expr);
@@ -948,7 +946,6 @@ namespace kslicer
   
     std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) override;
     std::string RecursiveRewrite(const clang::Stmt* expr) override;
-    void        ApplyDefferedWorkArounds();
     
     struct BadRewqriteResult
     {
@@ -1199,10 +1196,7 @@ namespace kslicer
 
     std::shared_ptr<kslicer::uset<uint64_t> > m_pRewrittenNodes = nullptr;
     virtual std::string RecursiveRewrite (const clang::Stmt* expr);
-    virtual void ReplaceTextOrWorkAround(clang::SourceRange a_range, const std::string& a_text);
-    virtual void ApplyDefferedWorkArounds();
-    
-    kslicer::umap<uint64_t, std::string>  m_workAround;
+    virtual void ReplaceText(clang::SourceRange a_range, const std::string& a_text);
 
     virtual void ClearUserArgs() { }
     virtual ShaderFeatures GetKernelShaderFeatures() const { return ShaderFeatures(); }

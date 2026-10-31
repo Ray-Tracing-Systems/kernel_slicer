@@ -308,7 +308,6 @@ std::string kslicer::MainClassInfo::VisitAndRewrite_KF(KernelInfo& a_funcInfo, c
     auto pVisitor = pShaderCC->MakeKernRewriter(rewrite2, compiler, this, a_funcInfo, fakeOffsetExpr);
     pVisitor->SetCurrKernelInfo(&a_funcInfo);
     pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_node));
-    pVisitor->ApplyDefferedWorkArounds();
     pVisitor->ResetCurrKernelInfo();
   
     a_funcInfo.shaderFeatures = a_funcInfo.shaderFeatures || pVisitor->GetKernelShaderFeatures();
@@ -359,7 +358,6 @@ std::string kslicer::MainClassInfo::VisitAndRewrite_KF(KernelInfo& a_funcInfo, c
     //
     pVisitor->TraverseDecl(const_cast<clang::CXXMethodDecl*>(a_funcInfo.astNode));
     //pVisitor->TraverseStmt(const_cast<clang::Stmt*>(a_funcInfo.astNode->getBody()));
-    pVisitor->ApplyDefferedWorkArounds();
     pVisitor->ResetCurrKernelInfo();
     
     a_funcInfo.shaderFeatures = a_funcInfo.shaderFeatures || pVisitor->GetKernelShaderFeatures(); // TODO: don't work !!!
@@ -591,11 +589,8 @@ bool kslicer::FunctionRewriter::WasNotRewrittenYet(const clang::Stmt* expr)
   return (m_pRewrittenNodes->find(exprHash) == m_pRewrittenNodes->end());
 }
 
-void kslicer::FunctionRewriter::ReplaceTextOrWorkAround(clang::SourceRange a_range, const std::string& a_text)
+void kslicer::FunctionRewriter::ReplaceText(clang::SourceRange a_range, const std::string& a_text)
 {
-  if(a_range.getBegin().getRawEncoding() == a_range.getEnd().getRawEncoding())
-    m_workAround[GetHashOfSourceRange(a_range)] = a_text;
-  else
-    kslicer::ReplaceTextSafe(m_rewriter, a_range, a_text);
+  kslicer::ReplaceTextSafe(m_rewriter, a_range, a_text);
 }
 

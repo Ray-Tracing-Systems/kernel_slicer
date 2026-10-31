@@ -222,7 +222,7 @@ bool kslicer::SlangRewriter::RewriteHashMapSubscript(clang::CXXOperatorCallExpr*
 
   const std::string mapName = GetHashMapNameFromExpr(expr->getArg(0));
   const std::string keyText = RecursiveRewrite(expr->getArg(1));
-  ReplaceTextOrWorkAround(expr->getSourceRange(), mapName + "[" + HashMapFuncName(mapName, "insert") + "(" + keyText + ")].val");
+  ReplaceText(expr->getSourceRange(), mapName + "[" + HashMapFuncName(mapName, "insert") + "(" + keyText + ")].val");
   MarkRewritten(expr);
   return true;
 }
@@ -266,7 +266,7 @@ bool kslicer::SlangRewriter::RewriteHashMapMemberCall(clang::CXXMemberCallExpr* 
     return false;
   }
 
-  ReplaceTextOrWorkAround(call->getSourceRange(), result);
+  ReplaceText(call->getSourceRange(), result);
   MarkRewritten(call);
   return true;
 }
@@ -291,7 +291,7 @@ bool kslicer::SlangRewriter::RewriteHashMapIteratorAccess(clang::MemberExpr* exp
     return false;
 
   const std::string itText = RecursiveRewrite(arrow->getArg(0));
-  ReplaceTextOrWorkAround(expr->getSourceRange(), mapName + "[" + itText + "]." + (member == "first" ? "key" : "val"));
+  ReplaceText(expr->getSourceRange(), mapName + "[" + itText + "]." + (member == "first" ? "key" : "val"));
   MarkRewritten(expr);
   return true;
 }
@@ -372,7 +372,7 @@ bool kslicer::SlangRewriter::RewriteHashMapAtomicAdd(const clang::Expr* a_wholeE
       addFunc.name += (c == '.') ? '_' : c;
     m_codeInfo->hashMapAddFuncs[addFunc.name] = addFunc;
 
-    ReplaceTextOrWorkAround(a_wholeExpr->getSourceRange(), addFunc.name + "(" + keyText + ", " + slangType + "(" + a_value + "))");
+    ReplaceText(a_wholeExpr->getSourceRange(), addFunc.name + "(" + keyText + ", " + slangType + "(" + a_value + "))");
     MarkRewritten(a_wholeExpr);
     return true;
   }
@@ -381,13 +381,13 @@ bool kslicer::SlangRewriter::RewriteHashMapAtomicAdd(const clang::Expr* a_wholeE
   {
     const std::string keyText   = RecursiveRewrite(subscript->getArg(1));
     const std::string wordIndex = HashMapFuncName(mapName, "insert") + "(" + keyText + ")*" + std::to_string(slotWords) + " + " + std::to_string(wordOffset);
-    ReplaceTextOrWorkAround(a_wholeExpr->getSourceRange(), "InterlockedAddEmul1fU(" + mapName + "_asUint, " + wordIndex + ", float(" + a_value + "))");
+    ReplaceText(a_wholeExpr->getSourceRange(), "InterlockedAddEmul1fU(" + mapName + "_asUint, " + wordIndex + ", float(" + a_value + "))");
     MarkRewritten(a_wholeExpr);
     return true;
   }
 
   const std::string lhsText = RecursiveRewrite(a_lhs);
-  ReplaceTextOrWorkAround(a_wholeExpr->getSourceRange(), func + "(" + lhsText + ", " + slangType + "(" + a_value + "))");
+  ReplaceText(a_wholeExpr->getSourceRange(), func + "(" + lhsText + ", " + slangType + "(" + a_value + "))");
   MarkRewritten(a_wholeExpr);
   return true;
 }

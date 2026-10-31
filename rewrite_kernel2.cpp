@@ -350,7 +350,7 @@ bool kslicer::FunctionRewriter2::VisitCXXOperatorCallExpr_Impl(clang::CXXOperato
       std::string resText;
       if(WasNotRewrittenYet(expr) && NeedToRewriteReductionOp(op, lhs, rhs, expr, resText))
       {
-        ReplaceTextOrWorkAround(expr->getSourceRange(), resText); 
+        ReplaceText(expr->getSourceRange(), resText); 
         MarkRewritten(expr);
       }
     }
@@ -446,7 +446,7 @@ bool kslicer::FunctionRewriter2::VisitCompoundAssignOperator_Impl(clang::Compoun
     std::string resText;
     if(WasNotRewrittenYet(expr) && NeedToRewriteReductionOp(op, lhs, rhs, expr, resText))
     {
-      ReplaceTextOrWorkAround(expr->getSourceRange(), resText); 
+      ReplaceText(expr->getSourceRange(), resText); 
       MarkRewritten(expr);
     }
   }
@@ -511,12 +511,7 @@ std::string kslicer::FunctionRewriter2::RecursiveRewrite(const clang::Stmt* expr
   FunctionRewriter2 rvCopy = *this;
   rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
 
-  auto range = expr->getSourceRange();
-  auto p = rvCopy.m_workAround.find(GetHashOfSourceRange(range));
-  if(p != rvCopy.m_workAround.end())
-    return p->second;
-  else
-    return kslicer::GetRewrittenText(m_rewriter, range);
+  return kslicer::GetRewrittenText(m_rewriter, expr->getSourceRange());
 }
 
 bool kslicer::FunctionRewriter2::DetectAndRewriteShallowPattern(const clang::Stmt* expr, std::string& a_out)
@@ -746,7 +741,7 @@ void kslicer::FunctionRewriter2::DARExpr_ReductionFunc(const clang::Expr* lhs, c
     const std::string localIdStr = m_codeInfo->pShaderCC->LocalIdExpr(m_pCurrKernel->GetDim(), m_pCurrKernel->wgSize);
     const std::string left       = leftStr2 + "Shared[" + localIdStr + "]";
     fname = m_codeInfo->pShaderCC->ReplaceCallFromStdNamespace(fname, argsType);
-    ReplaceTextOrWorkAround(expr->getSourceRange(), left + " = " + fname + "(" + left + ", " + rightStr2 + ")" ); 
+    ReplaceText(expr->getSourceRange(), left + " = " + fname + "(" + left + ", " + rightStr2 + ")" ); 
     MarkRewritten(expr);
   }
 }
@@ -911,15 +906,7 @@ std::string kslicer::KernelRewriter2::RecursiveRewrite(const clang::Stmt* expr)
   KernelRewriter2 rvCopy = *this;
   rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
   
-  auto range = expr->getSourceRange();
-  auto p     = rvCopy.m_workAround.find(GetHashOfSourceRange(range));
-  if(p != rvCopy.m_workAround.end())
-    return p->second;
-  else
-  {
-    //rvCopy.ApplyDefferedWorkArounds();
-    return kslicer::GetRewrittenText(m_rewriter, range);
-  }
+  return kslicer::GetRewrittenText(m_rewriter, expr->getSourceRange());
 }
 
 bool kslicer::KernelRewriter2::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)                   { return m_pFunRW2->VisitUnaryOperator_Impl(expr); }

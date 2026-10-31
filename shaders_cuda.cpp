@@ -122,7 +122,6 @@ bool kslicer::CudaRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
     std::string rewrittenText;
     if(NeedToRewriteMemberExpr(expr, rewrittenText))
     {
-      //ReplaceTextOrWorkAround(expr->getSourceRange(), rewrittenText);
       kslicer::ReplaceTextSafe(m_rewriter, expr->getSourceRange(), rewrittenText);
       MarkRewritten(expr);
     }
@@ -173,7 +172,7 @@ bool kslicer::CudaRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
         funcName = baseClassName + "_" + fname;
       }
       const std::string lastRewrittenText = funcName + "(" + CompleteFunctionCallRewrite(call);
-      ReplaceTextOrWorkAround(call->getSourceRange(), lastRewrittenText);
+      ReplaceText(call->getSourceRange(), lastRewrittenText);
       MarkRewritten(call);
     }
   }
@@ -219,7 +218,7 @@ bool kslicer::CudaRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
         
         std::string leftStr2   = RecursiveRewrite(expr->getSubExpr()); 
         std::string localIdStr = m_codeInfo->pShaderCC->LocalIdExpr(m_pCurrKernel->GetDim(), m_pCurrKernel->wgSize);
-        ReplaceTextOrWorkAround(expr->getSourceRange(), leftStr2 + "Shared[" + localIdStr + "]++");
+        ReplaceText(expr->getSourceRange(), leftStr2 + "Shared[" + localIdStr + "]++");
         MarkRewritten(expr);
       }
     }
@@ -231,9 +230,9 @@ bool kslicer::CudaRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
     if(op == "*" && !expr->canOverflow() && CheckIfExprHasArgumentThatNeedFakeOffset(exprInside) && WasNotRewrittenYet(expr)) 
     {
       if(m_codeInfo->megakernelRTV || m_fakeOffsetExp == "")
-        ReplaceTextOrWorkAround(expr->getSourceRange(), exprInside);
+        ReplaceText(expr->getSourceRange(), exprInside);
       else
-        ReplaceTextOrWorkAround(expr->getSourceRange(), exprInside + "[" + m_fakeOffsetExp + "]");
+        ReplaceText(expr->getSourceRange(), exprInside + "[" + m_fakeOffsetExp + "]");
       MarkRewritten(expr);
     }
   }
@@ -364,12 +363,7 @@ std::string kslicer::CudaRewriter::RecursiveRewrite(const clang::Stmt* expr)
   CudaRewriter rvCopy = *this;
   rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
 
-  auto range = expr->getSourceRange();
-  auto p = rvCopy.m_workAround.find(GetHashOfSourceRange(range));
-  if(p != rvCopy.m_workAround.end())
-    return p->second;
-  else
-    return kslicer::GetRewrittenText(m_rewriter, range);
+  return kslicer::GetRewrittenText(m_rewriter, expr->getSourceRange());
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -53,7 +53,6 @@ public:
       std::string exprReplaced    = m_objBufferName + "[selfId]." + exprContent;
       if(m_vfhLevel >= 2)
         exprReplaced = "all_references." + m_className + "_buffer." + exprReplaced;
-      //ReplaceTextOrWorkAround(expr->getSourceRange(), exprReplaced);
       kslicer::ReplaceTextSafe(m_rewriter, expr->getSourceRange(), exprReplaced);
       MarkRewritten(expr);
     }
@@ -107,7 +106,6 @@ public:
         }
       }
 
-      //ReplaceTextOrWorkAround(expr->getSourceRange(), prefix + fieldName);
       kslicer::ReplaceTextSafe(m_rewriter, expr->getSourceRange(), prefix + fieldName);
       MarkRewritten(expr);
     }  
@@ -120,7 +118,6 @@ public:
       
       //std::cout << "  [MemberRewriter]: process with '.' for " << thisTypeName.c_str() << "::" << fieldName.c_str() << std::endl;
 
-      //ReplaceTextOrWorkAround(expr->getSourceRange(), kslicer::GetRangeSourceCode(base->getSourceRange(), m_compiler) + "." + memberName);
       kslicer::ReplaceTextSafe(m_rewriter, expr->getSourceRange(), kslicer::GetRangeSourceCode(base->getSourceRange(), m_compiler) + "." + memberName);
       MarkRewritten(expr);
     }
@@ -139,7 +136,7 @@ public:
     if((op == "*" || op == "&") && WasNotRewrittenYet(expr->getSubExpr()) )
     {
       std::string text = RecursiveRewrite(expr->getSubExpr());
-      ReplaceTextOrWorkAround(expr->getSourceRange(), text);
+      ReplaceText(expr->getSourceRange(), text);
       MarkRewritten(expr->getSubExpr());
     }
 
@@ -280,7 +277,7 @@ public:
       }
       textRes += ")";
       
-      ReplaceTextOrWorkAround(call->getSourceRange(), textRes);
+      ReplaceText(call->getSourceRange(), textRes);
       MarkRewritten(call);
     }
 

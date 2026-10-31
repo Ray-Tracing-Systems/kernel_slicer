@@ -20,7 +20,7 @@ bool kslicer::KernelRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)   
   
   if(textFound && WasNotRewrittenYet(expr))
   {
-    ReplaceTextOrWorkAround(expr->getSourceRange(), std::string("(") + text + "+programIndex)");
+    ReplaceText(expr->getSourceRange(), std::string("(") + text + "+programIndex)");
     MarkRewritten(expr);
   }
   return true;
@@ -227,7 +227,6 @@ bool kslicer::KernelRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
   std::string rewrittenText;
   if(NeedToRewriteMemberExpr(expr, rewrittenText))
   {
-    //ReplaceTextOrWorkAround(expr->getSourceRange(), rewrittenText);
     kslicer::ReplaceTextSafe(m_rewriter, expr->getSourceRange(), rewrittenText);
     MarkRewritten(expr);
   }
@@ -300,7 +299,7 @@ bool kslicer::KernelRewriter::VisitCallExpr_Impl(CallExpr* call)
     { 
       auto debugMeIn = GetRangeSourceCode(call->getSourceRange(), m_compiler);     
       auto textRes   = FunctionCallRewrite(call);
-      ReplaceTextOrWorkAround(call->getSourceRange(), textRes);
+      ReplaceText(call->getSourceRange(), textRes);
       MarkRewritten(call);
       //std::cout << "  " << text.c_str() << " of type " << argsType.c_str() << "; --> " <<  textRes.c_str() << std::endl;
     }
@@ -338,7 +337,7 @@ bool kslicer::KernelRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* call)
 
     if(clang::isa<clang::CXXTemporaryObjectExpr>(call) || IsGLSL())
     {
-      ReplaceTextOrWorkAround(call->getSourceRange(), textRes);
+      ReplaceText(call->getSourceRange(), textRes);
     }
     else
     {
@@ -346,7 +345,7 @@ bool kslicer::KernelRewriter::VisitCXXConstructExpr_Impl(CXXConstructExpr* call)
       auto pos2 = textOrig.find_first_of("(");
       auto pos  = std::min(pos1, pos2);
       const std::string varName = textOrig.substr(0, pos);
-      ReplaceTextOrWorkAround(call->getSourceRange(), varName + " = " + textRes);
+      ReplaceText(call->getSourceRange(), varName + " = " + textRes);
     }
     
     MarkRewritten(call);
@@ -399,7 +398,7 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
         buffText2 = pBuffNameFromVFH->second.objBufferName;
 
       std::string vcallFunc  = buffAndOffset.interfaceName + "_" + fname + "_" + buffText2 + textCallNoName + ")";
-      ReplaceTextOrWorkAround(f->getSourceRange(), vcallFunc);
+      ReplaceText(f->getSourceRange(), vcallFunc);
       MarkRewritten(f);
     }
   }
@@ -428,7 +427,7 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
     if(fname == "size" || fname == "capacity")
     {
       const std::string memberNameB = memberNameA + "_" + fname;
-      ReplaceTextOrWorkAround(f->getSourceRange(), m_codeInfo->pShaderCC->UBOAccess(memberNameB) );
+      ReplaceText(f->getSourceRange(), m_codeInfo->pShaderCC->UBOAccess(memberNameB) );
       MarkRewritten(f);
     }
     else if(fname == "resize")
@@ -439,7 +438,7 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
         const Expr* currArgExpr  = f->getArgs()[0];
         std::string newSizeValue = RecursiveRewrite(currArgExpr); 
         std::string memberNameB  = memberNameA + "_size = " + newSizeValue;
-        ReplaceTextOrWorkAround(f->getSourceRange(), m_codeInfo->pShaderCC->UBOAccess(memberNameB) );
+        ReplaceText(f->getSourceRange(), m_codeInfo->pShaderCC->UBOAccess(memberNameB) );
         MarkRewritten(f);
       }
     }
@@ -451,12 +450,12 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
 
       std::string memberNameB  = memberNameA + "_size";
       std::string resulingText = m_codeInfo->pShaderCC->RewritePushBack(memberNameA, memberNameB, newElemValue);
-      ReplaceTextOrWorkAround(f->getSourceRange(), resulingText);
+      ReplaceText(f->getSourceRange(), resulingText);
       MarkRewritten(f);
     }
     else if(fname == "data")
     {
-      ReplaceTextOrWorkAround(f->getSourceRange(), memberNameA);
+      ReplaceText(f->getSourceRange(), memberNameA);
       MarkRewritten(f);
     }
     else 
@@ -494,7 +493,7 @@ bool kslicer::KernelRewriter::VisitCXXMemberCallExpr_Impl(CXXMemberCallExpr* f)
         resCallText += ", ";
     }
     resCallText += ")";
-    ReplaceTextOrWorkAround(f->getSourceRange(), resCallText);
+    ReplaceText(f->getSourceRange(), resCallText);
     MarkRewritten(f);
   }
 
@@ -517,7 +516,7 @@ bool kslicer::KernelRewriter::VisitReturnStmt_Impl(ReturnStmt* ret)
     if(kslicer::IsInsideLoopOrSwitch(ret, m_compiler.getASTContext()))
       kslicer::PrintError("'return' inside a loop or switch of RTV kernel which returns bool is not supported, assign result to a variable and return it after the loop", ret->getSourceRange(), m_compiler.getSourceManager());
     std::string retExprText = RecursiveRewrite(retExpr);
-    ReplaceTextOrWorkAround(ret->getSourceRange(), std::string("{ kgenExitCond = ") + retExprText + "; break; }");
+    ReplaceText(ret->getSourceRange(), std::string("{ kgenExitCond = ") + retExprText + "; break; }");
     MarkRewritten(ret);
     return true;
   }
@@ -547,7 +546,7 @@ bool kslicer::KernelRewriter::VisitReturnStmt_Impl(ReturnStmt* ret)
     // change 'return MakeObjPtr(objPtr, ObjData) to 'kgen_objPtr = objPtr'
     //
     std::string retExprText = RecursiveRewrite(firstArgExpr);
-    ReplaceTextOrWorkAround(ret->getSourceRange(), std::string("{ kgen_objPtr = ") + retExprText + "; }"); // goto KGEN_EPILOG;  
+    ReplaceText(ret->getSourceRange(), std::string("{ kgen_objPtr = ") + retExprText + "; }"); // goto KGEN_EPILOG;  
     MarkRewritten(ret);
   }
 
@@ -620,7 +619,7 @@ bool kslicer::KernelRewriter::VisitUnaryOperator_Impl(UnaryOperator* expr)
           return true;
         std::string leftStr2   = RecursiveRewrite(expr->getSubExpr()); 
         std::string localIdStr = m_codeInfo->pShaderCC->LocalIdExpr(m_currKernel.GetDim(), m_currKernel.wgSize);
-        ReplaceTextOrWorkAround(expr->getSourceRange(), leftStr2 + "Shared[" + localIdStr + "]++");
+        ReplaceText(expr->getSourceRange(), leftStr2 + "Shared[" + localIdStr + "]++");
         MarkRewritten(expr);
       }
     }
@@ -639,9 +638,9 @@ bool kslicer::KernelRewriter::VisitUnaryOperator_Impl(UnaryOperator* expr)
   if(needOffset && WasNotRewrittenYet(expr))
   {
     if(m_codeInfo->megakernelRTV || m_fakeOffsetExp == "")
-      ReplaceTextOrWorkAround(expr->getSourceRange(), exprInside);
+      ReplaceText(expr->getSourceRange(), exprInside);
     else
-      ReplaceTextOrWorkAround(expr->getSourceRange(), exprInside + "[" + m_fakeOffsetExp + "]");
+      ReplaceText(expr->getSourceRange(), exprInside + "[" + m_fakeOffsetExp + "]");
     MarkRewritten(expr);
   }
 
@@ -724,9 +723,9 @@ void kslicer::KernelRewriter::ProcessReductionOp(const std::string& op, const Ex
       std::string rightStr2  = RecursiveRewrite(rhs);
       std::string localIdStr = m_codeInfo->pShaderCC->LocalIdExpr(m_currKernel.GetDim(), m_currKernel.wgSize);
       if(access.leftIsArray)
-        ReplaceTextOrWorkAround(expr->getSourceRange(), access.arrayName + "Shared[" + access.arrayIndex + "][" + localIdStr + "] " + access.GetOp(m_codeInfo->pShaderCC) + " " + rightStr2);
+        ReplaceText(expr->getSourceRange(), access.arrayName + "Shared[" + access.arrayIndex + "][" + localIdStr + "] " + access.GetOp(m_codeInfo->pShaderCC) + " " + rightStr2);
       else
-        ReplaceTextOrWorkAround(expr->getSourceRange(), leftVar + "Shared[" + localIdStr + "] " + access.GetOp(m_codeInfo->pShaderCC) + " " + rightStr2);
+        ReplaceText(expr->getSourceRange(), leftVar + "Shared[" + localIdStr + "] " + access.GetOp(m_codeInfo->pShaderCC) + " " + rightStr2);
       MarkRewritten(expr);
     }
   }
@@ -997,7 +996,7 @@ void kslicer::KernelRewriter::DetectFuncReductionAccess(const clang::Expr* lhs, 
     const std::string localIdStr = m_codeInfo->pShaderCC->LocalIdExpr(m_currKernel.GetDim(), m_currKernel.wgSize);
     const std::string left       = leftStr2 + "Shared[" + localIdStr + "]";
     fname = m_codeInfo->pShaderCC->ReplaceCallFromStdNamespace(fname, argsType);
-    ReplaceTextOrWorkAround(expr->getSourceRange(), left + " = " + fname + "(" + left + ", " + rightStr2 + ")" ); 
+    ReplaceText(expr->getSourceRange(), left + " = " + fname + "(" + left + ", " + rightStr2 + ")" ); 
     MarkRewritten(expr);
   }
 }
@@ -1032,44 +1031,10 @@ std::string kslicer::KernelRewriter::RecursiveRewrite(const Stmt* expr)
   KernelRewriter rvCopy = *this;
   rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
   
-  auto range = expr->getSourceRange();
-  auto p     = rvCopy.m_workAround.find(GetHashOfSourceRange(range));
-  if(p != rvCopy.m_workAround.end())
-    return p->second;
-  else
-  {
-    //rvCopy.ApplyDefferedWorkArounds();
-    return kslicer::GetRewrittenText(m_rewriter, range);
-  }
+  return kslicer::GetRewrittenText(m_rewriter, expr->getSourceRange());
 }
 
-void kslicer::KernelRewriter::ReplaceTextOrWorkAround(clang::SourceRange a_range, const std::string& a_text)
+void kslicer::KernelRewriter::ReplaceText(clang::SourceRange a_range, const std::string& a_text)
 {
-  if(a_range.getBegin().getRawEncoding() == a_range.getEnd().getRawEncoding())
-    m_workAround[GetHashOfSourceRange(a_range)] = a_text;
-  else
-    kslicer::ReplaceTextSafe(m_rewriter, a_range, a_text);
-}
-
-void kslicer::KernelRewriter::ApplyDefferedWorkArounds()
-{
-  // replace all work arounds if they were not processed
-  //
-  std::map<uint32_t, std::string> sorted;
-  {
-    for(const auto& pair : m_workAround)
-      sorted.insert(std::make_pair(uint32_t(pair.first & uint64_t(0xFFFFFFFF)), pair.second));
-    
-    //for(const auto& pair : m_glslRW.m_workAround)
-    //  sorted.insert(std::make_pair(uint32_t(pair.first & uint64_t(0xFFFFFFFF)), pair.second));
-  }
-
-  for(const auto& pair : sorted) // TODO: sort nodes by their rucursion depth or source location?
-  {
-    auto loc = clang::SourceLocation::getFromRawEncoding(pair.first);
-    clang::SourceRange range(loc, loc); 
-    kslicer::ReplaceTextSafe(m_rewriter, range, pair.second);
-  }
-
-  m_workAround.clear();
+  kslicer::ReplaceTextSafe(m_rewriter, a_range, a_text);
 }

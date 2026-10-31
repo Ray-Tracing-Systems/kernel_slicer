@@ -102,7 +102,7 @@ bool kslicer::FunctionRewriter::VisitCallExpr_Impl(CallExpr* call)
     { 
       auto debugMeIn = GetRangeSourceCode(call->getSourceRange(), m_compiler);     
       auto textRes   = FunctionCallRewrite(call);
-      ReplaceTextOrWorkAround(call->getSourceRange(), textRes);
+      ReplaceText(call->getSourceRange(), textRes);
       MarkRewritten(call);
       //std::cout << "  " << text.c_str() << " of type " << argsType.c_str() << "; --> " <<  textRes.c_str() << std::endl;
     }
@@ -142,7 +142,7 @@ bool kslicer::FunctionRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructEx
   if(kslicer::IsVectorContructorNeedsReplacement(fname) && WasNotRewrittenYet(call) && !ctorDecl->isCopyOrMoveConstructor() && call->getNumArgs() > 0 ) //
   {
     const std::string textRes = RewriteConstructCall(call);
-    ReplaceTextOrWorkAround(call->getSourceRange(), textRes); //
+    ReplaceText(call->getSourceRange(), textRes); //
     //kslicer::ReplaceTextSafe(m_rewriter, call->getSourceRange(), textRes);    //
     MarkRewritten(call);
   }
@@ -181,7 +181,7 @@ bool kslicer::FunctionRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperator
         else if(rightType == keyType)
           rewrittenOp =  "real_" + remapOp[op] + "_" + keyType + "(" + leftText + "," + rightText + ")";
       }
-      ReplaceTextOrWorkAround(expr->getSourceRange(), rewrittenOp);
+      ReplaceText(expr->getSourceRange(), rewrittenOp);
       MarkRewritten(expr);
     }
   }
@@ -198,12 +198,7 @@ std::string kslicer::FunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
   FunctionRewriter rvCopy = *this;
   rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
 
-  auto range = expr->getSourceRange();
-  auto p = rvCopy.m_workAround.find(GetHashOfSourceRange(range));
-  if(p != rvCopy.m_workAround.end())
-    return p->second;
-  else
-    return kslicer::GetRewrittenText(m_rewriter, range);
+  return kslicer::GetRewrittenText(m_rewriter, expr->getSourceRange());
 }
 
 kslicer::RewrittenFunction kslicer::FunctionRewriter::RewriteFunction(clang::FunctionDecl* fDecl)
