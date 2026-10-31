@@ -71,9 +71,8 @@ namespace kslicer
     kslicer::umap<std::string, InOutVarInfo>      m_argsOfMainFunc;
     MainFuncInfo&                                      m_mainFunc;
     std::shared_ptr< kslicer::uset<uint64_t> >    m_pRewrittenNodes;
-    kslicer::umap<uint64_t, std::string>          m_workAround;
 
-    void ReplaceTextOrWorkAround(clang::SourceRange a_range, const std::string& a_text);
+    void ReplaceText(clang::SourceRange a_range, const std::string& a_text);
     bool WasNotRewrittenYet(const clang::Stmt* expr) const;
     void MarkRewritten(const clang::Stmt* expr);
     std::string RecursiveRewrite(const clang::Stmt* expr);
