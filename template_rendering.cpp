@@ -1648,6 +1648,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     useInterlockedAdd3f = useInterlockedAdd3f || k.second.shaderFeatures.useInterlockedAdd3f;
   data["UseInterlockedAdd3f"] = useInterlockedAdd3f;
 
+  bool useCoopVec = a_classInfo.globalShaderFeatures.useCoopVec;
+  for(const auto& k : a_classInfo.kernels)
+    useCoopVec = useCoopVec || k.second.shaderFeatures.useCoopVec;
+  data["UseCoopVec"] = useCoopVec;
+
   return data;
 }
 

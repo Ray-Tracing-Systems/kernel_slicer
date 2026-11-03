@@ -2407,6 +2407,14 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
   (*ppNext) = &storage16BitFeatures; ppNext = &storage16BitFeatures.pNext;
 
   {% endif %}
+  {% if GlobalUseCoopVec %}
+  static VkPhysicalDeviceCooperativeVectorFeaturesNV coopVecFeatures = {};
+  coopVecFeatures.sType             = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_VECTOR_FEATURES_NV;
+  coopVecFeatures.cooperativeVector = VK_TRUE;
+  (*ppNext) = &coopVecFeatures; ppNext = &coopVecFeatures.pNext;
+  deviceExtensions.push_back(VK_NV_COOPERATIVE_VECTOR_EXTENSION_NAME);
+
+  {% endif %}
   return features2;
 }
 

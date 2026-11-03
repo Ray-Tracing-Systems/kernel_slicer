@@ -1,0 +1,7 @@
+{
+    "variants": [
+        {"name": "slang", "backend": "slang", "kmake": "kmake.json"},
+        {"name": "glsl",  "backend": "glsl",  "kmake": "kmake.json", "skip": "LiteNN (cooperative vectors) is supported only by Slang back end"}
+    ],
+    "tolerance": [4e-3, 1e-2]
+}

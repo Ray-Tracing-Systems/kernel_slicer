@@ -20,21 +20,21 @@ def worst(statuses):
     return res
 
 
-def _float_status(err):
-    if err > FLOAT_FAIL:
+def _float_status(err, tol):
+    if err > tol[1]:
         return FAIL
-    if err > FLOAT_WARN:
+    if err > tol[0]:
         return WARN
     return OK
 
 
-def _compare_values(name, a, b, msgs):
+def _compare_values(name, a, b, msgs, tol):
     if isinstance(a, float) or isinstance(b, float):
         if not isinstance(a, (int, float)) or not isinstance(b, (int, float)):
             msgs.append(f'"{name}": types differ')
             return FAIL
         err = abs(a - b)
-        st = _float_status(err)
+        st = _float_status(err, tol)
         if st != OK:
             msgs.append(f'"{name}": float error {err:g}')
         return st
@@ -45,7 +45,7 @@ def _compare_values(name, a, b, msgs):
         errs = [abs(x - y) for x, y in zip(a, b)]
         st = OK
         for err, kind in ((sum(errs) / len(errs), 'mean'), (max(errs), 'max')):
-            s = _float_status(err)
+            s = _float_status(err, tol)
             if s != OK:
                 msgs.append(f'"{name}": {kind} float error {err:g}')
             st = worst([st, s])
@@ -56,7 +56,7 @@ def _compare_values(name, a, b, msgs):
     return OK
 
 
-def compare_json(path_a, path_b, msgs):
+def compare_json(path_a, path_b, msgs, tol=(FLOAT_WARN, FLOAT_FAIL)):
     try:
         ja, jb = jsonc.load(path_a), jsonc.load(path_b)
     except Exception as e:
@@ -68,7 +68,7 @@ def compare_json(path_a, path_b, msgs):
         st = FAIL
     for key in ja:
         if key in jb:
-            st = worst([st, _compare_values(key, ja[key], jb[key], msgs)])
+            st = worst([st, _compare_values(key, ja[key], jb[key], msgs, tol)])
     return st
 
 
@@ -113,8 +113,9 @@ def compare_bmp(path_a, path_b, msgs):
     return st
 
 
-def compare_outputs(folder, cpu_files, gpu_tag, msgs):
-    """cpu_files -- names of 'zout_*cpu*' files; the pair is the same name with 'cpu' replaced by gpu_tag"""
+def compare_outputs(folder, cpu_files, gpu_tag, msgs, tol=(FLOAT_WARN, FLOAT_FAIL)):
+    """cpu_files -- names of 'zout_*cpu*' files; the pair is the same name with 'cpu' replaced by gpu_tag;
+    tol -- (warn, fail) thresholds of absolute error of json values"""
     statuses = []
     for name in sorted(cpu_files):
         other = name.replace('cpu', gpu_tag, 1)
@@ -123,7 +124,7 @@ def compare_outputs(folder, cpu_files, gpu_tag, msgs):
             msgs.append(f'{other} is missing')
             statuses.append(FAIL)
         elif name.endswith('.json'):
-            statuses.append(compare_json(pa, pb, msgs))
+            statuses.append(compare_json(pa, pb, msgs, tol))
         elif name.lower().endswith('.bmp'):
             statuses.append(compare_bmp(pa, pb, msgs))
         else:

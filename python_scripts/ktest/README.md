@@ -57,7 +57,8 @@ Each folder contains `ktest.json` with the list of variants:
         {"name": "glsl",     "backend": "glsl",  "kmake": "kmake.json"},
         {"name": "slang_hw", "backend": "slang", "kmake": "kmake_hw.json", "options": {"-enableSubgroup": 0}}
     ],
-    "requires": ["../resources/HydraCore"]   // optional, for apps which load scenes
+    "requires": ["../resources/HydraCore"],  // optional, for apps which load scenes
+    "tolerance": [4e-3, 1e-2]                // optional, [warn, fail] absolute error of json values
 }
 ```
 
@@ -70,6 +71,8 @@ Each folder contains `ktest.json` with the list of variants:
   back-end). Such a variant is reported as `SKIP` with the reason; `--no-skip` runs it anyway. Remove
   `skip` when the problem is fixed;
 * `requires`: folders which must exist to run the sample; missing ones are cloned by `--download`.
+* `tolerance`: thresholds `[warn, fail]` of absolute error of json values instead of the default
+  `[1e-4, 1e-2]`, for samples which compute in fp16 on GPU (`apps/tests/071_nn_mlp`).
 
 kslicer is called from the repository root as
 `kslicer <abs path>/kmake.json -shaderCC <backend> [options] [-megakernel 0|1]`; use `--list` to see the

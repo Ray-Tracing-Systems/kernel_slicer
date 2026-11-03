@@ -217,6 +217,12 @@ protected:
   of `std::unordered_map`. Any other float atomic target gets a translator warning and uses hardware
   float atomics there (`shaderBufferFloat32AtomicAdd` is then requested). Configs:
   `apps/tests/042_atomic_add_float/kmake_{hw,emul,emul2}.json`.
+- Small neural networks per thread (Slang only, NVIDIA GPUs with `VK_NV_cooperative_vector`):
+  `LiteNN::LinearForward`, `LinearForward_ReLU`, `ReLU` from `apps/LiteMathAux/neural.h` (add
+  `../../LiteMathAux` to `includeIgnore`). Weights of all layers are one `std::vector<half>` member
+  packed on the host with `LiteNN::AppendLayer`, activations are local `float` arrays, layer sizes
+  must be compile-time constants. GPU computes in fp16 and the CPU version reproduces the rounding,
+  results differ by about 1 ulp of half. Examples: `apps/tests/071_nn_mlp`, `072_nn_multi_net`.
 
 **Forbidden inside kernels and helpers**
 - Calling another kernel; recursion; virtual calls (except the special advanced samples).

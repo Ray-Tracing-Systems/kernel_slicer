@@ -519,6 +519,41 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     return true;
   }
 
+  // LiteNN (apps/LiteMathAux/neural.h): 'LinearForward(w, matOffs, biasOffs, in, inDim, out, outDim)' ==> 'LiteNN_LinearForward<inDim, outDim>(w, matOffs, biasOffs, in, out)';
+  // implementation with cooperative vectors is in 'common_generated_slang.h', sizes of cooperative vectors must be compile time constants
+  //
+  if(fDecl->getQualifiedNameAsString().rfind("LiteNN::", 0) == 0 && WasNotRewrittenYet(call))
+  {
+    std::string text;
+    if((fname == "LinearForward" || fname == "LinearForward_ReLU") && call->getNumArgs() == 7)
+    {
+      m_codeInfo->globalShaderFeatures.useCoopVec      = true; // may be called from non-member function which is not processed by KernelInfoVisitor
+      m_codeInfo->globalShaderFeatures.useHalfType     = true;
+      m_codeInfo->globalShaderFeatures.use16BitStorage = true;
+      std::string dims[2];
+      for(int i = 0; i < 2; i++)
+      {
+        const clang::Expr* dimExpr = call->getArg(4 + 2*i);
+        auto dimValue = dimExpr->getIntegerConstantExpr(m_compiler.getASTContext());
+        if(dimValue)
+          dims[i] = std::to_string(dimValue->getExtValue());
+        else
+        {
+          kslicer::PrintError(std::string("LiteNN::") + fname + ": layer size '" + GetRangeSourceCode(dimExpr->getSourceRange(), m_compiler) + "' must be a compile time constant",
+                              dimExpr->getSourceRange(), m_compiler.getSourceManager());
+          dims[i] = RecursiveRewrite(dimExpr);
+        }
+      }
+      text = "LiteNN_" + fname + "<" + dims[0] + ", " + dims[1] + ">(" + RecursiveRewrite(call->getArg(0)) + ", " + RecursiveRewrite(call->getArg(1)) + ", " +
+             RecursiveRewrite(call->getArg(2)) + ", " + RecursiveRewrite(call->getArg(3)) + ", " + RecursiveRewrite(call->getArg(5)) + ")";
+    }
+    else
+      text = "LiteNN_" + fname + "(" + CompleteFunctionCallRewrite(call);
+    ReplaceText(call->getSourceRange(), text);
+    MarkRewritten(call);
+    return true;
+  }
+
   if((fname == "as_int32" || fname == "as_int") && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
   {
     const std::string text = RecursiveRewrite(call->getArg(0));

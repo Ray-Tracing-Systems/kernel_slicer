@@ -13,7 +13,7 @@ import threading
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
 
-from .compare import OK, WARN, FAIL, compare_outputs
+from .compare import OK, WARN, FAIL, FLOAT_WARN, FLOAT_FAIL, compare_outputs
 
 SKIP, NONE = 'SKIP', '--'
 IS_WINDOWS = os.name == 'nt'
@@ -225,7 +225,8 @@ def run_and_compare(run, ctx, log, state):
         return FAIL
     cpu_files = [f for f in os.listdir(folder) if f.startswith('zout_') and 'cpu' in f]
     msgs = []
-    st = compare_outputs(folder, cpu_files, GPU_TAG[run.backend], msgs)
+    tol = test.desc.get('tolerance', [FLOAT_WARN, FLOAT_FAIL])  # fp16 computations need larger thresholds
+    st = compare_outputs(folder, cpu_files, GPU_TAG[run.backend], msgs, tuple(tol))
     run.messages += msgs
     log.write('\n[ktest]: comparison: ' + st + '\n' + ''.join(f'  {m}\n' for m in msgs))
     return st

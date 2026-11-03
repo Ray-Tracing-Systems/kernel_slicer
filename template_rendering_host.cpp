@@ -1385,6 +1385,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["GlobalUseDoubleAtomics"] = shaderFeatures.useDoubleAtomicAdd;
   data["GlobalUse8BitStorage"]  = shaderFeatures.use8BitStorage;
   data["GlobalUse16BitStorage"] = shaderFeatures.use16BitStorage;
+  data["GlobalUseCoopVec"]      = shaderFeatures.useCoopVec;
 
   data["HasRTXAccelStruct"] = otherFeatures.useRTX;
   data["HasVarPointers"]    = (std::dynamic_pointer_cast<ClspvCompiler>(a_classInfo.pShaderCC) != nullptr) || otherFeatures.useVarPtr;

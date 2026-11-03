@@ -371,7 +371,54 @@ void InterlockedAdd3f(RWStructuredBuffer<float> pMem, int offset, float3 data)
   InterlockedAdd(pMem[offset+2], data.z);
 }
 {% endif %}
-  
+{% if UseCoopVec %}
+// LiteNN (apps/LiteMathAux/neural.h): one fully connected layer 'a_out = W*a_in + b' with cooperative vectors (VK_NV_cooperative_vector).
+// Weights are fp16, row-major, rows padded to 8 elements; offsets 'a_matOffs' and 'a_biasOffs' are in elements of half.
+// Input and output are converted to fp16: the only floating point combination supported by hardware.
+//
+[ForceInline]
+void LiteNN_LinearForward<let IN : int, let OUT : int, let N0 : int, let N1 : int>(RWStructuredBuffer<half> a_weights, uint a_matOffs, uint a_biasOffs,
+                                                                                   float a_in[N0], inout float a_out[N1])
+{
+  CoopVec<half, IN> x;
+  [ForceUnroll]
+  for(int i = 0; i < IN; i++)
+    x[i] = half(a_in[i]);
+  const CoopVec<half, OUT> y = coopVecMatMulAdd<half, OUT>(x, CoopVecComponentType::Float16,
+                                                           a_weights, a_matOffs*2, CoopVecComponentType::Float16,
+                                                           a_weights, a_biasOffs*2, CoopVecComponentType::Float16,
+                                                           CoopVecMatrixLayout::RowMajor, false, ((IN + 7)/8)*16);
+  [ForceUnroll]
+  for(int i = 0; i < OUT; i++)
+    a_out[i] = float(y[i]);
+}
+
+[ForceInline]
+void LiteNN_LinearForward_ReLU<let IN : int, let OUT : int, let N0 : int, let N1 : int>(RWStructuredBuffer<half> a_weights, uint a_matOffs, uint a_biasOffs,
+                                                                                        float a_in[N0], inout float a_out[N1])
+{
+  CoopVec<half, IN> x;
+  [ForceUnroll]
+  for(int i = 0; i < IN; i++)
+    x[i] = half(a_in[i]);
+  CoopVec<half, OUT> y = coopVecMatMulAdd<half, OUT>(x, CoopVecComponentType::Float16,
+                                                     a_weights, a_matOffs*2, CoopVecComponentType::Float16,
+                                                     a_weights, a_biasOffs*2, CoopVecComponentType::Float16,
+                                                     CoopVecMatrixLayout::RowMajor, false, ((IN + 7)/8)*16);
+  y = max(y, CoopVec<half, OUT>(half(0.0f)));
+  [ForceUnroll]
+  for(int i = 0; i < OUT; i++)
+    a_out[i] = float(y[i]);
+}
+
+[ForceInline]
+void LiteNN_ReLU<let N : int>(inout float a_data[N], uint a_size)
+{
+  for(uint i = 0; i < a_size; i++)
+    a_data[i] = max(a_data[i], 0.0f);
+}
+{% endif %}
+
 
 ## for LocalDecl in LocalFuncDecls
 {{LocalDecl}};

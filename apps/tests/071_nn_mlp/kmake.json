@@ -1,0 +1,13 @@
+{
+    "mainClass": "SimpleMLP",
+    "options": {},
+    "source": [
+        "test_class.cpp"
+    ],
+    "includeProcess": [],
+    "includeIgnore": [
+        "../../LiteMath",
+        "../../LiteMathAux"
+    ],
+    "end": ""
+}
