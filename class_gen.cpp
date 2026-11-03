@@ -362,18 +362,11 @@ std::string kslicer::MainClassInfo::VisitAndRewrite_KF(KernelInfo& a_funcInfo, c
     
     a_funcInfo.shaderFeatures = a_funcInfo.shaderFeatures || pVisitor->GetKernelShaderFeatures(); // TODO: don't work !!!
   
-    if(a_funcInfo.loopOutsidesInit.isValid())
+    if(a_funcInfo.loopOutsidesInit.isValid() && a_funcInfo.loopOutsidesInit.getEnd() < a_funcInfo.loopInsides.getBegin()) // else there is no code before the loop
     {
-      auto brokenEnd = a_funcInfo.loopOutsidesInit.getEnd().getRawEncoding();
-      auto nextBegin = a_funcInfo.loopInsides.getBegin().getRawEncoding();
-      if(brokenEnd + 1 < nextBegin)
-      {
-        auto repairedEnd = clang::SourceLocation::getFromRawEncoding(brokenEnd+1);
-        a_funcInfo.loopOutsidesInit.setEnd(repairedEnd);
-        a_outLoopInitCode = kslicer::GetRewrittenText(rewrite2, a_funcInfo.loopOutsidesInit)   + ";";
-        if(a_funcInfo.partIndex > 0)                 // code between loops does not begin with '{' of function body
-          a_outLoopInitCode = "{" + a_outLoopInitCode;
-      }
+      a_outLoopInitCode = kslicer::GetRewrittenText(rewrite2, a_funcInfo.loopOutsidesInit) + ";";
+      if(a_funcInfo.partIndex > 0)                 // code between loops does not begin with '{' of function body
+        a_outLoopInitCode = "{" + a_outLoopInitCode;
     }
   
     if(a_funcInfo.loopOutsidesFinish.isValid())  
