@@ -474,7 +474,7 @@ std::vector<std::pair<std::string, std::string> > kslicer::SortByKeysByLen(const
   return res;
 }
 
-kslicer::GLSLFunctionRewriter::GLSLFunctionRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit) : FunctionRewriter(R,a_compiler,a_codeInfo)
+kslicer::GLSLFunctionRewriter::GLSLFunctionRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit) : FunctionRewriter2(R,a_compiler,a_codeInfo)
 {
   m_vecReplacements  = kslicer::ListGLSLVectorReplacements();
   m_vecReplacements2 = kslicer::SortByKeysByLen(m_vecReplacements);

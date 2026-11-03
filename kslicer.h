@@ -911,7 +911,7 @@ namespace kslicer
   /**
   \brief process local functions
   */
-  class GLSLFunctionRewriter : public FunctionRewriter //
+  class GLSLFunctionRewriter : public FunctionRewriter2
   {
   public:
   
@@ -931,6 +931,7 @@ namespace kslicer
   
     bool VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f) override;
     bool VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr) override;
+    bool VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) override { return FunctionRewriter::VisitCXXConstructExpr_Impl(call); } // vector constructors, FunctionRewriter2 does not process them
   
     std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
     IRecursiveRewriteOverride* m_pKernelRewriter = nullptr;
@@ -957,7 +958,7 @@ namespace kslicer
     void        Get2DIndicesOfFloat4x4(const clang::CXXOperatorCallExpr* expr, const clang::Expr* out[3]);
   
     bool        NeedsVectorTypeRewrite(const std::string& a_str) override;
-    std::string CompleteFunctionCallRewrite(clang::CallExpr* call);  
+    std::string CompleteFunctionCallRewrite(clang::CallExpr* call) override;
   };
 
   class SlangRewriter : public FunctionRewriter2 ///!< BASE CLASS FOR ALL NEW BACKENDS
