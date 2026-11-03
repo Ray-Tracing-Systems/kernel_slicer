@@ -621,6 +621,149 @@ kslicer::umap<std::string, kslicer::DataMemberInfo> kslicer::ExtractUsedMemberDa
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+static bool IsBufferName(const std::string& a_name, const kslicer::KernelInfo& k)
+{
+  for(const auto& arg : k.args)
+    if(arg.name == a_name)
+      return true;
+  for(const auto& container : k.usedContainers)
+    if(container.second.name == a_name)
+      return true;
+  return false;
+}
+
+static std::string BufferNameOfExpr(const clang::Expr* a_expr, const kslicer::KernelInfo& k) // 'm_vec' or kernel argument 'a_data'
+{
+  a_expr = a_expr->IgnoreParenImpCasts();
+  std::string name;
+  if(clang::isa<clang::MemberExpr>(a_expr))
+    name = clang::dyn_cast<clang::MemberExpr>(a_expr)->getMemberDecl()->getNameAsString();
+  else if(clang::isa<clang::DeclRefExpr>(a_expr) && clang::isa<clang::ParmVarDecl>(clang::dyn_cast<clang::DeclRefExpr>(a_expr)->getDecl()))
+    name = clang::dyn_cast<clang::DeclRefExpr>(a_expr)->getDecl()->getNameAsString();
+  return IsBufferName(name, k) ? name : std::string("");
+}
+
+std::string kslicer::LocalGlobalPointerOffsetName(const clang::VarDecl* a_var) { return a_var->getNameAsString() + "Offset"; }
+
+const clang::Expr* kslicer::StripPointerAdditions(const clang::Expr* a_expr, std::vector<const clang::Expr*>* a_pAdds)
+{
+  const clang::Expr* expr = (a_expr == nullptr) ? nullptr : a_expr->IgnoreParenImpCasts();
+  std::vector<const clang::Expr*> adds;
+  while(expr != nullptr && clang::isa<clang::BinaryOperator>(expr) && clang::dyn_cast<clang::BinaryOperator>(expr)->getOpcode() == clang::BO_Add)
+  {
+    const auto bo = clang::dyn_cast<clang::BinaryOperator>(expr);
+    const clang::Expr* ptr = bo->getLHS();
+    const clang::Expr* add = bo->getRHS();
+    if(!ptr->getType()->isPointerType())
+      std::swap(ptr, add);
+    if(!ptr->getType()->isPointerType())
+      break;
+    adds.push_back(add);
+    expr = ptr->IgnoreParenImpCasts();
+  }
+  if(a_pAdds != nullptr)
+    a_pAdds->insert(a_pAdds->end(), adds.rbegin(), adds.rend()); // in the order of source code
+  return expr;
+}
+
+kslicer::GlobalPtrMatch kslicer::MatchLocalGlobalPointerVar(const clang::VarDecl* a_var, const KernelInfo& k, const clang::CompilerInstance& a_compiler)
+{
+  kslicer::GlobalPtrMatch res;
+  if(a_var == nullptr || clang::isa<clang::ParmVarDecl>(a_var) || !a_var->hasLocalStorage() || !a_var->getType()->isPointerType() || a_var->getInit() == nullptr)
+    return res;
+  return MatchGlobalPointer(a_var->getInit(), k, a_compiler);
+}
+
+kslicer::GlobalPtrMatch kslicer::MatchGlobalPointer(const clang::Expr* a_expr, const KernelInfo& k, const clang::CompilerInstance& a_compiler)
+{
+  kslicer::GlobalPtrMatch res;
+  if(a_expr == nullptr)
+    return res;
+  const clang::Expr* expr = a_expr->IgnoreParenImpCasts();
+  
+  if(clang::isa<clang::CXXMemberCallExpr>(expr)) // 'm_vec.data()'
+  {
+    const auto call = clang::dyn_cast<clang::CXXMemberCallExpr>(expr);
+    const auto pMethod = call->getMethodDecl();
+    if(pMethod != nullptr && pMethod->getNameAsString() == "data" && call->getNumArgs() == 0 && call->getImplicitObjectArgument() != nullptr)
+    {
+      res.container = BufferNameOfExpr(call->getImplicitObjectArgument(), k);
+      res.valid     = (res.container != "");
+    }
+  }
+  else if(clang::isa<clang::DeclRefExpr>(expr))
+  {
+    const auto pDecl = clang::dyn_cast<clang::DeclRefExpr>(expr)->getDecl();
+    if(clang::isa<clang::ParmVarDecl>(pDecl) && pDecl->getType()->isPointerType()) // kernel buffer argument 'a_data'
+    {
+      res.container = BufferNameOfExpr(expr, k);
+      res.valid     = (res.container != "");
+    }
+    else if(clang::isa<clang::VarDecl>(pDecl))                                       // local pointer variable 'p'
+    {
+      const auto pVar = clang::dyn_cast<clang::VarDecl>(pDecl);
+      auto varMatch   = MatchLocalGlobalPointerVar(pVar, k, a_compiler);
+      if(varMatch.valid)
+      {
+        res.valid     = true;
+        res.container = varMatch.container;
+        res.localVar  = pVar;
+      }
+    }
+  }
+  else if(clang::isa<clang::UnaryOperator>(expr) && clang::dyn_cast<clang::UnaryOperator>(expr)->getOpcode() == clang::UO_AddrOf) // '&m_vec[e]', '&p[e]'
+  {
+    const clang::Expr* sub  = clang::dyn_cast<clang::UnaryOperator>(expr)->getSubExpr()->IgnoreParenImpCasts();
+    const clang::Expr* base = nullptr;
+    const clang::Expr* idx  = nullptr;
+    if(clang::isa<clang::CXXOperatorCallExpr>(sub) && clang::dyn_cast<clang::CXXOperatorCallExpr>(sub)->getOperator() == clang::OO_Subscript)
+    {
+      base = clang::dyn_cast<clang::CXXOperatorCallExpr>(sub)->getArg(0);
+      idx  = clang::dyn_cast<clang::CXXOperatorCallExpr>(sub)->getArg(1);
+    }
+    else if(clang::isa<clang::ArraySubscriptExpr>(sub))
+    {
+      base = clang::dyn_cast<clang::ArraySubscriptExpr>(sub)->getBase();
+      idx  = clang::dyn_cast<clang::ArraySubscriptExpr>(sub)->getIdx();
+    }
+    if(base != nullptr)
+    {
+      const std::string name = BufferNameOfExpr(base, k);
+      if(name != "")
+      {
+        res.valid      = true;
+        res.container  = name;
+        res.offsetExprs.push_back(idx);
+      }
+      else
+      {
+        auto baseMatch = MatchGlobalPointer(base, k, a_compiler); // '&p[e]' for local pointer 'p'
+        if(baseMatch.valid)
+        {
+          res = baseMatch;
+          res.offsetExprs.push_back(idx);
+        }
+      }
+    }
+  }
+  else if(clang::isa<clang::BinaryOperator>(expr) && clang::dyn_cast<clang::BinaryOperator>(expr)->getOpcode() == clang::BO_Add) // 'ptr + e', 'e + ptr'
+  {
+    const auto bo = clang::dyn_cast<clang::BinaryOperator>(expr);
+    const clang::Expr* ptr = bo->getLHS();
+    const clang::Expr* add = bo->getRHS();
+    if(!ptr->getType()->isPointerType())
+      std::swap(ptr, add);
+    auto ptrMatch = MatchGlobalPointer(ptr, k, a_compiler); // 'ptr' itself may be 'm_vec.data() + a', so 'm_vec.data() + a + b'
+    if(ptrMatch.valid)
+    {
+      res = ptrMatch;
+      res.offsetExprs.push_back(add);
+    }
+  }
+
+  return res;
+}
+
 std::vector<kslicer::ArgMatch> kslicer::MatchCallArgsForKernel(clang::CallExpr* call, const KernelInfo& k, const clang::CompilerInstance& a_compiler)
 {
   std::vector<kslicer::ArgMatch> result;
@@ -630,7 +773,7 @@ std::vector<kslicer::ArgMatch> kslicer::MatchCallArgsForKernel(clang::CallExpr* 
 
   //std::string debugText = kslicer::GetRangeSourceCode(call->getSourceRange(), a_compiler);
 
-  for(size_t i=0;i<call->getNumArgs();i++)
+  for(size_t i=0;i<call->getNumArgs() && i < fDecl->getNumParams();i++)
   {
     const clang::ParmVarDecl* formalArg = fDecl->getParamDecl(i);
     const clang::Expr*        actualArg = call->getArg(i);
@@ -639,6 +782,23 @@ std::vector<kslicer::ArgMatch> kslicer::MatchCallArgsForKernel(clang::CallExpr* 
     std::string formalTypeName          = qtFormal.getAsString();
 
     std::string formalName = formalArg->getNameAsString();
+    
+    if(qtFormal->isPointerType()) // pointer to global memory in any form, see 'GlobalPtrMatch'
+    {
+      auto match = MatchGlobalPointer(actualArg, k, a_compiler);
+      if(match.valid)
+      {
+        ArgMatch arg;
+        arg.formal    = formalName;
+        arg.actual    = match.container;
+        arg.type      = formalTypeName;
+        arg.argId     = i;
+        arg.isPointer = true;
+        result.push_back(arg);
+        continue;
+      }
+    }
+
     std::string actualText = kslicer::GetRangeSourceCode(actualArg->getSourceRange(), a_compiler);
     if(actualText.find(".data()") != std::string::npos)
       actualText = actualText.substr(0, actualText.find(".data()"));
@@ -675,6 +835,138 @@ std::vector<kslicer::ArgMatch> kslicer::MatchCallArgsForKernel(clang::CallExpr* 
   return result;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class CallsCollector : public clang::RecursiveASTVisitor<CallsCollector>
+{
+public:
+  std::vector<const clang::CallExpr*> calls;
+  bool VisitCallExpr(clang::CallExpr* call)
+  {
+    if(!clang::isa<clang::CXXOperatorCallExpr>(call) && !clang::isa<clang::CXXMemberCallExpr>(call) && call->getDirectCallee() != nullptr)
+      calls.push_back(call);
+    return true;
+  }
+};
+
+static std::vector<const clang::CallExpr*> CollectCalls(const clang::FunctionDecl* a_func)
+{
+  CallsCollector collector;
+  if(a_func != nullptr && a_func->hasBody())
+    collector.TraverseStmt(const_cast<clang::Stmt*>(a_func->getBody()));
+  return collector.calls;
+}
+
+static bool IsFreeFunction(const clang::FunctionDecl* a_func) { return a_func != nullptr && !clang::isa<clang::CXXMethodDecl>(a_func); }
+
+void kslicer::ExpandShittyFunctions(std::vector<ShittyFunction>& a_shittyFunctions, const kslicer::umap<std::string, kslicer::FuncData>& a_functions, const clang::CompilerInstance& a_compiler)
+{
+  kslicer::uset<std::string> names;
+  for(const auto& f : a_shittyFunctions)
+    names.insert(f.ShittyName());
+
+  for(size_t fId = 0; fId < a_shittyFunctions.size(); fId++) // vector grows inside the loop
+  {
+    const ShittyFunction shit = a_shittyFunctions[fId];
+    auto pFunc = a_functions.find(shit.originalName);
+    if(pFunc == a_functions.end() || !IsFreeFunction(pFunc->second.astNode))
+      continue;
+    const clang::FunctionDecl* fDecl = pFunc->second.astNode;
+
+    for(const clang::CallExpr* call : CollectCalls(fDecl))
+    {
+      const clang::FunctionDecl* callee = call->getDirectCallee();
+      if(!IsFreeFunction(callee) || a_functions.find(callee->getNameAsString()) == a_functions.end())
+        continue;
+
+      ShittyFunction nested;
+      nested.originalName = callee->getNameAsString();
+      for(unsigned i=0; i<call->getNumArgs() && i < callee->getNumParams(); i++)
+      {
+        const clang::ParmVarDecl* formal = callee->getParamDecl(i);
+        if(!formal->getType()->isPointerType())
+          continue;
+        const clang::Expr* arg = StripPointerAdditions(call->getArg(i)); // a_data + k + ...
+        if(!clang::isa<clang::DeclRefExpr>(arg))
+          continue;
+        const auto pParam = clang::dyn_cast<clang::ParmVarDecl>(clang::dyn_cast<clang::DeclRefExpr>(arg)->getDecl());
+        if(pParam == nullptr || pParam->getDeclContext() != fDecl)
+          continue;
+        for(const auto& p : shit.pointers)
+        {
+          if(p.formal != pParam->getNameAsString())
+            continue;
+          ArgMatch match = p;
+          match.formal = formal->getNameAsString();
+          match.type   = formal->getType().getAsString();
+          match.argId  = i;
+          nested.pointers.push_back(match);
+          break;
+        }
+      }
+
+      if(!nested.pointers.empty() && names.find(nested.ShittyName()) == names.end())
+      {
+        names.insert(nested.ShittyName());
+        a_shittyFunctions.push_back(nested);
+      }
+    }
+  }
+}
+
+kslicer::uset<std::string> kslicer::FunctionsWithUsualCalls(const std::vector<const KernelInfo*>& a_kernels, const kslicer::umap<std::string, kslicer::FuncData>& a_functions, 
+                                                            const kslicer::uset<std::string>& a_namesWithCopies, const clang::CompilerInstance& a_compiler)
+{
+  kslicer::uset<std::string> usual;
+  
+  // (1) calls from kernels and member functions: usual call if there are no pointers to global memory in arguments
+  //
+  for(const KernelInfo* pKernel : a_kernels)
+  {
+    std::vector<const clang::FunctionDecl*> bodies = {pKernel->astNode};
+    for(const auto& member : pKernel->usedMemberFunctions)
+      bodies.push_back(member.second.astNode);
+    for(const clang::FunctionDecl* body : bodies)
+    {
+      for(const clang::CallExpr* call : CollectCalls(body))
+      {
+        const clang::FunctionDecl* callee = call->getDirectCallee();
+        if(!IsFreeFunction(callee))
+          continue;
+        bool global = false;
+        for(unsigned i=0; i<call->getNumArgs() && i < callee->getNumParams() && !global; i++)
+          global = callee->getParamDecl(i)->getType()->isPointerType() && MatchGlobalPointer(call->getArg(i), *pKernel, a_compiler).valid;
+        if(!global)
+          usual.insert(callee->getNameAsString());
+      }
+    }
+  }
+
+  // (2) original versions of functions call original versions of other functions
+  //
+  bool changed = true;
+  kslicer::uset<std::string> processed;
+  while(changed)
+  {
+    changed = false;
+    for(const auto& f : a_functions)
+    {
+      if(!IsFreeFunction(f.second.astNode) || processed.find(f.first) != processed.end())
+        continue;
+      const bool hasOriginal = (a_namesWithCopies.find(f.first) == a_namesWithCopies.end()) || (usual.find(f.first) != usual.end());
+      if(!hasOriginal)
+        continue;
+      processed.insert(f.first);
+      changed = true;
+      for(const clang::CallExpr* call : CollectCalls(f.second.astNode))
+        usual.insert(call->getDirectCallee()->getNameAsString());
+    }
+  }
+
+  return usual;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class ArgMatcher : public clang::RecursiveASTVisitor<ArgMatcher>
 {

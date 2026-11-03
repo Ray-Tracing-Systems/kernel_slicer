@@ -775,6 +775,9 @@ bool kslicer::GLSLRewriter::NeedsVectorTypeRewrite(const std::string& a_str) // 
 
 bool kslicer::GLSLRewriter::VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)
 {
+  if(RewriteGlobalPtrAccess(arrayExpr)) // local pointer to buffer in kernel ('p[i]') or pointer argument of function copy for global memory
+    return true;
+
   if(m_shit.originalName == "")
     return true;
 
@@ -1018,6 +1021,9 @@ bool kslicer::GLSLRewriter::VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl)
 
 bool kslicer::GLSLRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
 {
+  if(expr->isArrow() && RewriteGlobalPtrAccess(expr)) // 'p->x' for pointer to buffer
+    return true;
+
   if(m_kernelMode)
     return VisitMemberExprKernel(expr);
 
@@ -1035,6 +1041,9 @@ bool kslicer::GLSLRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
 
 bool kslicer::GLSLRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
 {
+  if(expr->getOpcode() == clang::UO_Deref && RewriteGlobalPtrAccess(expr)) // '*p' for pointer to buffer
+    return true;
+
   if(m_kernelMode && VisitUnaryOperatorKernel(expr))
     return true;
 
@@ -1047,6 +1056,14 @@ bool kslicer::GLSLRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
   }
 
   return true;
+}
+
+std::string kslicer::GLSLRewriter::GlobalBufferAccessText(const std::string& a_buffer, const std::string& a_index)
+{
+  auto pFound = m_codeInfo->allDataMembers.find(a_buffer);
+  if(pFound != m_codeInfo->allDataMembers.end() && pFound->second.bindWithRef)
+    return std::string("all_references.") + a_buffer + "." + a_buffer + "[" + a_index + "]";
+  return a_buffer + "[" + a_index + "]";
 }
 
 std::string kslicer::GLSLRewriter::CompleteFunctionCallRewrite(clang::CallExpr* call)
@@ -1147,36 +1164,27 @@ bool kslicer::GLSLRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
 
   // Inside a copy of function which gets a pointer to global memory ('m_shit', see VisitCallExprKernel) this pointer may be passed to other function:
   // 'f(..., a_data, ...)' or 'f(..., a_data + k, ...)' ==> 'f_m_data(..., a_dataOffset, ...)' or 'f_m_data(..., a_dataOffset + k, ...)'.
-  // The copy of 'f' for 'm_data' must be created too: call 'f(m_data.data(), ...)' from kernel code at least once (see test 047_local_global_ptr).
+  // The copy of 'f' for 'm_data' is created by ExpandShittyFunctions.
   //
-  if(!m_shit.pointers.empty() && !m_kernelMode && WasNotRewrittenYet(call))
+  if(!m_shit.pointers.empty() && !m_kernelMode && WasNotRewrittenYet(call) && IsUserFunction(fDecl))
   {
     kslicer::ShittyFunction nested;
     nested.originalName = fDecl->getNameInfo().getName().getAsString();
     std::vector<std::string> offsets(call->getNumArgs());
     for(unsigned i=0; i<call->getNumArgs() && i < fDecl->getNumParams(); i++)
     {
-      const clang::Expr* arg = kslicer::RemoveImplicitCast(call->getArg(i));
-      const clang::Expr* rhs = nullptr;
-      if(clang::isa<clang::BinaryOperator>(arg) && clang::dyn_cast<clang::BinaryOperator>(arg)->getOpcodeStr() == "+")
-      {
-        rhs = clang::dyn_cast<clang::BinaryOperator>(arg)->getRHS();
-        arg = kslicer::RemoveImplicitCast(clang::dyn_cast<clang::BinaryOperator>(arg)->getLHS());
-      }
-      const std::string argText = kslicer::GetRangeSourceCode(arg->getSourceRange(), m_compiler);
-      for(const auto& p : m_shit.pointers)
-      {
-        if(p.formal == argText && fDecl->getParamDecl(i)->getType()->isPointerType())
-        {
-          kslicer::ArgMatch match = p;
-          match.formal = fDecl->getParamDecl(i)->getNameAsString();
-          match.argId  = i;
-          match.type   = fDecl->getParamDecl(i)->getType().getAsString();
-          nested.pointers.push_back(match);
-          offsets[i] = p.formal + "Offset" + ((rhs != nullptr) ? std::string(" + ") + RecursiveRewrite(rhs) : std::string(""));
-          break;
-        }
-      }
+      if(!fDecl->getParamDecl(i)->getType()->isPointerType())
+        continue;
+      std::vector<const clang::Expr*> adds;
+      const kslicer::ArgMatch* pPointer = FindShitPointer(call->getArg(i), &adds);
+      if(pPointer == nullptr)
+        continue;
+      kslicer::ArgMatch match = *pPointer;
+      match.formal = fDecl->getParamDecl(i)->getNameAsString();
+      match.argId  = i;
+      match.type   = fDecl->getParamDecl(i)->getType().getAsString();
+      nested.pointers.push_back(match);
+      offsets[i] = ShitPointerOffsetText(*pPointer, adds);
     }
 
     if(!nested.pointers.empty())
@@ -1436,6 +1444,9 @@ void kslicer::FunctionRewriter::CkeckAndProcessForThreadLocalVarDecl(clang::VarD
 bool kslicer::GLSLRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
 {
   if(clang::isa<clang::ParmVarDecl>(decl)) // process else-where (VisitFunctionDecl_Impl)
+    return true;
+
+  if(RewriteLocalGlobalPtrDecl(decl)) // 'const float* p = &m_vec[e];' ==> 'uint pOffset = uint(e);'
     return true;
 
   if(m_kernelMode && m_pCurrFuncInfo == nullptr)
@@ -1824,20 +1835,10 @@ bool kslicer::GLSLRewriter::VisitCallExprKernel(clang::CallExpr* call)
         }
       }
 
-      if(found != size_t(-1))
+      if(found != size_t(-1)) // 'm_vec.data()', 'm_vec.data() + e', '&m_vec[e]', local pointer 'p' or 'p + e' ==> offset inside buffer
       {
-        std::string offset = "0";
-        const auto arg = kslicer::RemoveImplicitCast(call->getArg(i));
-        //const std::string debugText = kslicer::GetRangeSourceCode(arg->getSourceRange(), m_compiler);
-        if(clang::isa<clang::BinaryOperator>(arg))
-        {
-          const auto bo = clang::dyn_cast<clang::BinaryOperator>(arg);
-          const clang::Expr *lhs = bo->getLHS();
-          const clang::Expr *rhs = bo->getRHS();
-          if(bo->getOpcodeStr() == "+")
-            offset = RecursiveRewrite(rhs);
-        }
-        rewrittenRes += offset;
+        auto match = kslicer::MatchGlobalPointer(call->getArg(i), *m_pCurrKernel, m_compiler);
+        rewrittenRes += match.valid ? GlobalPtrOffsetText(match) : std::string("0");
       }
       else
         rewrittenRes += RecursiveRewrite(call->getArg(i));
@@ -2356,6 +2357,8 @@ bool kslicer::GLSLRewriter::RenameReservedIdentifier(clang::DeclRefExpr* expr)
 
 bool kslicer::GLSLRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
 {
+  if(CheckLocalGlobalPtrUse(expr))
+    return true;
   if(m_kernelMode)
     VisitDeclRefExprKernel(expr);
   RenameReservedIdentifier(expr);

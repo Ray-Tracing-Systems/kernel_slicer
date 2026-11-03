@@ -261,6 +261,9 @@ bool kslicer::SlangRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
   if(RewriteHashMapIteratorAccess(expr)) // 'it->second' ==> 'm_items[it].val'
     return true;
 
+  if(expr->isArrow() && RewriteGlobalPtrAccess(expr)) // 'p->x' for pointer to buffer
+    return true;
+
   if(m_kernelMode)
   {
     std::string originalText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
@@ -506,6 +509,44 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
   if(fname == "InterlockedAdd3f")
     m_codeInfo->globalShaderFeatures.useInterlockedAdd3f = true; // may be called from non-member function which is not processed by KernelInfoVisitor
 
+  // Inside a copy of function for global memory ('m_shit') its pointer argument may be passed to other function:
+  // 'f(..., a_data, ...)' or 'f(..., a_data + k, ...)' ==> 'f(..., a_data, a_dataOffset, ...)' or 'f(..., a_data, a_dataOffset + k, ...)';
+  // copy of 'f' is created by ExpandShittyFunctions.
+  //
+  if(!m_kernelMode && !m_shit.pointers.empty() && SLANG_SUPPORT_POINTER_ADD_IN_ARGS && WasNotRewrittenYet(call) && IsUserFunction(fDecl) &&
+     !clang::isa<clang::CXXMemberCallExpr>(call) && !clang::isa<clang::CXXOperatorCallExpr>(call))
+  {
+    auto globalPointerOfArg = [&](unsigned i, std::vector<const clang::Expr*>* a_pAdds) -> const kslicer::ArgMatch* {
+      if(i >= fDecl->getNumParams() || !fDecl->getParamDecl(i)->getType()->isPointerType())
+        return nullptr;
+      return FindShitPointer(call->getArg(i), a_pAdds);
+    };
+
+    bool hasGlobalPointer = false;
+    for(unsigned i=0; i<call->getNumArgs() && !hasGlobalPointer; i++)
+      hasGlobalPointer = (globalPointerOfArg(i, nullptr) != nullptr);
+
+    if(hasGlobalPointer)
+    {
+      std::string rewrittenRes = fname + "(";
+      for(unsigned i=0; i<call->getNumArgs(); i++)
+      {
+        std::vector<const clang::Expr*> adds;
+        const kslicer::ArgMatch* pPointer = globalPointerOfArg(i, &adds);
+        if(pPointer != nullptr)
+          rewrittenRes += pPointer->formal + ", " + ShitPointerOffsetText(*pPointer, adds);
+        else
+          rewrittenRes += RecursiveRewrite(call->getArg(i));
+        if(i != call->getNumArgs()-1)
+          rewrittenRes += ", ";
+      }
+      rewrittenRes += ")";
+      ReplaceText(call->getSourceRange(), rewrittenRes);
+      MarkRewritten(call);
+      return true;
+    }
+  }
+
   if(fname == "InterlockedAdd3f" && m_codeInfo->atomicFloatEmul && call->getNumArgs() == 3 && WasNotRewrittenYet(call))
   {
     // CAS is done on 'uint' view of the same buffer ('out_color_asUint'), declared at the same binding:
@@ -710,33 +751,26 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
       for(unsigned i=0;i<call->getNumArgs(); i++)
       {
         const auto arg = kslicer::RemoveImplicitCast(call->getArg(i));
-        rewrittenRes += RecursiveRewrite(arg);
-        if(SLANG_SUPPORT_POINTER_ADD_IN_ARGS)
+        size_t found = size_t(-1);
+        for(size_t j=0;j<shittyPointers.size();j++)
         {
-          size_t found = size_t(-1);
-          for(size_t j=0;j<shittyPointers.size();j++)
+          if(shittyPointers[j].argId == i)
           {
-            if(shittyPointers[j].argId == i)
-            {
-              found = j;
-              break;
-            }
-          }
-          if(found != size_t(-1))
-          {
-            std::string offset = "0";
-            //const std::string debugText = kslicer::GetRangeSourceCode(arg->getSourceRange(), m_compiler);
-            if(clang::isa<clang::BinaryOperator>(arg))
-            {
-              const auto bo = clang::dyn_cast<clang::BinaryOperator>(arg);
-              const clang::Expr *lhs = bo->getLHS();
-              const clang::Expr *rhs = bo->getRHS();
-              if(bo->getOpcodeStr() == "+")
-                offset = RecursiveRewrite(rhs);
-            }
-            rewrittenRes += ", " + offset;
+            found = j;
+            break;
           }
         }
+        
+        if(found != size_t(-1) && SLANG_SUPPORT_POINTER_ADD_IN_ARGS && IsUserFunction(fDecl)) // pointer to global memory ==> (buffer, offset); library functions get only buffer
+        {
+          auto match = kslicer::MatchGlobalPointer(call->getArg(i), *m_pCurrKernel, m_compiler);
+          std::string bufferText = match.container;
+          if(!match.valid || (match.localVar == nullptr && match.offsetExprs.empty())) // 'm_vec.data()' or kernel argument
+            bufferText = RecursiveRewrite(arg);
+          rewrittenRes += bufferText + ", " + (match.valid ? GlobalPtrOffsetText(match) : std::string("0"));
+        }
+        else
+          rewrittenRes += RecursiveRewrite(arg);
 
         if(i!=call->getNumArgs()-1)
           rewrittenRes += ", ";
@@ -833,6 +867,9 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
 
 bool kslicer::SlangRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
 { 
+  if(expr->getOpcode() == clang::UO_Deref && RewriteGlobalPtrAccess(expr)) // '*p' for pointer to buffer
+    return true;
+
   if(expr->isIncrementDecrementOp() && GetHashMapSubscript(expr->getSubExpr()) != nullptr) // 'm_hist[key]++' ==> 'InterlockedAdd(m_hist[...].val, uint(1))'
   {
     RewriteHashMapAtomicAdd(expr, expr->getSubExpr(), expr->isIncrementOp() ? "1" : "-1");
@@ -964,6 +1001,9 @@ bool kslicer::SlangRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCal
 bool kslicer::SlangRewriter::VisitVarDecl_Impl(clang::VarDecl* decl) 
 { 
   if(clang::isa<clang::ParmVarDecl>(decl)) // process else-where (VisitFunctionDecl_Impl)
+    return true;
+
+  if(RewriteLocalGlobalPtrDecl(decl)) // 'const float* p = &m_vec[e];' ==> 'uint pOffset = uint(e);'
     return true;
   
   CkeckAndProcessForThreadLocalVarDecl(decl);
@@ -1170,6 +1210,9 @@ bool kslicer::SlangRewriter::VisitFloatingLiteral_Impl(clang::FloatingLiteral* e
 
 bool kslicer::SlangRewriter::VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr) 
 { 
+  if(RewriteGlobalPtrAccess(arrayExpr)) // local pointer to buffer in kernel ('p[i]') or pointer argument of function copy for global memory
+    return true;
+
   if(m_kernelMode)
   {
     // ...
@@ -1226,6 +1269,8 @@ bool kslicer::SlangRewriter::VisitBinaryOperator_Impl(clang::BinaryOperator* exp
 
 bool  kslicer::SlangRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr) 
 {
+  if(CheckLocalGlobalPtrUse(expr))
+    return true;
   if(m_kernelMode)
   { 
     std::string originalText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);

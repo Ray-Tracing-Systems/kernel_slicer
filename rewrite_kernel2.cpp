@@ -26,6 +26,148 @@ void kslicer::FunctionRewriter2::InitKernelData(kslicer::KernelInfo& a_kernelRef
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+std::string kslicer::FunctionRewriter2::GlobalPtrOffsetText(const kslicer::GlobalPtrMatch& a_match)
+{
+  std::string res;
+  if(a_match.localVar != nullptr)
+    res = kslicer::LocalGlobalPointerOffsetName(a_match.localVar);
+  for(const clang::Expr* offsetExpr : a_match.offsetExprs)
+  {
+    const std::string offset = "(" + RecursiveRewrite(offsetExpr) + ")";
+    res = (res == "") ? offset : res + " + " + offset;
+  }
+  return (res == "") ? std::string("0") : res;
+}
+
+std::string kslicer::FunctionRewriter2::GlobalBufferAccessText(const std::string& a_buffer, const std::string& a_index)
+{
+  return a_buffer + "[" + a_index + "]";
+}
+
+std::string kslicer::FunctionRewriter2::ShitPointerBuffer(const kslicer::ArgMatch& a_pointer)
+{
+  return a_pointer.actual;
+}
+
+const kslicer::ArgMatch* kslicer::FunctionRewriter2::FindShitPointer(const clang::Expr* a_expr, std::vector<const clang::Expr*>* a_pAdds) const
+{
+  if(m_shit.pointers.empty() || a_expr == nullptr)
+    return nullptr;
+  std::vector<const clang::Expr*> adds;
+  const clang::Expr* expr = kslicer::StripPointerAdditions(a_expr, &adds);
+  if(!clang::isa<clang::DeclRefExpr>(expr) || !clang::isa<clang::ParmVarDecl>(clang::dyn_cast<clang::DeclRefExpr>(expr)->getDecl()))
+    return nullptr;
+  const std::string name = clang::dyn_cast<clang::DeclRefExpr>(expr)->getDecl()->getNameAsString();
+  for(const auto& p : m_shit.pointers)
+  {
+    if(p.formal == name)
+    {
+      if(a_pAdds != nullptr)
+        (*a_pAdds) = adds;
+      return &p;
+    }
+  }
+  return nullptr;
+}
+
+std::string kslicer::FunctionRewriter2::ShitPointerOffsetText(const kslicer::ArgMatch& a_pointer, const std::vector<const clang::Expr*>& a_adds)
+{
+  std::string res = a_pointer.formal + "Offset";
+  for(const clang::Expr* add : a_adds)
+    res += " + (" + RecursiveRewrite(add) + ")";
+  return res;
+}
+
+bool kslicer::FunctionRewriter2::RewriteLocalGlobalPtrDecl(clang::VarDecl* a_decl)
+{
+  if(!m_kernelMode || m_pCurrKernel == nullptr || a_decl == nullptr)
+    return false;
+  auto match = kslicer::MatchLocalGlobalPointerVar(a_decl, *m_pCurrKernel, m_compiler);
+  if(!match.valid)
+    return false;
+  if(a_decl->getInit() == nullptr || !WasNotRewrittenYet(a_decl->getInit()))
+    return true;
+  const std::string text = "uint " + kslicer::LocalGlobalPointerOffsetName(a_decl) + " = uint(" + GlobalPtrOffsetText(match) + ")";
+  ReplaceText(a_decl->getSourceRange(), text);
+  MarkRewritten(a_decl->getInit());
+  return true;
+}
+
+bool kslicer::FunctionRewriter2::RewriteGlobalPtrAccess(clang::Expr* a_expr)
+{
+  if(a_expr == nullptr || !WasNotRewrittenYet(a_expr))
+    return false;
+
+  const clang::Expr* base   = nullptr;
+  const clang::Expr* idx    = nullptr;
+  std::string        member = "";
+  if(clang::isa<clang::ArraySubscriptExpr>(a_expr))                                                                  // 'p[i]'
+  {
+    base = clang::dyn_cast<clang::ArraySubscriptExpr>(a_expr)->getBase();
+    idx  = clang::dyn_cast<clang::ArraySubscriptExpr>(a_expr)->getIdx();
+  }
+  else if(clang::isa<clang::UnaryOperator>(a_expr) && clang::dyn_cast<clang::UnaryOperator>(a_expr)->getOpcode() == clang::UO_Deref) // '*p'
+    base = clang::dyn_cast<clang::UnaryOperator>(a_expr)->getSubExpr();
+  else if(clang::isa<clang::MemberExpr>(a_expr) && clang::dyn_cast<clang::MemberExpr>(a_expr)->isArrow())                // 'p->x'
+  {
+    const auto memberExpr = clang::dyn_cast<clang::MemberExpr>(a_expr);
+    base   = memberExpr->getBase();
+    member = memberExpr->getMemberDecl()->getNameAsString();
+  }
+  if(base == nullptr)
+    return false;
+  
+  std::string buffer, offset;
+  if(m_kernelMode && m_pCurrKernel != nullptr)                // local pointer variable in kernel or member function
+  {
+    auto match = kslicer::MatchGlobalPointer(base, *m_pCurrKernel, m_compiler);
+    if(!match.valid || match.localVar == nullptr)
+      return false;
+    buffer = match.container;
+    offset = GlobalPtrOffsetText(match);
+  }
+  else                                                        // pointer argument of function copy for global memory
+  {
+    std::vector<const clang::Expr*> adds;
+    const kslicer::ArgMatch* pPointer = FindShitPointer(base, &adds);
+    if(pPointer == nullptr)
+      return false;
+    buffer = ShitPointerBuffer(*pPointer);
+    offset = ShitPointerOffsetText(*pPointer, adds);
+  }
+
+  std::string index = offset;
+  if(idx != nullptr)
+    index = offset + " + (" + RecursiveRewrite(idx) + ")";
+  
+  std::string text = GlobalBufferAccessText(buffer, index);
+  if(member != "")
+    text += "." + member;
+  ReplaceText(a_expr->getSourceRange(), text);
+  MarkRewritten(a_expr);
+  return true;
+}
+
+bool kslicer::FunctionRewriter2::IsUserFunction(const clang::FunctionDecl* a_func)
+{
+  if(a_func == nullptr)
+    return false;
+  const std::string fileName = std::string(m_compiler.getSourceManager().getFilename(a_func->getSourceRange().getBegin()));
+  return !m_codeInfo->IsInExcludedFolder(fileName);
+}
+
+bool kslicer::FunctionRewriter2::CheckLocalGlobalPtrUse(clang::DeclRefExpr* a_expr)
+{
+  if(!m_kernelMode || m_pCurrKernel == nullptr || !WasNotRewrittenYet(a_expr))
+    return false;
+  const auto pVar = clang::dyn_cast<clang::VarDecl>(a_expr->getDecl());
+  if(pVar == nullptr || !kslicer::MatchLocalGlobalPointerVar(pVar, *m_pCurrKernel, m_compiler).valid)
+    return false;
+  kslicer::PrintError("local pointer to buffer '" + pVar->getNameAsString() + "' is used in unsupported way; supported are 'p[i]', '*p', 'p->x', 'p + k' and passing 'p' or 'p + k' to functions", 
+                      a_expr->getSourceRange(), m_compiler.getSourceManager());
+  MarkRewritten(a_expr);
+  return true;
+}
 
 bool kslicer::FunctionRewriter2::NeedToRewriteMemberExpr(const clang::MemberExpr* expr, std::string& out_text)
 {

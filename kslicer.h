@@ -26,7 +26,7 @@
 #include "clang/Rewrite/Core/Rewriter.h"
 
 static constexpr bool SLANG_ELIMINATE_LOCAL_POINTERS    = true;
-static constexpr bool SLANG_SUPPORT_POINTER_ADD_IN_ARGS = false;
+static constexpr bool SLANG_SUPPORT_POINTER_ADD_IN_ARGS = true; // function copies for global memory get offset argument: (buffer, bufferOffset)
 
 bool ReplaceFirst(std::string& str, const std::string& from, const std::string& to);
 std::string ToLowerCase(std::string a_str);
@@ -130,6 +130,19 @@ namespace kslicer
          GLSL don't support pointers or passing buffers inside functions, so ... we have to insert all actual arguments inside function source code
          This greately complicate kernel_slicer work and we support currently only ove level of recursion, but we don't really have a choice.
   */
+  /**
+  \brief pointer to global memory (buffer) in kernel code: 'm_vec.data()', 'm_vec.data() + e', '&m_vec[e]', kernel buffer argument 'a_data' or 'a_data + e',
+         local pointer variable initialized by one of them ('const float* p = &m_vec[e];') and 'p + e'.
+         On GPU such pointer is a pair (buffer, offset): offset is sum of 'offsetExprs' and offset of local variable ('localVar + "Offset"').
+  */
+  struct GlobalPtrMatch
+  {
+    bool                     valid      = false;
+    std::string              container;            ///<! name of buffer: data member or kernel argument
+    std::vector<const clang::Expr*> offsetExprs;   ///<! additional offsets: 'p + a + b' ==> {a, b}
+    const clang::VarDecl*    localVar   = nullptr; ///<! local pointer variable, if pointer is a local variable or 'p + e'
+  };
+  
   struct ShittyFunction
   {
     std::vector<ArgMatch> pointers;
@@ -898,6 +911,19 @@ namespace kslicer
     virtual bool CheckIfExprHasArgumentThatNeedFakeOffset(const std::string& exprStr);
     virtual bool NameNeedsFakeOffset(const std::string& a_name) const;
     virtual std::string CompleteFunctionCallRewrite(clang::CallExpr* call);
+    
+    // pointers to global memory: local pointer variables in kernels and member functions ('const float* p = &m_vec[e];')
+    // and pointer arguments of function copies for global memory ('m_shit')
+    //
+    virtual std::string GlobalPtrOffsetText(const kslicer::GlobalPtrMatch& a_match);                                 ///<! offset of pointer inside buffer for function call
+    virtual std::string GlobalBufferAccessText(const std::string& a_buffer, const std::string& a_index);              ///<! 'a_buffer[a_index]'
+    virtual std::string ShitPointerBuffer(const kslicer::ArgMatch& a_pointer);                                      ///<! buffer of pointer argument in function copy: global buffer for GLSL, argument for Slang
+    bool RewriteLocalGlobalPtrDecl  (clang::VarDecl* a_decl);       ///<! 'const float* p = &m_vec[e];'   ==> 'uint pOffset = e;'
+    bool RewriteGlobalPtrAccess     (clang::Expr* a_expr);          ///<! 'p[i]', '*p', 'p->x'           ==> 'm_vec[pOffset + i]', ...
+    bool CheckLocalGlobalPtrUse     (clang::DeclRefExpr* a_expr);   ///<! error for other uses of local pointer variable 
+    bool IsUserFunction(const clang::FunctionDecl* a_func);           ///<! not from ignored folders (LiteMath and e.t.c.): kslicer generates copies of such functions for global memory
+    const kslicer::ArgMatch* FindShitPointer(const clang::Expr* a_expr, std::vector<const clang::Expr*>* a_pAdds = nullptr) const; ///<! 'a_data' or 'a_data + k + ...' for pointer of m_shit
+    std::string ShitPointerOffsetText(const kslicer::ArgMatch& a_pointer, const std::vector<const clang::Expr*>& a_adds);           ///<! 'a_dataOffset + (k) + ...'
     virtual std::string KGenArgsName() const { return "kgenArgs."; }
 
     RewrittenFunction RewriteFunction(clang::FunctionDecl* fDecl);
@@ -965,6 +991,7 @@ namespace kslicer
   
     bool        NeedsVectorTypeRewrite(const std::string& a_str) override;
     std::string CompleteFunctionCallRewrite(clang::CallExpr* call) override;
+    std::string GlobalBufferAccessText(const std::string& a_buffer, const std::string& a_index) override;
 
   protected:
 
@@ -990,6 +1017,8 @@ namespace kslicer
   public:
     SlangRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo) : FunctionRewriter2(R,a_compiler,a_codeInfo) { Init();}
     ~SlangRewriter(){ }
+
+    std::string ShitPointerBuffer(const kslicer::ArgMatch& a_pointer) override { return a_pointer.formal; } // buffer is passed to function copy as argument
 
     bool VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl)   override;
     bool VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl) override;
@@ -1996,6 +2025,23 @@ namespace kslicer
   std::string InferenceVulkanTextureFormatFromTypeName(const std::string& a_typeName, bool a_useHalFloat);
 
   std::vector<kslicer::ArgMatch> MatchCallArgsForKernel(clang::CallExpr* call, const KernelInfo& k, const clang::CompilerInstance& a_compiler);
+
+  const clang::Expr* StripPointerAdditions(const clang::Expr* a_expr, std::vector<const clang::Expr*>* a_pAdds = nullptr); ///<! 'ptr + a + b' ==> 'ptr', {a, b}
+  GlobalPtrMatch MatchGlobalPointer(const clang::Expr* a_expr, const KernelInfo& k, const clang::CompilerInstance& a_compiler);
+  GlobalPtrMatch MatchLocalGlobalPointerVar(const clang::VarDecl* a_var, const KernelInfo& k, const clang::CompilerInstance& a_compiler); ///<! local pointer variable to buffer
+  std::string    LocalGlobalPointerOffsetName(const clang::VarDecl* a_var);                                                          ///<! 'p' ==> 'pOffset'
+
+  /**
+  \brief Find all functions which get pointers to global memory from other such functions (pointer is passed further) and add them to 'a_shittyFunctions'.
+  */
+  void ExpandShittyFunctions(std::vector<ShittyFunction>& a_shittyFunctions, const kslicer::umap<std::string, kslicer::FuncData>& a_functions, const clang::CompilerInstance& a_compiler);
+  
+  /**
+  \brief Names of functions which are called in the usual way (without pointers to global memory) from kernels, from member functions or from other such functions.
+         Original versions of these functions are needed even if they have copies for global pointers.
+  */
+  kslicer::uset<std::string> FunctionsWithUsualCalls(const std::vector<const KernelInfo*>& a_kernels, const kslicer::umap<std::string, kslicer::FuncData>& a_functions, 
+                                                     const kslicer::uset<std::string>& a_namesWithCopies, const clang::CompilerInstance& a_compiler);
 
   std::vector<const KernelInfo*> extractUsedKernelsByName(const kslicer::uset<std::string>& a_usedNames, const kslicer::umap<std::string, KernelInfo>& a_kernels);
   KernelInfo                     joinToMegaKernel        (const std::vector<const KernelInfo*>& a_kernels, const MainFuncInfo& cf);

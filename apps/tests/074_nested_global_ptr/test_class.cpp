@@ -15,6 +15,7 @@ static inline float b_sum_pair(const float* a_params, uint32_t a_offset, uint32_
 }
 
 // Level 1: passes the buffer further ('pointer + k' in nested functions is tested in 076_nested_global_ptr_add).
+// Copies of 'b_sum_pair' and 'c_read_point' for global memory are created automatically (they are called only from other copies).
 // Names are 'a_', 'b_', 'c_' and the caller is defined after its callees here, but generated copies
 // of these functions may be written in a different order, so GLSL needs their declarations first.
 //
@@ -39,16 +40,6 @@ void TestNestedGlobalPtr::kernel1D_Run(const int a_size, float* outData)
   {
     const uint32_t offset = uint32_t(i % 4)*8;  // offset inside m_params, as for a node of a tree stored in a flat array
     const uint32_t id     = uint32_t(i % 3);
-
-    // Copies of functions for 'm_params' are created only for functions which are called with it from kernel code,
-    // so nested functions must be called with 'm_params.data()' here at least once; this code is never executed.
-    //
-    if(false)
-    {
-      b_sum_pair  (m_params.data(), offset, id);
-      c_read_point(m_params.data(), offset, id);
-    }
-
     outData[i] = a_top(m_params.data(), offset, id) + 1000.0f*a_top(m_params.data(), offset + 1, id);
   }
 }

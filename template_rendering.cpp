@@ -1437,6 +1437,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       }
     }
 
+    // functions which get pointer to global memory from other such functions (pointer is passed further) need their own copies too
+    //
+    if(!a_classInfo.pShaderCC->BuffersAsPointersInShaders())
+      kslicer::ExpandShittyFunctions(const_cast<kslicer::KernelInfo&>(k).shittyFunctions, cachedFunc, compiler);
+
     kernelJson["ShityFunctions"] = std::vector<std::string>();
     kslicer::umap<std::string, kslicer::ShittyFunction> shitByName;
     for(auto shit : k.shittyFunctions) {
@@ -1592,6 +1597,20 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
   
   data["HaveReduceAdd"] = haveReduceAdd;
 
+  // original versions of functions which have copies for global memory are needed only if they are called in the usual way too
+  //
+  kslicer::uset<std::string> usualCalls;
+  {
+    kslicer::uset<std::string> namesWithCopies;
+    for(const auto& f : shittyFunctions)
+      namesWithCopies.insert(f.first);
+    std::vector<const kslicer::KernelInfo*> kernelPtrs;
+    for(const auto& nk : kernels)
+      kernelPtrs.push_back(&nk.second);
+    if(!namesWithCopies.empty())
+      usualCalls = kslicer::FunctionsWithUsualCalls(kernelPtrs, cachedFunc, namesWithCopies, compiler);
+  }
+
   // (5) generate local functions
   //
   data["LocalFunctions"] = std::vector<json>();
@@ -1604,8 +1623,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     for (const auto& f : usedFunctions)
     {
       cachedFunc[f.name] = f;
-      auto pShit = shittyFunctions.find(f.name);      // exclude shittyFunctions from 'LocalFunctions'
-      if(pShit != shittyFunctions.end() || f.isMember)
+      auto pShit = shittyFunctions.find(f.name);      // exclude shittyFunctions from 'LocalFunctions' if they are not called in the usual way
+      const bool onlyCopies = (pShit != shittyFunctions.end()) && (usualCalls.find(f.name) == usualCalls.end());
+      if(onlyCopies || f.isMember)
         continue;
       
       //f.astNode->dump();

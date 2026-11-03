@@ -1,6 +1,6 @@
 {
     "variants": [
-        {"name": "slang", "backend": "slang", "kmake": "kmake.json", "skip": "Slang back end passes buffers to functions as RWStructuredBuffer without offset, so 'pointer + k' is not supported (SLANG_SUPPORT_POINTER_ADD_IN_ARGS)"},
+        {"name": "slang", "backend": "slang", "kmake": "kmake.json"},
         {"name": "glsl",  "backend": "glsl",  "kmake": "kmake.json"}
     ]
 }
