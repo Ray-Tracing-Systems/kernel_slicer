@@ -1144,7 +1144,57 @@ bool kslicer::GLSLRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
   clang::FunctionDecl* fDecl = call->getDirectCallee();
   if(fDecl == nullptr)
     return true;
-  
+
+  // Inside a copy of function which gets a pointer to global memory ('m_shit', see VisitCallExprKernel) this pointer may be passed to other function:
+  // 'f(..., a_data, ...)' or 'f(..., a_data + k, ...)' ==> 'f_m_data(..., a_dataOffset, ...)' or 'f_m_data(..., a_dataOffset + k, ...)'.
+  // The copy of 'f' for 'm_data' must be created too: call 'f(m_data.data(), ...)' from kernel code at least once (see test 047_local_global_ptr).
+  //
+  if(!m_shit.pointers.empty() && !m_kernelMode && WasNotRewrittenYet(call))
+  {
+    kslicer::ShittyFunction nested;
+    nested.originalName = fDecl->getNameInfo().getName().getAsString();
+    std::vector<std::string> offsets(call->getNumArgs());
+    for(unsigned i=0; i<call->getNumArgs() && i < fDecl->getNumParams(); i++)
+    {
+      const clang::Expr* arg = kslicer::RemoveImplicitCast(call->getArg(i));
+      const clang::Expr* rhs = nullptr;
+      if(clang::isa<clang::BinaryOperator>(arg) && clang::dyn_cast<clang::BinaryOperator>(arg)->getOpcodeStr() == "+")
+      {
+        rhs = clang::dyn_cast<clang::BinaryOperator>(arg)->getRHS();
+        arg = kslicer::RemoveImplicitCast(clang::dyn_cast<clang::BinaryOperator>(arg)->getLHS());
+      }
+      const std::string argText = kslicer::GetRangeSourceCode(arg->getSourceRange(), m_compiler);
+      for(const auto& p : m_shit.pointers)
+      {
+        if(p.formal == argText && fDecl->getParamDecl(i)->getType()->isPointerType())
+        {
+          kslicer::ArgMatch match = p;
+          match.formal = fDecl->getParamDecl(i)->getNameAsString();
+          match.argId  = i;
+          match.type   = fDecl->getParamDecl(i)->getType().getAsString();
+          nested.pointers.push_back(match);
+          offsets[i] = p.formal + "Offset" + ((rhs != nullptr) ? std::string(" + ") + RecursiveRewrite(rhs) : std::string(""));
+          break;
+        }
+      }
+    }
+
+    if(!nested.pointers.empty())
+    {
+      std::string rewrittenRes = nested.ShittyName() + "(";
+      for(unsigned i=0; i<call->getNumArgs(); i++)
+      {
+        rewrittenRes += (offsets[i] != "") ? offsets[i] : RecursiveRewrite(call->getArg(i));
+        if(i != call->getNumArgs()-1)
+          rewrittenRes += ", ";
+      }
+      rewrittenRes += ")";
+      ReplaceText(call->getSourceRange(), rewrittenRes);
+      MarkRewritten(call);
+      return true;
+    }
+  }
+
   const std::string debugText = GetRangeSourceCode(call->getSourceRange(), m_compiler);
   const std::string fname = fDecl->getNameInfo().getName().getAsString();
   ///////////////////////////////////////////////////////////////////////
@@ -1579,6 +1629,74 @@ void kslicer::GLSLCompiler::ProcessVectorTypesString(std::string& a_str)
   }
 }
 
+/**
+\brief GLSL does not support default member initializers ('struct S { uint a = 0; };'), remove them from struct source code.
+       Only '= expr' of fields at the first level of the struct body are removed; comments, nested braces and parentheses are skipped.
+       Note that variables of such structs declared without initializer stay uninitialized in GLSL.
+*/
+static std::string RemoveDefaultMemberInitializers(const std::string& a_structText, bool* a_pRemoved = nullptr)
+{
+  std::string res;
+  res.reserve(a_structText.size());
+  int  depth    = 0;     // {} depth, struct body is 1
+  int  parens   = 0;     // () and [] depth
+  bool skipInit = false; // inside '= expr' which must be removed
+  bool removed  = false;
+  const size_t n = a_structText.size();
+  for(size_t i=0; i<n; i++)
+  {
+    const char c    = a_structText[i];
+    const char next = (i+1 < n) ? a_structText[i+1] : '\0';
+
+    // comments are copied as is (unless they are inside removed initializer)
+    if(c == '/' && (next == '/' || next == '*'))
+    {
+      size_t end = (next == '/') ? a_structText.find('\n', i) : a_structText.find("*/", i+2);
+      end = (end == std::string::npos) ? n : ((next == '/') ? end : end + 2);
+      if(!skipInit)
+        res += a_structText.substr(i, end - i);
+      i = end - 1;
+      continue;
+    }
+
+    if(c == '(' || c == '[') parens++;
+    if(c == ')' || c == ']') parens--;
+
+    if(skipInit) // skip everything up to ';' of the field
+    {
+      if(c == '{') depth++;
+      if(c == '}')
+      {
+        depth--;
+        if(depth == 0) { skipInit = false; res += c; } // should not happen for correct code
+      }
+      if(depth == 1 && parens == 0 && c == ';') { skipInit = false; res += c; }
+      continue;
+    }
+
+    if(c == '{') depth++;
+    if(c == '}') depth--;
+
+    if(c == '=' && depth == 1 && parens == 0)
+    {
+      const char prev = (i > 0) ? a_structText[i-1] : '\0';
+      const bool isComparison = (next == '=') || prev == '=' || prev == '<' || prev == '>' || prev == '!';
+      if(!isComparison)
+      {
+        while(!res.empty() && (res.back() == ' ' || res.back() == '\t')) // remove spaces before '='
+          res.pop_back();
+        skipInit = true;
+        removed  = true;
+        continue;
+      }
+    }
+    res += c;
+  }
+  if(a_pRemoved != nullptr)
+    *a_pRemoved = removed;
+  return res;
+}
+
 std::string kslicer::GLSLCompiler::PrintHeaderDecl(const DeclInClass& a_decl, const clang::CompilerInstance& a_compiler, std::shared_ptr<kslicer::FunctionRewriter> a_pRewriter)
 {
   std::string typeInCL = a_decl.type;
@@ -1589,7 +1707,12 @@ std::string kslicer::GLSLCompiler::PrintHeaderDecl(const DeclInClass& a_decl, co
   switch(a_decl.kind)
   {
     case kslicer::DECL_IN_CLASS::DECL_STRUCT:
-    result = kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler) + ";";
+    {
+      bool removed = false;
+      result = RemoveDefaultMemberInitializers(kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler), &removed) + ";";
+      if(removed)
+        std::cout << "  [GLSL]: WARNING! default member initializers of struct '" << a_decl.name << "' are not supported in GLSL and were removed" << std::endl;
+    }
     ProcessVectorTypesString(result);
     break;
     case kslicer::DECL_IN_CLASS::DECL_CONSTANT:

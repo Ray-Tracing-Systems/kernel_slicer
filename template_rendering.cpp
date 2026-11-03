@@ -1444,6 +1444,21 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       shittyFunctions[shit.originalName] = shit;
     }
 
+    if(a_classInfo.pShaderCC->IsGLSL() && shitByName.size() > 1) // GLSL: these functions may call each other (pointer is passed further), declare them first
+    {
+      for(auto shit : shitByName)
+      {
+        auto pFunc = cachedFunc.find(shit.second.originalName);
+        if(pFunc == cachedFunc.end())
+          continue;
+        clang::Rewriter rewrite2;
+        rewrite2.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
+        auto pVisitorF = a_classInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &a_classInfo, shit.second);
+        auto funcNode  = const_cast<clang::FunctionDecl*>(pFunc->second.astNode);
+        kernelJson["ShityFunctions"].push_back(pVisitorF->RewriteFuncDecl(funcNode) + ";");
+      }
+    }
+
     for(auto shit : shitByName)
     {
       auto pFunc = cachedFunc.find(shit.second.originalName);
