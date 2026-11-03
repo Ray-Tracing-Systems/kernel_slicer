@@ -143,7 +143,7 @@ bool kslicer::FunctionRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructEx
   {
     const std::string textRes = RewriteConstructCall(call);
     ReplaceText(call->getSourceRange(), textRes); //
-    //kslicer::ReplaceTextSafe(m_rewriter, call->getSourceRange(), textRes);    //
+    //ReplaceText(call->getSourceRange(), textRes);    //
     MarkRewritten(call);
   }
 

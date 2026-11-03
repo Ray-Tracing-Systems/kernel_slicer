@@ -1280,7 +1280,7 @@ bool kslicer::GLSLRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* 
     if(kslicer::IsVectorContructorNeedsReplacement(fname) && WasNotRewrittenYet(call) && !ctorDecl->isCopyOrMoveConstructor() && call->getNumArgs() > 0 ) //
     {
       const std::string textRes = RewriteConstructCall(call);
-      kslicer::ReplaceTextSafe(m_rewriter, call->getSourceRange(), textRes);    //
+      ReplaceText(call->getSourceRange(), textRes);    //
       MarkRewritten(call);
     }
 
@@ -1300,7 +1300,7 @@ bool kslicer::GLSLRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* 
     if(WasNotRewrittenYet(next) && qt.getAsString() != "size_t" && qt.getAsString() != "std::size_t")
     {
       const std::string exprText = RecursiveRewrite(next);
-      kslicer::ReplaceTextSafe(m_rewriter, next->getSourceRange(), castTo + "(" + exprText + ")");
+      ReplaceText(next->getSourceRange(), castTo + "(" + exprText + ")");
       MarkRewritten(next);
     }
   }
@@ -1577,7 +1577,7 @@ bool kslicer::GLSLRewriter::VisitMemberExprKernel(clang::MemberExpr* expr)
   std::string rewrittenText;
   if(NeedToRewriteMemberExpr(expr, rewrittenText))
   {
-    kslicer::ReplaceTextSafe(m_rewriter, expr->getSourceRange(), rewrittenText);
+    ReplaceText(expr->getSourceRange(), rewrittenText);
     MarkRewritten(expr);
   }
   return true;
@@ -2004,7 +2004,7 @@ bool kslicer::GLSLRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
   {
     if(!m_codeInfo->megakernelRTV || m_pCurrKernel->isMega)
     {
-      kslicer::ReplaceTextSafe(m_rewriter, expr->getSourceRange(), std::string("kgenArgs.") + textOri);
+      ReplaceText(expr->getSourceRange(), std::string("kgenArgs.") + textOri);
       MarkRewritten(expr);
     }
   }

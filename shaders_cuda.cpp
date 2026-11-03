@@ -122,7 +122,7 @@ bool kslicer::CudaRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
     std::string rewrittenText;
     if(NeedToRewriteMemberExpr(expr, rewrittenText))
     {
-      kslicer::ReplaceTextSafe(m_rewriter, expr->getSourceRange(), rewrittenText);
+      ReplaceText(expr->getSourceRange(), rewrittenText);
       MarkRewritten(expr);
     }
   }
