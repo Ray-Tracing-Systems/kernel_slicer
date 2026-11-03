@@ -273,6 +273,40 @@ double3   operator*(double3x3 m,  double3 v) { return mul(m,v); }
 
 static inline uint bitCount(uint x) { return countbits(x); }
 
+// LiteMath::f32tof16/f16tof32: built-in 'f32tof16/f16tof32' of Slang convert via 'half' in SPIR-V, which needs Float16 and Int16 capabilities
+// (shaderFloat16 and shaderInt16 features). 'f32tof16_kgen' uses 32 bit integer operations only and rounds to nearest even as LiteMath on CPU
+// (rounding of GLSL.std.450 PackHalf2x16 is implementation defined, AMD rounds to zero); see F. Giesen, 'float_to_half_fast3_rtne'.
+// UnpackHalf2x16 is exact and needs only 'Shader' capability.
+//
+uint f32tof16_kgen(float x)
+{
+{% if WGPUMode %}
+  return f32tof16(x);
+{% else %}
+  uint       bits = asuint(x);
+  const uint sign = bits & 0x80000000u;
+  bits ^= sign;
+  uint res;
+  if(bits >= 0x47800000u)                                // >= 65536: Inf, NaN
+    res = (bits > 0x7f800000u) ? 0x7e00u : 0x7c00u;
+  else if(bits < 0x38800000u)                            // < 2^-14: subnormal half or zero, addition of 0.5f rounds the mantissa
+    res = asuint(asfloat(bits) + 0.5f) - 0x3f000000u;
+  else                                                   // normal half: rebias exponent and round to nearest even
+    res = (bits + 0xc8000fffu + ((bits >> 13) & 1u)) >> 13;
+  return res | (sign >> 16);
+{% endif %}
+}
+
+float f16tof32_kgen(uint x)
+{
+{% if WGPUMode %}
+  return f16tof32(x);
+{% else %}
+  const float2 unpacked = spirv_asm { result:$$float2 = OpExtInst glsl450 UnpackHalf2x16 $x };
+  return unpacked.x;
+{% endif %}
+}
+
 {% if AtomicFloatEmul %}
 // '-atomicf_emul 1|2' (float atomics for GPUs without shaderBufferFloat32AtomicAdd): float atomic add via CAS on 'uint' view of the same buffer ('a_out_asUint'), declared at the same binding
 // by kernel_slicer; 'a_word' is index of 32 bit word in buffer: no pointer casts and no atomics on 'float' in SPIR-V.

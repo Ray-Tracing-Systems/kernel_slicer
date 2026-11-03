@@ -39,8 +39,23 @@
 #define half4 f16vec4
 bool  isfinite(float x)            { return !isinf(x); }
 float copysign(float mag, float s) { return abs(mag)*sign(s); }
-uint  f32tof16(float x)             { return packHalf2x16(vec2(x, 0.0f)) & 0xFFFFu; } // LiteMath::f32tof16 (HLSL semantic)
-float f16tof32(uint x)              { return unpackHalf2x16(x).x; }                // LiteMath::f16tof32 (HLSL semantic)
+// LiteMath::f32tof16 (HLSL semantic): 32 bit integer operations only, rounds to nearest even as LiteMath on CPU
+// (rounding of packHalf2x16 is implementation defined, AMD rounds to zero); see F. Giesen, 'float_to_half_fast3_rtne'
+uint f32tof16(float x)
+{
+  uint       bits = floatBitsToUint(x);
+  const uint sign = bits & 0x80000000u;
+  bits ^= sign;
+  uint res;
+  if(bits >= 0x47800000u)                                // >= 65536: Inf, NaN
+    res = (bits > 0x7f800000u) ? 0x7e00u : 0x7c00u;
+  else if(bits < 0x38800000u)                            // < 2^-14: subnormal half or zero, addition of 0.5f rounds the mantissa
+    res = floatBitsToUint(uintBitsToFloat(bits) + 0.5f) - 0x3f000000u;
+  else                                                   // normal half: rebias exponent and round to nearest even
+    res = (bits + 0xc8000fffu + ((bits >> 13) & 1u)) >> 13;
+  return res | (sign >> 16);
+}
+float f16tof32(uint x) { return unpackHalf2x16(x).x; } // LiteMath::f16tof32 (HLSL semantic), exact
 {% if AtomicFloatEmul %}
 
 // '-atomicf_emul 1|2' (GPUs without shaderBufferFloat32AtomicAdd): float atomic add via CAS on 'uint' view of the same buffer ('a_out_asUint'),

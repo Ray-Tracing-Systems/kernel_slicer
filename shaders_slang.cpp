@@ -49,6 +49,8 @@ void kslicer::SlangRewriter::Init()
   m_funReplacements.clear();
   m_funReplacements["atomicAdd"] = "InterlockedAdd";
   m_funReplacements["AtomicAdd"] = "InterlockedAdd";
+  m_funReplacements["f32tof16"]  = "f32tof16_kgen"; // see 'common_generated_slang.h': built-in functions use 'half' (Float16 and Int16 capabilities)
+  m_funReplacements["f16tof32"]  = "f16tof32_kgen";
 }
 
 std::string kslicer::SlangRewriter::RewriteStdVectorTypeStr(const std::string& a_str) const
