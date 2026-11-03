@@ -1438,6 +1438,26 @@
         },
 
         {
+            "name"   : "Launch (test_073/Slang)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-debug/kslicer",
+            "args"   : ["${workspaceFolder}/apps/tests/073_nn_layer_table/kmake.json", "-shaderCC", "slang"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
             "name"   : "Launch (test_054_hw/Slang)",
             "type"   : "cppdbg",
             "request": "launch",

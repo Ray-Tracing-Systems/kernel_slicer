@@ -373,42 +373,70 @@ void InterlockedAdd3f(RWStructuredBuffer<float> pMem, int offset, float3 data)
 {% endif %}
 {% if UseCoopVec %}
 // LiteNN (apps/LiteMathAux/neural.h): one fully connected layer 'a_out = W*a_in + b' with cooperative vectors (VK_NV_cooperative_vector).
-// Weights are fp16, row-major, rows padded to 8 elements; offsets 'a_matOffs' and 'a_biasOffs' are in elements of half.
-// Input and output are converted to fp16: the only floating point combination supported by hardware.
+// Weights are fp16; offsets 'matOffs' and 'biasOffs' are in elements of half. Input and output are converted to fp16:
+// the only floating point combination supported by hardware.
+// Layers given by offsets are row-major, rows padded to 8 elements. Layers given by table 'LiteNN_Layer' are in 'InferencingOptimal'
+// layout: the generated host code repacks them in 'CommitDeviceData()' and uploads the table with GPU offsets.
 //
+struct LiteNN_Layer
+{
+  uint matOffs;
+  uint biasOffs;
+  uint inDim;
+  uint outDim;
+};
+
 [ForceInline]
-void LiteNN_LinearForward<let IN : int, let OUT : int, let N0 : int, let N1 : int>(RWStructuredBuffer<half> a_weights, uint a_matOffs, uint a_biasOffs,
-                                                                                   float a_in[N0], inout float a_out[N1])
+CoopVec<half, OUT> LiteNN_MatMulAdd<let IN : int, let OUT : int, let N0 : int>(RWStructuredBuffer<half> a_weights, uint a_matOffs, uint a_biasOffs, float a_in[N0],
+                                                                                constexpr CoopVecMatrixLayout a_layout)
 {
   CoopVec<half, IN> x;
   [ForceUnroll]
   for(int i = 0; i < IN; i++)
     x[i] = half(a_in[i]);
-  const CoopVec<half, OUT> y = coopVecMatMulAdd<half, OUT>(x, CoopVecComponentType::Float16,
-                                                           a_weights, a_matOffs*2, CoopVecComponentType::Float16,
-                                                           a_weights, a_biasOffs*2, CoopVecComponentType::Float16,
-                                                           CoopVecMatrixLayout::RowMajor, false, ((IN + 7)/8)*16);
+  const uint stride = (a_layout == CoopVecMatrixLayout::RowMajor) ? ((IN + 7)/8)*16 : 0;
+  return coopVecMatMulAdd<half, OUT>(x, CoopVecComponentType::Float16,
+                                     a_weights, a_matOffs*2, CoopVecComponentType::Float16,
+                                     a_weights, a_biasOffs*2, CoopVecComponentType::Float16,
+                                     a_layout, false, stride);
+}
+
+[ForceInline]
+void LiteNN_Store<let OUT : int, let N1 : int>(CoopVec<half, OUT> a_y, inout float a_out[N1])
+{
   [ForceUnroll]
   for(int i = 0; i < OUT; i++)
-    a_out[i] = float(y[i]);
+    a_out[i] = float(a_y[i]);
+}
+
+[ForceInline]
+void LiteNN_LinearForward<let IN : int, let OUT : int, let N0 : int, let N1 : int>(RWStructuredBuffer<half> a_weights, uint a_matOffs, uint a_biasOffs,
+                                                                                   float a_in[N0], inout float a_out[N1])
+{
+  LiteNN_Store<OUT>(LiteNN_MatMulAdd<IN, OUT>(a_weights, a_matOffs, a_biasOffs, a_in, CoopVecMatrixLayout::RowMajor), a_out);
 }
 
 [ForceInline]
 void LiteNN_LinearForward_ReLU<let IN : int, let OUT : int, let N0 : int, let N1 : int>(RWStructuredBuffer<half> a_weights, uint a_matOffs, uint a_biasOffs,
                                                                                         float a_in[N0], inout float a_out[N1])
 {
-  CoopVec<half, IN> x;
-  [ForceUnroll]
-  for(int i = 0; i < IN; i++)
-    x[i] = half(a_in[i]);
-  CoopVec<half, OUT> y = coopVecMatMulAdd<half, OUT>(x, CoopVecComponentType::Float16,
-                                                     a_weights, a_matOffs*2, CoopVecComponentType::Float16,
-                                                     a_weights, a_biasOffs*2, CoopVecComponentType::Float16,
-                                                     CoopVecMatrixLayout::RowMajor, false, ((IN + 7)/8)*16);
-  y = max(y, CoopVec<half, OUT>(half(0.0f)));
-  [ForceUnroll]
-  for(int i = 0; i < OUT; i++)
-    a_out[i] = float(y[i]);
+  const CoopVec<half, OUT> y = LiteNN_MatMulAdd<IN, OUT>(a_weights, a_matOffs, a_biasOffs, a_in, CoopVecMatrixLayout::RowMajor);
+  LiteNN_Store<OUT>(max(y, CoopVec<half, OUT>(half(0.0f))), a_out);
+}
+
+[ForceInline]
+void LiteNN_LinearForward<let IN : int, let OUT : int, let N0 : int, let N1 : int>(RWStructuredBuffer<half> a_weights, LiteNN_Layer a_layer,
+                                                                                   float a_in[N0], inout float a_out[N1])
+{
+  LiteNN_Store<OUT>(LiteNN_MatMulAdd<IN, OUT>(a_weights, a_layer.matOffs, a_layer.biasOffs, a_in, CoopVecMatrixLayout::InferencingOptimal), a_out);
+}
+
+[ForceInline]
+void LiteNN_LinearForward_ReLU<let IN : int, let OUT : int, let N0 : int, let N1 : int>(RWStructuredBuffer<half> a_weights, LiteNN_Layer a_layer,
+                                                                                        float a_in[N0], inout float a_out[N1])
+{
+  const CoopVec<half, OUT> y = LiteNN_MatMulAdd<IN, OUT>(a_weights, a_layer.matOffs, a_layer.biasOffs, a_in, CoopVecMatrixLayout::InferencingOptimal);
+  LiteNN_Store<OUT>(max(y, CoopVec<half, OUT>(half(0.0f))), a_out);
 }
 
 [ForceInline]

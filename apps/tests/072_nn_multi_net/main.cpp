@@ -23,7 +23,8 @@ int main(int argc, const char** argv)
   #else
   bool enableValidationLayers = false;
   #endif
-  const uint32_t SIZE     = 100000;
+  ArgParser args(argc, argv);
+  const uint32_t SIZE     = args.getOptionValue<int>("--size", 100000);
   const uint32_t NUM_NETS = 5;
 
   std::mt19937 gen(777);
@@ -41,7 +42,6 @@ int main(int argc, const char** argv)
   std::vector<float4> out(SIZE);
 
   std::shared_ptr<MultiNet> pImpl = nullptr;
-  ArgParser args(argc, argv);
 
   bool onGPU = args.hasOption("--gpu");
   if(args.hasOption("--validation"))
@@ -84,6 +84,9 @@ int main(int argc, const char** argv)
   pImpl->CommitDeviceData();
   pImpl->Run(netId.data(), input.data(), indices.data(), out.data(), SIZE);
 
+  float timings[4] = {0,0,0,0};
+  pImpl->GetExecutionTime("Run", timings);
+  std::cout << "Run(exec) = " << timings[0] << " ms" << std::endl;
   std::cout << "out[0] = " << out[0].x << " " << out[0].y << " " << out[0].z << " " << out[0].w << std::endl;
 
   std::vector<float> outFlat(SIZE*4);

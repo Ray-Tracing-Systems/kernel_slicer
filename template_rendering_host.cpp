@@ -780,6 +780,14 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["AppendGroups"]  = std::vector<json>();
 
   data["ClassVectorVars"]   = std::vector<json>();
+  data["NNWeights"]         = std::vector<json>();
+  for(const auto& nn : a_classInfo.nnLayersOfWeights)
+  {
+    json local;
+    local["Weights"] = nn.first;
+    local["Layers"]  = nn.second;
+    data["NNWeights"].push_back(local);
+  }
   data["HasHashMaps"]       = false;
   data["ClassTextureVars"]  = std::vector<json>();
   data["ClassTexArrayVars"] = std::vector<json>();
@@ -921,12 +929,22 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       else if(kslicer::IsHashMapContainer(v.containerType))
         continue;
 
+      // LiteNN: weights bound to table of layers are repacked for cooperative vectors, the table is uploaded with GPU offsets
+      local["IsNNWeights"] = (a_classInfo.nnLayersOfWeights.find(v.name) != a_classInfo.nnLayersOfWeights.end());
+      local["IsNNLayers"]  = false;
+      for(const auto& nn : a_classInfo.nnLayersOfWeights)
+        if(nn.second == v.name)
+          local["IsNNLayers"] = true;
+      if(local["IsNNLayers"].get<bool>())
+        local["TypeOfData"] = "LiteNN::Layer";
+
       local["AppendId"]      = -1;
       local["AppendGroup"]   = -1;
       local["AppendRewrite"] = false;
       if(hasCommitAppended)
       {
-        const bool plainVector = !local["IsHashMap"].get<bool>() && !isVFHBuffer && !local["WithBuffRef"].get<bool>();
+        const bool plainVector = !local["IsHashMap"].get<bool>() && !isVFHBuffer && !local["WithBuffRef"].get<bool>() &&
+                                 !local["IsNNWeights"].get<bool>() && !local["IsNNLayers"].get<bool>();
         if(plainVector)
         {
           auto pGroup        = appendGroupInConfig.find(v.name);

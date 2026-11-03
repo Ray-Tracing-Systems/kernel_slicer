@@ -9,6 +9,7 @@ set(KSLICER_SOURCE_FILES
     kslicer_utils.cpp
     kslicer_warnings.cpp
     hashmap.cpp
+    neural_nets.cpp
     kslicer_def.cpp
     attributes.cpp
     block_expansion.cpp

@@ -1887,6 +1887,7 @@ namespace kslicer
       size_t      padWords   = 0;
     };
     std::map<std::string, HashMapInfo> hashMaps; ///<! all hash maps used in kernels
+    kslicer::umap<std::string, std::string> nnLayersOfWeights; ///<! LiteNN: weights vector ==> its table of layers ('m_weights' ==> 'm_layers'); such weights are repacked to 'InferencingOptimal' layout on host
 
     struct HashMapAddFunc       ///<! 'm_items[key].val.x += value' with subgroup aggregation ==> 'hmap_m_items_add_val_x(key, value)'
     {
@@ -1908,6 +1909,7 @@ namespace kslicer
 
     kslicer::uset<std::string> ExtractTypesFromUsedContainers(const kslicer::umap<std::string, kslicer::DeclInClass>& a_otherDecls);
     void ProcessHashMaps(const clang::ASTContext& a_astContext); ///<! ==> hashMaps; must be called after ProcessMemberTypesAligment
+    void ProcessNeuralNetworks(clang::ASTContext& a_astContext); ///<! ==> nnLayersOfWeights
     void ProcessMemberTypes(const kslicer::umap<std::string, kslicer::DeclInClass>& a_otherDecls, clang::SourceManager& a_srcMgr,
                             std::vector<kslicer::DeclInClass>& generalDecls);
 

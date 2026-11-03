@@ -14,13 +14,24 @@
 //   biasOffs is a multiple of BIAS_ALIGN   (16 bytes),
 //   rows are padded to ROW_ALIGN elements  (16 bytes).
 //
+// Two ways to address a layer in kernels:
+//   1. Offsets: 'LinearForward(m_weights.data(), matOffs, biasOffs, in, inDim, out, outDim)'.
+//      The GPU reads the same row-major layout as the CPU, so offsets may be computed in any way.
+//   2. Table of layers: 'LinearForward(m_weights.data(), m_layers[id], in, inDim, out, outDim)', where 'm_layers' is
+//      a 'std::vector<LiteNN::Layer>' member filled by 'AppendLayer'. kernel_slicer finds the pair 'm_weights/m_layers'
+//      by such calls; the generated 'CommitDeviceData()' repacks the matrices to the faster 'InferencingOptimal' layout
+//      and uploads 'm_layers' with GPU offsets. So in kernels take offsets only from the table and never compute them;
+//      one weights vector can not be used in both ways.
+//
 // Rules for kernels:
 //   1. 'a_inDim' and 'a_outDim' must be compile time constants (literal, constexpr, #define).
 //   2. 'a_in' and 'a_out' are different arrays; their sizes are at least 'a_inDim' and 'a_outDim'.
+//   3. weights and table of layers are passed directly as members: 'm_weights.data()', 'm_layers[expr]'.
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include <vector>
 #include <cstdint>
+#include <cassert>
 
 #ifndef HALFFLOAT
 #define HALFFLOAT
@@ -38,6 +49,14 @@ namespace LiteNN
   static inline uint32_t RowStride(uint32_t a_inDim) { return (a_inDim + ROW_ALIGN - 1) / ROW_ALIGN * ROW_ALIGN; }
 
   static inline float RoundToHalf(float x) { return float(half(x)); }
+
+  struct Layer
+  {
+    uint32_t matOffs;   ///< offset of matrix in elements of half
+    uint32_t biasOffs;  ///< offset of biases in elements of half
+    uint32_t inDim;
+    uint32_t outDim;
+  };
 
   /**
   \brief a_out = W*a_in + b, W and b are taken from a_weights at a_matOffs and a_biasOffs
@@ -75,26 +94,34 @@ namespace LiteNN
     ReLU(a_out, a_outDim);
   }
 
+  static inline void LinearForward(const half* a_weights, const Layer& a_layer, const float* a_in, uint32_t a_inDim, float* a_out, uint32_t a_outDim)
+  {
+    assert(a_layer.inDim == a_inDim && a_layer.outDim == a_outDim);
+    LinearForward(a_weights, a_layer.matOffs, a_layer.biasOffs, a_in, a_inDim, a_out, a_outDim);
+  }
+
+  static inline void LinearForward_ReLU(const half* a_weights, const Layer& a_layer, const float* a_in, uint32_t a_inDim, float* a_out, uint32_t a_outDim)
+  {
+    assert(a_layer.inDim == a_inDim && a_layer.outDim == a_outDim);
+    LinearForward_ReLU(a_weights, a_layer.matOffs, a_layer.biasOffs, a_in, a_inDim, a_out, a_outDim);
+  }
+
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////// host side helpers /////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  struct LayerOffsets
-  {
-    uint32_t matOffs;
-    uint32_t biasOffs;
-  };
 
   /**
   \brief append one layer to a_weights with GPU alignment
   \param a_matrix -- row-major float matrix a_outDim x a_inDim
   \param a_bias   -- a_outDim floats
   */
-  static inline LayerOffsets AppendLayer(std::vector<half>& a_weights, const float* a_matrix, const float* a_bias,
+  static inline Layer AppendLayer(std::vector<half>& a_weights, const float* a_matrix, const float* a_bias,
                                          uint32_t a_inDim, uint32_t a_outDim)
   {
     const uint32_t stride = RowStride(a_inDim);
-    LayerOffsets res;
+    Layer res;
+    res.inDim    = a_inDim;
+    res.outDim   = a_outDim;
     res.matOffs  = uint32_t(a_weights.size() + MATRIX_ALIGN - 1) / MATRIX_ALIGN * MATRIX_ALIGN;
     res.biasOffs = (res.matOffs + a_outDim*stride + BIAS_ALIGN - 1) / BIAS_ALIGN * BIAS_ALIGN;
     a_weights.resize(res.biasOffs + a_outDim, half(0.0f));

@@ -92,7 +92,7 @@ Pitfalls:
 | `initial_pass*.cpp`, `ast_matchers.cpp`, `extractor.cpp` | AST analysis: main class, kernels, control functions, data members |
 | `class_gen*.cpp`, `class_data.cpp` | IPV/RTV/virtual-function specific processing, data layout |
 | `rewrite_kernel*.cpp`, `rewrite_functions.cpp` | rewriting kernel and helper code into shader code |
-| `reduction.cpp`, `hashmap.cpp`, `setter_process.cpp`, `block_expansion.cpp` | individual algorithmic features |
+| `reduction.cpp`, `hashmap.cpp`, `neural_nets.cpp`, `setter_process.cpp`, `block_expansion.cpp` | individual algorithmic features (`neural_nets.cpp`: LiteNN, cooperative vectors) |
 | `shaders_slang.cpp`, `shaders_glsl.cpp`, `shaders_cuda.cpp`, `shaders_ispc.cpp`, `shaders_clspv.cpp` | per back end: shader rewriting rules and shader file generation (`build_*.sh` script) |
 | `tr_host_vulkan.cpp`, `tr_host_cuda.cpp`, `tr_host_ispc.cpp`, `tr_host_wgpu.cpp` | per back end: rewriting control functions into host code (including service calls: `memcpy`, scan, sort) |
 | `template_rendering*.cpp` | building the JSON passed to the templates |

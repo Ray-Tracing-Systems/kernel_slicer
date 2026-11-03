@@ -939,6 +939,60 @@ static size_t PackObject_{{Hierarchy.Name}}(std::vector<uint8_t>& buffer, const 
 {% endif %}
 {% endfor %}
 
+{% if length(NNWeights) > 0 %}
+void {{MainClassName}}{{MainClassSuffix}}::PackCoopVecWeights()
+{
+  {% for NN in NNWeights %}
+  // matrices of '{{NN.Weights}}' are converted from row-major to 'InferencingOptimal' layout (64 bytes aligned), biases are copied (16 bytes aligned);
+  // '{{NN.Layers}}_coopvec' gets offsets in the new buffer; layers which share matrix or biases on CPU share them on GPU too
+  {
+    auto& dst = {{NN.Weights}}_coopvec;
+    dst.clear();
+    {{NN.Layers}}_coopvec = {{NN.Layers}};
+    std::unordered_map<uint32_t, uint32_t> matOffsets, biasOffsets; // CPU offset ==> GPU offset, in elements of half
+    for(auto& layer : {{NN.Layers}}_coopvec)
+    {
+      auto pMat = matOffsets.find(layer.matOffs);
+      if(pMat == matOffsets.end())
+      {
+        size_t dstSize = 0;
+        VkConvertCooperativeVectorMatrixInfoNV convInfo = {};
+        convInfo.sType               = VK_STRUCTURE_TYPE_CONVERT_COOPERATIVE_VECTOR_MATRIX_INFO_NV;
+        convInfo.srcSize             = size_t(layer.outDim)*LiteNN::RowStride(layer.inDim)*sizeof(uint16_t);
+        convInfo.srcData.hostAddress = {{NN.Weights}}.data() + layer.matOffs;
+        convInfo.pDstSize            = &dstSize;
+        convInfo.dstData.hostAddress = nullptr;  // query size first
+        convInfo.srcComponentType    = VK_COMPONENT_TYPE_FLOAT16_KHR;
+        convInfo.dstComponentType    = VK_COMPONENT_TYPE_FLOAT16_KHR;
+        convInfo.numRows             = layer.outDim;
+        convInfo.numColumns          = layer.inDim;
+        convInfo.srcLayout           = VK_COOPERATIVE_VECTOR_MATRIX_LAYOUT_ROW_MAJOR_NV;
+        convInfo.srcStride           = LiteNN::RowStride(layer.inDim)*sizeof(uint16_t);
+        convInfo.dstLayout           = VK_COOPERATIVE_VECTOR_MATRIX_LAYOUT_INFERENCING_OPTIMAL_NV;
+        convInfo.dstStride           = 0;
+        VK_CHECK_RESULT(vkConvertCooperativeVectorMatrixNV(m_device, &convInfo));
+        const size_t offset = (dst.size() + 63) / 64 * 64;
+        dst.resize(offset + dstSize, 0);
+        convInfo.dstData.hostAddress = dst.data() + offset;
+        VK_CHECK_RESULT(vkConvertCooperativeVectorMatrixNV(m_device, &convInfo));
+        pMat = matOffsets.insert({layer.matOffs, uint32_t(offset/sizeof(uint16_t))}).first;
+      }
+      auto pBias = biasOffsets.find(layer.biasOffs);
+      if(pBias == biasOffsets.end())
+      {
+        const size_t offset = (dst.size() + 15) / 16 * 16;
+        dst.resize(offset + layer.outDim*sizeof(uint16_t), 0);
+        memcpy(dst.data() + offset, {{NN.Weights}}.data() + layer.biasOffs, layer.outDim*sizeof(uint16_t));
+        pBias = biasOffsets.insert({layer.biasOffs, uint32_t(offset/sizeof(uint16_t))}).first;
+      }
+      layer.matOffs  = pMat->second;
+      layer.biasOffs = pBias->second;
+    }
+  }
+  {% endfor %}
+}
+
+{% endif %}
 void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
 {
   std::vector<VkBuffer> memberVectorsWithDevAddr;
@@ -1027,8 +1081,14 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
   {% if HasAllRefs %}
   all_references.resize(1); // need just single element to store all references
   {% endif %}
+  {% if length(NNWeights) > 0 %}
+  PackCoopVecWeights();
+  {% endif %}
   {% for Var in ClassVectorVars %}
-  {% if Var.IsHashMap %}
+  {% if Var.IsNNWeights %}
+  m_vdata.{{Var.Name}}Buffer = vk_utils::createBuffer(m_device, std::max<size_t>({{Var.Name}}_coopvec.size(), 64), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  memberVectors.push_back(m_vdata.{{Var.Name}}Buffer);
+  {% else if Var.IsHashMap %}
   m_vdata.{{Var.Name}}Capacity = kslicer_hmap_capacity({{Var.Name}}.bucket_count(), {{Var.Name}}.size()); // use reserve(...) on CPU to increase it
   m_vdata.{{Var.Name}}Buffer   = vk_utils::createBuffer(m_device, (size_t(m_vdata.{{Var.Name}}Capacity) + 1)*sizeof({{Var.SlotType}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
   memberVectors.push_back(m_vdata.{{Var.Name}}Buffer);

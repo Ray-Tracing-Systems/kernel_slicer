@@ -272,6 +272,13 @@ public:
   void UpdateMembersTextureData() override { UpdateTextureMembers(m_ctx.pCopyHelper); }
   {% endif %}  
   virtual void ReserveEmptyVectors();
+  {% if length(NNWeights) > 0 %}
+  virtual void PackCoopVecWeights(); ///< LiteNN: repack matrices to 'InferencingOptimal' layout of cooperative vectors and compute GPU offsets of layers
+  {% for NN in NNWeights %}
+  std::vector<uint8_t>       {{NN.Weights}}_coopvec; ///< GPU copy of '{{NN.Weights}}'
+  std::vector<LiteNN::Layer> {{NN.Layers}}_coopvec;  ///< GPU copy of '{{NN.Layers}}'
+  {% endfor %}
+  {% endif %}
   virtual void UpdatePlainMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
   virtual void UpdateVectorMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);
   virtual void UpdateTextureMembers(std::shared_ptr<vk_utils::ICopyEngine> a_pCopyEngine);

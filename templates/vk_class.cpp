@@ -207,6 +207,9 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateVectorMembers(std::shared_ptr<v
     }
     a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}Buffer, 0, slots.data(), slots.size()*sizeof({{Var.SlotType}}));
   }
+  {% else if Var.IsNNWeights or Var.IsNNLayers %}
+  if({{Var.Name}}_coopvec.size() > 0) // repacked in PackCoopVecWeights()
+    a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}Buffer, 0, {{Var.Name}}_coopvec.data(), {{Var.Name}}_coopvec.size()*sizeof({{Var.Name}}_coopvec[0]) );
   {% else %}
   if({{Var.Name}}{{Var.AccessSymb}}size() > 0)
     a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}Buffer, 0, {{Var.Name}}{{Var.AccessSymb}}data(), {{Var.Name}}{{Var.AccessSymb}}size()*sizeof({{Var.TypeOfData}}) );

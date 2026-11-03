@@ -1457,6 +1457,7 @@ int main(int argc, const char **argv)
   inputCodeInfo.ProcessMemberTypes(firstPassData.rv.GetOtherTypeDecls(), compiler.getSourceManager(), generalDecls);                   // ==> generalDecls
   inputCodeInfo.ProcessMemberTypesAligment(inputCodeInfo.dataMembers, firstPassData.rv.GetOtherTypeDecls(), compiler.getASTContext()); // ==> inputCodeInfo.dataMembers
   inputCodeInfo.ProcessHashMaps(compiler.getASTContext());                                                                              // ==> inputCodeInfo.hashMaps
+  inputCodeInfo.ProcessNeuralNetworks(compiler.getASTContext());                                                                        // ==> inputCodeInfo.nnLayersOfWeights
 
   std::sort(inputCodeInfo.dataMembers.begin(), inputCodeInfo.dataMembers.end(), kslicer::DataMemberInfo_ByAligment()); // sort by aligment in GLSL
 

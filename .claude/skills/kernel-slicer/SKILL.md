@@ -221,8 +221,13 @@ protected:
   `LiteNN::LinearForward`, `LinearForward_ReLU`, `ReLU` from `apps/LiteMathAux/neural.h` (add
   `../../LiteMathAux` to `includeIgnore`). Weights of all layers are one `std::vector<half>` member
   packed on the host with `LiteNN::AppendLayer`, activations are local `float` arrays, layer sizes
-  must be compile-time constants. GPU computes in fp16 and the CPU version reproduces the rounding,
-  results differ by about 1 ulp of half. Examples: `apps/tests/071_nn_mlp`, `072_nn_multi_net`.
+  must be compile-time constants. A layer is given either by offsets (`LinearForward(m_weights.data(),
+  matOffs, biasOffs, in, inDim, out, outDim)`, row-major on GPU) or, preferably, by a table
+  `std::vector<LiteNN::Layer> m_layers` (`LinearForward(m_weights.data(), m_layers[i], in, inDim, out,
+  outDim)`): the generated `CommitDeviceData()` then repacks matrices to the `InferencingOptimal`
+  layout and uploads the table with GPU offsets, so kernels must take offsets only from the table.
+  GPU computes in fp16 and the CPU version reproduces the rounding, results differ by about 1 ulp of
+  half. Examples: `apps/tests/071_nn_mlp`, `072_nn_multi_net`, `073_nn_layer_table`.
 
 **Forbidden inside kernels and helpers**
 - Calling another kernel; recursion; virtual calls (except the special advanced samples).
