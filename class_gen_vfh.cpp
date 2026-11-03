@@ -16,12 +16,12 @@
 /**
 \brief processing of C++ member function for virtual functions
 */
-class MemberRewriter : public kslicer::GLSLFunctionRewriter
+class MemberRewriter : public kslicer::GLSLRewriter
 {
 public:
   
   MemberRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::MainClassInfo::DImplClass& dImpl, int a_level) : 
-                kslicer::GLSLFunctionRewriter(R, a_compiler, a_codeInfo, kslicer::ShittyFunction()), 
+                kslicer::GLSLRewriter(R, a_compiler, a_codeInfo, kslicer::ShittyFunction()), 
                 m_processed(dImpl.memberFunctions), m_fields(dImpl.fields), m_className(dImpl.name), m_objBufferName(dImpl.objBufferName), m_interfaceName(dImpl.interfaceName), 
                 m_mainClassName(a_codeInfo->mainClassName), dataClassNames(a_codeInfo->dataClassNames), m_vfhLevel(a_level)
   { 

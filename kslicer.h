@@ -902,14 +902,14 @@ namespace kslicer
   };
   
   /**
-  \brief process local functions
+  \brief GLSL rewriter for local functions and (in kernel mode, see InitKernelData) for kernels
   */
-  class GLSLFunctionRewriter : public FunctionRewriter2
+  class GLSLRewriter : public FunctionRewriter2
   {
   public:
   
-    GLSLFunctionRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit);
-    ~GLSLFunctionRewriter(){}
+    GLSLRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit);
+    ~GLSLRewriter(){}
   
     bool VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl) override;
     bool VisitCallExpr_Impl(clang::CallExpr* f)             override;

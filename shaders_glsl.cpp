@@ -381,7 +381,7 @@ std::string kslicer::GLSLCompiler::RewritePushBack(const std::string& memberName
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////  GLSLFunctionRewriter  ////////////////////////////////////////////////////
+////////////////////////////////////////  GLSLRewriter  ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 kslicer::umap<std::string, std::string> kslicer::ListGLSLVectorReplacements()
@@ -475,7 +475,7 @@ std::vector<std::pair<std::string, std::string> > kslicer::SortByKeysByLen(const
   return res;
 }
 
-kslicer::GLSLFunctionRewriter::GLSLFunctionRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit) : FunctionRewriter2(R,a_compiler,a_codeInfo)
+kslicer::GLSLRewriter::GLSLRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit) : FunctionRewriter2(R,a_compiler,a_codeInfo)
 {
   m_vecReplacements  = kslicer::ListGLSLVectorReplacements();
   m_vecReplacements2 = kslicer::SortByKeysByLen(m_vecReplacements);
@@ -492,7 +492,7 @@ kslicer::GLSLFunctionRewriter::GLSLFunctionRewriter(clang::Rewriter &R, const cl
   m_shit = a_shit;
 }
 
-std::string kslicer::GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
+std::string kslicer::GLSLRewriter::RecursiveRewrite(const clang::Stmt* expr)
 {
   if(expr == nullptr)
     return "";
@@ -500,7 +500,7 @@ std::string kslicer::GLSLFunctionRewriter::RecursiveRewrite(const clang::Stmt* e
   while(clang::isa<clang::ImplicitCastExpr>(expr))
     expr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)->IgnoreImpCasts();
 
-  GLSLFunctionRewriter rvCopy = *this;
+  GLSLRewriter rvCopy = *this;
   rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
   sFeatures = sFeatures || rvCopy.sFeatures;
   MarkRewritten(expr);
@@ -532,7 +532,7 @@ kslicer::ShaderFeatures kslicer::GetUsedShaderFeaturesFromTypeName(const std::st
   return sFeatures;
 }
 
-std::string kslicer::GLSLFunctionRewriter::RewriteStdVectorTypeStr(const std::string& a_str) const
+std::string kslicer::GLSLRewriter::RewriteStdVectorTypeStr(const std::string& a_str) const
 {
   const bool isConst  = (a_str.find("const") != std::string::npos);
   std::string copy = a_str;
@@ -566,7 +566,7 @@ std::string kslicer::GLSLFunctionRewriter::RewriteStdVectorTypeStr(const std::st
 }
 
 // process arrays: 'float[3] data' --> 'float data[3]' 
-std::string kslicer::GLSLFunctionRewriter::RewriteStdVectorTypeStr(const std::string& a_typeName, std::string& varName) const
+std::string kslicer::GLSLRewriter::RewriteStdVectorTypeStr(const std::string& a_typeName, std::string& varName) const
 {
   auto typeNameR = a_typeName;
   auto posArrayBegin = typeNameR.find("[");
@@ -580,7 +580,7 @@ std::string kslicer::GLSLFunctionRewriter::RewriteStdVectorTypeStr(const std::st
   return RewriteStdVectorTypeStr(typeNameR);
 }
 
-std::string kslicer::GLSLFunctionRewriter::RewriteImageType(const std::string& a_containerType, const std::string& a_containerDataType, kslicer::TEX_ACCESS a_accessType, std::string& outImageFormat) const
+std::string kslicer::GLSLRewriter::RewriteImageType(const std::string& a_containerType, const std::string& a_containerDataType, kslicer::TEX_ACCESS a_accessType, std::string& outImageFormat) const
 {
   std::string result = "";
   if(a_accessType == kslicer::TEX_ACCESS::TEX_ACCESS_READ)
@@ -652,7 +652,7 @@ std::string kslicer::GLSLFunctionRewriter::RewriteImageType(const std::string& a
   return result;
 }
 
-std::string kslicer::GLSLFunctionRewriter::VectorTypeContructorReplace(const std::string& fname, const std::string& callText)
+std::string kslicer::GLSLRewriter::VectorTypeContructorReplace(const std::string& fname, const std::string& callText)
 {
   auto p = m_vecReplacements.find(fname);
   if(p == m_vecReplacements.end())
@@ -661,7 +661,7 @@ std::string kslicer::GLSLFunctionRewriter::VectorTypeContructorReplace(const std
     return p->second + callText;
 }
 
-bool kslicer::GLSLFunctionRewriter::NeedsVectorTypeRewrite(const std::string& a_str) // TODO: make this implementation more smart, bad implementation actually!
+bool kslicer::GLSLRewriter::NeedsVectorTypeRewrite(const std::string& a_str) // TODO: make this implementation more smart, bad implementation actually!
 {
   if(a_str.find("glm::") != std::string::npos)
     return true;
@@ -678,7 +678,7 @@ bool kslicer::GLSLFunctionRewriter::NeedsVectorTypeRewrite(const std::string& a_
   return need;
 }
 
-bool kslicer::GLSLFunctionRewriter::VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)
+bool kslicer::GLSLRewriter::VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr)
 {
   if(m_shit.originalName == "")
     return true;
@@ -712,7 +712,7 @@ bool kslicer::GLSLFunctionRewriter::VisitArraySubscriptExpr_Impl(clang::ArraySub
   return true;
 }
 
-bool kslicer::GLSLFunctionRewriter::VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr)
+bool kslicer::GLSLRewriter::VisitUnaryExprOrTypeTraitExpr_Impl(clang::UnaryExprOrTypeTraitExpr* szOfExpr)
 {
   if(!clang::isa<clang::UnaryExprOrTypeTraitExpr>(szOfExpr))
     return true;
@@ -735,14 +735,14 @@ bool kslicer::GLSLFunctionRewriter::VisitUnaryExprOrTypeTraitExpr_Impl(clang::Un
   return true;
 }
 
-bool kslicer::GLSLFunctionRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f)
+bool kslicer::GLSLRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f)
 {
   if(m_kernelMode)
     return VisitCXXMemberCallExprKernel(f);
   return true;
 }
 
-bool kslicer::GLSLFunctionRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr)
+bool kslicer::GLSLRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr)
 {
   if(m_kernelMode)
     return VisitCXXOperatorCallExprKernel(expr);
@@ -771,7 +771,7 @@ bool kslicer::GLSLFunctionRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOper
   return FunctionRewriter::VisitCXXOperatorCallExpr_Impl(expr);
 }
 
-std::string kslicer::GLSLFunctionRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
+std::string kslicer::GLSLRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
 {
   std::string retT   = RewriteStdVectorTypeStr(fDecl->getReturnType().getAsString());
   std::string fname  = fDecl->getNameInfo().getName().getAsString();
@@ -884,7 +884,7 @@ std::string kslicer::GLSLFunctionRewriter::RewriteFuncDecl(clang::FunctionDecl* 
   return result + ") ";
 }
 
-bool kslicer::GLSLFunctionRewriter::VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl)
+bool kslicer::GLSLRewriter::VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl)
 {
   if(clang::isa<clang::CXXMethodDecl>(fDecl)) // ignore methods here, for a while ...
     return true;
@@ -901,7 +901,7 @@ bool kslicer::GLSLFunctionRewriter::VisitFunctionDecl_Impl(clang::FunctionDecl* 
   return true;
 }
 
-bool kslicer::GLSLFunctionRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
+bool kslicer::GLSLRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
 {
   if(m_kernelMode)
     return VisitMemberExprKernel(expr);
@@ -918,7 +918,7 @@ bool kslicer::GLSLFunctionRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr
   return true;
 }
 
-bool kslicer::GLSLFunctionRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
+bool kslicer::GLSLRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
 {
   if(m_kernelMode && VisitUnaryOperatorKernel(expr))
     return true;
@@ -934,7 +934,7 @@ bool kslicer::GLSLFunctionRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator
   return true;
 }
 
-std::string kslicer::GLSLFunctionRewriter::CompleteFunctionCallRewrite(clang::CallExpr* call)
+std::string kslicer::GLSLRewriter::CompleteFunctionCallRewrite(clang::CallExpr* call)
 {
   std::string rewrittenRes = "";
   for(unsigned i=0;i<call->getNumArgs(); i++)
@@ -947,7 +947,7 @@ std::string kslicer::GLSLFunctionRewriter::CompleteFunctionCallRewrite(clang::Ca
   return rewrittenRes;
 }
 
-bool kslicer::GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
+bool kslicer::GLSLRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
 {
   if(m_kernelMode && VisitCallExprKernel(call))
     return true;
@@ -1067,7 +1067,7 @@ bool kslicer::GLSLFunctionRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
   return true;
 }
 
-bool kslicer::GLSLFunctionRewriter::VisitDeclStmt_Impl(clang::DeclStmt* decl) // special case for process multiple decls in line, like 'int i,j,k=2'
+bool kslicer::GLSLRewriter::VisitDeclStmt_Impl(clang::DeclStmt* decl) // special case for process multiple decls in line, like 'int i,j,k=2'
 {
   if(!decl->isSingleDecl())
   {
@@ -1198,7 +1198,7 @@ void kslicer::FunctionRewriter::CkeckAndProcessForThreadLocalVarDecl(clang::VarD
 
 }
 
-bool kslicer::GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
+bool kslicer::GLSLRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
 {
   if(clang::isa<clang::ParmVarDecl>(decl)) // process else-where (VisitFunctionDecl_Impl)
     return true;
@@ -1244,7 +1244,7 @@ bool kslicer::GLSLFunctionRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
   return true;
 }
 
-bool kslicer::GLSLFunctionRewriter::VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)
+bool kslicer::GLSLRewriter::VisitCStyleCastExpr_Impl(clang::CStyleCastExpr* cast)
 {
   clang::QualType qt   = cast->getTypeAsWritten();
   clang::Expr* 	  next = cast->getSubExpr();
@@ -1262,7 +1262,7 @@ bool kslicer::GLSLFunctionRewriter::VisitCStyleCastExpr_Impl(clang::CStyleCastEx
   return true;
 }
 
-bool kslicer::GLSLFunctionRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast)
+bool kslicer::GLSLRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* cast)
 {
   if(cast->isPartOfExplicitCast())
     return true;
@@ -1308,7 +1308,7 @@ bool kslicer::GLSLFunctionRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCa
   return true;
 }
 
-void kslicer::GLSLFunctionRewriter::Get2DIndicesOfFloat4x4(const clang::CXXOperatorCallExpr* expr, const clang::Expr* out[3])
+void kslicer::GLSLRewriter::Get2DIndicesOfFloat4x4(const clang::CXXOperatorCallExpr* expr, const clang::Expr* out[3])
 {
   out[0] = nullptr;
   out[1] = nullptr;
@@ -1407,7 +1407,7 @@ std::string kslicer::GLSLCompiler::PrintHeaderDecl(const DeclInClass& a_decl, co
 
 std::shared_ptr<kslicer::FunctionRewriter> kslicer::GLSLCompiler::MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, kslicer::MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit)
 {
-  return std::make_shared<GLSLFunctionRewriter>(R, a_compiler, a_codeInfo, a_shit);
+  return std::make_shared<GLSLRewriter>(R, a_compiler, a_codeInfo, a_shit);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1415,10 +1415,10 @@ std::shared_ptr<kslicer::FunctionRewriter> kslicer::GLSLCompiler::MakeFuncRewrit
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Kernel mode of GLSLFunctionRewriter (after InitKernelData): kernels and member functions which are called from kernels
+// Kernel mode of GLSLRewriter (after InitKernelData): kernels and member functions which are called from kernels
 //
 
-bool kslicer::GLSLFunctionRewriter::VisitCallExprKernel(clang::CallExpr* call)
+bool kslicer::GLSLRewriter::VisitCallExprKernel(clang::CallExpr* call)
 {
   // (#1) check if buffer/pointer to global memory is passed to a function
   //
@@ -1522,7 +1522,7 @@ bool kslicer::GLSLFunctionRewriter::VisitCallExprKernel(clang::CallExpr* call)
   return true;
 }
 
-bool kslicer::GLSLFunctionRewriter::VisitUnaryOperatorKernel(clang::UnaryOperator* expr)
+bool kslicer::GLSLRewriter::VisitUnaryOperatorKernel(clang::UnaryOperator* expr)
 {
   clang::Expr* subExpr = expr->getSubExpr();
   if(subExpr == nullptr)
@@ -1572,7 +1572,7 @@ bool kslicer::GLSLFunctionRewriter::VisitUnaryOperatorKernel(clang::UnaryOperato
   return true;
 }
 
-bool kslicer::GLSLFunctionRewriter::VisitMemberExprKernel(clang::MemberExpr* expr)
+bool kslicer::GLSLRewriter::VisitMemberExprKernel(clang::MemberExpr* expr)
 {
   std::string rewrittenText;
   if(NeedToRewriteMemberExpr(expr, rewrittenText))
@@ -1583,7 +1583,7 @@ bool kslicer::GLSLFunctionRewriter::VisitMemberExprKernel(clang::MemberExpr* exp
   return true;
 }
 
-void kslicer::GLSLFunctionRewriter::RewriteTextureAccess(clang::CXXOperatorCallExpr* expr, clang::Expr* a_assignOp, const std::string& rhsText)
+void kslicer::GLSLRewriter::RewriteTextureAccess(clang::CXXOperatorCallExpr* expr, clang::Expr* a_assignOp, const std::string& rhsText)
 {
   if(!WasNotRewrittenYet(expr))
     return;
@@ -1647,7 +1647,7 @@ void kslicer::GLSLFunctionRewriter::RewriteTextureAccess(clang::CXXOperatorCallE
   }
 }
 
-bool kslicer::GLSLFunctionRewriter::VisitCXXOperatorCallExprKernel(clang::CXXOperatorCallExpr* expr)
+bool kslicer::GLSLRewriter::VisitCXXOperatorCallExprKernel(clang::CXXOperatorCallExpr* expr)
 {
   std::string op = kslicer::GetRangeSourceCode(clang::SourceRange(expr->getOperatorLoc()), m_compiler);
   std::string debugText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
@@ -1748,7 +1748,7 @@ bool ProcessTexArrayAccessGLSL(std::string& s)
     return true;
 }
 
-bool kslicer::GLSLFunctionRewriter::VisitCXXMemberCallExprKernel(clang::CXXMemberCallExpr* call)
+bool kslicer::GLSLRewriter::VisitCXXMemberCallExprKernel(clang::CXXMemberCallExpr* call)
 {
   clang::CXXMethodDecl* fDecl = call->getMethodDecl();
   const clang::QualType qt    = call->getObjectType();
@@ -1841,7 +1841,7 @@ bool kslicer::GLSLFunctionRewriter::VisitCXXMemberCallExprKernel(clang::CXXMembe
   return RewriteMemberCallInKernel(call);
 }
 
-bool kslicer::GLSLFunctionRewriter::RewriteMemberCallInKernel(clang::CXXMemberCallExpr* f)
+bool kslicer::GLSLRewriter::RewriteMemberCallInKernel(clang::CXXMemberCallExpr* f)
 {
   // Get name of function
   //
@@ -1985,7 +1985,7 @@ bool kslicer::GLSLFunctionRewriter::RewriteMemberCallInKernel(clang::CXXMemberCa
   return true;
 }
 
-bool kslicer::GLSLFunctionRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
+bool kslicer::GLSLRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
 {
   if(!m_kernelMode)
     return true;
@@ -2012,7 +2012,7 @@ bool kslicer::GLSLFunctionRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* ex
   return true;
 }
 
-bool kslicer::GLSLFunctionRewriter::VisitReturnStmt_Impl(clang::ReturnStmt* ret)
+bool kslicer::GLSLRewriter::VisitReturnStmt_Impl(clang::ReturnStmt* ret)
 {
   clang::Expr* retExpr = ret->getRetValue();
   if(!m_kernelMode || retExpr == nullptr)
@@ -2065,7 +2065,7 @@ bool kslicer::GLSLFunctionRewriter::VisitReturnStmt_Impl(clang::ReturnStmt* ret)
   return true;
 }
 
-bool kslicer::GLSLFunctionRewriter::VisitBinaryOperator_Impl(clang::BinaryOperator* expr)
+bool kslicer::GLSLRewriter::VisitBinaryOperator_Impl(clang::BinaryOperator* expr)
 {
   if(!m_kernelMode)
     return true;
@@ -2095,7 +2095,7 @@ bool kslicer::GLSLFunctionRewriter::VisitBinaryOperator_Impl(clang::BinaryOperat
 std::shared_ptr<kslicer::KernelRewriter> kslicer::GLSLCompiler::MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,
                                                                                  kslicer::KernelInfo& a_kernel, const std::string& fakeOffs)
 {
-  auto pFunc = std::make_shared<GLSLFunctionRewriter>(R, a_compiler, a_codeInfo, a_kernel.currentShit);
+  auto pFunc = std::make_shared<GLSLRewriter>(R, a_compiler, a_codeInfo, a_kernel.currentShit);
   pFunc->InitKernelData(a_kernel, fakeOffs);
   return std::make_shared<KernelRewriter2>(R, a_compiler, a_codeInfo, a_kernel, fakeOffs, pFunc);
 }
