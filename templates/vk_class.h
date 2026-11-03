@@ -111,7 +111,7 @@ static_assert(offsetof({{Var.SlotType}}, key) == sizeof({{Var.ValueType}}), "{{V
 struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data
 {
   {% for Field in UBO.UBOStructFields %}
-  {% if Field.IsDummy %} 
+  {% if Field.IsDummy or Field.IsBool %} 
   uint {{Field.Name}}; 
   {% else %}
   {{Field.Type}} {{Field.Name}}{% if Field.IsArray %}[{{Field.ArraySize}}]{% endif %};

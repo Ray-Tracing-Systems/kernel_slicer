@@ -645,6 +645,8 @@ std::string kslicer::FunctionRewriter2::RecursiveRewrite(const clang::Stmt* expr
 {
   if(expr == nullptr)
     return "";
+  if(clang::isa<clang::CXXDefaultArgExpr>(expr)) // default argument of function call: its value
+    return RecursiveRewrite(clang::dyn_cast<clang::CXXDefaultArgExpr>(expr)->getExpr());
   
   std::string shallow;
   if(DetectAndRewriteShallowPattern(expr, shallow)) 
@@ -1083,7 +1085,9 @@ bool kslicer::KernelRewriter2::VisitCXXConstructExpr_Impl(clang::CXXConstructExp
 
 bool kslicer::KernelRewriter2::VisitCallExpr_Impl(clang::CallExpr* call)
 {
-  return m_pFunRW2->VisitCallExpr_Impl(call); 
+  const bool res = m_pFunRW2->VisitCallExpr_Impl(call);
+  m_pFunRW2->AppendDefaultArgs(call); // 'VisitCallExpr' of FunctionRewriter is not called for kernels and member functions
+  return res;
 }
 
 bool kslicer::KernelRewriter2::VisitReturnStmt_Impl(clang::ReturnStmt* ret)

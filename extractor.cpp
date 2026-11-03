@@ -1847,6 +1847,14 @@ std::vector<std::string> kslicer::ExtractDefines(const clang::CompilerInstance& 
 
           const clang::MacroDirective* MD = a_compiler.getPreprocessor().getLocalMacroDirective(first);
           const clang::MacroInfo*      MI = MD->getMacroInfo();
+          
+          // standard macros from TINYSTL which are defined in shader headers in a different way
+          if(name == "INFINITY")
+          {
+            const std::string fileName = std::string(a_compiler.getSourceManager().getFilename(MI->getDefinitionLoc()));
+            if(fileName.find("TINYSTL") != std::string::npos)
+              continue;
+          }
 
           std::stringstream strout;
           strout << "#define " << name.c_str() << " ";

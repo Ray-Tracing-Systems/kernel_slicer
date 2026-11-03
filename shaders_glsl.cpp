@@ -496,6 +496,8 @@ std::string kslicer::GLSLRewriter::RecursiveRewrite(const clang::Stmt* expr)
 {
   if(expr == nullptr)
     return "";
+  if(clang::isa<clang::CXXDefaultArgExpr>(expr)) // default argument of function call: its value
+    return RecursiveRewrite(clang::dyn_cast<clang::CXXDefaultArgExpr>(expr)->getExpr());
   
   while(clang::isa<clang::ImplicitCastExpr>(expr))
     expr = clang::dyn_cast<clang::ImplicitCastExpr>(expr)->IgnoreImpCasts();
@@ -1503,7 +1505,31 @@ bool kslicer::GLSLRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
       kslicer::PrintWarning("empty initializer '{}' of this type is not supported in GLSL", decl->getSourceRange(), m_compiler.getSourceManager());
   }
 
-  if(!wholeDeclRewritten && decl->isConstexpr() && kslicer::GetRangeSourceCode(clang::SourceRange(decl->getBeginLoc()), m_compiler) == "constexpr")
+  if(!wholeDeclRewritten && decl->isStaticLocal())                                                         // 'static constexpr float x = 1;' ==> 'const float x = 1;'
+  {
+    if(!decl->isConstexpr() && !qt.isConstQualified())
+      kslicer::PrintWarning("static local variable which is not constant is not supported in GLSL", decl->getSourceRange(), m_compiler.getSourceManager());
+    else
+    {
+      const auto& sm = m_compiler.getSourceManager();
+      clang::SourceLocation loc = decl->getBeginLoc();
+      for(int tokenId = 0; tokenId < 3 && loc.isValid(); tokenId++)                                         // 'static', 'constexpr', 'const' in any order
+      {
+        const std::string token = kslicer::GetRangeSourceCode(clang::SourceRange(loc), m_compiler);
+        if(token == "static")
+          ReplaceText(clang::SourceRange(loc), "");
+        else if(token == "constexpr")
+          ReplaceText(clang::SourceRange(loc), "const");
+        else if(token != "const")
+          break;
+        auto next = clang::Lexer::findNextToken(loc, sm, m_compiler.getLangOpts());
+        if(!next.has_value())
+          break;
+        loc = next->getLocation();
+      }
+    }
+  }
+  else if(!wholeDeclRewritten && decl->isConstexpr() && kslicer::GetRangeSourceCode(clang::SourceRange(decl->getBeginLoc()), m_compiler) == "constexpr")
     ReplaceText(clang::SourceRange(decl->getBeginLoc()), "const");                                        // there is no 'constexpr' in GLSL
 
   if(!wholeDeclRewritten && GLSLIdentifier(decl->getNameAsString()) != decl->getNameAsString())
@@ -1541,6 +1567,15 @@ bool kslicer::GLSLRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* 
   std::string debugTxt = kslicer::GetRangeSourceCode(cast->getSourceRange(), m_compiler);
 
   clang::Expr* preNext = cast->getSubExpr();
+
+  if((kind == clang::CK_IntegralToBoolean || kind == clang::CK_FloatingToBoolean) && WasNotRewrittenYet(preNext)) // 'x ? a : b', 'if(x)', '!x' for int, uint or float
+  {
+    const std::string zero = (kind == clang::CK_FloatingToBoolean) ? "0.0f" : "0";
+    const std::string text = "(" + RecursiveRewrite(preNext) + " != " + zero + ")";
+    ReplaceText(cast->getSourceRange(), text);
+    MarkRewritten(preNext);
+    return true;
+  }
 
   if(clang::isa<clang::CXXConstructExpr>(preNext))
   {
@@ -1645,6 +1680,18 @@ void kslicer::GLSLCompiler::ProcessVectorTypesString(std::string& a_str)
        Only '= expr' of fields at the first level of the struct body are removed; comments, nested braces and parentheses are skipped.
        Note that variables of such structs declared without initializer stay uninitialized in GLSL.
 */
+static bool HasCStyleCast(const clang::Stmt* a_stmt) // GLSL does not support C-style casts
+{
+  if(a_stmt == nullptr)
+    return false;
+  if(clang::isa<clang::CStyleCastExpr>(a_stmt))
+    return true;
+  for(const clang::Stmt* child : a_stmt->children())
+    if(HasCStyleCast(child))
+      return true;
+  return false;
+}
+
 static std::string RemoveDefaultMemberInitializers(const std::string& a_structText, bool* a_pRemoved = nullptr)
 {
   std::string res;
@@ -1731,6 +1778,8 @@ std::string kslicer::GLSLCompiler::PrintHeaderDecl(const DeclInClass& a_decl, co
       std::string originalText = kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler);
       if(originalText == "")
         originalText = a_decl.lostValue;
+      if(a_decl.varNode != nullptr && a_decl.varNode->getInit() != nullptr && HasCStyleCast(a_decl.varNode->getInit())) // '(uint32_t)-1' ==> 'uint(-1)'
+        originalText = a_pRewriter->RecursiveRewrite(a_decl.varNode->getInit());
       if(typeInCL.find("const ") == std::string::npos)
         typeInCL = "const " + typeInCL;
       ReplaceFirst(typeInCL,"LiteMath::", "");

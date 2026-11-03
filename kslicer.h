@@ -738,7 +738,7 @@ namespace kslicer
 
     virtual ~FunctionRewriter(){}
 
-    bool VisitCallExpr(clang::CallExpr* f)                    { return VisitCallExpr_Impl(f); }
+    bool VisitCallExpr(clang::CallExpr* f)                    { const bool res = VisitCallExpr_Impl(f); AppendDefaultArgs(f); return res; }
     bool VisitCXXConstructExpr(clang::CXXConstructExpr* call) { return VisitCXXConstructExpr_Impl(call); }
 
     bool VisitFunctionDecl(clang::FunctionDecl* fDecl)       { return VisitFunctionDecl_Impl(fDecl); }
@@ -771,6 +771,7 @@ namespace kslicer
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     virtual std::string RecursiveRewrite(const clang::Stmt* expr);
+    void AppendDefaultArgs(clang::CallExpr* call); ///<! 'f(a)' ==> 'f(a, 1)' for 'void f(int a, int b = 1)': shader languages get functions without default arguments
     virtual std::string RewriteFuncDecl(clang::FunctionDecl* fDecl);
 
     virtual kslicer::RewrittenFunction RewriteFunction(clang::FunctionDecl* fDecl);

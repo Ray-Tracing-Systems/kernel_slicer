@@ -39,6 +39,21 @@
 #define half4 f16vec4
 bool  isfinite(float x)            { return !isinf(x); }
 float copysign(float mag, float s) { return abs(mag)*sign(s); }
+#ifndef INFINITY
+#define INFINITY uintBitsToFloat(0x7F800000u)
+#endif
+float nextafter(float x, float y)  // std::nextafter for float; denormals near zero may be flushed to zero by GPU
+{
+  if(isnan(x) || isnan(y))
+    return x + y;
+  if(x == y)
+    return y;
+  if(x == 0.0f)
+    return (y > 0.0f) ? uintBitsToFloat(1u) : -uintBitsToFloat(1u);
+  const uint bits = floatBitsToUint(x);
+  return uintBitsToFloat(((y > x) == (x > 0.0f)) ? bits + 1u : bits - 1u);
+}
+#define nextafterf nextafter
 // LiteMath::f32tof16 (HLSL semantic): 32 bit integer operations only, rounds to nearest even as LiteMath on CPU
 // (rounding of packHalf2x16 is implementation defined, AMD rounds to zero); see F. Giesen, 'float_to_half_fast3_rtne'
 uint f32tof16(float x)

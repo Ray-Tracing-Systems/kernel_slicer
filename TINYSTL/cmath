@@ -48,9 +48,16 @@ float floorf(float x);
 float round (float num );
 float trunc (float num );
 
-float isfinite(float x);
+bool  isfinite(float x);
 bool  isnan(float x);
 float copysign(float x, float y);
+
+float nextafter (float x, float y);
+float nextafterf(float x, float y);
+
+#ifndef INFINITY
+#define INFINITY (1.0f/0.0f) // only for parsing, shaders get their own definition (see common_generated.h), ExtractDefines skips this one
+#endif
 
 static const unsigned int RAND_MAX = 65535;
 static const float        MAXFLOAT = 1e37f;
@@ -97,9 +104,10 @@ namespace std
   template<typename T> T ceil(T x);
   template<typename T> T trunc(T x);
 
-  template<typename T> T isfinite(T x);
-  template<typename T> T isnan(T x);
+  template<typename T> bool isfinite(T x);
+  template<typename T> bool isnan(T x);
   template<typename T> T copysign(T x, T y);
+  template<typename T> T nextafter(T x, T y);
 
   template<typename T> T frexp (T arg, int* exp);
   template<typename T> T ldexp (T x, int exp );

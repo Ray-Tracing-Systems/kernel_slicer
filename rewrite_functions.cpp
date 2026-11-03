@@ -190,10 +190,44 @@ bool kslicer::FunctionRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperator
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void kslicer::FunctionRewriter::AppendDefaultArgs(clang::CallExpr* call)
+{
+  if(call == nullptr || clang::isa<clang::CXXOperatorCallExpr>(call) || !WasNotRewrittenYet(call) || call->getRParenLoc().isInvalid())
+    return;
+  unsigned firstDefault = call->getNumArgs();
+  for(unsigned i=0; i<call->getNumArgs(); i++)
+  {
+    if(clang::isa<clang::CXXDefaultArgExpr>(call->getArg(i)))
+    {
+      firstDefault = i;
+      break;
+    }
+  }
+  if(firstDefault == call->getNumArgs())
+    return;
+  
+  // the same call may be visited several times (by copies of rewriter in RecursiveRewrite), insert default arguments only once
+  const uint64_t key = kslicer::GetHashOfSourceRange(clang::SourceRange(call->getRParenLoc(), call->getRParenLoc())) ^ uint64_t(0x9E3779B97F4A7C15ull);
+  if(m_pRewrittenNodes->find(key) != m_pRewrittenNodes->end())
+    return;
+  m_pRewrittenNodes->insert(key);
+
+  std::string text;
+  for(unsigned i=firstDefault; i<call->getNumArgs(); i++)
+  {
+    if(i != 0)
+      text += ", ";
+    text += RecursiveRewrite(call->getArg(i));
+  }
+  m_rewriter.InsertTextBefore(call->getRParenLoc(), text);
+}
+
 std::string kslicer::FunctionRewriter::RecursiveRewrite(const clang::Stmt* expr)
 {
   if(expr == nullptr)
     return "";
+  if(clang::isa<clang::CXXDefaultArgExpr>(expr)) // default argument of function call: its value
+    return RecursiveRewrite(clang::dyn_cast<clang::CXXDefaultArgExpr>(expr)->getExpr());
   FunctionRewriter rvCopy = *this;
   rvCopy.TraverseStmt(const_cast<clang::Stmt*>(expr));
 

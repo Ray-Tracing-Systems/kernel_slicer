@@ -2008,6 +2008,7 @@ nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo,
     uboField["ArraySize"] = member.arraySize;
     uboField["IsDummy"]   = false;
     uboField["IsVec3"]    = isVec3Member;
+    uboField["IsBool"]    = (typeStr == "bool" && !member.isArray); // 4 bytes in buffers on GPU
     uboField["IsContainerInfo"] = member.isContainerInfo;
     data["UBOStructFields"].push_back(uboField);
 

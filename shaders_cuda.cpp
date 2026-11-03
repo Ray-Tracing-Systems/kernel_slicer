@@ -355,6 +355,8 @@ std::string kslicer::CudaRewriter::RecursiveRewrite(const clang::Stmt* expr)
 {
   if(expr == nullptr)
     return "";
+  if(clang::isa<clang::CXXDefaultArgExpr>(expr)) // default argument of function call: its value
+    return RecursiveRewrite(clang::dyn_cast<clang::CXXDefaultArgExpr>(expr)->getExpr());
   
   std::string shallow;
   if(DetectAndRewriteShallowPattern(expr, shallow)) 

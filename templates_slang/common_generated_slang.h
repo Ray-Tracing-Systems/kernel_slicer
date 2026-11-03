@@ -30,6 +30,21 @@ uint   SQR(uint x)   { return x * x; }
 
 bool  isfinite(float x)            { return !isinf(x); }
 float copysign(float mag, float s) { return abs(mag)*sign(s); }
+#ifndef INFINITY
+#define INFINITY asfloat(0x7F800000u)
+#endif
+float nextafter(float x, float y)  // std::nextafter for float; denormals near zero may be flushed to zero by GPU
+{
+  if(isnan(x) || isnan(y))
+    return x + y;
+  if(x == y)
+    return y;
+  if(x == 0.0f)
+    return (y > 0.0f) ? asfloat(1u) : -asfloat(1u);
+  const uint bits = asuint(x);
+  return asfloat(((y > x) == (x > 0.0f)) ? bits + 1u : bits - 1u);
+}
+#define nextafterf nextafter
 {% if UseComplex %}
 
 struct complex
