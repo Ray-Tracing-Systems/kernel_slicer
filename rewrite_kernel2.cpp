@@ -948,3 +948,48 @@ bool kslicer::KernelRewriter2::VisitReturnStmt_Impl(clang::ReturnStmt* ret)
 {
   return m_pFunRW2->VisitReturnStmt_Impl(ret); 
 }
+
+bool kslicer::FunctionRewriter2::GetUintAliasWord(const clang::Expr* a_lvalue, std::string& a_bufferName, std::string& a_wordIndex)
+{
+  const clang::ASTContext& astContext = m_compiler.getASTContext();
+
+  uint64_t offset = 0;
+  bool     pathOk = true;
+  const clang::Expr* base = kslicer::GetMemberPathOffset(a_lvalue, astContext, offset, pathOk);
+  if(!pathOk)
+    return false;
+
+  const clang::Expr* bufferExpr = nullptr;
+  const clang::Expr* indexExpr  = nullptr;
+  if(auto arrayExpr = clang::dyn_cast<clang::ArraySubscriptExpr>(base))        // 'a_out[i]', 'a_out' is a pointer argument
+  {
+    bufferExpr = arrayExpr->getBase()->IgnoreParenImpCasts();
+    indexExpr  = arrayExpr->getIdx();
+    if(!clang::isa<clang::DeclRefExpr>(bufferExpr) && !clang::isa<clang::MemberExpr>(bufferExpr))
+      return false;
+  }
+  else if(auto opCall = clang::dyn_cast<clang::CXXOperatorCallExpr>(base))     // 'm_vec[i]', 'm_vec' is std::vector member
+  {
+    if(opCall->getOperator() != clang::OO_Subscript || opCall->getNumArgs() != 2 || kslicer::GetHashMapSubscript(opCall) != nullptr)
+      return false;
+    bufferExpr = opCall->getArg(0)->IgnoreParenImpCasts();
+    indexExpr  = opCall->getArg(1);
+    if(!clang::isa<clang::MemberExpr>(bufferExpr))
+      return false;
+  }
+  else
+    return false;
+
+  const clang::QualType elemType = base->getType().getNonReferenceType();
+  const uint64_t elemSize = astContext.getTypeSizeInChars(elemType).getQuantity();
+  if(elemSize == 0 || elemSize % 4 != 0 || offset % 4 != 0)
+    return false;
+
+  a_bufferName = RecursiveRewrite(bufferExpr);
+  a_wordIndex  = "uint(" + RecursiveRewrite(indexExpr) + ")";
+  if(elemSize != 4)
+    a_wordIndex += "*" + std::to_string(elemSize/4);
+  if(offset != 0)
+    a_wordIndex += " + " + std::to_string(offset/4);
+  return true;
+}

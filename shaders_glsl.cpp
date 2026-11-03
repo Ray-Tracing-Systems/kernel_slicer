@@ -652,6 +652,101 @@ std::string kslicer::GLSLRewriter::RewriteImageType(const std::string& a_contain
   return result;
 }
 
+static int MatrixSize(clang::QualType a_type) // N for LiteMath NxN matrix types, 0 otherwise
+{
+  const auto pRecord = a_type.getCanonicalType().getNonReferenceType()->getAsRecordDecl();
+  if(pRecord == nullptr)
+    return 0;
+  const std::string name = pRecord->getNameAsString();
+  if(!kslicer::IsMatrixTypeName(name))
+    return 0;
+  return name[name.size()-1] - '0';
+}
+
+static bool IsMatrixType(clang::QualType a_type) { return MatrixSize(a_type) != 0; }
+
+static bool IsEmptyInitList(const clang::Expr* a_init) // '{}'
+{
+  a_init = a_init->IgnoreImplicit();
+  if(auto pList = clang::dyn_cast<clang::InitListExpr>(a_init))
+  {
+    if(pList->getSyntacticForm() != nullptr) // semantic form of '{}' for aggregates contains implicit initializers of all fields
+      pList = pList->getSyntacticForm();
+    return pList->getNumInits() == 0;
+  }
+  if(auto pCtor = clang::dyn_cast<clang::CXXConstructExpr>(a_init))
+    return pCtor->isListInitialization() && pCtor->getNumArgs() == 0;
+  return false;
+}
+
+std::string kslicer::GLSLRewriter::ZeroValue(clang::QualType a_type) const
+{
+  const clang::QualType qt = a_type.getCanonicalType().getUnqualifiedType().getNonReferenceType();
+
+  if(auto pArray = clang::dyn_cast<clang::ConstantArrayType>(qt.getTypePtr()))
+  {
+    const std::string elemZero = ZeroValue(pArray->getElementType());
+    if(elemZero == "")
+      return "";
+    const uint64_t size = pArray->getSize().getLimitedValue();
+    std::string res = RewriteStdVectorTypeStr(pArray->getElementType().getUnqualifiedType().getAsString()) + "[" + std::to_string(size) + "](";
+    for(uint64_t i=0;i<size;i++)
+      res += elemZero + ((i+1 == size) ? ")" : ", ");
+    return res;
+  }
+
+  if(auto pBuiltin = qt->getAs<clang::BuiltinType>())
+  {
+    if(pBuiltin->isBooleanType())
+      return "false";
+    if(pBuiltin->getKind() == clang::BuiltinType::Float)
+      return "0.0f";
+    if(pBuiltin->getKind() == clang::BuiltinType::Int)
+      return "0";
+    if(pBuiltin->getKind() == clang::BuiltinType::UInt)
+      return "0u";
+    if(pBuiltin->isArithmeticType())
+      return RewriteStdVectorTypeStr(qt.getAsString()) + "(0)";
+    return "";
+  }
+
+  const auto pRecord = qt->getAsCXXRecordDecl();
+  if(pRecord == nullptr || pRecord->getDefinition() == nullptr)
+    return "";
+  const std::string name = pRecord->getNameAsString();
+  const auto pVecType    = m_vecReplacements.find(name);
+  if(pVecType != m_vecReplacements.end())
+    return pVecType->second + (IsMatrixType(qt) ? "(1.0f)" : "(0)"); // default constructor of LiteMath matrices makes identity
+  if(IsMatrixType(qt))
+    return "";
+
+  if(pRecord->getNumBases() != 0 || pRecord->hasUserDeclaredConstructor()) // '{}' calls constructor
+    return "";
+
+  std::string res = name + "(";
+  bool first = true;
+  for(const clang::FieldDecl* field : pRecord->fields())
+  {
+    if(field->hasInClassInitializer())                   // '{}' takes default member initializer
+      return "";
+    const std::string fieldZero = ZeroValue(field->getType());
+    if(fieldZero == "")
+      return "";
+    res += (first ? "" : ", ") + fieldZero;
+    first = false;
+  }
+  return res + ")";
+}
+
+std::string kslicer::GLSLRewriter::RewriteConstructCall(clang::CXXConstructExpr* call)
+{
+  std::string textRes = FunctionRewriter::RewriteConstructCall(call);
+  const int N = MatrixSize(call->getType());
+  if(N != 0 && call->getNumArgs() == unsigned(N*N)) // LiteMath takes elements of matrix row by row ('float3x3(A0, ..., A8)'), GLSL takes them column by column
+    textRes = "transpose(" + textRes + ")";
+  return textRes;
+}
+
 std::string kslicer::GLSLRewriter::VectorTypeContructorReplace(const std::string& fname, const std::string& callText)
 {
   auto p = m_vecReplacements.find(fname);
@@ -771,6 +866,24 @@ bool kslicer::GLSLRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCall
   return FunctionRewriter::VisitCXXOperatorCallExpr_Impl(expr);
 }
 
+// names which are valid in C++ but are reserved words in GLSL ('vec3 MapSamplesToCone(float cosCutoff, vec2 sample, ...)')
+//
+static std::string GLSLIdentifier(const std::string& a_name)
+{
+  static const kslicer::uset<std::string> reserved = {
+    "attribute", "varying", "uniform", "buffer", "shared", "in", "out", "inout", "layout", "centroid", "flat", "smooth", "noperspective",
+    "patch", "sample", "invariant", "precise", "coherent", "restrict", "readonly", "writeonly", "subroutine", "precision", "lowp", "mediump",
+    "highp", "discard", "common", "partition", "active", "filter", "resource", "input", "output", "superp", "noinline", "cast", "fixed",
+    "external", "interface", "packed", "texture", "sampler", "image",
+    "half", "half2", "half3", "half4" }; // 'half' types are defined as macro in 'common_generated.h'
+
+  if(reserved.find(a_name) != reserved.end())
+    return a_name + "_";
+  return a_name;
+}
+
+std::string kslicer::GLSLCompiler::ShaderIdentifier(const std::string& a_name) const { return GLSLIdentifier(a_name); }
+
 std::string kslicer::GLSLRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
 {
   std::string retT   = RewriteStdVectorTypeStr(fDecl->getReturnType().getAsString());
@@ -794,6 +907,7 @@ std::string kslicer::GLSLRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
   {
     const clang::ParmVarDecl* pParam  = fDecl->getParamDecl(i);
     const clang::QualType typeOfParam =	pParam->getType();
+    const std::string paramName       = GLSLIdentifier(pParam->getNameAsString());
     std::string typeStr = typeOfParam.getAsString();
     if(typeOfParam->isPointerType())
     {
@@ -810,7 +924,9 @@ std::string kslicer::GLSLRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
         }
       }
 
-      const auto originalText = kslicer::GetRangeSourceCode(pParam->getSourceRange(), m_compiler);
+      auto originalText = kslicer::GetRangeSourceCode(pParam->getSourceRange(), m_compiler);
+      if(paramName != pParam->getNameAsString())
+        ReplaceFirst(originalText, " " + pParam->getNameAsString(), " " + paramName);
 
       if(pointerToGlobalMemory)
         result += std::string("uint ") + pParam->getNameAsString() + "Offset";
@@ -826,15 +942,14 @@ std::string kslicer::GLSLRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
       }
       else
       {
-        std::string paramName = pParam->getNameAsString();
         ReplaceFirst(typeStr, "*", "");
         if(typeOfParam->getPointeeType().isConstQualified())
         {
           ReplaceFirst(typeStr, "const ", "");
-          result += std::string("in ") + RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
+          result += std::string("in ") + RewriteStdVectorTypeStr(typeStr) + " " + paramName;
         }
         else
-          result += std::string("inout ") + RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
+          result += std::string("inout ") + RewriteStdVectorTypeStr(typeStr) + " " + paramName;
       }
     }
     else if(typeOfParam->isReferenceType())
@@ -852,15 +967,15 @@ std::string kslicer::GLSLRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
             kslicer::SplitContainerTypes(specDecl, containerType, containerDataType);
             ReplaceFirst(containerType, "Texture", "sampler");
             ReplaceFirst(containerType, "Image",   "sampler");
-            result += std::string("in ") + containerType + " " + pParam->getNameAsString();
+            result += std::string("in ") + containerType + " " + paramName;
           }
           else
-            result += std::string("in ") + dataType.getAsString() + " " + pParam->getNameAsString();
+            result += std::string("in ") + dataType.getAsString() + " " + paramName;
         }
         else
         {
           ReplaceFirst(typeStr, "const ", "");
-          result += std::string("in ") + RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
+          result += std::string("in ") + RewriteStdVectorTypeStr(typeStr) + " " + paramName;
         }
       }
       else
@@ -871,11 +986,11 @@ std::string kslicer::GLSLRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
           result += std::string("uint a_dummyOf") + pParam->getNameAsString();
         }
         else
-          result += std::string("inout ") + RewriteStdVectorTypeStr(typeStr2) + " " + pParam->getNameAsString();
+          result += std::string("inout ") + RewriteStdVectorTypeStr(typeStr2) + " " + paramName;
       }
     }
     else
-      result += RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
+      result += RewriteStdVectorTypeStr(typeStr) + " " + paramName;
 
     if(i!=fDecl->getNumParams()-1)
       result += ", ";
@@ -947,8 +1062,71 @@ std::string kslicer::GLSLRewriter::CompleteFunctionCallRewrite(clang::CallExpr* 
   return rewrittenRes;
 }
 
+// 'InterlockedAdd3f(out_color, offset, color)' ==> macro from 'common_generated.h' (buffers can't be passed to functions in GLSL),
+// 'InterlockedAdd3f(out_color_asUint, offset, color)' for '-atomicf_emul'
+//
+bool kslicer::GLSLRewriter::RewriteInterlockedAdd3f(clang::CallExpr* call)
+{
+  const clang::FunctionDecl* fDecl = call->getDirectCallee();
+  if(fDecl == nullptr || fDecl->getNameAsString() != "InterlockedAdd3f" || call->getNumArgs() != 3 || !WasNotRewrittenYet(call))
+    return false;
+
+  m_codeInfo->globalShaderFeatures.useInterlockedAdd3f = true; // may be called from non-member function which is not processed by KernelInfoVisitor
+  std::string bufferName = RecursiveRewrite(call->getArg(0));
+  if(m_codeInfo->atomicFloatEmul) // CAS on 'uint' view of the same buffer ('out_color_asUint'), declared at the same binding
+  {
+    m_codeInfo->uintAliasBuffers.insert(bufferName);
+    bufferName += "_asUint";
+  }
+  ReplaceText(call->getSourceRange(), "InterlockedAdd3f(" + bufferName + ", " + RecursiveRewrite(call->getArg(1)) + ", " + RecursiveRewrite(call->getArg(2)) + ")");
+  MarkRewritten(call);
+  return true;
+}
+
+// LiteMath 'InterlockedAdd(mem, data)', 'InterlockedAdd(mem, data, oldVal)' ==> 'atomicAdd(mem, data)', '(oldVal = atomicAdd(mem, data))';
+// for '-atomicf_emul' float atomics are done via CAS on 'uint' view of the same buffer: 'InterlockedAddEmul1fU(a_out_asUint, uint(i), data)'
+//
+bool kslicer::GLSLRewriter::RewriteAtomicAdd(clang::CallExpr* call)
+{
+  const clang::FunctionDecl* fDecl = call->getDirectCallee();
+  if(fDecl == nullptr || call->getNumArgs() < 2 || call->getNumArgs() > 3 || !WasNotRewrittenYet(call))
+    return false;
+  const std::string fname = fDecl->getNameAsString();
+  if(fname != "InterlockedAdd" && fname != "AtomicAdd" && fname != "atomicAdd")
+    return false;
+
+  const auto pArgType = call->getArg(1)->getType().getCanonicalType()->getAs<clang::BuiltinType>();
+  const bool isFloat  = (pArgType != nullptr && pArgType->getKind() == clang::BuiltinType::Float);
+  if(isFloat && m_codeInfo->atomicFloatEmul)
+  {
+    std::string bufferName, wordIndex;
+    if(GetUintAliasWord(call->getArg(0), bufferName, wordIndex))
+    {
+      m_codeInfo->uintAliasBuffers.insert(bufferName);
+      std::string text = "InterlockedAddEmul1fU(" + bufferName + "_asUint, " + wordIndex + ", " + RecursiveRewrite(call->getArg(1)) + ")";
+      if(call->getNumArgs() == 3)
+        text = "InterlockedAddEmul1fURes(" + bufferName + "_asUint, " + wordIndex + ", " + RecursiveRewrite(call->getArg(1)) + ", " + RecursiveRewrite(call->getArg(2)) + ")";
+      ReplaceText(call->getSourceRange(), text);
+      MarkRewritten(call);
+      return true;
+    }
+    kslicer::PrintWarning("'-atomicf_emul' supports only elements of buffers ('a_out[i]', 'm_vec[i].field'); hardware float atomics are used here (shaderBufferFloat32AtomicAdd is required)", call->getSourceRange(), m_compiler.getSourceManager());
+    m_codeInfo->globalShaderFeatures.useFloatAtomicAdd = true;
+  }
+
+  std::string text = "atomicAdd(" + RecursiveRewrite(call->getArg(0)) + ", " + RecursiveRewrite(call->getArg(1)) + ")";
+  if(call->getNumArgs() == 3)
+    text = "(" + RecursiveRewrite(call->getArg(2)) + " = " + text + ")";
+  ReplaceText(call->getSourceRange(), text);
+  MarkRewritten(call);
+  return true;
+}
+
 bool kslicer::GLSLRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
 {
+  if(RewriteInterlockedAdd3f(call) || RewriteAtomicAdd(call)) // before VisitCallExprKernel, which would make a copy of function for buffer argument
+    return true;
+
   if(m_kernelMode && VisitCallExprKernel(call))
     return true;
 
@@ -997,7 +1175,7 @@ bool kslicer::GLSLRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     ReplaceText(call->getSourceRange(), rewrittenRes);
     MarkRewritten(call);
   }
-  else if(fname == "mul4x4x4" && call->getNumArgs() == 2 && WasNotRewrittenYet(call))
+  else if((fname == "mul4x4x4" || (fname == "mul" && IsMatrixType(call->getArg(0)->getType()))) && call->getNumArgs() == 2 && WasNotRewrittenYet(call)) // LiteMath::mul(matrix, vector|matrix)
   {
     const std::string A = RecursiveRewrite(call->getArg(0));
     const std::string B = RecursiveRewrite(call->getArg(1));
@@ -1034,11 +1212,10 @@ bool kslicer::GLSLRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
   else if((fname == "as_float" || fname == "as_float32")  && call->getNumArgs() == 1 && WasNotRewrittenYet(call))
   {
     const std::string text  = RecursiveRewrite(call->getArg(0));
-    const auto qtOfArg      = call->getArg(0)->getType();
-    const std::string tname = kslicer::CleanTypeName(qtOfArg.getAsString());
+    const auto qtOfArg      = kslicer::RemoveImplicitCast(call->getArg(0))->getType().getCanonicalType(); // 'as_float(int)' is called for 'uint' too, GLSL has no implicit casts
     
     std::string lastRewrittenText;
-    if(tname == "uint" || tname == "const uint" || tname == "uint32_t" || tname == "const uint32_t" || tname == "unsigned" || tname == "const unsigned")
+    if(qtOfArg->isUnsignedIntegerType())
       lastRewrittenText = "uintBitsToFloat(" + text + ")";
     else
       lastRewrittenText = "intBitsToFloat(" + text + ")";
@@ -1083,7 +1260,7 @@ bool kslicer::GLSLRewriter::VisitDeclStmt_Impl(clang::DeclStmt* decl) // special
       clang::VarDecl* vdecl = clang::dyn_cast<clang::VarDecl>(c_decl);
       const auto qt         = vdecl->getType();
       const auto pValue     = vdecl->getAnyInitializer();
-      const std::string varName  = vdecl->getNameAsString();
+      const std::string varName  = GLSLIdentifier(vdecl->getNameAsString());
       const std::string varValue = RecursiveRewrite(pValue);
 
       if(varType == "") // first element
@@ -1225,12 +1402,15 @@ bool kslicer::GLSLRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
 
   const clang::Type::TypeClass typeClass = qt->getTypeClass();
   const bool isAuto = (typeClass == clang::Type::Auto);
+  bool wholeDeclRewritten = false;
   if(pValue != nullptr && WasNotRewrittenYet(pValue) && (NeedsVectorTypeRewrite(varType) || isAuto))
   {
-    std::string varName  = decl->getNameAsString();
-    std::string varNameOld = varName;
+    std::string varName  = GLSLIdentifier(decl->getNameAsString());
+    std::string varNameOld = decl->getNameAsString();
     std::string varValue = RecursiveRewrite(pValue);
     std::string varType2 = RewriteStdVectorTypeStr(varType, varName);
+    if(IsEmptyInitList(pValue) && ZeroValue(qt) != "") // 'float3 v = {};' ==> 'vec3 v = vec3(0)'
+      varValue = ZeroValue(qt);
     
     std::string lastRewrittenText;
     if(varValue == "" || varNameOld == varValue) // 'float3 deviation;' for some reason !decl->hasInit() does not works
@@ -1240,6 +1420,28 @@ bool kslicer::GLSLRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
 
     ReplaceText(decl->getSourceRange(), lastRewrittenText);
     MarkRewritten(pValue);
+    wholeDeclRewritten = true;
+  }
+  else if(pValue != nullptr && WasNotRewrittenYet(pValue) && IsEmptyInitList(pValue)) // 'PixelInfo res = {};' ==> 'PixelInfo res = PixelInfo(vec4(0));'
+  {
+    const std::string zero = ZeroValue(qt);
+    if(zero != "")
+    {
+      ReplaceText(pValue->getSourceRange(), zero);
+      MarkRewritten(pValue);
+    }
+    else
+      kslicer::PrintWarning("empty initializer '{}' of this type is not supported in GLSL", decl->getSourceRange(), m_compiler.getSourceManager());
+  }
+
+  if(!wholeDeclRewritten && decl->isConstexpr() && kslicer::GetRangeSourceCode(clang::SourceRange(decl->getBeginLoc()), m_compiler) == "constexpr")
+    ReplaceText(clang::SourceRange(decl->getBeginLoc()), "const");                                        // there is no 'constexpr' in GLSL
+
+  if(!wholeDeclRewritten && GLSLIdentifier(decl->getNameAsString()) != decl->getNameAsString())
+  {
+    const clang::DeclStmt* declStmt = getParentDeclContext(decl, m_compiler.getASTContext());
+    if(declStmt == nullptr || WasNotRewrittenYet(declStmt)) // else the whole 'DeclStmt' was rewritten with new name in VisitDeclStmt_Impl
+      ReplaceText(clang::SourceRange(decl->getLocation()), GLSLIdentifier(decl->getNameAsString()));
   }
   return true;
 }
@@ -1302,6 +1504,26 @@ bool kslicer::GLSLRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* 
       const std::string exprText = RecursiveRewrite(next);
       ReplaceText(next->getSourceRange(), castTo + "(" + exprText + ")");
       MarkRewritten(next);
+    }
+  }
+  else
+  {
+    // GLSL converts implicitly only 'int --> uint', 'int,uint --> float', so 'uint,bool --> int' and 'float --> int,uint' must be explicit
+    //
+    const clang::QualType dstType = cast->getType().getCanonicalType();
+    const clang::QualType srcType = preNext->getType().getCanonicalType();
+    const bool toSigned   = (kind == clang::CK_IntegralCast) && dstType->isSignedIntegerType() && (srcType->isUnsignedIntegerType() || srcType->isBooleanType());
+    const bool toIntegral = (kind == clang::CK_FloatingToIntegral);
+    if(!toSigned && !toIntegral)
+      return true;
+
+    clang::QualType qt = cast->getType(); qt.removeLocalFastQualifiers();
+    if(WasNotRewrittenYet(preNext) && qt.getAsString() != "size_t" && qt.getAsString() != "std::size_t")
+    {
+      const std::string castTo   = RewriteStdVectorTypeStr(qt.getAsString());
+      const std::string exprText = RecursiveRewrite(preNext);
+      ReplaceText(preNext->getSourceRange(), castTo + "(" + exprText + ")");
+      MarkRewritten(preNext);
     }
   }
 
@@ -1985,31 +2207,50 @@ bool kslicer::GLSLRewriter::RewriteMemberCallInKernel(clang::CXXMemberCallExpr* 
   return true;
 }
 
+bool kslicer::GLSLRewriter::RenameReservedIdentifier(clang::DeclRefExpr* expr)
+{
+  const auto pVar = clang::dyn_cast<clang::VarDecl>(expr->getDecl());
+  if(pVar == nullptr || !pVar->isLocalVarDeclOrParm())
+    return false;
+
+  const std::string name    = pVar->getNameAsString();
+  const std::string newName = GLSLIdentifier(name);
+  if(newName == name || !WasNotRewrittenYet(expr))
+    return false;
+
+  ReplaceText(expr->getSourceRange(), newName);
+  MarkRewritten(expr);
+  return true;
+}
+
 bool kslicer::GLSLRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
 {
-  if(!m_kernelMode)
-    return true;
+  if(m_kernelMode)
+    VisitDeclRefExprKernel(expr);
+  RenameReservedIdentifier(expr);
+  return true;
+}
 
+void kslicer::GLSLRewriter::VisitDeclRefExprKernel(clang::DeclRefExpr* expr)
+{
   const clang::ValueDecl* pDecl = expr->getDecl();
   if(!clang::isa<clang::ParmVarDecl>(pDecl))
-    return true;
+    return;
 
   clang::QualType qt = pDecl->getType();
   if(qt->isPointerType() || qt->isReferenceType()) // we can't put references to push constants
-    return true;
+    return;
 
   const std::string textOri = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); //
   //const std::string textRes = RecursiveRewrite(expr);
   if(m_kernelUserArgs.find(textOri) != m_kernelUserArgs.end() && WasNotRewrittenYet(expr))
   {
-    if(!m_codeInfo->megakernelRTV || m_pCurrKernel->isMega)
+    if(m_pCurrKernel->pattern != kslicer::PATTERN_TP::PATTERN_RTV || !m_codeInfo->megakernelRTV || m_pCurrKernel->isMega) // IPV kernels are not merged to megakernel
     {
-      ReplaceText(expr->getSourceRange(), std::string("kgenArgs.") + textOri);
+      ReplaceText(expr->getSourceRange(), std::string("kgenArgs.") + GLSLIdentifier(textOri));
       MarkRewritten(expr);
     }
   }
-
-  return true;
 }
 
 bool kslicer::GLSLRewriter::VisitReturnStmt_Impl(clang::ReturnStmt* ret)

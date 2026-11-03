@@ -899,6 +899,10 @@ namespace kslicer
     std::string       RewriteFuncDecl(clang::FunctionDecl* fDecl);
 
     virtual bool IsISPC() const { return false; }
+
+    // '-atomicf_emul': float atomics via CAS on 'uint' view of the same buffer ('a_out_asUint')
+    //
+    bool GetUintAliasWord(const clang::Expr* a_lvalue, std::string& a_bufferName, std::string& a_wordIndex); ///<! 'm_vec[i].vel.x' ==> 'm_vec', '(i)*8 + 4'
   };
   
   /**
@@ -931,6 +935,7 @@ namespace kslicer
     bool VisitBinaryOperator_Impl(clang::BinaryOperator* expr)           override;
 
     std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
+    std::string RewriteConstructCall(clang::CXXConstructExpr* call) override;
   
     std::string RewriteStdVectorTypeStr(const std::string& a_str) const override;
     std::string RewriteStdVectorTypeStr(const std::string& a_typeName, std::string& varName) const override;
@@ -968,6 +973,11 @@ namespace kslicer
     bool VisitCXXMemberCallExprKernel(clang::CXXMemberCallExpr* call);
     bool RewriteMemberCallInKernel(clang::CXXMemberCallExpr* f);
     void RewriteTextureAccess(clang::CXXOperatorCallExpr* expr, clang::Expr* a_assignOp, const std::string& rhsText);
+    bool RenameReservedIdentifier(clang::DeclRefExpr* expr); ///<! local variables and parameters named as GLSL reserved words ('sample') get '_' suffix
+    void VisitDeclRefExprKernel(clang::DeclRefExpr* expr);
+    bool RewriteInterlockedAdd3f(clang::CallExpr* call);
+    bool RewriteAtomicAdd(clang::CallExpr* call);
+    std::string ZeroValue(clang::QualType a_type) const;      ///<! GLSL value of 'T x = {}' or empty string if it is not supported
   };
 
   class SlangRewriter : public FunctionRewriter2 ///!< BASE CLASS FOR ALL NEW BACKENDS
@@ -1027,10 +1037,6 @@ namespace kslicer
     bool RewriteHashMapMemberCall(clang::CXXMemberCallExpr* call);    ///<! 'm_items.find(key)', 'm_items.end()' ==> 'hmap_m_items_find(key)', 'ubo[0].m_items_capacity'
     bool RewriteHashMapIteratorAccess(clang::MemberExpr* expr);       ///<! 'it->second', 'it->first'          ==> 'm_items[it].val', 'm_items[it].key'
     bool RewriteHashMapAtomicAdd(const clang::Expr* a_wholeExpr, const clang::Expr* a_lhs, const std::string& a_value); ///<! 'm_hist[key] += 1' ==> 'InterlockedAdd(m_hist[...].val, uint(1))'
-
-    // '-atomicf_emul 2': float atomics via CAS on 'uint' view of the same buffer ('a_out_asUint')
-    //
-    bool GetUintAliasWord(const clang::Expr* a_lvalue, std::string& a_bufferName, std::string& a_wordIndex); ///<! 'm_vec[i].vel.x' ==> 'm_vec', '(i)*8 + 4'
   };
 
   class CudaRewriter : public FunctionRewriter2 ///!< BASE CLASS FOR ALL NEW BACKENDS
@@ -1375,6 +1381,7 @@ namespace kslicer
     virtual std::string UBOAccess(const std::string& a_name) const = 0;
     virtual std::string ReplaceSizeCapacityExpr(const std::string& a_str) const;
     virtual std::string ProcessBufferType(const std::string& a_typeName) const { return a_typeName; };
+    virtual std::string ShaderIdentifier(const std::string& a_name) const { return a_name; } ///<! names which are reserved words in shader language are changed
   
     virtual bool        IsSingleShader()   const = 0;
     virtual std::string ShaderSingleFile() const = 0;
@@ -1489,6 +1496,7 @@ namespace kslicer
     GLSLCompiler(const std::string& a_prefix);
     std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo.") + a_name; };
     std::string ProcessBufferType(const std::string& a_typeName) const override;
+    std::string ShaderIdentifier(const std::string& a_name) const override;
     
     bool        IsSingleShader()                     const override { return false;}
     bool        MemberFunctionsAreSupported()        const override { return true; }

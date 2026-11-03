@@ -542,9 +542,10 @@ int main(int argc, const char **argv)
     if(requestedMode == 1)                                                      // (the former 'spirv_asm' pointer cast implementation of mode 1 is removed: it does not work on Nvidia)
       std::cout << "[kslicer]: '-atomicf_emul 1' is the same as '-atomicf_emul 2' (float atomics via CAS on 'uint' view of the buffer)" << std::endl;
     const bool slangVulkan = (shaderCCName == "slang" || shaderCCName == "SLANG" || shaderCCName == "Slang");
-    if(inputCodeInfo.atomicFloatEmul && !slangVulkan)
+    const bool glslVulkan  = (shaderCCName == "glsl"  || shaderCCName == "GLSL");
+    if(inputCodeInfo.atomicFloatEmul && !slangVulkan && !glslVulkan)
     {
-      std::cout << "[kslicer]: WARNING, '-atomicf_emul' is implemented for '-shaderCC slang' only and will be ignored" << std::endl;
+      std::cout << "[kslicer]: WARNING, '-atomicf_emul' is implemented for '-shaderCC slang' and '-shaderCC glsl' only and will be ignored" << std::endl;
       inputCodeInfo.atomicFloatEmul     = false;
       inputCodeInfo.atomicFloatEmulMode = 0;
     }

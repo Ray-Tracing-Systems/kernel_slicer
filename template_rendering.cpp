@@ -669,6 +669,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
   data["ClassDecls"] = std::vector<json>();
   std::map<std::string, kslicer::DeclInClass> specConsts;
+  kslicer::ShaderFeatures declFeatures; // types which are only declared (not used in buffers or code) still need extensions in GLSL ('half4' inside struct)
   for(const auto decl : usedDecl)
   {
     //if(decl.name == "GBuffElem" || decl.name == "PackedVertex")
@@ -697,7 +698,14 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     c_decl["IsTdef"]  = (decl.kind == DECL_IN_CLASS::DECL_TYPEDEF); // || (decl.kind == DECL_IN_CLASS::DECL_TYPEDEF);
     c_decl["Type"]    = kslicer::CleanTypeName(decl.type);
     data["ClassDecls"].push_back(c_decl);
+
+    if(decl.kind == DECL_IN_CLASS::DECL_STRUCT && decl.astNode != nullptr && decl.astNode->getTypeForDecl() != nullptr)
+      declFeatures = declFeatures || kslicer::GetStorageFeaturesFromType(clang::QualType(decl.astNode->getTypeForDecl(), 0));
   }
+
+  data["DeclsUseInt8"]  = declFeatures.useByteType;
+  data["DeclsUseInt16"] = declFeatures.useShortType;
+  data["DeclsUseHalf"]  = declFeatures.useHalfType;
 
   // (3) local functions preprocess
   //
@@ -782,7 +790,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       std::string buffType1 = a_classInfo.pShaderCC->ProcessBufferType(commonArg.type);
       std::string buffType2 = pShaderRewriter->RewriteStdVectorTypeStr(buffType1);
       argj["Type"]     = commonArg.isImage ? commonArg.imageType : buffType2;
-      argj["Name"]     = commonArg.name;
+      argj["Name"]     = a_classInfo.pShaderCC->ShaderIdentifier(commonArg.name);
+      argj["SrcName"]  = commonArg.name; // name in C++ code and in config
       argj["IsUBO"]    = commonArg.isDefinedInClass;
       argj["IsImage"]  = commonArg.isImage;
       argj["IsImageArray"]  = false;
@@ -949,7 +958,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       ReplaceFirst(typeName, "const ", "");
       json argj;
       argj["Type"]  = typeName;
-      argj["Name"]  = arg.name;
+      argj["Name"]  = a_classInfo.pShaderCC->ShaderIdentifier(arg.name);
+      argj["SrcName"] = arg.name;
       argj["IsUBO"] = false;
       argj["IsPointer"] = false;
       argj["IsMember"]  = false;
@@ -1072,7 +1082,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
             if(arg["Name"] == nullptr)
               continue;
             
-            std::string name = arg["Name"].get<std::string>();
+            std::string name = (arg["SrcName"] != nullptr) ? arg["SrcName"].get<std::string>() : arg["Name"].get<std::string>();
 
             if(nonConstData[name.c_str()] != nullptr) {
               bool isConst = (nonConstData[name.c_str()].get<int>() == 0);

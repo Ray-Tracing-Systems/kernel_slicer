@@ -17,6 +17,9 @@
 {% if UsePersistentThreads %}
 #extension GL_KHR_shader_subgroup_arithmetic : require
 {% endif %}
+{% if Kernel.UseFloatAtomics %}
+#extension GL_EXT_shader_atomic_float : require
+{% endif %}
 
 {% include "common_generated.glsl" %}
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

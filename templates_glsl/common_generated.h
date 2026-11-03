@@ -1,16 +1,16 @@
 /////////////////////////////////////////////////////////////////////
 /////////////  Required  Shader Features ////////////////////////////
 /////////////////////////////////////////////////////////////////////
-{% if GlobalUseInt8 %} 
+{% if GlobalUseInt8 or DeclsUseInt8 %} 
 #extension GL_EXT_shader_explicit_arithmetic_types_int8: require
 {% endif %}
-{% if GlobalUseInt16 %} 
+{% if GlobalUseInt16 or DeclsUseInt16 %} 
 #extension GL_EXT_shader_explicit_arithmetic_types_int16: require
 {% endif %}
 {% if GlobalUseInt64 %} 
 #extension GL_EXT_shader_explicit_arithmetic_types_int64: require
 {% endif %}
-{% if GlobalUseHalf %} 
+{% if GlobalUseHalf or DeclsUseHalf %} 
 #extension GL_EXT_shader_16bit_storage : enable
 #extension GL_EXT_shader_explicit_arithmetic_types_float16: enable
 {% endif %}
@@ -39,6 +39,45 @@
 #define half4 f16vec4
 bool  isfinite(float x)            { return !isinf(x); }
 float copysign(float mag, float s) { return abs(mag)*sign(s); }
+uint  f32tof16(float x)             { return packHalf2x16(vec2(x, 0.0f)) & 0xFFFFu; } // LiteMath::f32tof16 (HLSL semantic)
+float f16tof32(uint x)              { return unpackHalf2x16(x).x; }                // LiteMath::f16tof32 (HLSL semantic)
+{% if AtomicFloatEmul %}
+
+// '-atomicf_emul 1|2' (GPUs without shaderBufferFloat32AtomicAdd): float atomic add via CAS on 'uint' view of the same buffer ('a_out_asUint'),
+// declared at the same binding by kernel_slicer; 'a_word' is index of 32 bit word in buffer. GLSL can't pass buffer to a function, so these are macros.
+// 'a_res' gets the old value, the same as in LiteMath::InterlockedAdd.
+#define InterlockedAddEmul1fURes(a_bufferU, a_word, a_data, a_res) do {                                                             \
+  const uint  kgenWord     = (a_word);                                                                                         \
+  const float kgenData     = (a_data);                                                                                         \
+  uint        kgenExpected = a_bufferU[kgenWord];                                                                              \
+  for(;;) {                                                                                                                    \
+    const uint kgenOriginal = atomicCompSwap(a_bufferU[kgenWord], kgenExpected, floatBitsToUint(uintBitsToFloat(kgenExpected) + kgenData)); \
+    if(kgenOriginal == kgenExpected) break;                                                                                    \
+    kgenExpected = kgenOriginal;                                                                                               \
+  }                                                                                                                            \
+  a_res = uintBitsToFloat(kgenExpected); } while(false)
+#define InterlockedAddEmul1fU(a_bufferU, a_word, a_data) do { float kgenOldVal; InterlockedAddEmul1fURes(a_bufferU, a_word, a_data, kgenOldVal); } while(false)
+{% endif %}
+{% if UseInterlockedAdd3f %}
+
+// LiteMath::InterlockedAdd3f(buffer, offset, data): each channel is atomic separately, not the whole triple.
+// GLSL can't pass buffer to a function, so it is a macro; 'do { ... } while(false)' makes it a single statement ('if(c) InterlockedAdd3f(...); else ...').
+{% if AtomicFloatEmul %}
+#define InterlockedAdd3f(a_bufferU, a_offset, a_data) do {                                                                          \
+  const uint kgen3Offs = uint(a_offset);                                                                                       \
+  const vec3 kgen3Data = (a_data);                                                                                             \
+  if(kgen3Data.x != 0.0f) InterlockedAddEmul1fU(a_bufferU, kgen3Offs + 0, kgen3Data.x);                                        \
+  if(kgen3Data.y != 0.0f) InterlockedAddEmul1fU(a_bufferU, kgen3Offs + 1, kgen3Data.y);                                        \
+  if(kgen3Data.z != 0.0f) InterlockedAddEmul1fU(a_bufferU, kgen3Offs + 2, kgen3Data.z); } while(false)
+{% else %}
+#define InterlockedAdd3f(a_buffer, a_offset, a_data) do {                                                                           \
+  const int  kgen3Offs = int(a_offset);                                                                                        \
+  const vec3 kgen3Data = (a_data);                                                                                             \
+  atomicAdd(a_buffer[kgen3Offs + 0], kgen3Data.x);                                                                             \
+  atomicAdd(a_buffer[kgen3Offs + 1], kgen3Data.y);                                                                             \
+  atomicAdd(a_buffer[kgen3Offs + 2], kgen3Data.z); } while(false)
+{% endif %}
+{% endif %}
 {% if UseComplex %}
 
 struct complex

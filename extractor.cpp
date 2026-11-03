@@ -356,6 +356,18 @@ kslicer::FuncData kslicer::FuncDataFromKernel(const kslicer::KernelInfo& k)
   return func;
 }
 
+// depthUse is the depth of call from some kernel; functions are sorted by it to put callee before caller in shader code.
+// If a function is used by several kernels, take the maximal depth, otherwise callee may get smaller depth than its caller from another kernel.
+//
+static void MergeUsedFunction(kslicer::umap<uint64_t, kslicer::FuncData>& a_usedFunctions, const std::pair<const uint64_t, kslicer::FuncData>& a_func)
+{
+  auto p = a_usedFunctions.find(a_func.first);
+  if(p == a_usedFunctions.end())
+    a_usedFunctions.insert(a_func);
+  else
+    p->second.depthUse = std::max(p->second.depthUse, a_func.second.depthUse);
+}
+
 std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(kslicer::MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler)
 {
   kslicer::umap<uint64_t, kslicer::FuncData> a_usedFunctions;
@@ -382,7 +394,7 @@ std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(kslicer::MainClassI
       if(f.second.isMember)
         k.second.usedMemberFunctions.insert(f);
       else
-        a_usedFunctions.insert(f);
+        MergeUsedFunction(a_usedFunctions, f);
     }
   }
   
@@ -417,7 +429,7 @@ std::vector<kslicer::FuncData> kslicer::ExtractUsedFunctions(kslicer::MainClassI
          if(f.second.isMember)
            m.usedMemberFunctions.insert(f);
          else
-           a_usedFunctions.insert(f);
+           MergeUsedFunction(a_usedFunctions, f);
        }
     }
   }
