@@ -81,6 +81,8 @@ int main(int argc, const char** argv)
   JSONLog::write("array summ", pImpl->m_summ);
   if(onGPU)
     JSONLog::saveToFile("zout_gpu.json");
+  else if(isISPC)
+    JSONLog::saveToFile("zout_ispc.json");
   else
     JSONLog::saveToFile("zout_cpu.json");
   

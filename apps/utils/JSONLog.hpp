@@ -81,6 +81,7 @@ public:
           file << ",";
         }
         file << std::endl;
+        i++;
       }
       file << "}" << std::endl;
     } else {

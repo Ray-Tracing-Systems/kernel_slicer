@@ -3,85 +3,60 @@
 #include "render/points_render.h"
 #include "glfw_window.h"
 #include "ArgParser.h"
+#define JSON_LOG_IMPLEMENTATION
+#include "JSONLog.hpp"
 
 std::vector<nBody::BodyState> n_body_cpu(uint32_t seed, uint32_t iterations);
 std::vector<nBody::BodyState> n_body_gpu(uint32_t seed, uint32_t iterations);
 #ifdef USE_ISPC
 std::vector<nBody::BodyState> n_body_ispc(uint32_t seed, uint32_t iterations);
 #endif
-const float EPS = 1e-3f;
 
-inline float errFloat4(const float4& a, const float4& b) 
+// summary values of the simulation result, they are compared between CPU and GPU/ISPC runs
+void save_summary(const std::vector<nBody::BodyState>& a_bodies, const char* a_fileName)
 {
-  return std::max(std::max(std::abs(a.x - b.x), std::abs(a.y - b.y)), 
-                  std::max(std::abs(a.z - b.z), std::abs(a.w - b.w)));
+  double3 sumPos(0.0);
+  double  sumDist = 0.0, sumSpeed = 0.0;
+  float   maxSpeed = 0.0f;
+  for(const auto& body : a_bodies)
+  {
+    const float3 pos = to_float3(body.pos_weight);
+    const float3 vel = to_float3(body.vel_charge);
+    sumPos   += double3(pos.x, pos.y, pos.z);
+    sumDist  += double(length(pos));
+    sumSpeed += double(length(vel));
+    maxSpeed  = std::max(maxSpeed, length(vel));
+  }
+
+  const double invCount = 1.0/double(a_bodies.size());
+  float avgPos[3] = {float(sumPos.x*invCount), float(sumPos.y*invCount), float(sumPos.z*invCount)};
+
+  JSONLog::write("avg position", avgPos);
+  JSONLog::write("avg distance", float(sumDist*invCount));
+  JSONLog::write("avg speed",    float(sumSpeed*invCount));
+  JSONLog::write("max speed",    maxSpeed);
+  JSONLog::saveToFile(a_fileName);
 }
 
-int compute_main()
+int compute_main(bool a_onGPU, bool a_isISPC)
 {
   const uint32_t SEED       = 42;
   const uint32_t ITERATIONS = 10;
-  auto out_cpu = n_body_cpu(SEED, ITERATIONS);
-  auto out_gpu = n_body_gpu(SEED, ITERATIONS);
-  #ifdef USE_ISPC
-      out_gpu = n_body_ispc(SEED, ITERATIONS);
-  #endif
-  bool failed = false;
 
-  std::vector<uint32_t> badId; badId.reserve(10);
-  std::vector<uint32_t> badId2; badId2.reserve(10);
-
-  float maxErr   = 0.0f;
-  float avgError = 0.0f;
-
-  for (uint32_t i = 0; i < out_cpu.size(); ++i)
+  if(a_isISPC)
   {
-    float errPos = errFloat4(out_cpu[i].pos_weight, out_gpu[i].pos_weight);
-    float errVel = errFloat4(out_cpu[i].vel_charge, out_gpu[i].vel_charge);
-
-    if (errPos > EPS)
-    {
-      if(badId.size() + 1 < badId.capacity())
-        badId.push_back(i);
-    }
-
-    if (errVel > EPS)
-    {
-      if(badId2.size() + 1 < badId2.capacity())
-        badId2.push_back(i);
-    }
-
-    avgError += std::max(errVel,errPos);
-    maxErr = std::max(maxErr, std::max(errVel,errPos));
-  }
-
-  avgError /= float(out_cpu.size());
-
-  std::cout << "maxErr = " << maxErr << std::endl;
-  std::cout << "avgErr = " << avgError << std::endl;
-
-  for(const auto i : badId)
-  {
-    failed = true;
-    std::cout << "Wrong position " << i << std::endl;
-    std::cout << "CPU value: " << out_cpu[i].pos_weight.x << "\t" << out_cpu[i].pos_weight.y << "\t" << out_cpu[i].pos_weight.z << "\t" << out_cpu[i].pos_weight.w << std::endl;
-    std::cout << "GPU value: " << out_gpu[i].pos_weight.x << "\t" << out_gpu[i].pos_weight.y << "\t" << out_gpu[i].pos_weight.z << "\t" << out_gpu[i].pos_weight.w << std::endl;
-  }
-
-  for(const auto i : badId2)
-  {
-    failed = true;
-    std::cout << "Wrong velocity " << i << std::endl;
-    std::cout << "CPU value: " << out_cpu[i].vel_charge.x << "\t" << out_cpu[i].vel_charge.y << "\t" << out_cpu[i].vel_charge.z << "\t" << out_cpu[i].vel_charge.w << std::endl;
-    std::cout << "GPU value: " << out_gpu[i].vel_charge.x << "\t" << out_gpu[i].vel_charge.y << "\t" << out_gpu[i].vel_charge.z << "\t" << out_gpu[i].vel_charge.w << std::endl;
-  }
-
-  if (failed) {
-    std::cout << "FAIL" << std::endl;
+    #ifdef USE_ISPC
+    save_summary(n_body_ispc(SEED, ITERATIONS), "zout_ispc.json");
+    #else
+    std::cout << "[FAILED!] ISPC is not defined!!!" << std::endl;
     return -1;
-  } else {
-    std::cout << "OK" << std::endl;
+    #endif
   }
+  else if(a_onGPU)
+    save_summary(n_body_gpu(SEED, ITERATIONS), "zout_gpu.json");
+  else
+    save_summary(n_body_cpu(SEED, ITERATIONS), "zout_cpu.json");
+
   return 0;
 }
 
@@ -108,7 +83,7 @@ int main(int argc, const char** argv)
   bool runCmdLineMode = args.hasOption("--test");
 
   if(runCmdLineMode)
-    return compute_main();
+    return compute_main(args.hasOption("--gpu"), args.hasOption("--ispc"));
   else
     graphics_main();
 
