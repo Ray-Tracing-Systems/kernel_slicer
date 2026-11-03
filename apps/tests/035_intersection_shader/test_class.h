@@ -105,7 +105,7 @@ struct BFRayTrace : public ISceneObject
 
   const char* Name() const override { return "BFRayTrace"; }
 
-  void     ClearGeom() override { primitives.clear(); primitives.reserve(1000); } // reserve is MANDATORY!!!
+  void     ClearGeom() override { primitives.clear(); primitives.reserve(1000); m_geomCount = 0; } // reserve is MANDATORY!!!
 
   uint32_t AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNumber, const uint32_t* a_triIndices, size_t a_indNumber,
                                uint32_t a_flags = BUILD_HIGH, size_t vByteStride = sizeof(float)*3) override;
@@ -133,6 +133,7 @@ struct BFRayTrace : public ISceneObject
   std::vector<float4>           trivets;
   std::vector<uint32_t>         indices;
   std::vector<AbtractPrimitive*> primitives;
+  uint32_t m_geomCount = 0; ///<! geometry ids must be 0,1,2,...: RTX_Proxy uses the id of this (CPU) implementation as index of geometry
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

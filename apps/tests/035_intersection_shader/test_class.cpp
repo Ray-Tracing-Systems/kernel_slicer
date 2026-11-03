@@ -170,7 +170,7 @@ uint32_t BFRayTrace::AddGeom_Triangles3f(const float* a_vpos3f, size_t a_vertNum
     primitives[i] = new TrianglePrim(trivets[A], trivets[B], trivets[C], oldIndex); 
   }
 
-  return 0;
+  return m_geomCount++;
 }
 
 uint32_t BFRayTrace::AddGeom_AABB(uint32_t a_typeId, const CRT_AABB* boxMinMaxF8, size_t a_boxNumber, uint32_t a_buildFlags, void** a_customPrimPtrs, size_t a_customPrimCount)
@@ -192,7 +192,7 @@ uint32_t BFRayTrace::AddGeom_AABB(uint32_t a_typeId, const CRT_AABB* boxMinMaxF8
     for(size_t i = oldSize; i < primitives.size(); i++)
       primitives[i] = new EmptyPrim(); 
   }
-  return 0;
+  return m_geomCount++;
 }
 
 BFRayTrace::~BFRayTrace()
