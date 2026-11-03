@@ -802,6 +802,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["IsMember"]      = false;
       argj["IsSingle"]      = false;
       argj["IsConst"]       = commonArg.isConstant;
+      argj["ScalarLayout"]  = commonArg.isPointer && commonArg.scalarLayout;
       argj["IsVFHBuffer"]   = false;
       argj["VFHLevel"]      = 0;
       argj["WithBuffRef"]   = false;
@@ -870,6 +871,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["IsSingle"]      = pVecMember->second.isSingle;
       argj["IsConst"]       = pVecMember->second.isConst;
       argj["WithBuffRef"]   = container.second.bindWithRef;
+      argj["ScalarLayout"]  = pVecMember->second.containerScalarLayout && (pHashMap == a_classInfo.hashMaps.end());
 
       ////////////////////////////////////////////////////////////////////
       MainClassInfo::VFH_LEVEL level = MainClassInfo::VFH_LEVEL_1;
@@ -877,7 +879,10 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["IsVFHBuffer"]    = isVFHBuffer;
       argj["VFHLevel"]       = int(level);
       if(isVFHBuffer && int(level) >= 2)
-        argj["Type"] = "uvec2";
+      {
+        argj["Type"]         = "uvec2";
+        argj["ScalarLayout"] = false;
+      }
       ////////////////////////////////////////////////////////////////////
 
       std::string ispcConverted = argj["Name"];
@@ -1104,6 +1109,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["NeedUintAlias"] = isBuffer && (a_classInfo.uintAliasBuffers.find(argj["Name"].get<std::string>()) != a_classInfo.uintAliasBuffers.end());
     }
     kernelJson["Args"]         = args;
+    kernelJson["UseScalarLayout"] = std::any_of(args.begin(), args.end(), [](const json& a) { return a.contains("ScalarLayout") && a["ScalarLayout"].get<bool>(); });
     kernelJson["HashMaps"]     = kernelHashMaps;
     kernelJson["UserArgs"]     = userArgs;
     kernelJson["OriginalArgs"] = allArgs;

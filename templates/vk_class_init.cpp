@@ -2475,6 +2475,14 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
   deviceExtensions.push_back(VK_NV_COOPERATIVE_VECTOR_EXTENSION_NAME);
 
   {% endif %}
+  {% if GlobalUseScalarLayout %} {# /* buffers of float3 and of structures with padding in std430 */ #}
+  static VkPhysicalDeviceScalarBlockLayoutFeatures scalarLayoutFeatures = {};
+  scalarLayoutFeatures.sType             = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES;
+  scalarLayoutFeatures.scalarBlockLayout = VK_TRUE;
+  (*ppNext) = &scalarLayoutFeatures; ppNext = &scalarLayoutFeatures.pNext;
+  deviceExtensions.push_back(VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME);
+
+  {% endif %}
   return features2;
 }
 

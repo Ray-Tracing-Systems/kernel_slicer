@@ -2,6 +2,7 @@
 
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/DeclTemplate.h"
+#include "clang/AST/RecordLayout.h"
 #include "clang/AST/ExprCXX.h"
 
 #include <iostream>
@@ -150,6 +151,113 @@ size_t kslicer::GetStd430Alignment(clang::QualType a_qt, const clang::ASTContext
   }
 
   return std::max<size_t>(4, a_astContext.getTypeSizeInChars(qt).getQuantity()); // scalars
+}
+
+struct ShaderLayout
+{
+  size_t size  = 0;
+  size_t align = 1;
+  bool   known = true;  ///<! false if we can't say how the type is laid out in shaders
+  bool   same  = true;  ///<! size and offsets of all fields are the same as in C++
+};
+
+static inline size_t RoundUp(size_t a_size, size_t a_align) { return ((a_size + a_align - 1)/a_align)*a_align; }
+
+/**
+\brief layout of a type inside of a storage buffer in shaders: std430 (a_scalar == false) or scalar block layout (a_scalar == true);
+       it is compared with the layout of the same type in C++
+*/
+static ShaderLayout GetShaderLayout(clang::QualType a_qt, const clang::ASTContext& a_astContext, bool a_scalar)
+{
+  ShaderLayout res;
+  const clang::QualType qt   = a_qt.getCanonicalType();
+  const size_t   hostSize    = a_astContext.getTypeSizeInChars(qt).getQuantity();
+  const std::string typeName = kslicer::CleanTypeName(qt.getAsString());
+
+  // vectors and matrices
+  //
+  static const kslicer::umap<std::string, int> vectors = { {"float2", 2}, {"float3", 3}, {"float4", 4}, {"int2",  2}, {"int3",  3}, {"int4",  4},
+                                                           {"uint2",  2}, {"uint3",  3}, {"uint4",  4}, {"vec2",  2}, {"vec3",  3}, {"vec4",  4},
+                                                           {"ivec2",  2}, {"ivec3",  3}, {"ivec4",  4}, {"uvec2", 2}, {"uvec3", 3}, {"uvec4", 4} };
+  static const kslicer::umap<std::string, int> matrices = { {"float2x2", 2}, {"float3x3", 3}, {"float4x4", 4}, {"mat2", 2}, {"mat3", 3}, {"mat4", 4} };
+
+  auto pVec = vectors.find(typeName);
+  auto pMat = matrices.find(typeName);
+  if(pVec != vectors.end())
+  {
+    const size_t n = size_t(pVec->second);
+    res.size  = 4*n;
+    res.align = a_scalar ? 4 : ((n == 2) ? 8 : 16);
+  }
+  else if(pMat != matrices.end()) // columns are vectors: std430 aligns them, scalar layout does not
+  {
+    const size_t n = size_t(pMat->second);
+    res.align = a_scalar ? 4 : ((n == 2) ? 8 : 16);
+    res.size  = n*(a_scalar ? 4*n : RoundUp(4*n, res.align));
+  }
+  else if(auto arrayType = clang::dyn_cast<clang::ConstantArrayType>(qt.getTypePtr()))
+  {
+    const clang::QualType elemType = arrayType->getElementType();
+    const ShaderLayout    elem     = GetShaderLayout(elemType, a_astContext, a_scalar);
+    const size_t   hostStride      = a_astContext.getTypeSizeInChars(elemType).getQuantity();
+    const size_t   stride          = a_scalar ? elem.size : RoundUp(elem.size, elem.align);
+    res.known = elem.known;
+    res.same  = elem.same && (stride == hostStride);
+    res.align = elem.align;
+    res.size  = stride*arrayType->getSize().getLimitedValue();
+  }
+  else if(qt->isEnumeralType() || (qt->isBuiltinType() && !qt->isBooleanType() && hostSize > 0)) // bool is 1 byte in C++ and 4 bytes in shaders
+  {
+    res.size  = hostSize;
+    res.align = hostSize;
+  }
+  else if(auto recordDecl = qt->getAsRecordDecl())
+  {
+    auto cxxDecl = clang::dyn_cast<clang::CXXRecordDecl>(recordDecl);
+    if(recordDecl->isUnion() || (cxxDecl != nullptr && (cxxDecl->getNumBases() != 0 || cxxDecl->isDynamicClass())))
+    {
+      res.known = false;
+      return res;
+    }
+    const clang::ASTRecordLayout& hostLayout = a_astContext.getASTRecordLayout(recordDecl);
+    size_t offset = 0;
+    for(auto field : recordDecl->fields())
+    {
+      if(field->isBitField())
+      {
+        res.known = false;
+        return res;
+      }
+      const ShaderLayout fieldLayout = GetShaderLayout(field->getType(), a_astContext, a_scalar);
+      offset = RoundUp(offset, fieldLayout.align);
+      res.known = res.known && fieldLayout.known;
+      res.same  = res.same  && fieldLayout.same && (offset == hostLayout.getFieldOffset(field->getFieldIndex())/8);
+      res.align = std::max(res.align, fieldLayout.align);
+      offset   += fieldLayout.size;
+    }
+    res.size = RoundUp(offset, res.align);
+  }
+  else
+  {
+    res.known = false;
+    return res;
+  }
+
+  res.same = res.same && (res.size == hostSize);
+  return res;
+}
+
+bool kslicer::NeedScalarLayout(clang::QualType a_qt, const clang::ASTContext& a_astContext)
+{
+  const clang::QualType qt = a_qt.getNonReferenceType().getCanonicalType();
+  if(qt.isNull() || qt->isIncompleteType() || qt->isDependentType())
+    return false;
+  const size_t       hostStride = a_astContext.getTypeSizeInChars(qt).getQuantity();
+  const ShaderLayout std430     = GetShaderLayout(qt, a_astContext, false);
+  const ShaderLayout scalar     = GetShaderLayout(qt, a_astContext, true);
+  const bool std430IsSame = std430.same && (RoundUp(std430.size, std430.align) == hostStride); // array stride in buffer
+  const bool scalarIsSame = scalar.same && (scalar.size == hostStride);
+  return std430.known && scalar.known && !std430IsSame && scalarIsSame;
 }
 
 void kslicer::MainClassInfo::ProcessHashMaps(const clang::ASTContext& a_astContext)

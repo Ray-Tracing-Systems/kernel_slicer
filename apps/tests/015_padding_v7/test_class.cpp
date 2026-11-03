@@ -35,6 +35,9 @@ void Padding::kernel1D_Test(float* a_data, unsigned int a_size)
       a_data[9+6] = m_data2[2].data[0];
       a_data[9+7] = m_data2[2].data[1];
       a_data[9+8] = m_data2[2].data[2];
+
+      a_data[18] = m_data3[1].depth;  // 'BadStruct' has 16 bytes stride in std430 and 12 bytes in C++
+      a_data[19] = m_data3[2].xy.y;
     }
   }
 }

@@ -38,6 +38,7 @@ kslicer::KernelInfo::ArgInfo kslicer::ProcessParameter(const clang::ParmVarDecl 
   {
     arg.size = 1; // Because C always pass reference
     arg.kind = kslicer::DATA_KIND::KIND_POINTER;
+    arg.scalarLayout = kslicer::NeedScalarLayout(q->getPointeeType(), p->getASTContext());
   }
   else if(q->isReferenceType())
   {
@@ -584,6 +585,12 @@ kslicer::DataMemberInfo kslicer::ExtractMemberInfo(const std::string& a_name, co
           member.containerDataType = pAlias->getDecl()->getNameAsString();
       }
     }
+
+    // std::vector<float3> or std::vector<{float2,float}>: std430 adds padding which C++ doesn't have, scalar layout is used for such buffers
+    //
+    if(!kslicer::IsHashMapContainer(member.containerType) && specDecl->getTemplateArgs().size() > 0 &&
+       specDecl->getTemplateArgs()[0].getKind() == clang::TemplateArgument::Type)
+      member.containerScalarLayout = kslicer::NeedScalarLayout(specDecl->getTemplateArgs()[0].getAsType(), astContext);
 
     if(kslicer::IsHashMapContainer(member.containerType) && specDecl->getTemplateArgs().size() > 1)
     {

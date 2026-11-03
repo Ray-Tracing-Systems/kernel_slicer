@@ -451,6 +451,7 @@ std::vector<kslicer::ArgFinal> kslicer::MainClassInfo::GetKernelCommonArgs(const
                                  arg.type.find(mainClassName) != std::string::npos);
         arg2.isThreadFlags    = arg.isThreadFlags;
         arg2.isPointer        = arg.IsPointer();
+        arg2.scalarLayout     = arg.scalarLayout;
         if(pShaderCC->IsISPC())
           ReplaceFirst(arg2.type, "*", "");
       }

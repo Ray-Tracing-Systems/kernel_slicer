@@ -1405,6 +1405,20 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["GlobalUse16BitStorage"] = shaderFeatures.use16BitStorage;
   data["GlobalUseCoopVec"]      = shaderFeatures.useCoopVec;
 
+  bool useScalarLayout = false; // at least one buffer in shaders is declared with scalar layout: VK_EXT_scalar_block_layout
+  for(const auto& k : a_classInfo.kernels)
+  {
+    for(const auto& arg : k.second.args)
+      useScalarLayout = useScalarLayout || (arg.IsPointer() && arg.scalarLayout);
+    for(const auto& container : k.second.usedContainers)
+    {
+      auto pMember = a_classInfo.allDataMembers.find(container.second.name);
+      if(pMember != a_classInfo.allDataMembers.end() && pMember->second.containerScalarLayout)
+        useScalarLayout = true;
+    }
+  }
+  data["GlobalUseScalarLayout"] = useScalarLayout;
+
   data["HasRTXAccelStruct"] = otherFeatures.useRTX;
   data["HasVarPointers"]    = (std::dynamic_pointer_cast<ClspvCompiler>(a_classInfo.pShaderCC) != nullptr) || otherFeatures.useVarPtr;
   data["HasSubGroups"]      = useSubGroups;

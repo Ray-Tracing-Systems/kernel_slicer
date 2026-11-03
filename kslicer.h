@@ -274,6 +274,7 @@ namespace kslicer
       bool isReference    = false;
       bool isContainer    = false;
       bool isConstant     = false;
+      bool scalarLayout   = false; ///<! pointer to 'T': std430 layout of 'T' differs from C++ but scalar layout is the same
 
       std::string containerType;
       std::string containerDataType;
@@ -468,6 +469,7 @@ namespace kslicer
     bool        isSampler        = false;
     bool        isPointer        = false;
     bool        isConstant       = false;
+    bool        scalarLayout     = false; ///<! buffer is declared with scalar layout (see KernelInfo::ArgInfo::scalarLayout)
   };
 
   /**
@@ -507,6 +509,7 @@ namespace kslicer
     std::string containerKeyType;                      ///<! 'Key' for std::unordered_map<Key,X>
     size_t      containerDataSize  = 0;                ///<! sizeof('X') for std::unordered_map<Key,X>
     size_t      containerDataAlign = 0;                ///<! aligment of 'X' in std430 layout for std::unordered_map<Key,X>
+    bool        containerScalarLayout = false;         ///<! std430 layout of 'T' differs from C++ but scalar layout is the same: buffer is declared with scalar layout
     std::string intersectionClassName;                 ///<! used in the case of user intersection
 
     clang::TypeDecl* pTypeDeclIfRecord = nullptr;
@@ -1978,6 +1981,7 @@ namespace kslicer
   std::string HashMapSlotTypeName(const std::string& a_mapName);
   std::string HashMapFuncName(const std::string& a_mapName, const std::string& a_func); ///<! 'hmap_m_items_insert' and e.t.c.
   size_t      GetStd430Alignment(clang::QualType a_qt, const clang::ASTContext& a_astContext);
+  bool        NeedScalarLayout(clang::QualType a_qt, const clang::ASTContext& a_astContext); ///<! buffer of 'T': std430 differs from C++, scalar layout is the same
   const clang::Expr* GetMemberPathOffset(const clang::Expr* a_expr, const clang::ASTContext& a_astContext, uint64_t& a_offsetInBytes, bool& a_ok); ///<! 'x[i].vel.x' ==> 'x[i]', offset of '.vel.x' in bytes
   std::string GetHashMapNameFromExpr(const clang::Expr* a_expr);         ///<! 'this->m_items' or 'it' declared as 'auto it = m_items.find(...)' ==> "m_items"; "" if not a hash map
   const clang::CXXOperatorCallExpr* GetHashMapSubscript(const clang::Expr* a_expr); ///<! 'm_items[key]' or 'm_items[key].val.x' ==> 'm_items[key]', nullptr if not a hash map

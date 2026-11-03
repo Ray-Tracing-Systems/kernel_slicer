@@ -80,7 +80,7 @@ layout(binding = {{loop.index}}, set = 0{% if Arg.NeedFmt%}, {{Arg.ImFormat}}{% 
 {% else if Arg.IsAccelStruct %}
 layout(binding = {{loop.index}}, set = 0) uniform accelerationStructureEXT {{Arg.Name}};
 {% else %}
-layout(binding = {{loop.index}}, set = 0) {%if Arg.IsConst%} readonly {% endif %} buffer data{{loop.index}} { {{Arg.Type}} {{Arg.Name}}{% if not Arg.IsSingle %}[]{% endif %}; }; // 
+layout(binding = {{loop.index}}, set = 0{% if existsIn(Arg, "ScalarLayout") and Arg.ScalarLayout %}, scalar{% endif %}) {%if Arg.IsConst%} readonly {% endif %} buffer data{{loop.index}} { {{Arg.Type}} {{Arg.Name}}{% if not Arg.IsSingle %}[]{% endif %}; }; // 
 {% if Arg.NeedUintAlias %}
 layout(binding = {{loop.index}}, set = 0) buffer data{{loop.index}}_asUint { uint {{Arg.Name}}_asUint[]; }; // the same buffer viewed as 'uint' for CAS in float atomics emulation
 {% endif %}

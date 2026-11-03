@@ -20,6 +20,9 @@
 {% if Kernel.UseFloatAtomics %}
 #extension GL_EXT_shader_atomic_float : require
 {% endif %}
+{% if existsIn(Kernel, "UseScalarLayout") and Kernel.UseScalarLayout %}
+#extension GL_EXT_scalar_block_layout : require
+{% endif %}
 
 {% include "common_generated.glsl" %}
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

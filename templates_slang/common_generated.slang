@@ -13,7 +13,7 @@ layout (constant_id = {{KSpec.Id}}) const int {{KSpec.Name}} = {{KSpec.Id}}; //
 {% else if Arg.IsAccelStruct %}
 {% if Kernel.UseCombinedImageSampler %}[[vk::binding({{loop.index}}, 0)]] {% endif %}RaytracingAccelerationStructure {{Arg.Name}};
 {% else %}
-{% if Kernel.UseCombinedImageSampler or Arg.NeedUintAlias %}[[vk::binding({{loop.index}}, 0)]] {% endif %}{%if not Arg.IsConst%}RW{% endif %}StructuredBuffer<{{Arg.Type}}> {{Arg.Name}}; // 
+{% if Kernel.UseCombinedImageSampler or Arg.NeedUintAlias %}[[vk::binding({{loop.index}}, 0)]] {% endif %}{%if not Arg.IsConst%}RW{% endif %}StructuredBuffer<{{Arg.Type}}{% if existsIn(Arg, "ScalarLayout") and Arg.ScalarLayout %}, ScalarDataLayout{% endif %}> {{Arg.Name}}; // 
 {% if Arg.NeedUintAlias %}
 [[vk::binding({{loop.index}}, 0)]] RWStructuredBuffer<uint> {{Arg.Name}}_asUint; // the same buffer viewed as 'uint' for CAS in float atomics emulation
 {% endif %}
