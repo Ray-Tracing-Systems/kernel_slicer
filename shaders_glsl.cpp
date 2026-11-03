@@ -1280,7 +1280,7 @@ bool kslicer::GLSLRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* 
     if(kslicer::IsVectorContructorNeedsReplacement(fname) && WasNotRewrittenYet(call) && !ctorDecl->isCopyOrMoveConstructor() && call->getNumArgs() > 0 ) //
     {
       const std::string textRes = RewriteConstructCall(call);
-      ReplaceText(call->getSourceRange(), textRes);    //
+      ReplaceText(call->getSourceRange(), textRes);
       MarkRewritten(call);
     }
 
