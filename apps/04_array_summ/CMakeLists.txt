@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.8)
+cmake_minimum_required (VERSION 3.18)
 project (test)
 
 # get rid of annoying MSVC warnings.
@@ -23,7 +23,12 @@ if(USE_VULKAN)
   add_compile_definitions(USE_VULKAN)
 endif()
 if(USE_CUDA)
-  find_package(CUDA REQUIRED)
+  if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+    set(CMAKE_CUDA_ARCHITECTURES native)
+  endif()
+  enable_language(CUDA)
+  find_package(CUDAToolkit REQUIRED)
+  set(CMAKE_CUDA_STANDARD 17)
   add_compile_definitions(CUDA_MATH)
   add_compile_definitions(USE_CUDA)
 endif()
@@ -68,7 +73,8 @@ set(VKUTILS_SOURCE ../vkutils/vk_utils.cpp
 set(LIBS OpenMP::OpenMP_CXX)
 
 if(USE_CUDA)
-  cuda_add_library(test_class_cuda test_class_generated.cu)
+  add_library(test_class_cuda STATIC test_class_generated.cu)
+  target_link_libraries(test_class_cuda PUBLIC CUDA::cudart)
   list(APPEND LIBS test_class_cuda)
 endif()
 
