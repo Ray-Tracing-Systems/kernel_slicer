@@ -1778,7 +1778,7 @@ int main(int argc, const char **argv)
             continue;
 
           auto kernel          = inputCodeInfo.kernels[name];
-          kernel.currentShit   = shit; // just pass shit inside GLSLKernelRewriter via 'kernel.currentShit'; don't want to break VisitAndRewrite_KF API
+          kernel.currentShit   = shit; // just pass shit inside kernel rewriter via 'kernel.currentShit'; don't want to break VisitAndRewrite_KF API
           kernel.rewrittenText = inputCodeInfo.VisitAndRewrite_KF(kernel, compiler, kernel.rewrittenInit, kernel.rewrittenFinish);
           cf.subkernelsData.push_back(kernel);
           processed.insert(name);

@@ -901,13 +901,6 @@ namespace kslicer
     virtual bool IsISPC() const { return false; }
   };
   
-  struct IRecursiveRewriteOverride
-  {
-    virtual std::string RecursiveRewriteImpl(const clang::Stmt* expr) = 0;
-    virtual kslicer::ShaderFeatures GetShaderFeatures() const { return kslicer::ShaderFeatures(); }
-    virtual kslicer::uset<uint64_t> GetVisitedNodes() const = 0;
-  };
-
   /**
   \brief process local functions
   */
@@ -933,8 +926,11 @@ namespace kslicer
     bool VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr) override;
     bool VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) override { return FunctionRewriter::VisitCXXConstructExpr_Impl(call); } // vector constructors, FunctionRewriter2 does not process them
   
+    bool VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)                 override;
+    bool VisitReturnStmt_Impl(clang::ReturnStmt* ret)                    override;
+    bool VisitBinaryOperator_Impl(clang::BinaryOperator* expr)           override;
+
     std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
-    IRecursiveRewriteOverride* m_pKernelRewriter = nullptr;
   
     std::string RewriteStdVectorTypeStr(const std::string& a_str) const override;
     std::string RewriteStdVectorTypeStr(const std::string& a_typeName, std::string& varName) const override;
@@ -959,6 +955,19 @@ namespace kslicer
   
     bool        NeedsVectorTypeRewrite(const std::string& a_str) override;
     std::string CompleteFunctionCallRewrite(clang::CallExpr* call) override;
+
+  protected:
+
+    // kernel mode (InitKernelData was called); VisitCallExprKernel and VisitUnaryOperatorKernel return false
+    // if the node should be processed in the same way as in a function
+    //
+    bool VisitCallExprKernel(clang::CallExpr* call);
+    bool VisitUnaryOperatorKernel(clang::UnaryOperator* expr);
+    bool VisitMemberExprKernel(clang::MemberExpr* expr);
+    bool VisitCXXOperatorCallExprKernel(clang::CXXOperatorCallExpr* expr);
+    bool VisitCXXMemberCallExprKernel(clang::CXXMemberCallExpr* call);
+    bool RewriteMemberCallInKernel(clang::CXXMemberCallExpr* f);
+    void RewriteTextureAccess(clang::CXXOperatorCallExpr* expr, clang::Expr* a_assignOp, const std::string& rhsText);
   };
 
   class SlangRewriter : public FunctionRewriter2 ///!< BASE CLASS FOR ALL NEW BACKENDS
@@ -1204,6 +1213,7 @@ namespace kslicer
     bool NameNeedsFakeOffset(const std::string& a_name) const;
 
     bool processFuncMember = false;
+    virtual void SetProcessFuncMember(bool a_value) { processFuncMember = a_value; }
     virtual void SetCurrFuncInfo  (kslicer::FuncData* a_pInfo) { m_pCurrFuncInfo = a_pInfo; }
     virtual void ResetCurrFuncInfo()                           { m_pCurrFuncInfo = nullptr; }
 
@@ -1294,9 +1304,8 @@ namespace kslicer
                     MainClassInfo* a_codeInfo, kslicer::KernelInfo& a_kernel, 
                     const std::string& a_fakeOffsetExpr, std::shared_ptr<FunctionRewriter2> a_pFunImpl)
                     : KernelRewriter(R,a_compiler,a_codeInfo,a_kernel,a_fakeOffsetExpr), m_pFunRW2(a_pFunImpl)
-    
     {
-
+      m_pRewrittenNodes = m_pFunRW2->m_pRewrittenNodes; // nodes rewritten by m_pFunRW2 must be skipped by KernelRewriter::Visit* as well
     }
 
     virtual ~KernelRewriter2() {}
@@ -1325,6 +1334,15 @@ namespace kslicer
     bool VisitReturnStmt_Impl(clang::ReturnStmt* ret) override;
 
     std::string RecursiveRewrite(const clang::Stmt* expr) override;
+
+    void ClearUserArgs() override { m_pFunRW2->m_kernelUserArgs.clear(); }
+    ShaderFeatures GetKernelShaderFeatures() const override { return m_pFunRW2->GetShaderFeatures(); }
+
+    void SetProcessFuncMember(bool a_value) override
+    {
+      processFuncMember = a_value;
+      m_pFunRW2->processFuncMember = a_value;
+    }
 
     void SetCurrFuncInfo(kslicer::FuncData* a_pInfo) override 
     { 

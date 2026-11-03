@@ -1369,7 +1369,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       auto pVisitorF = a_classInfo.pShaderCC->MakeFuncRewriter(rewrite2, compiler, &a_classInfo);
       auto pVisitorK = a_classInfo.pShaderCC->MakeKernRewriter(rewrite2, compiler, &a_classInfo, const_cast<kslicer::KernelInfo&>(k), "");
       pVisitorK->ClearUserArgs();
-      pVisitorK->processFuncMember = true; // signal that we process function member, not the kernel itself
+      pVisitorK->SetProcessFuncMember(true); // signal that we process function member, not the kernel itself
 
       for(auto& f : k.usedMemberFunctions)
       { 
