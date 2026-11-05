@@ -1999,7 +1999,10 @@ nlohmann::json kslicer::PrepareUBOJson(MainClassInfo& a_classInfo,
     size_t sizeO = member.sizeInBytes;
     size_t sizeA = member.alignedSizeInBytes;
 
-    const bool isVec3Member = ((typeStr == "vec3") || (typeStr == "ivec3") || (typeStr == "uvec3")) && a_classInfo.pShaderCC->IsGLSL();
+    // 3-component vectors take 12 bytes in std430, while host struct pads them to 16 with a dummy field: add the same padding in shaders
+    const bool slangShaders = (a_classInfo.pShaderCC->Name() == "Slang") && !a_classInfo.pShaderCC->IsWGPU();
+    const bool isVec3Member = (((typeStr == "vec3")   || (typeStr == "ivec3") || (typeStr == "uvec3")) && a_classInfo.pShaderCC->IsGLSL()) ||
+                              (((typeStr == "float3") || (typeStr == "int3")  || (typeStr == "uint3")) && slangShaders);
 
     json uboField;
     uboField["Type"]      = kslicer::CleanTypeName(typeStr);

@@ -13,6 +13,7 @@ namespace kslicer
 
    Statuses: supported and experimental features are accepted (experimental and partial ones with a warning),
    not supported and unknown ones are errors. An unknown feature ID is an error too.
+   If the table is not found, only a warning is printed and translation continues.
   */
   bool CheckRequiredFeatures(const std::vector<std::string>& a_features, const std::string& a_shaderCC, const std::string& a_featureFile);
 };

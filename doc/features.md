@@ -15,8 +15,9 @@ A program may list the features it needs in its `kmake.json`:
 
 kslicer reads this page at run time and stops with an error if the selected back end does not
 support one of the features (❌) or its status is unknown (❔). For 🟡 and 🧪 it prints a warning.
-Without `requireFeatures` nothing is checked. For this reason the format of the tables (the `ID`
-column, back end column names, marks) must be kept.
+Without `requireFeatures` nothing is checked. If this page is not found (kslicer is started outside
+the repository without `-selfdir`), kslicer prints a warning and continues. Because kslicer parses
+this page, the format of the tables (the `ID` column, back end column names, marks) must be kept.
 
 | Mark | Meaning |
 |------|---------|
@@ -83,37 +84,36 @@ follows the test configs and the code.
 
 | ID | Feature | Slang | GLSL | CUDA/HIP | ISPC | Tests and samples |
 |----|---------|:-----:|:----:|:--------:|:----:|-------------------|
-| `ubo_layout` | POD members of any types and order in the UBO (padding) | 🟡² | ✅ | ❔ | ❔ | 009–015, 021 |
+| `ubo_layout` | POD members of any types and order in the UBO (padding) | ✅ | ✅ | ❔ | ❔ | 009–015, 021 |
 | `fp64` | `double` | ✅ | ✅ | ❔ | ❔ | 016, 017 |
-| `fp16` | `half` arithmetic and conversions | 🟡³ | 🟡⁴ | ❔ | ❔ | 022, 053, 070 |
+| `fp16` | `half` arithmetic and conversions | 🟡² | 🟡³ | ❔ | ❔ | 022, 053, 070 |
 | `storage_8_16bit` | 8/16-bit types in buffers and UBO | ✅ | ✅ | ❔ | ❔ | 060, 053 |
 | `buffer_reference` | Buffer device address (`-with_buffer_reference`) | ❌ | ✅ | ❔ | ❔ | 039 |
-| `textures` | Textures and samplers (`ITexture2D`, combined image sampler) | 🟡⁵ | ✅ | ❌ | ❔ | 006, 007, 008, app 14, app 15, app 20 |
+| `textures` | Textures and samplers (`ITexture2D`, combined image sampler) | 🟡⁴ | ✅ | ❌ | ❔ | 006, 007, 008, app 14, app 15, app 20 |
 | `image_storage` | Writable images (`Texture2D<float4>` output) | ❌ | ✅ | ❌ | ❔ | 066 |
 | `half_textures` | Textures stored in half precision (`-halfTex 1`) | ❌ | ✅ | ❌ | ❔ | 066, app 14 |
 
-² `float3` followed by `float` members gives a wrong layout: 009 fails.
-³ 053 and 070 work, 022 (`-forceEnableHalf`) fails to compile.
-⁴ 022 and 070 work, 053 (`as_half`/`bit_cast`) fails to compile.
-⁵ Arrays of textures (007) work. A single combined image sampler member (006, 008) and the texture
+² 053 and 070 work, 022 (`-forceEnableHalf`) fails to compile.
+³ 022 and 070 work, 053 (`as_half`/`bit_cast`) fails to compile.
+⁴ Arrays of textures (007) work. A single combined image sampler member (006, 008) and the texture
 samples app 14, app 15 fail to compile.
 
 ### Ray tracing and virtual functions
 
 | ID | Feature | Slang | GLSL | CUDA/HIP | ISPC | Tests and samples |
 |----|---------|:-----:|:----:|:--------:|:----:|-------------------|
-| `rt_query_hw` | `ISceneObject::RayQuery_*` with hardware ray queries | ✅ | ✅ | ❌ | 🧪⁶ | 019, 065, app 16, app 18 |
+| `rt_query_hw` | `ISceneObject::RayQuery_*` with hardware ray queries | ✅ | ✅ | ❌ | 🧪⁵ | 019, 065, app 16, app 18 |
 | `rt_bvh_sw` | Software BVH traversal compiled from C++ | ✅ | ✅ | ❌ | ❔ | 046, 065 |
 | `rt_pipeline` | Vulkan ray tracing pipeline (`-enable_ray_tracing_pipeline 1`) | ❌ | ✅ | ❌ | ❌ | 035, 036, 037, app 17 |
-| `rt_custom_prim` | Custom primitives with a C++ intersection function | 🟡⁷ | ✅ | ❌ | ❔ | 046, 035–038 |
-| `rt_instances` | Instanced scenes | 🟡⁸ | ✅ | ❌ | ❔ | app 16, app 17 |
+| `rt_custom_prim` | Custom primitives with a C++ intersection function | 🟡⁶ | ✅ | ❌ | ❔ | 046, 035–038 |
+| `rt_instances` | Instanced scenes | 🟡⁷ | ✅ | ❌ | ❔ | app 16, app 17 |
 | `rt_scene_append` | Adding meshes and instances to a scene on the fly | ✅ | ✅ | ❌ | ❔ | 065 |
 | `virtual_func` | Virtual function hierarchies in kernels | ❌ | ✅ | ❔ | ❔ | 069, app 10, app 13 |
 | `callable_shaders` | Virtual functions as callable shaders (`-enable_callable_shaders 1`) | ❌ | ✅ | ❌ | ❌ | app 26, app 27 |
 
-⁶ With Embree on the CPU, IPV kernels only: app 18.
-⁷ The current interface (046) works; the older `-intersectionShader` configs (035–038) fail to compile.
-⁸ app 16 works, app 17 needs `rt_pipeline`.
+⁵ With Embree on the CPU, IPV kernels only: app 18.
+⁶ The current interface (046) works; the older `-intersectionShader` configs (035–038) fail to compile.
+⁷ app 16 works, app 17 needs `rt_pipeline`.
 
 ## 2. C++ language features
 

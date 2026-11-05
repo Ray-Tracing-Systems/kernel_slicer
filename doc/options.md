@@ -163,7 +163,7 @@ variants, e.g. `apps/tests/042_atomic_add_float/kmake_hw.json` and `kmake_emul.j
 | `excludedControlFunctions` | Names of public methods that must not be treated as control functions |
 | `additionaIncludes` | Extra `#include` lines for the generated header, like `-cpp_include` (the key is spelled this way) |
 | `appendGroups` | Groups of member vectors for `CommitAppendedData()`: `{"group": ["m_vec1", "m_vec2"]}`. See below |
-| `requireFeatures` | Feature IDs from [features.md](features.md) that the program needs: `["scan", "rt_query_hw"]`. kslicer stops with an error if the selected back end does not support one of them or its status is unknown, and warns about partial and experimental ones. Without this key nothing is checked |
+| `requireFeatures` | Feature IDs from [features.md](features.md) that the program needs: `["scan", "rt_query_hw"]`. kslicer stops with an error if the selected back end does not support one of them or its status is unknown, and warns about partial and experimental ones. Without this key nothing is checked. If `doc/features.md` is not found, kslicer only warns and continues |
 | `appendRewriteGroups` | Names of append groups that `CommitAppendedData()` copies entirely, not only appended elements: `["otherGroup"]`. See below |
 
 Work group sizes: the defaults (256 for 1D kernels, 32×8 for 2D) are good in most cases. Set

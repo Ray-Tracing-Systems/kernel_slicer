@@ -72,11 +72,11 @@ bool kslicer::CheckRequiredFeatures(const std::vector<std::string>& a_features, 
   }
 
   std::ifstream fin(a_featureFile);
-  if(!fin.is_open())
+  if(!fin.is_open()) // the table is documentation, not a part of the translator: do not stop translation without it
   {
-    std::cout << "[kslicer]: error: 'requireFeatures' is given, but " << a_featureFile.c_str()
-              << " is not found (run kslicer from the repository root or pass '-selfdir')" << std::endl;
-    return false;
+    std::cout << "[kslicer]: WARNING, 'requireFeatures' is given, but " << a_featureFile.c_str()
+              << " is not found (run kslicer from the repository root or pass '-selfdir'); required features are not checked" << std::endl;
+    return true;
   }
 
   // every table has a header '| ID | Feature | Slang | GLSL | ...'; rows start with '| `id` |'
