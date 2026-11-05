@@ -2,6 +2,9 @@
     "variants": [
         {"name": "slang_hw", "backend": "slang", "kmake": "kmake_hw.json"},
         {"name": "slang_sw", "backend": "slang", "kmake": "kmake_emul.json"},
-        {"name": "slang_sw2", "backend": "slang", "kmake": "kmake_emul2.json"}
+        {"name": "slang_sw2", "backend": "slang", "kmake": "kmake_emul2.json"},
+        {"name": "glsl_hw", "backend": "glsl", "kmake": "kmake_hw.json"},
+        {"name": "glsl_sw", "backend": "glsl", "kmake": "kmake_emul.json"},
+        {"name": "glsl_sw2", "backend": "glsl", "kmake": "kmake_emul2.json"}
     ]
 }

@@ -3,6 +3,12 @@
         {"name": "slang_hw", "backend": "slang", "kmake": "kmake_hw.json"},
         {"name": "slang_sw", "backend": "slang", "kmake": "kmake_emul.json"},
         {"name": "slang_sw2", "backend": "slang", "kmake": "kmake_emul2.json"},
-        {"name": "cuda", "backend": "cuda", "kmake": "kmake.json"}
+        {"name": "cuda", "backend": "cuda", "kmake": "kmake.json"},
+        {"name": "glsl_hw", "backend": "glsl", "kmake": "kmake_hw.json",
+         "skip": "LiteMath::ReduceAdd is supported only by Slang back-end (undeclared identifier ReduceAdd) (found 2026-11-05)"},
+        {"name": "glsl_sw", "backend": "glsl", "kmake": "kmake_emul.json",
+         "skip": "LiteMath::ReduceAdd is supported only by Slang back-end (undeclared identifier ReduceAdd) (found 2026-11-05)"},
+        {"name": "glsl_sw2", "backend": "glsl", "kmake": "kmake_emul2.json",
+         "skip": "LiteMath::ReduceAdd is supported only by Slang back-end (undeclared identifier ReduceAdd) (found 2026-11-05)"}
     ]
 }

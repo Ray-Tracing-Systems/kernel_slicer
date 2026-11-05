@@ -1,6 +1,10 @@
 {
     "variants": [
         {"name": "slang_v1", "backend": "slang", "kmake": "kmake.json"},
-        {"name": "slang_v2", "backend": "slang", "kmake": "kmake_nosubgroup.json"}
+        {"name": "slang_v2", "backend": "slang", "kmake": "kmake_nosubgroup.json"},
+        {"name": "glsl_v1", "backend": "glsl", "kmake": "kmake.json",
+         "skip": "std::unordered_map members are supported only by Slang back-end (found 2026-11-05)"},
+        {"name": "glsl_v2", "backend": "glsl", "kmake": "kmake_nosubgroup.json",
+         "skip": "std::unordered_map members are supported only by Slang back-end (found 2026-11-05)"}
     ]
 }

@@ -1,5 +1,7 @@
 {
     "variants": [
-        {"name": "glsl", "backend": "glsl", "kmake": "kmake.json"}
+        {"name": "glsl", "backend": "glsl", "kmake": "kmake.json"},
+        {"name": "slang", "backend": "slang", "kmake": "kmake.json",
+         "skip": "-forceEnableHalf: Slang shader does not compile (not enough arguments to call) (found 2026-11-05)"}
     ]
 }

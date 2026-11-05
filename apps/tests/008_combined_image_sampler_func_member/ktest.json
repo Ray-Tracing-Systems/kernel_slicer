@@ -1,5 +1,7 @@
 {
     "variants": [
-        {"name": "glsl", "backend": "glsl", "kmake": "kmake.json"}
+        {"name": "glsl", "backend": "glsl", "kmake": "kmake.json"},
+        {"name": "slang", "backend": "slang", "kmake": "kmake.json",
+         "skip": "single combined image sampler member: undefined identifier m_pCombinedImage_sam in Slang shader (found 2026-11-05)"}
     ]
 }

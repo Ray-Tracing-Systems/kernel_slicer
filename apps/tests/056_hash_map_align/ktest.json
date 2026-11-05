@@ -3,6 +3,14 @@
         {"name": "slang_v1", "backend": "slang", "kmake": "kmake_emul_nosubgroup.json"},
         {"name": "slang_v2", "backend": "slang", "kmake": "kmake_emul.json"},
         {"name": "slang_v3", "backend": "slang", "kmake": "kmake_hw.json"},
-        {"name": "slang_v4", "backend": "slang", "kmake": "kmake_emul2.json"}
+        {"name": "slang_v4", "backend": "slang", "kmake": "kmake_emul2.json"},
+        {"name": "glsl_v1", "backend": "glsl", "kmake": "kmake_emul_nosubgroup.json",
+         "skip": "std::unordered_map members are supported only by Slang back-end (found 2026-11-05)"},
+        {"name": "glsl_v2", "backend": "glsl", "kmake": "kmake_emul.json",
+         "skip": "std::unordered_map members are supported only by Slang back-end (found 2026-11-05)"},
+        {"name": "glsl_v3", "backend": "glsl", "kmake": "kmake_hw.json",
+         "skip": "std::unordered_map members are supported only by Slang back-end (found 2026-11-05)"},
+        {"name": "glsl_v4", "backend": "glsl", "kmake": "kmake_emul2.json",
+         "skip": "std::unordered_map members are supported only by Slang back-end (found 2026-11-05)"}
     ]
 }

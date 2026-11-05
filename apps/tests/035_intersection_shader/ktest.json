@@ -2,6 +2,12 @@
     "variants": [
         {"name": "glsl_cs_sw", "backend": "glsl", "kmake": "kmake_compute.json", "megakernel": true},
         {"name": "glsl_cs_hw", "backend": "glsl", "kmake": "kmake_rtp.json", "options": {"-enable_ray_tracing_pipeline": 0}, "megakernel": true},
-        {"name": "glsl_rt", "backend": "glsl", "kmake": "kmake_rtp.json", "megakernel": true}
+        {"name": "glsl_rt", "backend": "glsl", "kmake": "kmake_rtp.json", "megakernel": true},
+        {"name": "slang_cs_sw", "backend": "slang", "kmake": "kmake_compute.json", "megakernel": true,
+         "skip": "old -intersectionShader configs: undefined identifier AllBufferReferences in Slang shader (found 2026-11-05)"},
+        {"name": "slang_cs_hw", "backend": "slang", "kmake": "kmake_rtp.json", "options": {"-enable_ray_tracing_pipeline": 0}, "megakernel": true,
+         "skip": "old -intersectionShader configs: undefined identifier AllBufferReferences in Slang shader (found 2026-11-05)"},
+        {"name": "slang_rt", "backend": "slang", "kmake": "kmake_rtp.json", "megakernel": true,
+         "skip": "old -intersectionShader configs: undefined identifier AllBufferReferences in Slang shader (found 2026-11-05)"}
     ]
 }

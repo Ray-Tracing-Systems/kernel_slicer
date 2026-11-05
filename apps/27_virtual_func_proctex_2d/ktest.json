@@ -1,5 +1,7 @@
 {
     "variants": [
-        {"name": "glsl", "backend": "glsl", "kmake": "kmake.json"}
+        {"name": "glsl", "backend": "glsl", "kmake": "kmake.json"},
+        {"name": "slang", "backend": "slang", "kmake": "kmake.json",
+         "skip": "virtual functions / callable shaders are implemented only in GLSL back-end (undefined identifier uvec2) (found 2026-11-05)"}
     ]
 }

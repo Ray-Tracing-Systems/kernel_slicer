@@ -1,5 +1,7 @@
 {
     "variants": [
-        {"name": "slang", "backend": "slang", "kmake": "kmake.json"}
+        {"name": "slang", "backend": "slang", "kmake": "kmake.json"},
+        {"name": "glsl", "backend": "glsl", "kmake": "kmake.json",
+         "skip": "kernel locals declared before the thread loop are supported only by Slang back-end (found 2026-11-05)"}
     ]
 }

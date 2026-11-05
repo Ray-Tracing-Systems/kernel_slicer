@@ -1,6 +1,8 @@
 {
     "variants": [
-        {"name": "glsl", "backend": "glsl", "kmake": "kmake.json", "megakernel": true}
+        {"name": "glsl", "backend": "glsl", "kmake": "kmake.json", "megakernel": true},
+        {"name": "slang", "backend": "slang", "kmake": "kmake.json", "megakernel": true,
+         "skip": "ray tracing pipeline is not supported by Slang back-end: host code loads *.glsl.spv (found 2026-11-05)"}
     ],
     "requires": ["../resources/HydraCore"]
 }

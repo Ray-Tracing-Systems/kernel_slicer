@@ -1,5 +1,7 @@
 {
     "variants": [
-        {"name": "glsl", "backend": "glsl", "kmake": "kmake.json"}
+        {"name": "glsl", "backend": "glsl", "kmake": "kmake.json"},
+        {"name": "slang", "backend": "slang", "kmake": "kmake.json",
+         "skip": "wrong UBO layout in Slang for float3 followed by float members: GPU result differs from CPU (found 2026-11-05)"}
     ]
 }

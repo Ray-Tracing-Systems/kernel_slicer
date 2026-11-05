@@ -1,5 +1,7 @@
 {
     "variants": [
-        {"name": "glsl", "backend": "glsl", "kmake": "kmake.json"}
+        {"name": "glsl", "backend": "glsl", "kmake": "kmake.json"},
+        {"name": "slang", "backend": "slang", "kmake": "kmake.json",
+         "skip": "textures: Slang shader does not compile (left of = is not an l-value) (found 2026-11-05)"}
     ]
 }

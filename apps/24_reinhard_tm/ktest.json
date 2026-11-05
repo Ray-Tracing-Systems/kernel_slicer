@@ -1,6 +1,7 @@
 {
     "variants": [
         {"name": "glsl", "backend": "glsl", "kmake": "kmake.json", "options": {"-reorderLoops": "YX"}},
-        {"name": "ispc", "backend": "ispc", "kmake": "kmake.json", "options": {"-ispc_threads": 1, "-ispc_explicit_id": 0}}
+        {"name": "ispc", "backend": "ispc", "kmake": "kmake.json", "options": {"-ispc_threads": 1, "-ispc_explicit_id": 0}},
+        {"name": "slang", "backend": "slang", "kmake": "kmake.json", "options": {"-reorderLoops": "YX"}}
     ]
 }

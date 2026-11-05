@@ -1,5 +1,7 @@
 {
     "variants": [
-        {"name": "glsl", "backend": "glsl", "kmake": "kmake.json"}
+        {"name": "glsl", "backend": "glsl", "kmake": "kmake.json"},
+        {"name": "slang", "backend": "slang", "kmake": "kmake.json",
+         "skip": "-with_buffer_reference is implemented only in GLSL back-end (undefined identifier AllBufferReferences) (found 2026-11-05)"}
     ]
 }

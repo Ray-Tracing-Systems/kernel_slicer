@@ -1,6 +1,8 @@
 {
     "variants": [
         {"name": "glsl", "backend": "glsl", "kmake": "kmake.json",
-         "skip": "GPU result differs from CPU (broken before GLSL refactoring, 2026-10-31): coefs_y/coefs_z max error 1.6"}
+         "skip": "GPU result differs from CPU (broken before GLSL refactoring, 2026-10-31): coefs_y/coefs_z max error 1.6"},
+        {"name": "slang", "backend": "slang", "kmake": "kmake.json",
+         "skip": "Slang shader does not compile (undefined identifier offset) (found 2026-11-05)"}
     ]
 }
