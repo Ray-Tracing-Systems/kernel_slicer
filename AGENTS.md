@@ -83,6 +83,9 @@ Pitfalls:
   races between workgroups often show up only there.
 - After a change to shared code (host templates, `tr_host_vulkan.cpp`, rewriters), check both the
   Slang and the GLSL back ends.
+- [doc/features.md](doc/features.md) lists the support status of every feature per back end. When a
+  change adds, fixes or breaks a feature on some back end (or adds/removes a `skip`), update its row
+  in the same commit. Feature IDs are stable: never rename them.
 
 ## Code map
 
@@ -100,7 +103,7 @@ Pitfalls:
 | `templates_slang/`, `templates_glsl/` | shader templates, including service shaders `z_scan_*`, `z_bitonic_*`, `z_memcpy` |
 | `templates_cuda/`, `templates_ispc/`, `templates_wk/` | CUDA, ISPC, WebGPU templates |
 | `TINYSTL/` | minimal standard library used when parsing input code |
-| `doc/README_internal.md` | description of the translator passes (partly outdated) |
+| `doc/internals.md` | description of the translator passes (partly outdated) |
 
 A feature that exists for one shader back end is often missing in another one. When you add or
 fix something in `templates_glsl/` or `shaders_glsl.cpp`, check whether `templates_slang/` /

@@ -8,6 +8,7 @@ set(KSLICER_SOURCE_FILES
     kslicer_main.cpp
     kslicer_utils.cpp
     kslicer_warnings.cpp
+    feature_status.cpp
     hashmap.cpp
     neural_nets.cpp
     kslicer_def.cpp

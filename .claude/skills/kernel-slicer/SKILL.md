@@ -120,7 +120,7 @@ protected:
    calls requires another commit. If the program only **appends** to member vectors (scene
    editing, streaming), also declare `virtual void CommitAppendedData() {}` and call it instead:
    the generated version copies only the new elements and re-allocates GPU buffers only when they
-   overflow (`appendGroups` in `kmake.json`, see `doc/README_options.md` and
+   overflow (`appendGroups` in `kmake.json`, see `doc/options.md` and
    `apps/tests/064_commit_appended`). Changed old elements can be marked with
    `InvalidateAppendedData("m_vec", first)`, and small often rewritten groups listed in
    `appendRewriteGroups`. New meshes and instances of a ray tracing scene (`ISceneObject`) are
@@ -169,6 +169,11 @@ protected:
    ```
 
 ## Step 4. Kernel and helper code rules
+
+Which features and C++ constructs each back end supports, with tests that show them, is listed in
+`doc/features.md`. Before relying on a feature check its mark for the target back end. List the
+features the program needs in `kmake.json` (`"requireFeatures": ["scan", "hash_map"]`): kslicer
+then fails with a clear error instead of producing broken shaders on a back end without them.
 
 **Allowed**
 - Arithmetic, `if`/`switch`, inner (non-thread) `for`/`while` loops with bounded trip counts,

@@ -14,6 +14,27 @@ as `-DNAME`. Boolean options take `0` or `1`.
 kslicer loads its code templates relative to the current directory. Run it from the repository
 root or pass `-selfdir <repository root>`.
 
+## Most frequently used options
+
+| Option | Meaning |
+|--------|---------|
+| `-mainClass Name` | Class to translate |
+| `-shaderCC slang` | Back end, see [back ends](concepts.md#back-ends). Always set it: the built-in default is the outdated `clspv` |
+| `-stdlibfolder TINYSTL` | Minimal standard library used for parsing |
+| `-I<dir> ignore` | Headers from `<dir>` are used for parsing only (LiteMath, TINYSTL) |
+| `-I<dir> process` | Functions and types from headers in `<dir>` are translated into shaders |
+| `-DNAME` | Preprocessor define for parsing. `KERNEL_SLICER` is always defined during translation, so `#ifndef KERNEL_SLICER` hides CPU-only code from the translator |
+| `-reorderLoops YX` | For 2D kernels written with `y` outer and `x` inner: makes `x` the fastest thread index. Always use it for images |
+| `-megakernel 1` | Each RTV control function becomes one shader instead of a sequence of kernels |
+| `-enable_ray_tracing_pipeline 1` | With `-megakernel 1`: use the Vulkan ray tracing pipeline instead of ray queries |
+| `-timestamps 1` | GPU time of every kernel through `GetExecutionTime("kernel2D_Name", t)` |
+| `-atomicf_emul 1` | Emulate float atomics with CAS on GPUs without `shaderBufferFloat32AtomicAdd` (Slang) |
+| `-suffix _GPU` | Name of the generated class, factory function and shader folder (default `_Generated`) |
+| `-selfdir <dir>` | Repository root, when kslicer is not started from it |
+
+Complete command lines for every sample and test are in `.vscode/launch_slang.json` and
+`.vscode/launch_glsl.json`.
+
 ## Command line options
 
 ### Input
@@ -53,7 +74,7 @@ root or pass `-selfdir <repository root>`.
 |--------|---------|---------|
 | `-reorderLoops YX` | `XY` | For 2D IPV kernels written with `y` outer and `x` inner: makes `x` the fastest GPU thread index. **Always use it for images**: memory-bound kernels become several times faster |
 | `-megakernel 1` | `0` | Each RTV control function becomes one shader instead of a sequence of kernels |
-| `-persistent 1` | `0` | Persistent threads for RTV control functions |
+| `-persistent 1` | `0` | Persistent rays for RTV megakernels (`-megakernel 1`): all threads of a subgroup trace the same pixel, see [concepts.md](concepts.md#execution-strategies-from-one-source) |
 | `-enableSubgroup 0\|1` | not set | Allow subgroup operations (reductions, hash tables). If not set, only optimizations that are always correct are used where the device supports them |
 | `-warpSize <n>` | `32` | Subgroup size assumed by reductions to skip synchronization |
 | `-atomicf_emul 1` | `0` | Emulate float atomics (`InterlockedAdd` on float, `InterlockedAdd3f`, `ReduceAdd<float>`) with a CAS loop on a `uint` view of the buffer, for GPUs without `shaderBufferFloat32AtomicAdd`. Slang only; `2` is the same as `1` |
@@ -142,6 +163,7 @@ variants, e.g. `apps/tests/042_atomic_add_float/kmake_hw.json` and `kmake_emul.j
 | `excludedControlFunctions` | Names of public methods that must not be treated as control functions |
 | `additionaIncludes` | Extra `#include` lines for the generated header, like `-cpp_include` (the key is spelled this way) |
 | `appendGroups` | Groups of member vectors for `CommitAppendedData()`: `{"group": ["m_vec1", "m_vec2"]}`. See below |
+| `requireFeatures` | Feature IDs from [features.md](features.md) that the program needs: `["scan", "rt_query_hw"]`. kslicer stops with an error if the selected back end does not support one of them or its status is unknown, and warns about partial and experimental ones. Without this key nothing is checked |
 | `appendRewriteGroups` | Names of append groups that `CommitAppendedData()` copies entirely, not only appended elements: `["otherGroup"]`. See below |
 
 Work group sizes: the defaults (256 for 1D kernels, 32×8 for 2D) are good in most cases. Set

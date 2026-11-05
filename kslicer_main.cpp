@@ -6,6 +6,7 @@
 #include <filesystem>
 
 #include "kslicer_containers.h"
+#include "feature_status.h"
 #include <iomanip>
 #include <cctype>
 #include <queue>
@@ -719,6 +720,16 @@ int main(int argc, const char **argv)
   /////////////////////////////////////////////////////////////////////////////////////////////////// -stdlibFolder
   if(selfFolder != "")
     std::filesystem::current_path(selfFolder);
+
+  // "requireFeatures" : ["scan", "rt_query_hw"]: stop if the selected back end does not support them, see doc/features.md
+  if(inputOptions.contains("requireFeatures"))
+  {
+    std::vector<std::string> requiredFeatures;
+    for(const auto& feature : inputOptions["requireFeatures"])
+      requiredFeatures.push_back(feature.get<std::string>());
+    if(!kslicer::CheckRequiredFeatures(requiredFeatures, shaderCCName, "doc/features.md"))
+      return 1;
+  }
 
   if(stdlibFolder == "")
   {
