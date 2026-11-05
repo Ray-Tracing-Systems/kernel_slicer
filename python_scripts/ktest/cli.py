@@ -225,7 +225,7 @@ def main(argv, root):
 
     kslicer = os.path.abspath(args.kslicer) if args.kslicer else find_kslicer(root)
     if not kslicer or not os.path.isfile(kslicer):
-        sys.exit('kslicer executable is not found. Build it first (see README.md, "Build") or pass --kslicer <path>.')
+        sys.exit('kslicer executable is not found. Build it first (see doc/build.md) or pass --kslicer <path>.')
     check_kslicer_age(root, kslicer)
 
     log_root = os.path.join(root, 'ktest_logs')

@@ -1,6 +1,6 @@
 # Using generated class 
 
-<p align = "center"><img src="../images/concept.jpg" width = "858"></p>
+<p align = "center"><img src="../../images/concept.jpg" width = "858"></p>
 <p align = "center">Fig. 1. Typical kernel_slicer usage scheme</p><BR>
 
 It is supposed that you will take generated code and bind it to the normal hand-written Vulkan code (fig. 1). However we need to discuss nuances which may be not obvious.
@@ -18,7 +18,7 @@ It is supposed that you will take generated code and bind it to the normal hand-
 
 2. You can directly used *TestClass_Generated* if you don't plan to change generated source code. Otherwise we recommend to create the third class (called *TestClass_GPU*) which inherits *TestClass_Generated* (Fig. 2);
 
-<p align = "center"><img src="images/class_hierarchy.png" width = "271"></p>
+<p align = "center"><img src="../images/class_hierarchy.png" width = "271"></p>
 <p align = "center">Fig. 2. Class hierarchy for generated and hand written code </p><BR>
 
 3. The constructor of generated class is always empty currently. We did so to avoid solving the issue of passing constructor parameters through class hierarchy. So it is supposed that additional initialization functions will be added to *TestClass* or *TestClass_GPU* by yourself (and then called in the apropriate time);
@@ -38,7 +38,7 @@ public:
 };
 ```
 
-4. Before you understand what exactly you will override and add inside *TestClass_GPU* consider typical usage scenario of generated code. We will here consider it for [Example #3: path tracing with loop-break](README_ex03.md) case. In this sample several Control Functions are used. We speak about "PackXY" and "StupidPathTrace" functions. So, here is the typical scenario:
+4. Before you understand what exactly you will override and add inside *TestClass_GPU* consider typical usage scenario of generated code. We will here consider it for [Example #3: path tracing with loop-break](ex03_path_tracing_loop_break.md) case. In this sample several Control Functions are used. We speak about "PackXY" and "StupidPathTrace" functions. So, here is the typical scenario:
 
 ```cpp
 // (1) Init generated class

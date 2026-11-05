@@ -2,7 +2,7 @@
 
 ## Brief
 
-`kernel_slicer` can be built within LLVM project with [build script](/other/build-with-llvm.sh).
+`kernel_slicer` can be built within LLVM project with [build script](other/build-with-llvm.sh).
 
 ## Installation process
 
