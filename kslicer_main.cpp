@@ -692,19 +692,22 @@ int main(int argc, const char **argv)
 
   std::unique_ptr<kslicer::MainClassInfo> pInputCodeInfoImpl = nullptr;
 
+  // LLVM 22 TargetInfo borrows these options, so they must outlive the compiler.
+  std::shared_ptr<clang::TargetOptions> pto = std::make_shared<clang::TargetOptions>();
   clang::CompilerInstance compiler;
   clang::DiagnosticOptions diagnosticOptions;
   compiler.createDiagnostics();  //compiler.createDiagnostics(argc, argv); //
 
   // Create an invocation that passes any flags to preprocessor
-  std::shared_ptr<clang::CompilerInvocation> Invocation = std::make_shared<clang::CompilerInvocation>(); //
-  clang::CompilerInvocation::CreateFromArgs(*Invocation, args, compiler.getDiagnostics());
-  compiler.setInvocation(Invocation);
+  clang::CompilerInvocation::CreateFromArgs(compiler.getInvocation(), args, compiler.getDiagnostics());
 
   // Set default target triple
-  std::shared_ptr<clang::TargetOptions> pto = std::make_shared<clang::TargetOptions>();
   pto->Triple     = llvm::sys::getDefaultTargetTriple();
+#ifdef KSLICER_USE_LLVM22
+  clang::TargetInfo *pti = clang::TargetInfo::CreateTargetInfo(compiler.getDiagnostics(), *pto);
+#else
   clang::TargetInfo *pti = clang::TargetInfo::CreateTargetInfo(compiler.getDiagnostics(), pto);
+#endif
   compiler.setTarget(pti);
   compiler.getLangOpts().GNUMode = 1;
   compiler.getLangOpts().CXXExceptions = 1;
@@ -715,7 +718,11 @@ int main(int argc, const char **argv)
   compiler.getLangOpts().CPlusPlus17 = 1;
   compiler.getLangOpts().CPlusPlus11 = 1;
   compiler.createFileManager();
+#ifdef KSLICER_USE_LLVM22
+  compiler.createSourceManager();
+#else
   compiler.createSourceManager(compiler.getFileManager());
+#endif
   
   /////////////////////////////////////////////////////////////////////////////////////////////////// -stdlibFolder
   if(selfFolder != "")
@@ -766,8 +773,13 @@ int main(int argc, const char **argv)
   compiler.getPreprocessor().addPPCallbacks(std::make_unique<HeaderLister>(headerLister));
   compiler.createASTContext();
 
-  const clang::FileEntry *pFile = compiler.getFileManager().getFile(fileName.u8string()).get();
-  compiler.getSourceManager().setMainFileID( compiler.getSourceManager().createFileID( pFile, clang::SourceLocation(), clang::SrcMgr::C_User));
+  auto inputFile = compiler.getFileManager().getFileRef(fileName.u8string());
+  if(!inputFile)
+  {
+    llvm::errs() << "error: cannot open " << fileName.u8string() << ": " << llvm::toString(inputFile.takeError()) << '\n';
+    return 1;
+  }
+  compiler.getSourceManager().setMainFileID(compiler.getSourceManager().createFileID(*inputFile, clang::SourceLocation(), clang::SrcMgr::C_User));
   compiler.getDiagnosticClient().BeginSourceFile(compiler.getLangOpts(), &compiler.getPreprocessor());
 
   // init clang tooling

@@ -3,8 +3,15 @@ project(kernel_slicer)
 
 set(CMAKE_CXX_STANDARD 17)
 
-find_package(LLVM 17 REQUIRED CONFIG)
-find_package(Clang 17 REQUIRED CONFIG)
+option(USE_LLVM22 "Build with LLVM/Clang 22.1 instead of 17" OFF)
+
+if(USE_LLVM22)
+    find_package(LLVM 22.1 REQUIRED CONFIG)
+    find_package(Clang 22.1 REQUIRED CONFIG)
+else()
+    find_package(LLVM 17 REQUIRED CONFIG)
+    find_package(Clang 17 REQUIRED CONFIG)
+endif()
 
 add_executable(kslicer
     kslicer_main.cpp
@@ -45,6 +52,9 @@ add_executable(kslicer
 )
 
 target_compile_definitions(kslicer PRIVATE ${LLVM_DEFINITIONS} ${CLANG_DEFINITIONS})
+if(USE_LLVM22)
+  target_compile_definitions(kslicer PRIVATE KSLICER_USE_LLVM22=1)
+endif()
 target_include_directories(kslicer PRIVATE include ${LLVM_INCLUDE_DIRS} ${CLANG_INCLUDE_DIRS})
 target_link_directories(kslicer PRIVATE ${LLVM_LIBRARY_DIRS})
 target_link_libraries(kslicer PRIVATE clangTooling)

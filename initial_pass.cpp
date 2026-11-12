@@ -126,7 +126,7 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXRecordDecl(CXXRecordDecl* 
   if(!record->hasDefinition())
     return true;
 
-  const auto pType = record->getTypeForDecl();
+  const auto pType = kslicer::GetTypeForDecl(record);
   if(pType == nullptr)
     return true;
 
@@ -210,8 +210,8 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
 {
   static const auto excludedTypes = ListExcludedTypes();
 
-  const FileEntry* Entry = m_sourceManager.getFileEntryForID(m_sourceManager.getFileID(type->getLocation()));
-  if(Entry == nullptr)
+  const auto Entry = m_sourceManager.getFileEntryRefForID(m_sourceManager.getFileID(type->getLocation()));
+  if(!Entry)
     return true;
 
   std::string FileName  = Entry->getName().str();
@@ -313,8 +313,8 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitTypeDecl(TypeDecl* type)
 
 bool kslicer::InitialPassRecursiveASTVisitor::VisitVarDecl(VarDecl* pTargetVar)
 {
-  const FileEntry* Entry = m_sourceManager.getFileEntryForID(m_sourceManager.getFileID(pTargetVar->getLocation()));
-  if(Entry == nullptr)
+  const auto Entry = m_sourceManager.getFileEntryRefForID(m_sourceManager.getFileID(pTargetVar->getLocation()));
+  if(!Entry)
     return true;
 
   std::string FileName = Entry->getName().str();

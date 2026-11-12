@@ -896,8 +896,8 @@ kslicer::ShaderFeatures kslicer::GetStorageFeaturesFromDataMember(const kslicer:
     return res;
 
   const clang::TypeDecl* pDecl = a_member.isContainer ? a_member.pContainerDataTypeDeclIfRecord : a_member.pTypeDeclIfRecord;
-  if(pDecl != nullptr && pDecl->getTypeForDecl() != nullptr)
-    return kslicer::GetStorageFeaturesFromType(clang::QualType(pDecl->getTypeForDecl(), 0));
+  if(pDecl != nullptr && kslicer::GetTypeForDecl(pDecl) != nullptr)
+    return kslicer::GetStorageFeaturesFromType(clang::QualType(kslicer::GetTypeForDecl(pDecl), 0));
 
   // builtin types: analyze type name
   //

@@ -4,6 +4,9 @@ This page shows what the translator supports on each back end and where to see a
 kept up to date by the developers: when you add, fix or break a feature, update its row (see
 [Maintaining this page](#maintaining-this-page)).
 
+The translator supports LLVM/Clang 17 (default) and 22.1 (`KSLICER_USE_LLVM22=ON`);
+see [build instructions](build.md#optional-llvmclang-221-configuration).
+
 Every feature has a short **ID**. IDs are stable: they are used to refer to features from tests,
 configs and issues. Do not rename an ID; if a feature is split, add new IDs and keep the old one.
 

@@ -171,7 +171,7 @@ public:
       else if (clang::isa<clang::CXXMemberCallExpr>(call)) // try to find composed functions
       {
         clang::CXXRecordDecl* recordDecl = clang::dyn_cast<clang::CXXMemberCallExpr>(call)->getRecordDecl();
-        const auto pType    = recordDecl->getTypeForDecl();
+        const auto pType    = kslicer::GetTypeForDecl(recordDecl);
         const auto qt       = pType->getLocallyUnqualifiedSingleStepDesugaredType();
         const auto typeName = kslicer::CleanTypeName(qt.getAsString());
 
@@ -219,7 +219,7 @@ public:
     if(func.isMember && clang::isa<clang::CXXMemberCallExpr>(call)) // currently we support export for members of current class only
     {
       clang::CXXRecordDecl* recordDecl = clang::dyn_cast<clang::CXXMemberCallExpr>(call)->getRecordDecl();
-      const auto pType    = recordDecl->getTypeForDecl();
+      const auto pType    = kslicer::GetTypeForDecl(recordDecl);
       const auto qt       = pType->getLocallyUnqualifiedSingleStepDesugaredType();
       const auto typeName = kslicer::CleanTypeName(qt.getAsString());
       const auto pPrefix  = m_patternImpl.composPrefix.find(typeName);
@@ -1101,7 +1101,7 @@ public:
 
   bool VisitCXXRecordDecl(clang::CXXRecordDecl* record)
   {
-    const auto pType = record->getTypeForDecl();
+    const auto pType = kslicer::GetTypeForDecl(record);
     const auto qt    = pType->getLocallyUnqualifiedSingleStepDesugaredType();
     const std::string typeName = qt.getAsString();
 
@@ -1326,7 +1326,7 @@ kslicer::DECL_IN_CLASS kslicer::GetKindOfDecl(const clang::TypeDecl* node)
   if(recordDecl->isStruct())
     return DECL_IN_CLASS::DECL_STRUCT;
   
-  clang::QualType qualType = node->getTypeForDecl()->getCanonicalTypeInternal();
+  clang::QualType qualType = kslicer::GetTypeForDecl(node)->getCanonicalTypeInternal();
   if (qualType.isConstQualified())
     return DECL_IN_CLASS::DECL_CONSTANT;
   
@@ -1502,7 +1502,7 @@ void kslicer::MainClassInfo::ProcessMemberTypes(const kslicer::umap<std::string,
       tdecl.extracted = true;
       tdecl.astNode   = const_cast<clang::TypeDecl*>(elem.node);
       declsByName[elem.typeName] = tdecl;
-      const clang::FileEntry* Entry = a_srcMgr.getFileEntryForID(a_srcMgr.getFileID(elem.node->getLocation()));
+      const auto Entry = a_srcMgr.getFileEntryRefForID(a_srcMgr.getFileID(elem.node->getLocation()));
       const std::string fileName    = std::string(Entry->getName());
       const bool        exclude     = IsInExcludedFolder(fileName);
       if(!exclude)
@@ -1685,7 +1685,7 @@ void kslicer::MainClassInfo::ProcessMemberTypesAligment(std::vector<DataMemberIn
     type.second.aligment = GetBaseAligmentForGLSL(&type.second, typesToProcess, endTypes, 0);
     if(type.second.node == nullptr)
       continue;
-    auto clangType = type.second.node->getTypeForDecl();
+    auto clangType = kslicer::GetTypeForDecl(type.second.node);
     if(clangType == nullptr)
       continue;
 

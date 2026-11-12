@@ -30,7 +30,7 @@ void CheckUnalignedStructInsideVector(const kslicer::MainClassInfo& a_classInfo)
         }
         
         // Get the size of the entire record
-        const uint64_t recordSize = context.getTypeSizeInChars(recordDecl->getTypeForDecl()).getQuantity();
+        const uint64_t recordSize = context.getTypeSizeInChars(kslicer::GetTypeForDecl(recordDecl)).getQuantity();
         
         uint64_t problem = 0;
         {

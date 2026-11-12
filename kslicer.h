@@ -16,6 +16,7 @@
 #pragma GCC diagnostic pop
 
 #include "clang/AST/DeclCXX.h"
+#include "clang_compat.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"

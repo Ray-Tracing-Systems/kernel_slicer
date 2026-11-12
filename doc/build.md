@@ -1,6 +1,7 @@
 # Building kernel_slicer
 
-Requirements: CMake ≥ 3.8, a C++17 compiler, **LLVM/clang 17** (development libraries), and the
+Requirements: CMake ≥ 3.8, a C++17 compiler, **LLVM/clang 17** (default) or **22.1**
+(optional, development libraries), and the
 [Vulkan SDK](https://vulkan.lunarg.com/sdk/home), which provides `slangc` and `glslangValidator`.
 
 ```bash
@@ -20,6 +21,31 @@ mkdir cmake-build-release && cd cmake-build-release
 cmake -DCMAKE_BUILD_TYPE=Release ..
 make -j 10
 ```
+
+### Optional LLVM/Clang 22.1 configuration
+
+Install the development packages alongside LLVM 17:
+
+```bash
+wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && sudo ./llvm.sh 22
+sudo apt install llvm-22-dev libclang-22-dev libclang-cpp22-dev clang-22
+```
+
+Configure a separate build directory:
+
+```bash
+cmake -S . -B cmake-build-llvm22 -DCMAKE_BUILD_TYPE=Release \
+      -DKSLICER_USE_LLVM22=ON \
+      -DLLVM_DIR=/usr/lib/llvm-22/lib/cmake/llvm \
+      -DClang_DIR=/usr/lib/llvm-22/lib/cmake/clang
+cmake --build cmake-build-llvm22 -j 10
+```
+
+`KSLICER_USE_LLVM22` defaults to `OFF`, selecting LLVM/Clang 17. When enabled, it
+selects LLVM/Clang 22.1 and defines `KSLICER_USE_LLVM22=1` for the `kslicer` target;
+C++ code can use `#ifdef KSLICER_USE_LLVM22` for version-specific API changes.
+The define is absent in the default LLVM 17 configuration. Use separate build
+directories for the two versions to keep their CMake package paths and object files separate.
 
 ## Other Linux distributions (Manjaro, Arch, ...)
 

@@ -150,7 +150,10 @@ public:
                       clang::StringRef SearchPath,
                       clang::StringRef RelativePath,
                       const clang::Module *Imported,
-                      clang::SrcMgr::CharacteristicKind FileType)
+#ifdef KSLICER_USE_LLVM22
+                      bool ModuleImported,
+#endif
+                      clang::SrcMgr::CharacteristicKind FileType) override
   {
     if(!IsAngled && File != nullptr)
     {

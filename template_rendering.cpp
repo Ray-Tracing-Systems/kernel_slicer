@@ -404,7 +404,7 @@ nlohmann::json kslicer::ListCallableStructures(const kslicer::umap<std::string, 
       //
       if(f.second.retTypeDecl != nullptr)
       {
-        const clang::Type* type = f.second.retTypeDecl->getTypeForDecl();
+        const clang::Type* type = kslicer::GetTypeForDecl(f.second.retTypeDecl);
         if (const auto* recordType = clang::dyn_cast<clang::RecordType>(type)) {
           std::string retTypeName = recordType->getDecl()->getQualifiedNameAsString();
           nlohmann::json arg;
@@ -699,8 +699,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     c_decl["Type"]    = kslicer::CleanTypeName(decl.type);
     data["ClassDecls"].push_back(c_decl);
 
-    if(decl.kind == DECL_IN_CLASS::DECL_STRUCT && decl.astNode != nullptr && decl.astNode->getTypeForDecl() != nullptr)
-      declFeatures = declFeatures || kslicer::GetStorageFeaturesFromType(clang::QualType(decl.astNode->getTypeForDecl(), 0));
+    if(decl.kind == DECL_IN_CLASS::DECL_STRUCT && decl.astNode != nullptr && kslicer::GetTypeForDecl(decl.astNode) != nullptr)
+      declFeatures = declFeatures || kslicer::GetStorageFeaturesFromType(clang::QualType(kslicer::GetTypeForDecl(decl.astNode), 0));
   }
 
   data["DeclsUseInt8"]  = declFeatures.useByteType;
