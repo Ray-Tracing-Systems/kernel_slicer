@@ -73,7 +73,48 @@ uint {{Map.InsertFunc}}({{Map.KeyType}} a_key)
   return capacity;
 }
 {% for Func in HashMapAddFuncs %}
-{% if Func.MapName == Map.Name %}
+{% if Func.MapName == Map.Name and Func.Fetch %}
+
+// '{{Map.Name}}[a_key]{{Func.Path}} += a_value' whose value is used: returns {% if Func.ReturnOld %}old{% else %}new{% endif %} value;
+// with subgroups, lanes with the same key get consecutive values from one atomic of the leader (prefix sum inside the group)
+//
+{{Func.ValueType}} {{Func.Name}}({{Map.KeyType}} a_key, {{Func.ValueType}} a_value)
+{
+  {{Func.ValueType}} result = {{Func.ValueType}}(0);
+  bool done = false;
+  {% if Func.Subgroups %}
+  for(uint iter = 0; iter < 4; iter++)
+  {
+    if(WaveActiveAllTrue(done))
+      break;
+    // subgroup operations are executed by all lanes before branching, as in 'add' functions
+    //
+    const uint leaderLane          = WaveActiveMin(done ? 0xFFFFFFFFu : WaveGetLaneIndex()); // first lane which has no result yet
+    const {{Map.KeyType}} leader   = WaveReadLaneAt(a_key, leaderLane);
+    const bool match               = !done && (a_key == leader);
+    const {{Func.ValueType}} prefix   = WavePrefixSum(match ? a_value : {{Func.ValueType}}(0));
+    const {{Func.ValueType}} groupSum = WaveActiveSum(match ? a_value : {{Func.ValueType}}(0));
+    {{Func.ValueType}} base = {{Func.ValueType}}(0);
+    if(match && WaveGetLaneIndex() == leaderLane)
+      {{Func.AtomicFunc}}({{Map.Name}}[{{Map.InsertFunc}}(a_key)]{{Func.Path}}, groupSum, base);
+    base = WaveReadLaneAt(base, leaderLane);
+    if(match)
+    {
+      result = base + prefix{% if not Func.ReturnOld %} + a_value{% endif %};
+      done   = true;
+    }
+  }
+  {% endif %}
+  if(!done)
+  {
+    {{Func.ValueType}} old = {{Func.ValueType}}(0);
+    {{Func.AtomicFunc}}({{Map.Name}}[{{Map.InsertFunc}}(a_key)]{{Func.Path}}, a_value, old);
+    result = old{% if not Func.ReturnOld %} + a_value{% endif %};
+  }
+  return result;
+}
+{% endif %}
+{% if Func.MapName == Map.Name and not Func.Fetch %}
 
 // '{{Map.Name}}[a_key]{{Func.Path}} += a_value' with aggregation inside subgroup: one insertion and one atomic per different key
 //

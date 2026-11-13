@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -131,12 +132,46 @@ int main(int argc, const char** argv)
     }
   }
 
+  // tickets: for every key the values of 'm[k]++' must be 0..n-1 and the values of 'm[k] += 2' must be 2,4,..,2n (in any order)
+  //
+  if(passed)
+  {
+    std::vector<uint32_t> tickets(KEYS_NUM, 0xFFFFFFFE), newVals(KEYS_NUM, 0xFFFFFFFE);
+    pImpl->Tickets(keys.data(), KEYS_NUM, tickets.data(), newVals.data());
+    std::map<int, std::vector<uint32_t> > byKey, byKey2;
+    for(uint32_t i=0; i < KEYS_NUM; i++)
+    {
+      byKey [keys[i]].push_back(tickets[i]);
+      byKey2[keys[i]].push_back(newVals[i]);
+    }
+    for(auto& kv : byKey)
+    {
+      auto& t  = kv.second;
+      auto& t2 = byKey2[kv.first];
+      std::sort(t.begin(),  t.end());
+      std::sort(t2.begin(), t2.end());
+      for(uint32_t j=0; j < uint32_t(t.size()); j++)
+      {
+        if(t[j] != j || t2[j] != 2*(j+1))
+        {
+          std::cout << "FAILED tickets, key = " << kv.first << ": ticket[" << j << "] = " << t[j] << ", new[" << j << "] = " << t2[j] << std::endl;
+          passed = false;
+          break;
+        }
+      }
+      if(!passed)
+        break;
+    }
+    if(passed)
+      std::cout << "tickets: OK for " << byKey.size() << " keys" << std::endl;
+  }
+
   std::cout << "unique keys = " << refHist.size() << ", items = " << refItems.size() << std::endl;
   std::cout << "queries = " << QUERY_NUM << ", hist hits = " << hitsHist << ", item hits = " << hitsItems << std::endl;
 
   if(onGPU)
   {
-    for(const char* kernelName : {"kernel1D_CountKeys", "kernel1D_InsertItems", "kernel1D_Lookup"})
+    for(const char* kernelName : {"kernel1D_CountKeys", "kernel1D_InsertItems", "kernel1D_Lookup", "kernel1D_Tickets"})
     {
       float timings[4] = {0,0,0,0};
       pImpl->GetExecutionTime(kernelName, timings);

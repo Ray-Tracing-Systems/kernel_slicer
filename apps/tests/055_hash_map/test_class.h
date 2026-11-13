@@ -38,6 +38,12 @@ public:
                       float*    a_outVal    [[size("a_queryNum")]],
                       uint32_t* a_outId     [[size("a_queryNum")]]);
 
+  // a_outTicket[i] = m_tickets[a_keys[i]]++ (old value), a_outNew[i] = (m_tickets2[a_keys[i]] += 2) (new value);
+  // for every key the set of tickets is 0..n-1 and the set of new values is 2,4,..,2n in some order
+  //
+  virtual void Tickets(const int* a_keys [[size("a_keysNum")]], uint32_t a_keysNum,
+                       uint32_t* a_outTicket [[size("a_keysNum")]], uint32_t* a_outNew [[size("a_keysNum")]]);
+
   virtual void CommitDeviceData() {}                                       // will be overriden in generated class
   virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) {} // will be overriden in generated class
 
@@ -45,8 +51,11 @@ protected:
 
   virtual void kernel1D_CountKeys(const int* a_keys, uint32_t a_keysNum);
   virtual void kernel1D_InsertItems(const int* a_itemKeys, const float* a_itemVals, uint32_t a_itemsNum);
+  virtual void kernel1D_Tickets(const int* a_keys, uint32_t a_keysNum, uint32_t* a_outTicket, uint32_t* a_outNew);
   virtual void kernel1D_Lookup(const int* a_queries, uint32_t a_queryNum, uint32_t* a_outCount, uint32_t* a_outCount2, float* a_outVal, uint32_t* a_outId);
 
   std::unordered_map<int, uint32_t> m_hist;
   std::unordered_map<int, ItemData> m_items;
+  std::unordered_map<int, uint32_t> m_tickets;  // value of 'm[k]++' is used: atomic add which returns old value
+  std::unordered_map<int, uint32_t> m_tickets2; // value of 'm[k] += v' is used: returns new value
 };

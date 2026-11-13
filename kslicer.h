@@ -1072,7 +1072,8 @@ namespace kslicer
     bool RewriteHashMapSubscript(clang::CXXOperatorCallExpr* expr);   ///<! 'm_items[key]'                     ==> 'm_items[hmap_m_items_insert(key)].val'
     bool RewriteHashMapMemberCall(clang::CXXMemberCallExpr* call);    ///<! 'm_items.find(key)', 'm_items.end()' ==> 'hmap_m_items_find(key)', 'ubo[0].m_items_capacity'
     bool RewriteHashMapIteratorAccess(clang::MemberExpr* expr);       ///<! 'it->second', 'it->first'          ==> 'm_items[it].val', 'm_items[it].key'
-    bool RewriteHashMapAtomicAdd(const clang::Expr* a_wholeExpr, const clang::Expr* a_lhs, const std::string& a_value); ///<! 'm_hist[key] += 1' ==> 'InterlockedAdd(m_hist[...].val, uint(1))'
+    bool RewriteHashMapAtomicAdd(const clang::Expr* a_wholeExpr, const clang::Expr* a_lhs, const std::string& a_value);
+    bool IsHashMapExprValueUsed(const clang::Expr* a_expr); ///<! 'm_hist[key]++;' -- false, 'uint n = m_hist[key]++;' -- true ///<! 'm_hist[key] += 1' ==> 'InterlockedAdd(m_hist[...].val, uint(1))'
   };
 
   class CudaRewriter : public FunctionRewriter2 ///!< BASE CLASS FOR ALL NEW BACKENDS
@@ -1933,6 +1934,9 @@ namespace kslicer
       bool        viaUintAlias = false; ///<! '-atomicf_emul 2': 'InterlockedAddEmul1fU(m_items_asUint, slot*slotWords + wordOffset, value)'
       uint32_t    slotWords    = 0;
       uint32_t    wordOffset   = 0;
+      bool        fetch        = false; ///<! value of expression is used: 'uint n = m_items[key].cnt++' ==> 'hmap_m_items_fetch_add_cnt(key, 1)', returns old (postfix) or new value
+      bool        returnOld    = false; ///<! postfix '++' and '--' return old value, '+=', '-=' and prefix '++', '--' return new value
+      bool        subgroups    = false; ///<! aggregate inside subgroup (fetch functions are generated without subgroups too)
     };
     std::map<std::string, HashMapAddFunc> hashMapAddFuncs;
     bool hashMapSubgroups = false; ///<! aggregate atomic updates of hash map values inside subgroup, needs Vulkan 1.1; '-enableSubgroup 0' disables it

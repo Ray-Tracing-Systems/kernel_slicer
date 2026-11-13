@@ -1678,6 +1678,9 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     local["ViaUintAlias"] = func.second.viaUintAlias;
     local["SlotWords"]    = func.second.slotWords;
     local["WordOffset"]   = func.second.wordOffset;
+    local["Fetch"]        = func.second.fetch;
+    local["ReturnOld"]    = func.second.returnOld;
+    local["Subgroups"]    = func.second.subgroups;
     data["HashMapAddFuncs"].push_back(local);
   }
 

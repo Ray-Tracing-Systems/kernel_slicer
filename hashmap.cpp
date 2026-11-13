@@ -411,6 +411,40 @@ bool kslicer::SlangRewriter::RewriteHashMapIteratorAccess(clang::MemberExpr* exp
   return true;
 }
 
+/// false if expression is a statement by itself ('m_hist[key]++;'), true if its value is used ('uint n = m_hist[key]++;')
+bool kslicer::SlangRewriter::IsHashMapExprValueUsed(const clang::Expr* a_expr)
+{
+  auto& astContext = m_compiler.getASTContext();
+  clang::DynTypedNode node = clang::DynTypedNode::create(*a_expr);
+  for(int depth = 0; depth < 16; depth++)
+  {
+    const auto parents = astContext.getParents(node);
+    if(parents.size() == 0)
+      return false;
+    const auto& parent = parents[0];
+    if(parent.get<clang::CompoundStmt>() != nullptr)
+      return false;
+    if(auto forStmt = parent.get<clang::ForStmt>()) // 'for(...; ...; m[k]++)'
+      return (forStmt->getInc() != node.get<clang::Expr>());
+    const clang::Expr* parentExpr = parent.get<clang::Expr>();
+    if(parentExpr != nullptr && (clang::isa<clang::ParenExpr>(parentExpr) || clang::isa<clang::ExprWithCleanups>(parentExpr) || clang::isa<clang::ImplicitCastExpr>(parentExpr)))
+    {
+      if(clang::isa<clang::ImplicitCastExpr>(parentExpr) && clang::dyn_cast<clang::ImplicitCastExpr>(parentExpr)->getCastKind() != clang::CK_ToVoid)
+        return true;
+      node = parent;
+      continue;
+    }
+    if(parent.get<clang::IfStmt>() != nullptr || parent.get<clang::WhileStmt>() != nullptr) // body of 'if' without braces, or condition
+    {
+      if(auto ifStmt = parent.get<clang::IfStmt>())
+        return ifStmt->getCond() == node.get<clang::Expr>();
+      return true;
+    }
+    return true;
+  }
+  return true;
+}
+
 bool kslicer::SlangRewriter::RewriteHashMapAtomicAdd(const clang::Expr* a_wholeExpr, const clang::Expr* a_lhs, const std::string& a_value)
 {
   if(!WasNotRewrittenYet(a_wholeExpr))
@@ -432,13 +466,60 @@ bool kslicer::SlangRewriter::RewriteHashMapAtomicAdd(const clang::Expr* a_wholeE
   }
 
   std::string func = "InterlockedAdd"; // hardware atomics; used when value is not emulated via 'uint' view of the slot buffer
+
+  const clang::CXXOperatorCallExpr* subscript = GetHashMapSubscript(a_lhs);
+  const std::string mapName = GetHashMapNameFromExpr(subscript->getArg(0));
+
+  std::string path = "";            // 'm_items[key].val.x' ==> '.x'
+  {
+    const clang::Expr* expr = a_lhs->IgnoreParenImpCasts();
+    while(auto memberExpr = clang::dyn_cast<clang::MemberExpr>(expr))
+    {
+      const std::string name = memberExpr->getMemberDecl()->getNameAsString();
+      if(name != "")                  // skip anonymous unions and structs, 'float4::x' in LiteMath for example
+        path = "." + name + path;
+      expr = memberExpr->getBase()->IgnoreParenImpCasts();
+    }
+  }
+
+  // value of the whole expression is used ('uint n = m_items[key].cnt++'): atomic add which returns old value, 'hmap_m_items_fetch_add_cnt(key, 1)'
+  //
+  if(IsHashMapExprValueUsed(a_wholeExpr))
+  {
+    if(slangType != "int" && slangType != "uint")
+    {
+      kslicer::PrintError("value of atomic update of std::unordered_map value is used, this is supported only for 'int' and 'uint', but not for '" + typeName + "'",
+                          a_wholeExpr->getSourceRange(), m_compiler.getSourceManager());
+      return false;
+    }
+    bool returnOld = false;
+    if(auto unary = clang::dyn_cast<clang::UnaryOperator>(a_wholeExpr))
+      returnOld = unary->isPostfix();
+
+    MainClassInfo::HashMapAddFunc fetchFunc;
+    fetchFunc.mapName    = mapName;
+    fetchFunc.path       = ".val" + path;
+    fetchFunc.valueType  = slangType;
+    fetchFunc.atomicFunc = func;
+    fetchFunc.fetch      = true;
+    fetchFunc.returnOld  = returnOld;
+    fetchFunc.subgroups  = m_codeInfo->hashMapSubgroups;
+    fetchFunc.name       = HashMapFuncName(mapName, returnOld ? "fetch_add" : "add_fetch");
+    for(char c : path)
+      fetchFunc.name += (c == '.') ? '_' : c;
+    m_codeInfo->hashMapAddFuncs[fetchFunc.name] = fetchFunc;
+
+    const std::string keyText = RecursiveRewrite(subscript->getArg(1));
+    ReplaceText(a_wholeExpr->getSourceRange(), fetchFunc.name + "(" + keyText + ", " + slangType + "(" + a_value + "))");
+    MarkRewritten(a_wholeExpr);
+    return true;
+  }
+
   if(slangType == "float" && !m_codeInfo->atomicFloatEmul)
     m_codeInfo->globalShaderFeatures.useFloatAtomicAdd = true;
 
   // '-atomicf_emul 1|2': CAS on 'uint' view of the slot buffer ('m_sum_asUint'), word index = slot*slotWords + offset of the field inside 'X'
   //
-  const clang::CXXOperatorCallExpr* subscript = GetHashMapSubscript(a_lhs);
-  const std::string mapName = GetHashMapNameFromExpr(subscript->getArg(0));
   bool     viaUintAlias = (slangType == "float" && m_codeInfo->atomicFloatEmul);
   uint32_t slotWords = 0, wordOffset = 0;
   if(viaUintAlias)
@@ -463,15 +544,6 @@ bool kslicer::SlangRewriter::RewriteHashMapAtomicAdd(const clang::Expr* a_wholeE
 
   if(m_codeInfo->hashMapSubgroups) // aggregate updates of the same key inside subgroup: 'hmap_m_hist_add(key, value)'
   {
-    std::string path = "";            // 'm_items[key].val.x' ==> '.x'
-    const clang::Expr* expr = a_lhs->IgnoreParenImpCasts();
-    while(auto memberExpr = clang::dyn_cast<clang::MemberExpr>(expr))
-    {
-      const std::string name = memberExpr->getMemberDecl()->getNameAsString();
-      if(name != "")                  // skip anonymous unions and structs, 'float4::x' in LiteMath for example
-        path = "." + name + path;
-      expr = memberExpr->getBase()->IgnoreParenImpCasts();
-    }
     const std::string keyText = RecursiveRewrite(subscript->getArg(1));
 
     MainClassInfo::HashMapAddFunc addFunc;
@@ -482,6 +554,7 @@ bool kslicer::SlangRewriter::RewriteHashMapAtomicAdd(const clang::Expr* a_wholeE
     addFunc.viaUintAlias = viaUintAlias;
     addFunc.slotWords    = slotWords;
     addFunc.wordOffset   = wordOffset;
+    addFunc.subgroups    = true;
     addFunc.name       = HashMapFuncName(mapName, "add");
     for(char c : path)
       addFunc.name += (c == '.') ? '_' : c;

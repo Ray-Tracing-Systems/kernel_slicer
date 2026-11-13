@@ -6,6 +6,8 @@ using LiteMath::InterlockedAdd;
 void HashMapTest::Reserve(uint32_t a_maxUniqueKeys, uint32_t a_maxItems)
 {
   m_hist.reserve(a_maxUniqueKeys);
+  m_tickets.reserve(a_maxUniqueKeys);
+  m_tickets2.reserve(a_maxUniqueKeys);
   m_items.reserve(a_maxItems);
 }
 
@@ -69,5 +71,20 @@ void HashMapTest::kernel1D_Lookup(const int* a_queries, uint32_t a_queryNum, uin
       a_outVal[i] = -1.0f;
       a_outId[i]  = 0xFFFFFFFF;
     }
+  }
+}
+
+void HashMapTest::Tickets(const int* a_keys, uint32_t a_keysNum, uint32_t* a_outTicket, uint32_t* a_outNew)
+{
+  kernel1D_Tickets(a_keys, a_keysNum, a_outTicket, a_outNew);
+}
+
+void HashMapTest::kernel1D_Tickets(const int* a_keys, uint32_t a_keysNum, uint32_t* a_outTicket, uint32_t* a_outNew)
+{
+  for(uint32_t i=0; i < a_keysNum; i++)
+  {
+    const int key  = a_keys[i];
+    a_outTicket[i] = m_tickets[key]++;
+    a_outNew[i]    = (m_tickets2[key] += 2u);
   }
 }
