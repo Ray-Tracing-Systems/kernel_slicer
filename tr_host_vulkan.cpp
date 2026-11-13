@@ -504,6 +504,31 @@ bool kslicer::MainFunctionRewriterVulkan::VisitCXXMemberCallExpr(CXXMemberCallEx
   const DeclarationName dn      = dni.getName();
   const std::string fname       = dn.getAsString();
 
+  // 'm_map.clear()' for std::unordered_map member: zero fill of the slot buffer (zero-filled slot is empty, keys are stored as 'key ^ sentinel')
+  // and reset of size and overflow counters in UBO; the barriers order it with the previous and next kernels of the control function
+  //
+  if(fname == "clear" && WasNotRewrittenYet(f) && kslicer::IsHashMapType(f->getObjectType()))
+  {
+    const std::string mapName = kslicer::GetHashMapNameFromExpr(f->getImplicitObjectArgument());
+    if(mapName != "") // note: m_pCodeInfo->hashMaps is filled later than control functions are processed
+    {
+      std::stringstream strOut;
+      strOut << "{ // " << mapName << ".clear()" << std::endl;
+      strOut << "    VkMemoryBarrier barBefore = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_WRITE_BIT };" << std::endl;
+      strOut << "    vkCmdPipelineBarrier(a_commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, &barBefore, 0, nullptr, 0, nullptr);" << std::endl;
+      strOut << "    vkCmdFillBuffer(a_commandBuffer, m_vdata." << mapName << "Buffer, 0, VK_WHOLE_SIZE, 0);" << std::endl;
+      strOut << "    const uint32_t zeroCounter = 0;" << std::endl;
+      strOut << "    vkCmdUpdateBuffer(a_commandBuffer, m_classDataBuffer, offsetof(decltype(m_uboData), " << mapName << "_size),     sizeof(uint32_t), &zeroCounter);" << std::endl;
+      strOut << "    vkCmdUpdateBuffer(a_commandBuffer, m_classDataBuffer, offsetof(decltype(m_uboData), " << mapName << "_overflow), sizeof(uint32_t), &zeroCounter);" << std::endl;
+      strOut << "    VkMemoryBarrier barAfter = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_UNIFORM_READ_BIT };" << std::endl;
+      strOut << "    vkCmdPipelineBarrier(a_commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &barAfter, 0, nullptr, 0, nullptr);" << std::endl;
+      strOut << "  }";
+      ReplaceText(f->getSourceRange(), strOut.str());
+      MarkRewritten(f);
+      return true;
+    }
+  }
+
   if(m_pCodeInfo->IsKernel(fname) && WasNotRewrittenYet(f))
   {
     auto pKernel = m_kernels.find(fname);

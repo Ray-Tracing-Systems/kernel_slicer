@@ -399,7 +399,14 @@ bool kslicer::SlangRewriter::RewriteHashMapIteratorAccess(clang::MemberExpr* exp
     return false;
 
   const std::string itText = RecursiveRewrite(arrow->getArg(0));
-  ReplaceText(expr->getSourceRange(), mapName + "[" + itText + "]." + (member == "first" ? "key" : "val"));
+  std::string sentinel = "";
+  auto pMap = m_codeInfo->hashMaps.find(mapName);
+  if(pMap != m_codeInfo->hashMaps.end())
+    sentinel = pMap->second.sentinel;
+  if(member == "first") // keys are stored as 'key ^ sentinel' (zero-filled slot is empty, see 'clear()')
+    ReplaceText(expr->getSourceRange(), "(" + mapName + "[" + itText + "].key ^ " + sentinel + ")");
+  else
+    ReplaceText(expr->getSourceRange(), mapName + "[" + itText + "].val");
   MarkRewritten(expr);
   return true;
 }

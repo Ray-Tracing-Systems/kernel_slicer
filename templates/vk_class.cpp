@@ -187,23 +187,21 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateVectorMembers(std::shared_ptr<v
   }
   {% else if Var.IsHashMap %}
   {
-    // all slots are empty (including the last, garbage one), then insert CPU data the same way as shaders do
+    // all slots are empty (zero filled, including the last, garbage one), then insert CPU data the same way as shaders do;
+    // keys are stored as 'key ^ sentinel', so zero-filled slot is empty and 'clear()' is just 'vkCmdFillBuffer(..., 0)'
     //
     const uint32_t mask = m_vdata.{{Var.Name}}Capacity - 1;
     std::vector<{{Var.SlotType}}> slots(size_t(m_vdata.{{Var.Name}}Capacity) + 1);
     for(auto& slot : slots)
-    {
-      slot     = {{Var.SlotType}}{};
-      slot.key = {{Var.Sentinel}};
-    }
+      slot = {{Var.SlotType}}{};
     for(const auto& keyVal : {{Var.Name}})
     {
       assert(keyVal.first != {{Var.Sentinel}}); // this key value is reserved for empty slots
       uint32_t slotId = kslicer_hmap_hash(uint32_t(keyVal.first)) & mask;
-      while(slots[slotId].key != {{Var.Sentinel}})
+      while(slots[slotId].key != 0)
         slotId = (slotId + 1) & mask;
       slots[slotId].val = keyVal.second;
-      slots[slotId].key = keyVal.first;
+      slots[slotId].key = {{Var.KeyType}}(keyVal.first ^ {{Var.Sentinel}});
     }
     a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}Buffer, 0, slots.data(), slots.size()*sizeof({{Var.SlotType}}));
   }

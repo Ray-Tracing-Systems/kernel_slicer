@@ -31,7 +31,7 @@ uint {{Map.FindFunc}}({{Map.KeyType}} a_key)
   uint slot = kslicer_hmap_hash(asuint(a_key)) & (capacity - 1);
   for(uint probe = 0; probe < capacity; probe++)
   {
-    const {{Map.KeyType}} key = {{Map.Name}}[slot].key;
+    const {{Map.KeyType}} key = {{Map.Name}}[slot].key ^ {{Map.Sentinel}}; // keys are stored as 'key ^ sentinel', so zero-filled slot is empty
     if(key == a_key)
       return slot;
     if(key == {{Map.Sentinel}})
@@ -50,10 +50,11 @@ uint {{Map.InsertFunc}}({{Map.KeyType}} a_key)
   uint slot = kslicer_hmap_hash(asuint(a_key)) & (capacity - 1);
   for(uint probe = 0; probe < capacity; probe++)
   {
-    {{Map.KeyType}} prev = {{Map.Name}}[slot].key;
+    {{Map.KeyType}} prev = {{Map.Name}}[slot].key ^ {{Map.Sentinel}}; // keys are stored as 'key ^ sentinel', so zero-filled slot is empty
     if(prev == {{Map.Sentinel}})
     {
-      InterlockedCompareExchange({{Map.Name}}[slot].key, {{Map.Sentinel}}, a_key, prev);
+      InterlockedCompareExchange({{Map.Name}}[slot].key, {{Map.KeyType}}(0), a_key ^ {{Map.Sentinel}}, prev);
+      prev = prev ^ {{Map.Sentinel}};
       if(prev == {{Map.Sentinel}})
       {
         {% if not Kernel.ContantUBO %}

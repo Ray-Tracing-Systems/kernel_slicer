@@ -12,6 +12,8 @@ void HashMapTest::Reserve(uint32_t a_maxUniqueKeys, uint32_t a_maxItems)
 void HashMapTest::Build(const int* a_keys, uint32_t a_keysNum, const int* a_itemKeys, const float* a_itemVals, uint32_t a_itemsNum)
 {
   kernel1D_CountKeys(a_keys, a_keysNum);
+  m_hist.clear();                        // test of 'clear()' in control function: without it all counts would be doubled
+  kernel1D_CountKeys(a_keys, a_keysNum);
   kernel1D_InsertItems(a_itemKeys, a_itemVals, a_itemsNum);
 }
 

@@ -78,7 +78,7 @@ follows the test configs and the code.
 | `atomics_int` | `InterlockedAdd` on `int`/`uint` | ✅ | ✅ | ❔ | ❔ | 041 |
 | `atomics_float` | Float atomics (hardware `shaderBufferFloat32AtomicAdd`) | ✅ | ✅ | ✅ | ❔ | 042, 054, 045 |
 | `atomics_float_emul` | Float atomics emulated with CAS (`-atomicf_emul 1`) | ✅ | ✅ | ❔ | ❔ | 042, 054, 056 |
-| `hash_map` | `std::unordered_map` members | ✅ | ❌ | ❔ | ❔ | 055, 056 |
+| `hash_map` | `std::unordered_map` members; `clear()` in control functions (zero fill on GPU) | ✅ | ❌ | ❔ | ❔ | 055, 056 |
 | `nn_coop_vec` | Small neural networks with cooperative vectors (`LiteNN`) | 🧪¹ | ❌ | ❌ | ❌ | 071, 072, 073 |
 
 ¹ Needs `VK_NV_cooperative_vector` (NVIDIA). Not available on the GPU of the last check.
