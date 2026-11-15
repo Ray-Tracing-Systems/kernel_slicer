@@ -92,7 +92,7 @@ follows the test configs and the code.
 | `fp16` | `half` arithmetic and conversions | 🟡² | 🟡³ | ❔ | ❔ | 022, 053, 070 |
 | `storage_8_16bit` | 8/16-bit types in buffers and UBO | ✅ | ✅ | ❔ | ❔ | 060, 053 |
 | `buffer_reference` | Buffer device address (`-with_buffer_reference`) | ❌ | ✅ | ❔ | ❔ | 039 |
-| `textures` | Textures and samplers (`ITexture2D`, combined image sampler, `Image2D` + `Sampler` members); sampled `Image2D<uint32_t>` is RGBA8_UNORM on GPU | ✅ | ✅ | ❌ | ❔ | 006, 007, 008, app 14, app 15, app 20, app 31 |
+| `textures` | Textures and samplers (`ITexture2D`, combined image sampler, `Image2D` + `Sampler` members); sampled `Image2D<uint32_t>` is RGBA8_UNORM on GPU; images read without sampler are sampled images (`Texture2D` / `texture2D` + `texelFetch`) | ✅ | ✅ | ❌ | ❔ | 006, 007, 008, app 14, app 15, app 20, app 31 |
 | `image_storage` | Writable images (`Image2D<T>` written by kernels) | ✅ | ✅ | ❌ | ❔ | 066, app 33 |
 | `half_textures` | Textures stored in half precision (`-halfTex 1`) | ❌ | ✅ | ❌ | ❔ | 066, app 14 |
 
@@ -106,12 +106,12 @@ Vertex and pixel shaders `kernelVS_/kernelPS_` with `LiteRS` commands in control
 
 | ID | Feature | Slang | GLSL | CUDA/HIP | ISPC | Tests and samples |
 |----|---------|:-----:|:----:|:--------:|:----:|-------------------|
-| `gp_draw` | `LiteRS::DrawTriangles` with VS and PS, render targets, depth test, `LiteRS::Clear` | ✅ | ❌ | ❌ | ❌ | 080, 081, app 32 |
-| `gp_indexed` | `LiteRS::DrawIndexedTriangles` (index buffer is a member vector) | ✅ | ❌ | ❌ | ❌ | 081, app 31, app 32 |
-| `gp_depth_only` | Depth only pass (VS without PS), shadow map read in PS | ✅ | ❌ | ❌ | ❌ | app 32 |
-| `gp_mrt` | Several color targets (PS returns a struct of `float4`) | ✅ | ❌ | ❌ | ❌ | app 33 |
-| `gp_textures_in_ps` | Texture with sampler in pixel shader | ✅ | ❌ | ❌ | ❌ | app 31 |
-| `gp_namespaces` | `LiteRS` and `LiteMath` names with and without namespace (`using`, namespace alias, argument dependent lookup) | ✅ | ❌ | ❌ | ❌ | 081 |
+| `gp_draw` | `LiteRS::DrawTriangles` with VS and PS, render targets, depth test, `LiteRS::Clear` | ✅ | ✅ | ❌ | ❌ | 080, 081, app 32 |
+| `gp_indexed` | `LiteRS::DrawIndexedTriangles` (index buffer is a member vector) | ✅ | ✅ | ❌ | ❌ | 081, app 31, app 32 |
+| `gp_depth_only` | Depth only pass (VS without PS), shadow map read in PS | ✅ | ✅ | ❌ | ❌ | app 32 |
+| `gp_mrt` | Several color targets (PS returns a struct of `float4`) | ✅ | ✅ | ❌ | ❌ | app 33 |
+| `gp_textures_in_ps` | Texture with sampler in pixel shader | ✅ | ✅ | ❌ | ❌ | app 31 |
+| `gp_namespaces` | `LiteRS` and `LiteMath` names with and without namespace (`using`, namespace alias, argument dependent lookup) | ✅ | ✅ | ❌ | ❌ | 081 |
 
 ### Ray tracing and virtual functions
 

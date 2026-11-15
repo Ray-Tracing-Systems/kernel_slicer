@@ -1,5 +1,5 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Graphics pipeline, {% if Kernel.GPStage == 1 %}vertex shader{% else %}pixel shader{% endif %} '{{Kernel.Name}}'. Bindings of this shader are in descriptor set {{Kernel.DSetId}}.
+// Graphics pipeline, {% if Kernel.GPStage == 1 %}vertex shader '{% else %}pixel shader '{% endif %}{{Kernel.Name}}'. Bindings of this shader are in descriptor set {{Kernel.DSetId}}.
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 {% include "common_generated.slang" %}

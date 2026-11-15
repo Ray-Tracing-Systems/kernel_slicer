@@ -501,8 +501,8 @@ static bool isConvertibleToInt(const std::string& str) {
 }
 
 
-/// Slang declaration of texture: 'Texture2D<T>', 'Sampler2D<T>' or 'RWTexture2D<T>' (see kslicer::SlangTextureKind)
-static void PutSlangTextureToJson(json& argj, kslicer::SLANG_TEX a_kind, const std::string& a_rewrittenDataType)
+/// Slang declaration of texture: 'Texture2D<T>', 'Sampler2D<T>' or 'RWTexture2D<T>' (see kslicer::ShaderTextureKind)
+static void PutSlangTextureToJson(json& argj, kslicer::SHADER_TEX a_kind, const std::string& a_rewrittenDataType)
 {
   const std::string texelType = kslicer::SlangTexelType(a_rewrittenDataType, a_kind);
   std::string format = "rgba32f";
@@ -513,7 +513,7 @@ static void PutSlangTextureToJson(json& argj, kslicer::SLANG_TEX a_kind, const s
   else if(texelType == "uint")
     format = "r32ui";
   argj["TexelType"]     = texelType;
-  argj["SlangTexKind"]  = (a_kind == kslicer::SLANG_TEX::STORAGE) ? "RWTexture2D" : ((a_kind == kslicer::SLANG_TEX::COMBINED) ? "Sampler2D" : "Texture2D");
+  argj["SlangTexKind"]  = (a_kind == kslicer::SHADER_TEX::STORAGE) ? "RWTexture2D" : ((a_kind == kslicer::SHADER_TEX::COMBINED) ? "Sampler2D" : "Texture2D");
   argj["SlangImFormat"] = format;
 }
 
@@ -814,8 +814,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["IsImageArray"]  = false;
       argj["IsAccelStruct"] = false;
       if(commonArg.isImage)
-        PutSlangTextureToJson(argj, kslicer::SlangTextureKind(k, k.texAccessInArgs, commonArg.name), commonArg.imageDataType);
-      argj["NeedFmt"]       = !commonArg.isSampler;
+        PutSlangTextureToJson(argj, kslicer::ShaderTextureKind(k, k.texAccessInArgs, commonArg.name), commonArg.imageDataType);
+      argj["NeedFmt"]       = commonArg.isImage && (int(commonArg.imageAccess) & int(kslicer::TEX_ACCESS::TEX_ACCESS_WRITE)) != 0; // format only for storage images
       argj["ImFormat"]      = commonArg.imageFormat;
       argj["IsPointer"]     = commonArg.isPointer;
       argj["IsMember"]      = false;
@@ -918,7 +918,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         argj["NeedFmt"]  = false;
         argj["ImFormat"] = "";
         argj["SizeOffset"] = 0;
-        PutSlangTextureToJson(argj, kslicer::SLANG_TEX::COMBINED, "float4");
+        PutSlangTextureToJson(argj, kslicer::SHADER_TEX::COMBINED, "float4");
         usedCombinedImageSamplers = true;
       }
       else if(pVecMember->second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY)
@@ -938,11 +938,13 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       {
         std::string imageFormat;
         auto pMemberAccess = k.texAccessInMemb.find(pVecMember->second.name);
-        auto accessFlags   = (pMemberAccess == k.texAccessInMemb.end()) ? kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE : pMemberAccess->second; //pVecMember->second.tmask;
+        auto accessFlags   = (pMemberAccess == k.texAccessInMemb.end()) ? kslicer::TEX_ACCESS::TEX_ACCESS_NOTHING : pMemberAccess->second; //pVecMember->second.tmask;
+        if(kslicer::ShaderTextureKind(k, k.texAccessInMemb, pVecMember->second.name) == kslicer::SHADER_TEX::COMBINED) // sampled in called function only
+          accessFlags = kslicer::TEX_ACCESS(int(accessFlags) | int(kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE));
         argj["IsImage"]  = true;
-        PutSlangTextureToJson(argj, kslicer::SlangTextureKind(k, k.texAccessInMemb, pVecMember->second.name), pShaderRewriter->RewriteStdVectorTypeStr(pVecMember->second.containerDataType));
+        PutSlangTextureToJson(argj, kslicer::ShaderTextureKind(k, k.texAccessInMemb, pVecMember->second.name), pShaderRewriter->RewriteStdVectorTypeStr(pVecMember->second.containerDataType));
         argj["Type"]     = a_classInfo.pShaderFuncRewriter->RewriteImageType(pVecMember->second.containerType, pVecMember->second.containerDataType, accessFlags, imageFormat);
-        argj["NeedFmt"]  = (accessFlags != kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE);
+        argj["NeedFmt"]  = (int(accessFlags) & int(kslicer::TEX_ACCESS::TEX_ACCESS_WRITE)) != 0;             // format only for storage images
         argj["ImFormat"] = imageFormat;
         argj["SizeOffset"] = 0;
       }

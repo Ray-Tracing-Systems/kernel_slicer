@@ -3,8 +3,8 @@
 Рабочий документ. Состояние на 2026-11-15:
 - этап 1 (CPU) выполнен;
 - этапы 2 и 3 (фронтенд и Vulkan/Slang, Vulkan 1.0) работают для тестов 080, 081 и демо 31, 32, 33 (`ktest.py` OK, без ошибок validation layers);
-- шаг 4a.1 (текстуры в Slang) выполнен;
-- GLSL, ISPC и dynamic rendering впереди.
+- шаги 4a.1 (текстуры в Slang) и 4a.2 (GLSL-бэкенд) выполнены: все GP-примеры проходят на Slang и GLSL;
+- ISPC и dynamic rendering впереди.
 
 Реализация в трансляторе: [graphics_pipeline.h](../graphics_pipeline.h), [graphics_pipeline.cpp](../graphics_pipeline.cpp),
 шаблоны `templates/inc_gp_vulkan.h/.cpp`, `templates_slang/generated_gp.slang`. Остальной код транслятора затронут точечными хуками.
@@ -88,7 +88,7 @@ GBuf   C::kernelPS_B(const Varyings& a_in) const;                               
 Общая процедурная геометрия: [apps/utils/simple_meshes.h](../apps/utils/simple_meshes.h).
 
 Сборка CPU-версии: `mkdir build && cd build && cmake -DUSE_VULKAN=OFF .. && make`, запуск из папки примера,
-результат `zout_cpu.bmp`. В `ktest.json` Slang-варианты включены, GLSL-варианты помечены `skip` до поддержки LiteRS в GLSL.
+результат `zout_cpu.bmp`. В `ktest.json` включены Slang- и GLSL-варианты.
 
 ## 2. Этап 2 — фронтенд транслятора (общий для всех бэкендов)
 
@@ -183,7 +183,7 @@ GBuf   C::kernelPS_B(const Varyings& a_in) const;                               
 
 Порядок работ (решение от 2026-11-15):
 1. ~~Текстуры в Slang-бэкенде~~ (выполнено 2026-11-15, сняты `skip` у 006, 008, 066, app 14, app 15, app 31, app 33):
-   - вид текстуры в шейдере и дескриптор на хосте выбираются одной функцией `kslicer::SlangTextureKind`: запись в кернеле —
+   - вид текстуры в шейдере и дескриптор на хосте выбираются одной функцией `kslicer::ShaderTextureKind`: запись в кернеле —
      `RWTexture2D<T>` (storage image), `sample(sampler, uv)` — `Sampler2D<T>` (combined image sampler), остальное чтение —
      `Texture2D<T>` (sampled image); изображения, которые где-то пишутся, остаются в лейауте `GENERAL`;
    - `Image2D<uint32_t>`, который читается через `sample()`, на GPU — `R8G8B8A8_UNORM`, в шейдере `float4` (оба бэкенда).
@@ -194,7 +194,15 @@ GBuf   C::kernelPS_B(const Varyings& a_in) const;                               
      у вызовов, констант и типов локальных переменных; `LiteRS::Pipeline` исключается из UBO по каноническому типу, поэтому
      работают `using LiteRS::Pipeline`, `using LiteRS::DrawIndexedTriangles` и вызовы через ADL (тест 081);
    - `cross(float4, float4)` в Slang; `cross3(float4, float4)` в шейдерах теперь даёт `w = 0`, как в LiteMath (было `w = 1`).
-2. GLSL-бэкенд для графического конвейера.
+2. ~~GLSL-бэкенд для графического конвейера~~ (выполнено 2026-11-15, сняты `skip` у 080, 081, app 31, 32, 33):
+   - шаблон `templates_glsl/generated_gp.glsl`: файлы `kernelVS_*.vert` / `kernelPS_*.frag`, варьинги — структура с
+     `layout(location = 0) out/in`, выходы PS — `layout(location = i) out vec4|uint`, доп. аргументы VS — push constants;
+   - в `common_generated.glsl` для шейдеров графики набор дескрипторов `set = DSetId`, буферы и UBO `readonly`;
+   - GLSL выбирает вид текстуры той же функцией `kslicer::ShaderTextureKind`, что и Slang: запись — `image2D`
+     (`imageLoad/imageStore`), `sample` — `sampler2D`, остальное чтение — `texture2D` + `texelFetch`
+     (`GL_EXT_samplerless_texture_functions`). Раньше чтение без сэмплера шло через storage image: это не работало для
+     глубины D32 (карта теней) и для целей без `STORAGE` usage. Чтение `float`/`uint`-текстур берёт нужные компоненты (`.x`);
+   - `cross(vec4, vec4)` в GLSL.
 3. Затем ISPC и опциональный dynamic rendering.
 
 Новые тесты (`apps/tests`), по одной фиче, сравнение CPU и GPU (081 — пространства имён LiteMath/LiteRS — уже добавлен):

@@ -131,18 +131,18 @@ namespace
 /// 'const Image2D<T>&' parameter: 'Sampler2D<T>' if function samples it, 'Texture2D<T>' otherwise; 'Image2D<T>&' is 'RWTexture2D<T>'
 static std::string SlangTextureParamType(const clang::FunctionDecl* a_func, const clang::ParmVarDecl* a_param, const std::string& a_containerDataType, bool a_isConst)
 {
-  kslicer::SLANG_TEX kind = a_isConst ? kslicer::SLANG_TEX::SAMPLED : kslicer::SLANG_TEX::STORAGE;
+  kslicer::SHADER_TEX kind = a_isConst ? kslicer::SHADER_TEX::SAMPLED : kslicer::SHADER_TEX::STORAGE;
   if(a_isConst && a_func->hasBody())
   {
     TextureParamSampleFinder finder(a_param);
     finder.TraverseStmt(a_func->getBody());
     if(finder.found)
-      kind = kslicer::SLANG_TEX::COMBINED;
+      kind = kslicer::SHADER_TEX::COMBINED;
   }
   const std::string texelType = kslicer::SlangTexelType(a_containerDataType, kind);
-  if(kind == kslicer::SLANG_TEX::COMBINED)
+  if(kind == kslicer::SHADER_TEX::COMBINED)
     return "Sampler2D<" + texelType + ">";
-  if(kind == kslicer::SLANG_TEX::STORAGE)
+  if(kind == kslicer::SHADER_TEX::STORAGE)
     return "RWTexture2D<" + texelType + ">";
   return "Texture2D<" + texelType + ">";
 }

@@ -42,6 +42,7 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   //
   const std::filesystem::path templatePathMega   = templatesFolder / "generated_mega.glsl"; // only for megakernels of RTV control functions ("-megakernel 1"); IPV kernels always use usual template
   const std::filesystem::path templatePathUsual  = templatesFolder / "generated.glsl";
+  const std::filesystem::path templatePathGraphics = templatesFolder / "generated_gp.glsl"; // vertex and pixel shaders of graphics pipeline
   const std::filesystem::path templatePathUpdInd = templatesFolder / "update_indirect.glsl";
   const std::filesystem::path templatePathRedFin = templatesFolder / "reduction_finish.glsl";
   const std::filesystem::path templatePathIntShd = templatesFolder / "intersection_shader.glsl";
@@ -154,6 +155,18 @@ void kslicer::GLSLCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
           }
         }
       }
+    }
+
+    const int gpStage = kernel.value()["GPStage"]; // vertex (1) or pixel (2) shader of graphics pipeline, see graphics_pipeline.h
+    if(gpStage != 0)
+    {
+      const std::string gpFileName = kernelName + ((gpStage == 1) ? ".vert" : ".frag");
+      kslicer::ApplyJsonToTemplate(templatePathGraphics.c_str(), shaderPath / gpFileName, currKerneJson);
+      buildSH << "glslangValidator -V " << gpFileName.c_str() << " -o " << gpFileName.c_str() << ".spv" << " -DGLSL -I.. ";
+      for(auto folder : ignoreFolders)
+        buildSH << "-I" << folder.c_str() << " ";
+      buildSH << std::endl;
+      continue;
     }
 
     std::string outFileName = kernelName + (useRayTracingPipeline ? "RGEN.glsl" : ".comp");
@@ -585,12 +598,30 @@ std::string kslicer::GLSLRewriter::RewriteStdVectorTypeStr(const std::string& a_
 std::string kslicer::GLSLRewriter::RewriteImageType(const std::string& a_containerType, const std::string& a_containerDataType, kslicer::TEX_ACCESS a_accessType, std::string& outImageFormat) const
 {
   std::string result = "";
-  if(a_accessType == kslicer::TEX_ACCESS::TEX_ACCESS_READ)
-    result = "readonly  ";
-  else if(a_accessType == kslicer::TEX_ACCESS::TEX_ACCESS_WRITE)
+  if(a_accessType == kslicer::TEX_ACCESS::TEX_ACCESS_WRITE)
     result = "writeonly ";
+  
+  // texture which is not written by kernel is a sampled image 'texture2D' (read with 'texelFetch') or 'sampler2D' if it is sampled (see kslicer::ShaderTextureKind)
+  //
+  const bool isWritten = (int(a_accessType) & int(kslicer::TEX_ACCESS::TEX_ACCESS_WRITE)) != 0;
+  const bool isSampled = (int(a_accessType) & int(kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE)) != 0;
+  if(!isWritten && !isSampled)
+  {
+    const std::string dataTypeRewritten = RewriteStdVectorTypeStr(a_containerDataType);
+    if(dataTypeRewritten == "uint" || dataTypeRewritten == "uvec2" || dataTypeRewritten == "uvec4")
+      result += "u";
+    if(dataTypeRewritten == "int" || dataTypeRewritten == "ivec2" || dataTypeRewritten == "ivec4")
+      result += "i";
+    if(a_containerType == "Texture1D" || a_containerType == "Image1D")
+      result += "texture1D";
+    else if(a_containerType == "Texture3D" || a_containerType == "Image3D")
+      result += "texture3D";
+    else
+      result += "texture2D";
+    return result;
+  }
 
-  if(a_accessType != kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE)
+  if(isWritten)
   {
     const std::string dataTypeRewritten = RewriteStdVectorTypeStr(a_containerDataType);
     if(dataTypeRewritten == "uint" || dataTypeRewritten == "uvec2" || dataTypeRewritten == "uvec4")
@@ -2007,28 +2038,50 @@ void kslicer::GLSLRewriter::RewriteTextureAccess(clang::CXXOperatorCallExpr* exp
   //
   bool shouldRewrite = false;
 
+  std::string dataType = "";
+  bool isMember        = false;
   auto pMember = m_codeInfo->allDataMembers.find(objName);
   if(pMember != m_codeInfo->allDataMembers.end())
+  {
     shouldRewrite = true;
+    isMember      = true;
+    dataType      = pMember->second.containerDataType;
+  }
 
   // (2) process if kernel argument access
   //
-  std::string dataType = "";
   for(const auto& arg : m_pCurrKernel->args)
   {
     if(arg.name == objName)
     {
       shouldRewrite = true;
+      isMember      = false;
       dataType = arg.containerDataType;
       break;
     }
   }
+  dataType = RewriteStdVectorTypeStr(dataType);
 
   std::string convertedType = "vec4";
-  if(dataType == "unsigned int" || dataType == "unsigned" || dataType == "uint" || dataType == "uint2" || dataType == "uint3" || dataType == "uint4")
+  if(dataType == "unsigned int" || dataType == "unsigned" || dataType == "uint" || dataType == "uvec2" || dataType == "uvec3" || dataType == "uvec4")
     convertedType = "uvec4";
-  else if(dataType == "int" || dataType == "int2" || dataType == "int3" || dataType == "int4")
+  else if(dataType == "int" || dataType == "ivec2" || dataType == "ivec3" || dataType == "ivec4")
     convertedType = "ivec4";
+  
+  // components of texel: 'imageLoad' and 'texelFetch' always return 4 components
+  //
+  std::string swizzle = "";
+  if(dataType == "float" || dataType == "uint" || dataType == "int" || dataType == "unsigned int" || dataType == "unsigned")
+    swizzle = ".x";
+  else if(dataType == "vec2" || dataType == "uvec2" || dataType == "ivec2")
+    swizzle = ".xy";
+  else if(dataType == "vec3" || dataType == "uvec3" || dataType == "ivec3")
+    swizzle = ".xyz";
+  
+  // texture which is not written in this kernel is a sampled image (see kslicer::ShaderTextureKind)
+  //
+  const auto& accessFlags = isMember ? m_pCurrKernel->texAccessInMemb : m_pCurrKernel->texAccessInArgs;
+  const bool  isStorage   = kslicer::ShaderTextureKind(*m_pCurrKernel, accessFlags, objName) == kslicer::SHADER_TEX::STORAGE;
 
   // (3) rewrite if do needed
   //
@@ -2043,7 +2096,8 @@ void kslicer::GLSLRewriter::RewriteTextureAccess(clang::CXXOperatorCallExpr* exp
     }
     else if(WasNotRewrittenYet(expr))                           // read
     {
-      std::string lastRewrittenText = std::string("imageLoad") + "(" + objName + ", " + indexText + ")";
+      std::string lastRewrittenText = isStorage ? std::string("imageLoad(") + objName + ", " + indexText + ")" + swizzle : 
+                                                  std::string("texelFetch(") + objName + ", " + indexText + ", 0)" + swizzle;
       ReplaceText(expr->getSourceRange(), lastRewrittenText);
       MarkRewritten(expr);
     }

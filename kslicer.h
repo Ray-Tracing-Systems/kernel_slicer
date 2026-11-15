@@ -2043,15 +2043,15 @@ namespace kslicer
   std::string TextureMemberVulkanFormat(const DataMemberInfo& a_member, const std::string& a_dataTypeRewritten, bool a_useHalFloat); ///<! sampled 'Image2D<uint32_t>' is RGBA8_UNORM
 
   /**
-  \brief How Slang back-end declares texture in a kernel/shader and binds it on host:
-          SAMPLED  -- 'Texture2D<T>',   read with operator[], VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-          COMBINED -- 'Sampler2D<T>',   texture.sample(sampler, uv), VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-          STORAGE  -- 'RWTexture2D<T>', written by kernel, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE.
+  \brief How texture is declared in a kernel/shader and bound on host (Slang | GLSL):
+          SAMPLED  -- 'Texture2D<T>'   | 'texture2D', read with operator[], VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+          COMBINED -- 'Sampler2D<T>'   | 'sampler2D', texture.sample(sampler, uv), VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+          STORAGE  -- 'RWTexture2D<T>' | 'image2D',   written by kernel, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE.
   */
-  enum class SLANG_TEX { SAMPLED = 0, COMBINED = 1, STORAGE = 2 };
-  SLANG_TEX   SlangTextureKind(const KernelInfo& a_kernel, const kslicer::umap<std::string, TEX_ACCESS>& a_flags, const std::string& a_name);
-  std::string SlangTextureDescriptorType(SLANG_TEX a_kind);
-  std::string SlangTexelType(const std::string& a_dataTypeRewritten, SLANG_TEX a_kind);  ///<! 'T' in 'Texture2D<T>'
+  enum class SHADER_TEX { SAMPLED = 0, COMBINED = 1, STORAGE = 2 };
+  SHADER_TEX  ShaderTextureKind(const KernelInfo& a_kernel, const kslicer::umap<std::string, TEX_ACCESS>& a_flags, const std::string& a_name);
+  std::string TextureDescriptorType(SHADER_TEX a_kind);
+  std::string SlangTexelType(const std::string& a_dataTypeRewritten, SHADER_TEX a_kind);  ///<! 'T' in 'Texture2D<T>'
 
   std::vector<kslicer::ArgMatch> MatchCallArgsForKernel(clang::CallExpr* call, const KernelInfo& k, const clang::CompilerInstance& a_compiler);
 
