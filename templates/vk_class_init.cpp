@@ -440,6 +440,9 @@ void {{MainClassName}}{{MainClassSuffix}}::DeleteDeviceData()
 
 {{MainClassName}}{{MainClassSuffix}}::~{{MainClassName}}{{MainClassSuffix}}()
 {
+  {% if HasGraphics %}
+  DestroyGraphics();
+  {% endif %}
   {% if EnableTimeStamps %}
   if(m_queryPoolTimestamps != VK_NULL_HANDLE)
     vkDestroyQueryPool(m_device, m_queryPoolTimestamps, nullptr);
@@ -573,6 +576,9 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
   kspec = &m_specsForWGSize;
   {% endif %}
   {{Kernel.Name}}DSLayout = Create{{Kernel.Name}}DSLayout();
+  {% if Kernel.IsGraphics %}
+  // vertex or pixel shader: graphics pipelines are created for draws in InitGraphics()
+  {% else %}
   {% if Kernel.IsMega %}
   if(m_megaKernelFlags.enable{{Kernel.Name}})
   {% else %}
@@ -667,6 +673,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
   {% endif %}
   MakeComputePipelineOnly(shaderPath.c_str(), {% if ShaderSingleFile %}"main"{% else %}"{{Kernel.OriginalName}}_Finish"{% endif %}, kspec, {{Kernel.Name}}DSLayout, {{Kernel.Name}}Layout, &{{Kernel.Name}}FinishPipeline);
   {% endif %} {# /* if Kernel.HasLoopFinish */ #}
+  {% endif %} {# /* not Kernel.IsGraphics */ #}
 }
 
 ## endfor
@@ -1505,7 +1512,7 @@ VkImageView {{MainClassName}}{{MainClassSuffix}}::CreateView(VkFormat a_format, 
     createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
   }
 
-  createInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+  createInfo.subresourceRange.aspectMask     = (a_format == VK_FORMAT_D32_SFLOAT) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT; // depth targets of graphics pipeline
   createInfo.subresourceRange.baseMipLevel   = 0;
   createInfo.subresourceRange.levelCount     = 1;
   createInfo.subresourceRange.baseArrayLayer = 0;
@@ -2487,3 +2494,6 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
 }
 
 {{MainClassName}}{{MainClassSuffix}}::MegaKernelIsEnabled {{MainClassName}}{{MainClassSuffix}}::m_megaKernelFlags;
+{% if HasGraphics %}
+{% include "inc_gp_vulkan.cpp" %}
+{% endif %}

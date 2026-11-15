@@ -48,6 +48,8 @@ std::vector<kslicer::DataMemberInfo> kslicer::MakeClassDataListAndCalcOffsets(ks
     const bool forceUsed    = a_forceUsed.find(keyval.second.name) != a_forceUsed.end();
     const bool usedInKernel = keyval.second.usedInKernel || forceUsed;
 
+    if(kslicer::IsHostOnlyMemberType(keyval.second.type)) // LiteRS::Pipeline and other objects of graphics pipeline are used on host only
+      continue;
     if((!keyval.second.isContainer || forceUsed) && usedInKernel && !IsSamplerTypeName(keyval.second.type)) // exclude texture samplers
       resVars.push_back(keyval.second);
     else if((usedInKernel || keyval.second.usedInMainFn) && keyval.second.isContainer && !keyval.second.IsUsedTexture())

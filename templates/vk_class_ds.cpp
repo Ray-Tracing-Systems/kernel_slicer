@@ -17,7 +17,7 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocateAllDescriptorSets()
 {
   // allocate pool
   //
-  VkDescriptorPoolSize buffersSize, combinedImageSamSize, imageStorageSize, accelStorageSize, dynamicBuffersSize;
+  VkDescriptorPoolSize buffersSize, combinedImageSamSize, imageStorageSize, sampledImageSize, accelStorageSize, dynamicBuffersSize;
   buffersSize.type            = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
   buffersSize.descriptorCount = {% if HaveLocalContainers %} 16 {% else %} {{TotalBuffersUsed}} + 64 {% endif %}; //
 
@@ -27,6 +27,8 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocateAllDescriptorSets()
     combinedImageSamSize.descriptorCount = {{TotalTexArrayUsed}}*GetDefaultMaxTextures() + {{TotalTexCombinedUsed}};
     imageStorageSize.type                = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     imageStorageSize.descriptorCount     = {{TotalTexStorageUsed}};
+    sampledImageSize.type                = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE; // read-only textures without sampler (Slang)
+    sampledImageSize.descriptorCount     = {{TotalTexStorageUsed}};
     accelStorageSize.type                = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
     accelStorageSize.descriptorCount     = {% if TotalAccels > 0 %} {{TotalAccels+1}} {% else %} 0 {% endif %};
 
@@ -34,6 +36,8 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocateAllDescriptorSets()
       poolSizes.push_back(combinedImageSamSize);
     if(imageStorageSize.descriptorCount > 0)
       poolSizes.push_back(imageStorageSize);
+    if(sampledImageSize.descriptorCount > 0)
+      poolSizes.push_back(sampledImageSize);
     if(accelStorageSize.descriptorCount > 0)
       poolSizes.push_back(accelStorageSize);
     
@@ -87,6 +91,8 @@ VkDescriptorSetLayout {{MainClassName}}{{MainClassSuffix}}::Create{{Kernel.Name}
   
   {% if Kernel.UseRayGen %}
   const auto stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR | VK_SHADER_STAGE_CALLABLE_BIT_KHR;
+  {% else if Kernel.IsGraphics %}
+  const auto stageFlags = {{Kernel.GPStageFlags}};
   {% else %}
   const auto stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
   {% endif %}

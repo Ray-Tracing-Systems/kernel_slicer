@@ -43,7 +43,7 @@ kslicer::MainClassInfo::MList kslicer::MainClassInfo::ListMatchers_KF(const Kern
   std::vector<clang::ast_matchers::StatementMatcher> list;
   list.push_back(kslicer::MakeMatch_MemberVarOfMethod(a_kernelName));
   list.push_back(kslicer::MakeMatch_FunctionCallFromFunction(a_kernelName));
-  if(a_kernel.pattern == kslicer::PATTERN_TP::PATTERN_IPV)
+  if(a_kernel.pattern == kslicer::PATTERN_TP::PATTERN_IPV && a_kernel.gpStage == kslicer::GP_STAGE::NONE) // shaders of graphics pipeline have no thread loops
   {
     list.push_back(kslicer::MakeMatch_ForLoopInsideFunction(a_kernelName));
     list.push_back(kslicer::MakeMatch_BeforeForLoopInsideFunction(a_kernelName));

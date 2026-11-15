@@ -1,6 +1,13 @@
 # План: графический конвейер (VS + PS) в kernel_slicer
 
-Рабочий документ. Состояние на 2026-11-15: этап 1 (CPU) выполнен, этапы 2–5 впереди.
+Рабочий документ. Состояние на 2026-11-15:
+- этап 1 (CPU) выполнен;
+- этапы 2 и 3 (фронтенд и Vulkan/Slang, Vulkan 1.0) работают для теста 080 и демо 32 (`ktest.py` OK, без ошибок validation layers);
+- демо 31 и 33 упираются в пробелы текстур Slang (выборка с `Sampler` у одиночной текстуры, запись в изображения в кернелах);
+- GLSL, ISPC и dynamic rendering впереди.
+
+Реализация в трансляторе: [graphics_pipeline.h](../graphics_pipeline.h), [graphics_pipeline.cpp](../graphics_pipeline.cpp),
+шаблоны `templates/inc_gp_vulkan.h/.cpp`, `templates_slang/generated_gp.slang`. Остальной код транслятора затронут точечными хуками.
 
 ## 0. Принятые решения
 
@@ -124,18 +131,22 @@ GBuf   C::kernelPS_B(const Varyings& a_in) const;                               
 2. **Изображения-цели.**
    - Usage (`template_rendering_host.cpp`, сейчас `local["Usage"]`): `COLOR_ATTACHMENT` или `DEPTH_STENCIL_ATTACHMENT` + `SAMPLED`/`STORAGE` по использованию.
    - Глубина — `D32_SFLOAT`. Чтение глубины в шейдерах (карта теней в PS, `m_shadowMap[int2]`) — через sampled-вид с DEPTH aspect, т.к. storage для D32 обычно не поддерживается.
-3. **Пайплайны.**
-   - Vulkan 1.3: dynamic rendering, dynamic state для viewport/scissor и extended dynamic state для `cullMode`, `frontFace`, `depthTest/Write/CompareOp`.
-   - Отсюда одна `VkPipeline` на тройку (VS, PS, форматы целей + blend). Blend запекается.
-   - Пайплайны создаются при инициализации (форматы известны статически), состояние берётся из `LiteRS::Pipeline` во время записи команд. Поэтому изменение `cullMode` и т.п. на host не требует пересоздания.
-   - Новые фичи устройства — в `ListRequiredDeviceFeatures`.
+3. **Пайплайны.** По умолчанию только возможности Vulkan 1.0 (кроссплатформенность):
+   - `VkRenderPass` + `VkFramebuffer` на каждый объект `LiteRS::Pipeline` (набор целей и их форматы известны статически);
+   - одна `VkPipeline` на каждую команду отрисовки (VS, PS, render pass); состояние `cullMode`, `frontFace`, depth, blend
+     запекается из `LiteRS::Pipeline` при создании; viewport и scissor — dynamic state (есть в 1.0);
+   - пайплайны создаются в `CommitDeviceData()`, когда значения `LiteRS::Pipeline` уже заданы на host. Изменение
+     состояния после этого требует повторного `CommitDeviceData()` (или отдельной функции пересоздания).
+   - Позже, отдельным опциональным шагом (опция kslicer): Vulkan 1.3, dynamic rendering и extended dynamic state для
+     cull/depth, тогда render pass и framebuffer не нужны, а состояние можно менять без пересоздания пайплайнов.
 4. **Команды.** Каждая команда LiteRS переписывается в `tr_host_vulkan.cpp` (по аналогии со служебными вызовами `memcpy`/`sort`, `VisitCallExpr`):
-   - `Clear` — `loadOp = CLEAR` следующего `vkCmdBeginRendering` той же цели, если между ними нет других обращений к цели; иначе `vkCmdClearColorImage` / `vkCmdClearDepthStencilImage`;
+   - `Clear` — в первой версии `vkCmdClearColorImage` / `vkCmdClearDepthStencilImage` (render pass с `loadOp = LOAD`);
+     оптимизация позже: слить с `loadOp = CLEAR` следующего прохода той же цели;
    - `Draw*`:
      - переходы лейаутов (`GENERAL` ↔ `COLOR_ATTACHMENT_OPTIMAL` / `DEPTH_ATTACHMENT_OPTIMAL`);
-     - `vkCmdBeginRendering`, bind pipeline и набора дескрипторов (graphics bind point), push constants;
+     - `vkCmdBeginRenderPass`, bind pipeline и набора дескрипторов (graphics bind point), push constants;
      - `vkCmdDraw` или `vkCmdBindIndexBuffer + vkCmdDrawIndexed` (буфер индексов получает usage `INDEX_BUFFER`);
-     - `vkCmdEndRendering`.
+     - `vkCmdEndRenderPass`.
    - Барьеры compute → vertex/fragment и attachment → compute: расширить существующую логику барьеров (`vk_class_init.cpp`, около строки 1550).
 5. **Тайловые Image2D на GPU.** Генерированные копирования (`UpdateTextureMembers`, `vk_class.cpp:246` использует `data()`) и чтение изображений обратно должны линеаризовать тайловые данные (`LiteImage::LinearPixels`). То же — во всех местах бэкендов, где используется `Image2D::data()`.
 6. **Таймстемпы** (`-timestamps 1`): время каждой отрисовки по имени `DrawTriangles_<VS>_<PS>` или по имени PS.
@@ -168,6 +179,12 @@ GBuf   C::kernelPS_B(const Varyings& a_in) const;                               
 - Пользовательская документация (`doc/graphics_pipeline.md`): API, правила для шейдеров, ограничения.
 - Справочник в skill: `.claude/skills/kernel-slicer/references/graphics.md`, ссылка в SKILL.md и в таблице образцов.
 - Обновить `doc/features.md` и `README.md`.
+
+## 5a. Позже: двухуровневый тайлинг
+
+Корзины 64x64 (или 128x128), внутри них тайлы 4x4, как `FrameBufferTwoLvl` в SWGL. Корзины улучшают работу кэша
+(в экспериментах SWGL выигрыш до 60% в одном потоке), а тайлы 4x4 позволяют обращаться к блоку одной векторной
+командой в ISPC. Нужен новый `LiteImage::Layout` и исследование размера корзины (64 / 128) бенчмарком.
 
 ## 6. Риски и открытые вопросы
 

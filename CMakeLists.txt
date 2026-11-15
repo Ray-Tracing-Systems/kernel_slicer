@@ -40,6 +40,7 @@ add_executable(kslicer
     reduction.cpp
     feature_status.cpp
     neural_nets.cpp
+    graphics_pipeline.cpp
     shaders_clspv.cpp
     shaders_glsl.cpp
     shaders_ispc.cpp

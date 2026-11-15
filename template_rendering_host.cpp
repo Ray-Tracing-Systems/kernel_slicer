@@ -59,11 +59,24 @@ struct DSTextureAccess
 typedef typename kslicer::umap<std::string, kslicer::TEX_ACCESS>::const_iterator FlagsPointerType;
 typedef typename kslicer::umap<std::string, std::string>::const_iterator         SamplerPointerType;
 
-DSTextureAccess ObtainDSTextureAccess(const kslicer::KernelInfo& kernel, FlagsPointerType pAccessFlags, SamplerPointerType pSampler, bool isConstAccess)
+/// Slang declares all textures as read-only 'Texture2D' (see common_generated.slang): a texture without sampler is a sampled image
+static bool IsSlangSampledImage(const kslicer::MainClassInfo& a_classInfo, const kslicer::KernelInfo& a_kernel, const std::string& a_name)
+{
+  return a_classInfo.pShaderCC->Name() == "Slang" && a_kernel.texAccessSampler.find(a_name) == a_kernel.texAccessSampler.end();
+}
+
+DSTextureAccess ObtainDSTextureAccess(const kslicer::KernelInfo& kernel, const kslicer::umap<std::string, kslicer::TEX_ACCESS>& a_flags, FlagsPointerType pAccessFlags, 
+                                      SamplerPointerType pSampler, bool isConstAccess, bool a_sampledImage)
 {
   DSTextureAccess result;
   std::string samplerName = (pSampler == kernel.texAccessSampler.end()) ? "VK_NULL_HANDLE" : std::string("m_vdata.") + pSampler->second;
-  if(pAccessFlags != kernel.texAccessInArgs.end())
+  if(a_sampledImage)
+  {
+    result.accessLayout = "VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL";
+    result.accessDSType = "VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE";
+    result.SamplerName  = "VK_NULL_HANDLE";
+  }
+  else if(pAccessFlags != a_flags.end())
   {
     result.accessLayout = "VK_IMAGE_LAYOUT_GENERAL";
     result.accessDSType = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
@@ -91,19 +104,19 @@ DSTextureAccess ObtainDSTextureAccess(const kslicer::KernelInfo& kernel, FlagsPo
   return result;
 }
 
-DSTextureAccess ObtainDSTextureAccessArg(const kslicer::KernelInfo& kernel, int argId, bool isConstAccess)
+DSTextureAccess ObtainDSTextureAccessArg(const kslicer::MainClassInfo& a_classInfo, const kslicer::KernelInfo& kernel, int argId, bool isConstAccess)
 {
   std::string argNameInKernel = kernel.args[argId].name;
   const auto pAccessFlags     = kernel.texAccessInArgs.find(argNameInKernel);
   const auto pSampler         = kernel.texAccessSampler.find(argNameInKernel);
-  return ObtainDSTextureAccess(kernel, pAccessFlags, pSampler, isConstAccess);
+  return ObtainDSTextureAccess(kernel, kernel.texAccessInArgs, pAccessFlags, pSampler, isConstAccess, IsSlangSampledImage(a_classInfo, kernel, argNameInKernel));
 }
 
-DSTextureAccess ObtainDSTextureAccessMemb(const kslicer::KernelInfo& kernel, const std::string& varName, bool isConstAccess)
+DSTextureAccess ObtainDSTextureAccessMemb(const kslicer::MainClassInfo& a_classInfo, const kslicer::KernelInfo& kernel, const std::string& varName, bool isConstAccess)
 {
   const auto pAccessFlags     = kernel.texAccessInMemb.find(varName);
   const auto pSampler         = kernel.texAccessSampler.find(varName);
-  return ObtainDSTextureAccess(kernel, pAccessFlags, pSampler, isConstAccess);
+  return ObtainDSTextureAccess(kernel, kernel.texAccessInMemb, pAccessFlags, pSampler, isConstAccess, IsSlangSampledImage(a_classInfo, kernel, varName));
 }
 
 
@@ -619,7 +632,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   else
   {
     for(const auto& k : a_classInfo.kernels)
-      data["KernelsDecls"].push_back("virtual void " + k.second.DeclCmd + ";");
+      if(k.second.gpStage == kslicer::GP_STAGE::NONE) // vertex and pixel shaders are executed by draws, see graphics_pipeline.cpp
+        data["KernelsDecls"].push_back("virtual void " + k.second.DeclCmd + ";");
   }
 
   data["TotalDSNumber"]   = a_classInfo.allDescriptorSetsInfo.size();
@@ -1096,6 +1110,8 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     kernelJson["HasLoopFinish"]  = k.hasFinishPassSelf;
     kernelJson["Decl"]           = kernelDeclByName[kernName];
     kernelJson["IsRTV"]          = (k.pattern == PATTERN_TP::PATTERN_RTV);
+    kernelJson["IsGraphics"]     = (k.gpStage != kslicer::GP_STAGE::NONE);
+    kernelJson["GPStageFlags"]   = (k.gpStage == kslicer::GP_STAGE::VERTEX) ? "VK_SHADER_STAGE_VERTEX_BIT" : "VK_SHADER_STAGE_FRAGMENT_BIT";
 
     std::string originalSourceCode = kslicer::GetRangeSourceCode(k.astNode->getSourceRange(), compiler);
     ReplaceFirst(originalSourceCode, "\n", "");
@@ -1154,6 +1170,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         argData["IsTextureArray"] = true;
         hasTextureArray = true;
       }
+      else if(arg.IsTexture() && IsSlangSampledImage(a_classInfo, k, arg.name))
+      {
+        argData["Type"] = "VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE";
+      }
       else if(arg.IsTexture())
       {
         auto pAccessFlags = k.texAccessInArgs.find(arg.name);
@@ -1202,6 +1222,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       else if(container.second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED)
       {
         argData["Type"] = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
+      }
+      else if(container.second.isTexture() && IsSlangSampledImage(a_classInfo, k, container.second.name))
+      {
+        argData["Type"] = "VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE";
       }
       else if(container.second.isTexture())
       {
@@ -1629,7 +1653,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
                       (pMember->second.tmask == TEX_ACCESS::TEX_ACCESS_READ)   ||
                       (pMember->second.tmask == TEX_ACCESS::TEX_ACCESS_NOTHING);
 
-          auto texDSInfo = ObtainDSTextureAccessArg(pFoundKernel->second, j, isConst);
+          auto texDSInfo = ObtainDSTextureAccessArg(a_classInfo, pFoundKernel->second, j, isConst);
           arg["AccessLayout"] = texDSInfo.accessLayout;
           arg["AccessDSType"] = texDSInfo.accessDSType;
           arg["SamplerName"]  = texDSInfo.SamplerName;
@@ -1692,7 +1716,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
             bool isConst = (pMember->second.tmask == TEX_ACCESS::TEX_ACCESS_SAMPLE) ||
                            (pMember->second.tmask == TEX_ACCESS::TEX_ACCESS_READ)   ||
                            (pMember->second.tmask == TEX_ACCESS::TEX_ACCESS_NOTHING);
-            auto texDSInfo = ObtainDSTextureAccessMemb(pFoundKernel->second, container.second.name, isConst);
+            auto texDSInfo = ObtainDSTextureAccessMemb(a_classInfo, pFoundKernel->second, container.second.name, isConst);
             arg["AccessLayout"] = texDSInfo.accessLayout;
             arg["AccessDSType"] = texDSInfo.accessDSType;
             arg["SamplerName"]  = texDSInfo.SamplerName;
@@ -1952,6 +1976,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     data["GenerateSceneRestrictions"] = (pScnRstr == a_classInfo.allMemberFunctions.end());
   }
 
+  kslicer::AddGraphicsToHostJson(data, a_classInfo); // graphics pipeline, see graphics_pipeline.cpp
   return data;
 }
 

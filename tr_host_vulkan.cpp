@@ -566,6 +566,14 @@ bool kslicer::MainFunctionRewriterVulkan::VisitCallExpr(CallExpr* call)
   const DeclarationName dn      = dni.getName();
   const std::string fname       = dn.getAsString();
 
+  kslicer::GPCommand gpCommand;
+  if(WasNotRewrittenYet(call) && kslicer::ParseGraphicsCommand(call, gpCommand)) // LiteRS::Clear, LiteRS::DrawTriangles, ...
+  {
+    ReplaceText(call->getSourceRange(), MakeGraphicsCommandCmdString(call, gpCommand));
+    MarkRewritten(call);
+    return true;
+  }
+
   if((fname == "memcpy" || fname == "exclusive_scan" || fname == "inclusive_scan" || fname == "sort" || fname == "MatMulTranspose") && WasNotRewrittenYet(call))
   {
     m_pCodeInfo->usedServiceCalls.insert(fname);

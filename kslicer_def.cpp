@@ -1,7 +1,8 @@
 #include "kslicer.h"
 #include <array>
 
-static std::array<std::string,7> POSSIBLE_KERNEL_NAMES = {"kernel_", "kernel1D_", "kernel2D_", "kernel3D_", "kernelBE1D_", "kernelBE2D_", "kernelBE3D_"};
+static std::array<std::string,9> POSSIBLE_KERNEL_NAMES = {"kernel_", "kernel1D_", "kernel2D_", "kernel3D_", "kernelBE1D_", "kernelBE2D_", "kernelBE3D_",
+                                                           "kernelVS_", "kernelPS_"}; // vertex and pixel shaders, see graphics_pipeline.h
 static std::array<std::string,8> POSSIBLE_IMAGE_NAMES  = {"Texture1D", "Texture2D", "Texture3D", "TextureCube", "Image1D", "Image2D", "Image3D", "ImageCube"};
 
 bool kslicer::MainClassInfo::IsKernel(const std::string& a_funcName) const
@@ -22,6 +23,9 @@ kslicer::PATTERN_TP  kslicer::MainClassInfo::PatternByKernelName(const std::stri
 
 std::string kslicer::MainClassInfo::RemoveKernelPrefix(const std::string& a_funcName) const
 {
+  const std::string shaderName = GraphicsShortKernelName(a_funcName); // keep stage, VS and PS often have the same name
+  if(!shaderName.empty())
+    return shaderName;
   std::string name = a_funcName;
   for(const auto& namePossible : POSSIBLE_KERNEL_NAMES)
     if(ReplaceFirst(name, namePossible, ""))

@@ -1,6 +1,6 @@
 {
     "variants": [
-        {"name": "slang", "backend": "slang", "kmake": "kmake.json", "skip": "graphics pipeline (LiteRS) is not supported by kslicer yet"},
-        {"name": "glsl",  "backend": "glsl",  "kmake": "kmake.json", "skip": "graphics pipeline (LiteRS) is not supported by kslicer yet"}
+        {"name": "slang", "backend": "slang", "kmake": "kmake.json", "skip": "Slang back-end: textures with sampler and writable images are not supported yet"},
+        {"name": "glsl",  "backend": "glsl",  "kmake": "kmake.json", "skip": "graphics pipeline (LiteRS) is not supported by GLSL back-end yet"}
     ]
 }

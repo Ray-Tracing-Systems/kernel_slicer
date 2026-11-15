@@ -5,6 +5,7 @@
 #include <vector>
 #include <map>
 #include "kslicer_containers.h"
+#include "graphics_pipeline.h"
 #include <algorithm>
 #include <sstream>
 #include <filesystem>
@@ -374,6 +375,8 @@ namespace kslicer
 
     uint32_t GetDim() const
     {
+      if(gpStage != GP_STAGE::NONE) // vertex and pixel shaders are not dispatched as compute kernels
+        return 1;
       if(loopIters.size() != 0)
         return uint32_t(loopIters.size());
 
@@ -410,6 +413,7 @@ namespace kslicer
     bool usedInExitExpr = false;                ///<! used by RTV pattern; if kernel is used in Control Function in if(kernelXXX()) --> break or return extression
     bool checkThreadFlags = false;              ///<! used by RTV pattern; if Kernel.shouldCheckExitFlag --> insert check flags code in kernel
     bool isMega           = false;
+    GP_STAGE gpStage      = GP_STAGE::NONE;     ///<! vertex or pixel shader of graphics pipeline (see graphics_pipeline.h)
 
     std::string RetType;                         ///<! kernel return type
     std::string DeclCmd;                         ///<! used during class header to print declaration of current 'XXXCmd' for current 'kernel_XXX'
@@ -1722,6 +1726,7 @@ namespace kslicer
 
     kslicer::uset<std::string>                 usedServiceCalls; ///<! memcpy, memset, scan, sort and e.t.c.
     kslicer::umap<std::string, ServiceCall>    serviceCalls;     ///<! actual list of used service calls
+    GraphicsInfo                               graphics;         ///<! graphics pipeline: LiteRS::Pipeline members and draws (see graphics_pipeline.h)
 
     kslicer::umap<std::string, const clang::CXXMethodDecl*> allMemberFunctions;  ///<! in fact this is used for a specific case, RTV pattern, full impl function, check for user define 'XXXBlock' function for control function 'XXX'
                                                                                       ///<! and we do not support overloading here ...

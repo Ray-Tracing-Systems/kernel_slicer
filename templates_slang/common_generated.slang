@@ -6,21 +6,21 @@ layout (constant_id = {{KSpec.Id}}) const int {{KSpec.Name}} = {{KSpec.Id}}; //
 {% for Arg in Kernel.Args %}
 {% if not Arg.IsUBO %}
 {% if Arg.IsImage %}
-{% if Kernel.UseCombinedImageSampler %}[[vk::binding({{loop.index}}, 0)]] {% endif %}Texture2D<float4> {{Arg.Name}}; //
+{% if Kernel.UseCombinedImageSampler or Kernel.IsGraphics %}[[vk::binding({{loop.index}}, {{Kernel.DSetId}})]] {% endif %}Texture2D<{% if existsIn(Arg, "TexelType") %}{{Arg.TexelType}}{% else %}float4{% endif %}> {{Arg.Name}}; //
 {% if Arg.IsImageArray %}
-[[vk::binding({{loop.index}}, 0)]] SamplerState {{Arg.NameSam}};
+[[vk::binding({{loop.index}}, {{Kernel.DSetId}})]] SamplerState {{Arg.NameSam}};
 {% endif %}
 {% else if Arg.IsAccelStruct %}
-{% if Kernel.UseCombinedImageSampler %}[[vk::binding({{loop.index}}, 0)]] {% endif %}RaytracingAccelerationStructure {{Arg.Name}};
+{% if Kernel.UseCombinedImageSampler or Kernel.IsGraphics %}[[vk::binding({{loop.index}}, {{Kernel.DSetId}})]] {% endif %}RaytracingAccelerationStructure {{Arg.Name}};
 {% else %}
-{% if Kernel.UseCombinedImageSampler or Arg.NeedUintAlias %}[[vk::binding({{loop.index}}, 0)]] {% endif %}{%if not Arg.IsConst%}RW{% endif %}StructuredBuffer<{{Arg.Type}}{% if existsIn(Arg, "ScalarLayout") and Arg.ScalarLayout %}, ScalarDataLayout{% endif %}> {{Arg.Name}}; // 
+{% if Kernel.UseCombinedImageSampler or Arg.NeedUintAlias or Kernel.IsGraphics %}[[vk::binding({{loop.index}}, {{Kernel.DSetId}})]] {% endif %}{%if not Arg.IsConst and not Kernel.IsGraphics%}RW{% endif %}StructuredBuffer<{{Arg.Type}}{% if existsIn(Arg, "ScalarLayout") and Arg.ScalarLayout %}, ScalarDataLayout{% endif %}> {{Arg.Name}}; // 
 {% if Arg.NeedUintAlias %}
-[[vk::binding({{loop.index}}, 0)]] RWStructuredBuffer<uint> {{Arg.Name}}_asUint; // the same buffer viewed as 'uint' for CAS in float atomics emulation
+[[vk::binding({{loop.index}}, {{Kernel.DSetId}})]] RWStructuredBuffer<uint> {{Arg.Name}}_asUint; // the same buffer viewed as 'uint' for CAS in float atomics emulation
 {% endif %}
 {% endif %} {# /* Arg.IsImage */ #}
 {% endif %} {# /* not Arg.IsUBO */ #}
 {% endfor %}
-{% if Kernel.UseCombinedImageSampler %}[[vk::binding({{length(Kernel.Args)}}, 0)]] {% endif %}{%if not Kernel.ContantUBO%}RW{% endif %}StructuredBuffer<{{MainClassName}}{{MainClassSuffix}}_UBO_Data> ubo;
+{% if Kernel.UseCombinedImageSampler or Kernel.IsGraphics %}[[vk::binding({{length(Kernel.Args)}}, {{Kernel.DSetId}})]] {% endif %}{%if not Kernel.ContantUBO and not Kernel.IsGraphics%}RW{% endif %}StructuredBuffer<{{MainClassName}}{{MainClassSuffix}}_UBO_Data> ubo; // read only in graphics shaders: writes need vertexPipelineStoresAndAtomics
 {% for Map in Kernel.HashMaps %}
 
 // std::unordered_map '{{Map.Name}}': returns slot index of 'a_key' or capacity (index of the last, garbage slot) if 'a_key' is absent

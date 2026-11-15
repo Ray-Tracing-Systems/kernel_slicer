@@ -1,0 +1,296 @@
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Graphics pipeline (LiteRS). Render targets always stay in VK_IMAGE_LAYOUT_GENERAL, so kernels and draws use them without
+// layout transitions; LiteRS::Clear is a separate command, render passes load and store attachments.
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+static VkAttachmentDescription GPMakeAttachment(VkFormat a_format)
+{
+  VkAttachmentDescription desc = {};
+  desc.format         = a_format;
+  desc.samples        = VK_SAMPLE_COUNT_1_BIT;
+  desc.loadOp         = VK_ATTACHMENT_LOAD_OP_LOAD;
+  desc.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
+  desc.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+  desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  desc.initialLayout  = VK_IMAGE_LAYOUT_GENERAL;
+  desc.finalLayout    = VK_IMAGE_LAYOUT_GENERAL;
+  return desc;
+}
+
+static VkPipelineColorBlendAttachmentState GPMakeBlendState(LiteRS::BlendMode a_mode, bool a_integerTarget)
+{
+  VkPipelineColorBlendAttachmentState state = {};
+  state.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+  state.blendEnable    = (a_mode != LiteRS::BlendMode::NONE && !a_integerTarget) ? VK_TRUE : VK_FALSE; // integer (RGBA8 packed to uint) targets can't be blended
+  state.colorBlendOp   = VK_BLEND_OP_ADD;
+  state.alphaBlendOp   = VK_BLEND_OP_ADD;
+  if(a_mode == LiteRS::BlendMode::ALPHA)
+  {
+    state.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+  }
+  else
+  {
+    state.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+    state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+    state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+  }
+  return state;
+}
+
+void {{MainClassName}}{{MainClassSuffix}}::DestroyGraphics()
+{
+  {% for Draw in GPDraws %}
+  if({{Draw.Name}}Pipeline != VK_NULL_HANDLE)
+    vkDestroyPipeline(m_device, {{Draw.Name}}Pipeline, nullptr);
+  if({{Draw.Name}}Layout != VK_NULL_HANDLE)
+    vkDestroyPipelineLayout(m_device, {{Draw.Name}}Layout, nullptr);
+  {{Draw.Name}}Pipeline = VK_NULL_HANDLE;
+  {{Draw.Name}}Layout   = VK_NULL_HANDLE;
+  {% endfor %}
+  {% for Pipe in GPPipelines %}
+  if(m_gp_{{Pipe.Name}}.framebuffer != VK_NULL_HANDLE)
+    vkDestroyFramebuffer(m_device, m_gp_{{Pipe.Name}}.framebuffer, nullptr);
+  if(m_gp_{{Pipe.Name}}.renderPass != VK_NULL_HANDLE)
+    vkDestroyRenderPass(m_device, m_gp_{{Pipe.Name}}.renderPass, nullptr);
+  m_gp_{{Pipe.Name}} = GPPassObjects();
+  {% endfor %}
+}
+
+void {{MainClassName}}{{MainClassSuffix}}::InitGraphics()
+{
+  DestroyGraphics();
+  {% for Pipe in GPPipelines %}
+
+  // render pass and framebuffer for '{{Pipe.Name}}'
+  {
+    std::vector<VkAttachmentDescription> attachments;
+    std::vector<VkAttachmentReference>   colorRefs;
+    std::vector<VkImageView>             views;
+    {% for Target in Pipe.ColorTargets %}
+    attachments.push_back(GPMakeAttachment({{Target.Format}}));
+    colorRefs.push_back(VkAttachmentReference{uint32_t(attachments.size() - 1), VK_IMAGE_LAYOUT_GENERAL});
+    views.push_back(m_vdata.{{Target.Name}}View);
+    {% endfor %}
+    {% if Pipe.HasDepth %}
+    attachments.push_back(GPMakeAttachment(VK_FORMAT_D32_SFLOAT));
+    VkAttachmentReference depthRef = {uint32_t(attachments.size() - 1), VK_IMAGE_LAYOUT_GENERAL};
+    views.push_back(m_vdata.{{Pipe.DepthTarget}}View);
+    {% endif %}
+
+    VkSubpassDescription subpass    = {};
+    subpass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount    = uint32_t(colorRefs.size());
+    subpass.pColorAttachments       = colorRefs.data();
+    subpass.pDepthStencilAttachment = {% if Pipe.HasDepth %}&depthRef{% else %}nullptr{% endif %};
+
+    VkRenderPassCreateInfo renderPassInfo = {};
+    renderPassInfo.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    renderPassInfo.attachmentCount = uint32_t(attachments.size());
+    renderPassInfo.pAttachments    = attachments.data();
+    renderPassInfo.subpassCount    = 1;
+    renderPassInfo.pSubpasses      = &subpass;
+    VK_CHECK_RESULT(vkCreateRenderPass(m_device, &renderPassInfo, nullptr, &m_gp_{{Pipe.Name}}.renderPass));
+
+    m_gp_{{Pipe.Name}}.width  = {{Pipe.SizeFrom}}.width();
+    m_gp_{{Pipe.Name}}.height = {{Pipe.SizeFrom}}.height();
+
+    VkFramebufferCreateInfo framebufferInfo = {};
+    framebufferInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    framebufferInfo.renderPass      = m_gp_{{Pipe.Name}}.renderPass;
+    framebufferInfo.attachmentCount = uint32_t(views.size());
+    framebufferInfo.pAttachments    = views.data();
+    framebufferInfo.width           = m_gp_{{Pipe.Name}}.width;
+    framebufferInfo.height          = m_gp_{{Pipe.Name}}.height;
+    framebufferInfo.layers          = 1;
+    VK_CHECK_RESULT(vkCreateFramebuffer(m_device, &framebufferInfo, nullptr, &m_gp_{{Pipe.Name}}.framebuffer));
+  }
+  {% endfor %}
+  {% for Draw in GPDraws %}
+
+  // graphics pipeline '{{Draw.Name}}': state is taken from '{{Draw.Pipeline}}', call CommitDeviceData() again if you change it
+  {
+    const LiteRS::Pipeline& state = {{Draw.Pipeline}};
+
+    VkDescriptorSetLayout setLayouts[2] = { {{Draw.VS}}DSLayout{% if Draw.HasPS %}, {{Draw.PS}}DSLayout{% endif %} };
+    VkPushConstantRange   pcRange       = { VK_SHADER_STAGE_VERTEX_BIT, 0, uint32_t(sizeof({{Draw.Name}}_PC)) };
+
+    VkPipelineLayoutCreateInfo layoutInfo = {};
+    layoutInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    layoutInfo.setLayoutCount         = {% if Draw.HasPS %}2{% else %}1{% endif %};
+    layoutInfo.pSetLayouts            = setLayouts;
+    layoutInfo.pushConstantRangeCount = 1;
+    layoutInfo.pPushConstantRanges    = &pcRange;
+    VK_CHECK_RESULT(vkCreatePipelineLayout(m_device, &layoutInfo, nullptr, &{{Draw.Name}}Layout));
+
+    std::vector<VkPipelineShaderStageCreateInfo> stages;
+    std::vector<VkShaderModule>                  modules;
+    {
+      const std::string vsPath = AlterShaderPath("{{ShaderFolder}}/{{Draw.VSFile}}");
+      auto vsCode = vk_utils::readSPVFile(vsPath.c_str());
+      modules.push_back(vk_utils::createShaderModule(m_device, vsCode));
+      VkPipelineShaderStageCreateInfo stage = {};
+      stage.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+      stage.stage  = VK_SHADER_STAGE_VERTEX_BIT;
+      stage.module = modules.back();
+      stage.pName  = "main";
+      stages.push_back(stage);
+    }
+    {% if Draw.HasPS %}
+    {
+      const std::string psPath = AlterShaderPath("{{ShaderFolder}}/{{Draw.PSFile}}");
+      auto psCode = vk_utils::readSPVFile(psPath.c_str());
+      modules.push_back(vk_utils::createShaderModule(m_device, psCode));
+      VkPipelineShaderStageCreateInfo stage = {};
+      stage.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+      stage.stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
+      stage.module = modules.back();
+      stage.pName  = "main";
+      stages.push_back(stage);
+    }
+    {% endif %}
+
+    VkPipelineVertexInputStateCreateInfo vertexInput = {}; // vertex shader reads vertex data from buffers itself
+    vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+
+    VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
+    inputAssembly.sType    = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+
+    VkPipelineViewportStateCreateInfo viewportState = {}; // viewport and scissor are dynamic
+    viewportState.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    viewportState.viewportCount = 1;
+    viewportState.scissorCount  = 1;
+
+    VkPipelineRasterizationStateCreateInfo rasterizer = {};
+    rasterizer.sType       = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+    rasterizer.cullMode    = VkCullModeFlags(uint32_t(state.cullMode));  // LiteRS enums have the same values as Vulkan ones
+    rasterizer.frontFace   = VkFrontFace(uint32_t(state.frontFace));
+    rasterizer.lineWidth   = 1.0f;
+
+    VkPipelineMultisampleStateCreateInfo multisampling = {};
+    multisampling.sType                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+    VkPipelineDepthStencilStateCreateInfo depthStencil = {};
+    depthStencil.sType            = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    depthStencil.depthTestEnable  = ({{Draw.HasDepth}} && state.depthTest) ? VK_TRUE : VK_FALSE;
+    depthStencil.depthWriteEnable = ({{Draw.HasDepth}} && state.depthTest && state.depthWrite) ? VK_TRUE : VK_FALSE;
+    depthStencil.depthCompareOp   = VkCompareOp(uint32_t(state.depthCompare));
+
+    std::vector<VkPipelineColorBlendAttachmentState> blendStates;
+    {% for Target in Draw.ColorTargets %}
+    blendStates.push_back(GPMakeBlendState(state.blendMode, {{Target.IsUint}}));
+    {% endfor %}
+    VkPipelineColorBlendStateCreateInfo colorBlending = {};
+    colorBlending.sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    colorBlending.attachmentCount = uint32_t(blendStates.size());
+    colorBlending.pAttachments    = blendStates.data();
+
+    VkDynamicState dynamicStates[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    VkPipelineDynamicStateCreateInfo dynamicState = {};
+    dynamicState.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynamicState.dynamicStateCount = 2;
+    dynamicState.pDynamicStates    = dynamicStates;
+
+    VkGraphicsPipelineCreateInfo pipelineInfo = {};
+    pipelineInfo.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipelineInfo.stageCount          = uint32_t(stages.size());
+    pipelineInfo.pStages             = stages.data();
+    pipelineInfo.pVertexInputState   = &vertexInput;
+    pipelineInfo.pInputAssemblyState = &inputAssembly;
+    pipelineInfo.pViewportState      = &viewportState;
+    pipelineInfo.pRasterizationState = &rasterizer;
+    pipelineInfo.pMultisampleState   = &multisampling;
+    pipelineInfo.pDepthStencilState  = &depthStencil;
+    pipelineInfo.pColorBlendState    = &colorBlending;
+    pipelineInfo.pDynamicState       = &dynamicState;
+    pipelineInfo.layout              = {{Draw.Name}}Layout;
+    pipelineInfo.renderPass          = m_gp_{{Draw.Pipeline}}.renderPass;
+    pipelineInfo.subpass             = 0;
+    VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_device, m_pipelineCache, 1, &pipelineInfo, nullptr, &{{Draw.Name}}Pipeline));
+
+    for(auto module : modules)
+      vkDestroyShaderModule(m_device, module, nullptr);
+  }
+  {% endfor %}
+}
+{% for Pipe in GPPipelines %}
+
+void {{MainClassName}}{{MainClassSuffix}}::Clear_{{Pipe.Name}}Cmd(VkCommandBuffer a_commandBuffer)
+{
+  const LiteRS::Pipeline& state = {{Pipe.Name}};
+  {% if length(Pipe.ColorTargets) > 0 %}
+  VkImageSubresourceRange colorRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+  {% endif %}
+  {% for Target in Pipe.ColorTargets %}
+  {
+    VkClearColorValue clearValue = {};
+    {% if Target.IsUint %}
+    clearValue.uint32[0] = LiteRS::detail::PackRGBA8(state.clearColor); // RGBA8 target is stored as uint
+    {% else %}
+    clearValue.float32[0] = state.clearColor.x;
+    clearValue.float32[1] = state.clearColor.y;
+    clearValue.float32[2] = state.clearColor.z;
+    clearValue.float32[3] = state.clearColor.w;
+    {% endif %}
+    vkCmdClearColorImage(a_commandBuffer, m_vdata.{{Target.Name}}Texture, VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &colorRange);
+  }
+  {% endfor %}
+  {% if Pipe.HasDepth %}
+  {
+    VkImageSubresourceRange depthRange = { VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1 };
+    VkClearDepthStencilValue clearValue = { state.clearDepth, 0 };
+    vkCmdClearDepthStencilImage(a_commandBuffer, m_vdata.{{Pipe.DepthTarget}}Texture, VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &depthRange);
+  }
+  {% endif %}
+}
+{% endfor %}
+{% for Draw in GPDraws %}
+
+void {{MainClassName}}{{MainClassSuffix}}::{{Draw.Name}}Cmd(VkCommandBuffer a_commandBuffer, VkDescriptorSet a_dsVS, VkDescriptorSet a_dsPS, uint32_t a_count{% for Arg in Draw.UserArgs %}, {{Arg.Type}} {{Arg.Name}}{% endfor %})
+{
+  const LiteRS::Pipeline& state = {{Draw.Pipeline}};
+
+  VkRenderPassBeginInfo beginInfo = {};
+  beginInfo.sType                    = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+  beginInfo.renderPass               = m_gp_{{Draw.Pipeline}}.renderPass;
+  beginInfo.framebuffer              = m_gp_{{Draw.Pipeline}}.framebuffer;
+  beginInfo.renderArea.extent.width  = m_gp_{{Draw.Pipeline}}.width;
+  beginInfo.renderArea.extent.height = m_gp_{{Draw.Pipeline}}.height;
+  vkCmdBeginRenderPass(a_commandBuffer, &beginInfo, VK_SUBPASS_CONTENTS_INLINE);
+  vkCmdBindPipeline(a_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, {{Draw.Name}}Pipeline);
+
+  const VkViewport viewport = { state.viewport.x, state.viewport.y, state.viewport.width, state.viewport.height, state.viewport.minDepth, state.viewport.maxDepth };
+  const int32_t    x0       = std::max(int32_t(std::floor(state.viewport.x)), 0);
+  const int32_t    y0       = std::max(int32_t(std::floor(state.viewport.y)), 0);
+  const int32_t    x1       = std::min(int32_t(std::ceil(state.viewport.x + state.viewport.width)),  int32_t(m_gp_{{Draw.Pipeline}}.width));
+  const int32_t    y1       = std::min(int32_t(std::ceil(state.viewport.y + state.viewport.height)), int32_t(m_gp_{{Draw.Pipeline}}.height));
+  const VkRect2D   scissor  = { {x0, y0}, {uint32_t(std::max(x1 - x0, 0)), uint32_t(std::max(y1 - y0, 0))} };
+  vkCmdSetViewport(a_commandBuffer, 0, 1, &viewport);
+  vkCmdSetScissor (a_commandBuffer, 0, 1, &scissor);
+
+  VkDescriptorSet descriptorSets[2] = {a_dsVS, a_dsPS};
+  vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, {{Draw.Name}}Layout, 0, {% if Draw.HasPS %}2{% else %}1{% endif %}, descriptorSets, 0, nullptr);
+
+  {{Draw.Name}}_PC pcData;
+  {% for Arg in Draw.UserArgs %}
+  pcData.{{Arg.Name}} = {{Arg.Name}};
+  {% endfor %}
+  pcData.gpDummy = 0;
+  vkCmdPushConstants(a_commandBuffer, {{Draw.Name}}Layout, VK_SHADER_STAGE_VERTEX_BIT, 0, uint32_t(sizeof(pcData)), &pcData);
+
+  {% if Draw.Indexed %}
+  vkCmdBindIndexBuffer(a_commandBuffer, m_vdata.{{Draw.IndexBuffer}}Buffer, 0, VK_INDEX_TYPE_UINT32);
+  vkCmdDrawIndexed(a_commandBuffer, a_count, 1, 0, 0, 0);
+  {% else %}
+  vkCmdDraw(a_commandBuffer, a_count, 1, 0, 0);
+  {% endif %}
+  vkCmdEndRenderPass(a_commandBuffer);
+}
+{% endfor %}

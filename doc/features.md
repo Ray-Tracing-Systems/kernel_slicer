@@ -101,6 +101,22 @@ follows the test configs and the code.
 ⁴ Arrays of textures (007) work. A single combined image sampler member (006, 008) and the texture
 samples app 14, app 15 fail to compile.
 
+### Graphics pipeline
+
+Vertex and pixel shaders `kernelVS_/kernelPS_` with `LiteRS` commands in control functions
+(`apps/LiteMathAux/raster.h`, plan: [graphics_pipeline_plan.md](graphics_pipeline_plan.md)). Vulkan 1.0 only.
+
+| ID | Feature | Slang | GLSL | CUDA/HIP | ISPC | Tests and samples |
+|----|---------|:-----:|:----:|:--------:|:----:|-------------------|
+| `gp_draw` | `LiteRS::DrawTriangles` with VS and PS, render targets, depth test, `LiteRS::Clear` | ✅ | ❌ | ❌ | ❌ | 080, app 32 |
+| `gp_indexed` | `LiteRS::DrawIndexedTriangles` (index buffer is a member vector) | ✅ | ❌ | ❌ | ❌ | app 32 |
+| `gp_depth_only` | Depth only pass (VS without PS), shadow map read in PS | ✅ | ❌ | ❌ | ❌ | app 32 |
+| `gp_mrt` | Several color targets (PS returns a struct of `float4`) | ❔⁵ | ❌ | ❌ | ❌ | app 33 |
+| `gp_textures_in_ps` | Texture with sampler in pixel shader | ❌⁵ | ❌ | ❌ | ❌ | app 31 |
+
+⁵ The samples are blocked by Slang texture support: app 33 writes images in kernels (`image_storage`),
+app 31 samples a texture member with a `Sampler` member (`textures`).
+
 ### Ray tracing and virtual functions
 
 | ID | Feature | Slang | GLSL | CUDA/HIP | ISPC | Tests and samples |

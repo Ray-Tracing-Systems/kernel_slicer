@@ -501,6 +501,16 @@ static bool isConvertibleToInt(const std::string& str) {
 }
 
 
+/// element type of 'Image2D<T>' in shader, Slang declares textures as 'Texture2D<T>'
+static std::string ShaderTexelType(const std::string& a_rewrittenDataType)
+{
+  if(a_rewrittenDataType == "uint" || a_rewrittenDataType == "uint32_t" || a_rewrittenDataType == "unsigned int")
+    return "uint";
+  if(a_rewrittenDataType == "float" || a_rewrittenDataType == "float2" || a_rewrittenDataType == "float4")
+    return a_rewrittenDataType;
+  return "float4";
+}
+
 json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
                                     const std::vector<kslicer::FuncData>& usedFunctions,
                                     const std::vector<kslicer::DeclInClass>& usedDecl,
@@ -794,6 +804,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["SrcName"]  = commonArg.name; // name in C++ code and in config
       argj["IsUBO"]    = commonArg.isDefinedInClass;
       argj["IsImage"]  = commonArg.isImage;
+      argj["TexelType"]     = "float4";
       argj["IsImageArray"]  = false;
       argj["IsAccelStruct"] = false;
       argj["NeedFmt"]       = !commonArg.isSampler;
@@ -920,6 +931,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         auto pMemberAccess = k.texAccessInMemb.find(pVecMember->second.name);
         auto accessFlags   = (pMemberAccess == k.texAccessInMemb.end()) ? kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE : pMemberAccess->second; //pVecMember->second.tmask;
         argj["IsImage"]  = true;
+        argj["TexelType"]= ShaderTexelType(pShaderRewriter->RewriteStdVectorTypeStr(pVecMember->second.containerDataType));
         argj["Type"]     = a_classInfo.pShaderFuncRewriter->RewriteImageType(pVecMember->second.containerType, pVecMember->second.containerDataType, accessFlags, imageFormat);
         argj["NeedFmt"]  = (accessFlags != kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE);
         argj["ImFormat"] = imageFormat;
@@ -1114,6 +1126,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["UserArgs"]     = userArgs;
     kernelJson["OriginalArgs"] = allArgs;
     kernelJson["Name"]         = k.name;
+    kslicer::AddGraphicsToKernelJson(kernelJson, k, a_classInfo);
     kernelJson["UBOBinding"]   = args.size(); // for circle
     kernelJson["HasEpilog"]    = k.isBoolTyped || reductionVars.size() != 0 || reductionArrs.size() != 0;
     kernelJson["IsBoolean"]    = k.isBoolTyped;

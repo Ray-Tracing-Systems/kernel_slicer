@@ -1532,12 +1532,18 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
     std::string outFileName           = kernelName + ".slang";
     std::filesystem::path outFilePath = shaderPath / outFileName;
     const bool isMega = a_codeInfo->megakernelsByName.find(kernelName) != a_codeInfo->megakernelsByName.end(); // RTV control function joined to megakernel
-    const std::filesystem::path templatePath = isMega ? templatePathMega : templatePathUsual;
+    const int  gpStage = kernel.value()["GPStage"]; // vertex (1) or pixel (2) shader of graphics pipeline, see graphics_pipeline.h
+    const std::filesystem::path templatePath = (gpStage != 0) ? templatesFolder / "generated_gp.slang" : (isMega ? templatePathMega : templatePathUsual);
     kslicer::ApplyJsonToTemplate(templatePath.c_str(), outFilePath, currKerneJson);
     
     std::string targetString;
     std::string targetSuffix;
-    if(m_wgpuEnabled)
+    if(gpStage != 0)
+    {
+      targetString = " -o ";
+      targetSuffix = (gpStage == 1) ? ".vert.spv" : ".frag.spv";
+    }
+    else if(m_wgpuEnabled)
     {
       targetString = " -target wgsl -stage compute -entry main -o ";
       targetSuffix = ".wgsl";

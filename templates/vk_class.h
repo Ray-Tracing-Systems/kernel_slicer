@@ -234,6 +234,9 @@ public:
     DeleteDeviceData();
     InitDeviceData();
     UpdateDeviceData(a_pCopyHelper);
+    {% if HasGraphics %}
+    InitGraphics(); // framebuffers use image views of render targets which are re-created here
+    {% endif %}
     m_pLastCopyHelper = a_pCopyHelper;
     m_commitCount++;
   }
@@ -573,6 +576,9 @@ protected:
   VkPipelineLayout      copyKernelFloatLayout   = VK_NULL_HANDLE;
   VkPipeline            copyKernelFloatPipeline = VK_NULL_HANDLE;
   VkDescriptorSetLayout copyKernelFloatDSLayout = VK_NULL_HANDLE;
+  {% if HasGraphics %}
+  {% include "inc_gp_vulkan.h" %}
+  {% endif %}
   VkDescriptorSetLayout CreatecopyKernelFloatDSLayout();
 
   VkPipelineLayout      matMulTransposeLayout   = VK_NULL_HANDLE;
