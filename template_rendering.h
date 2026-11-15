@@ -29,6 +29,7 @@ namespace kslicer
 
   /// graphics pipeline (graphics_pipeline.cpp): fields of vertex and pixel shaders in kernel json ('IsGraphics' is false for other kernels)
   void AddGraphicsToKernelJson(nlohmann::json& a_kernelJson, const KernelInfo& a_kernel, const MainClassInfo& a_classInfo);
+  void AddGraphicsToISPCJson(nlohmann::json& a_kernelsJson, const MainClassInfo& a_classInfo); ///<! draws for ISPC: 'GPDrawsISPC', see graphics_pipeline.cpp
 
   /// graphics pipeline (graphics_pipeline.cpp): pipelines and draws for host code templates
   void AddGraphicsToHostJson(nlohmann::json& a_hostJson, const MainClassInfo& a_classInfo);

@@ -48,7 +48,7 @@ protected:
   float4           kernelPS_Quad(const QuadVaryings& a_in) const;
   float4           kernelVS_Tri (uint32_t a_vertId, float a_angle, TriVaryings* a_out) const;
   LiteMath::float4 kernelPS_Tri (const TriVaryings& a_in) const;
-  void             kernel2D_ToOutput(int a_width, int a_height, uint32_t* a_out);
+  virtual void             kernel2D_ToOutput(int a_width, int a_height, uint32_t* a_out);
 
   std::vector<LiteMath::float4> m_quadPos;
   std::vector<float4>           m_quadColors;

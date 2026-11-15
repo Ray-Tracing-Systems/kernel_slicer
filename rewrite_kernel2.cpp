@@ -655,7 +655,7 @@ void kslicer::FunctionRewriter2::RemoveLiteNamespaceQualifier(clang::NestedNameS
       pNamespace = pSpec->getAsNamespace();
     else if(pSpec->getKind() == clang::NestedNameSpecifier::NamespaceAlias)
       pNamespace = pSpec->getAsNamespaceAlias()->getNamespace();
-    if(!IsLiteNamespace(pNamespace))
+    if(!IsLiteNamespace(pNamespace) && !(m_removeStdQualifier && pNamespace != nullptr && pNamespace->isStdNamespace()))
       return;
   }
 

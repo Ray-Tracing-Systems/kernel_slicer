@@ -11,6 +11,9 @@
 std::shared_ptr<TriangleRender> CreateTriangleRender_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
 vk_utils::VulkanDeviceFeatures TriangleRender_Generated_ListRequiredDeviceFeatures();
 #endif
+#ifdef USE_ISPC
+std::shared_ptr<TriangleRender> CreateTriangleRender_ISPC();
+#endif
 
 int main(int argc, const char** argv)
 {
@@ -25,6 +28,7 @@ int main(int argc, const char** argv)
 
   ArgParser args(argc, argv);
   const bool onGPU = args.hasOption("--gpu");
+  const bool onISPC = args.hasOption("--ispc");
 
   std::shared_ptr<TriangleRender> pImpl = nullptr;
   #ifdef USE_VULKAN
@@ -34,6 +38,11 @@ int main(int argc, const char** argv)
     auto ctx      = vk_utils::globalContextInit(features, enableValidationLayers, args.getOptionValue<int>("--gpu_id", 0));
     pImpl         = CreateTriangleRender_Generated(ctx, WIDTH*HEIGHT);
   }
+  else
+  #endif
+  #ifdef USE_ISPC
+  if(onISPC)
+    pImpl = CreateTriangleRender_ISPC();
   else
   #endif
     pImpl = std::make_shared<TriangleRender>();
@@ -49,7 +58,7 @@ int main(int argc, const char** argv)
   std::cout << "Render(exec) = " << timings[0] << " ms" << std::endl;
 
   LiteImage::Image2D<uint32_t> image(WIDTH, HEIGHT, pixels.data());
-  LiteImage::SaveImage(onGPU ? "zout_gpu.bmp" : "zout_cpu.bmp", image);
+  LiteImage::SaveImage(onGPU ? "zout_gpu.bmp" : (onISPC ? "zout_ispc.bmp" : "zout_cpu.bmp"), image);
 
   pImpl = nullptr;
   #ifdef USE_VULKAN

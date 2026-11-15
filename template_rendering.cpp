@@ -943,6 +943,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
           accessFlags = kslicer::TEX_ACCESS(int(accessFlags) | int(kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE));
         argj["IsImage"]  = true;
         PutSlangTextureToJson(argj, kslicer::ShaderTextureKind(k, k.texAccessInMemb, pVecMember->second.name), pShaderRewriter->RewriteStdVectorTypeStr(pVecMember->second.containerDataType));
+        argj["ElemISPC"] = kslicer::ImageElemTypeISPC(pShaderRewriter->RewriteStdVectorTypeStr(pVecMember->second.containerDataType)); // ISPC: pointer to data of image
         argj["Type"]     = a_classInfo.pShaderFuncRewriter->RewriteImageType(pVecMember->second.containerType, pVecMember->second.containerDataType, accessFlags, imageFormat);
         argj["NeedFmt"]  = (int(accessFlags) & int(kslicer::TEX_ACCESS::TEX_ACCESS_WRITE)) != 0;             // format only for storage images
         argj["ImFormat"] = imageFormat;
@@ -1138,6 +1139,15 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["OriginalArgs"] = allArgs;
     kernelJson["Name"]         = k.name;
     kslicer::AddGraphicsToKernelJson(kernelJson, k, a_classInfo);
+    kernelJson["SamplersISPC"] = std::vector<std::string>(); // 'Sampler' members used by 'texture.sample(sampler, uv)', ISPC passes their state to kernels
+    {
+      std::vector<std::string> samplers;
+      for(const auto& texSampler : k.texAccessSampler)
+        if(std::find(samplers.begin(), samplers.end(), texSampler.second) == samplers.end())
+          samplers.push_back(texSampler.second);
+      std::sort(samplers.begin(), samplers.end());
+      kernelJson["SamplersISPC"] = samplers;
+    }
     kernelJson["UBOBinding"]   = args.size(); // for circle
     kernelJson["HasEpilog"]    = k.isBoolTyped || reductionVars.size() != 0 || reductionArrs.size() != 0;
     kernelJson["IsBoolean"]    = k.isBoolTyped;

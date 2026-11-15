@@ -2,6 +2,10 @@
 /////////////////// include files ///////////////////////////////////
 /////////////////////////////////////////////////////////////////////
 #include "LiteMathISPC.h"
+#include "LiteImageISPC.h"
+{% if HasGraphics %}
+#include "raster_ispc.h"
+{% endif %}
 {% if UseAccelStruct %}
 #ifdef USE_EMBREE4
 #include "embree4/rtcore.isph"
@@ -52,6 +56,12 @@ struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data
 static uniform struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data * uniform ubo;
 {% for Buff in MemberBuffersISPC %}
 static uniform {{Buff.Type}} * uniform {{Buff.Name}};
+{% if Buff.IsImage %}
+static uniform LiteImageInfo {{Buff.Name}}_info;
+{% endif %}
+{% endfor %}
+{% for Sampler in SamplersISPC %}
+static uniform LiteSamplerInfo {{Sampler}};
 {% endfor %}
 {% for AccName in AccelStructsISPC %}
 static RTCScene {{AccName}}_scene;
@@ -159,14 +169,27 @@ export void {{Kernel.Name}}_Bind_ISPC( // sets class data for member functions, 
 {
   ubo = a_ubo;
   {% for Arg in Kernel.Args %}
-  {% if Arg.IsMember and Arg.IsAccelStruct %}
+  {% if Arg.IsMember and Arg.IsImage and existsIn(Arg, "ElemISPC") %}
+  {{Arg.Name}} = a_{{Arg.Name}};
+  {{Arg.Name}}_info.width  = a_{{Arg.Name}}_info[0];
+  {{Arg.Name}}_info.height = a_{{Arg.Name}}_info[1];
+  {{Arg.Name}}_info.pitch  = a_{{Arg.Name}}_info[2];
+  {{Arg.Name}}_info.layout = a_{{Arg.Name}}_info[3];
+  {% else if Arg.IsMember and Arg.IsAccelStruct %}
   {{Arg.Name}}_scene = (RTCScene)a_{{Arg.Name}}_scene;
   {{Arg.Name}}_geomIdByInst = (uniform uint * uniform)a_{{Arg.Name}}_geomIdByInst;
   {% else if Arg.IsMember and Arg.IsPointer %}
   {{Arg.Name}} = a_{{Arg.Name}};
   {% endif %}
   {% endfor %}
+  {% for Sampler in Kernel.SamplersISPC %}
+  {{Sampler}}.addressU = a_{{Sampler}}[0];
+  {{Sampler}}.addressV = a_{{Sampler}}[1];
+  {{Sampler}}.filter   = a_{{Sampler}}[2];
+  {% endfor %}
 }
+
+{% if not Kernel.IsGraphics %}
 
 {% if Kernel.SingleThreadISPC %}
 export void {{Kernel.Name}}_ISPC(
@@ -290,5 +313,139 @@ export void {{Kernel.Name}}_ISPC(
 }
 {% endif %}
 {% endif %}
+{% endif %} {# /* not Kernel.IsGraphics */ #}
 
 ## endfor
+{% if HasGraphics %}
+/////////////////////////////////////////////////////////////////////
+/////////////////// draws of graphics pipeline (LiteRS) /////////////
+/////////////////////////////////////////////////////////////////////
+{% for Draw in GPDrawsISPC %}
+
+// '{{Draw.Name}}': triangle after setup, the same layout as LiteRS::detail::Triangle<detail::FloatArray<{{Draw.NumFloats}}>>
+//
+struct {{Draw.Name}}_Tri
+{
+  int64  A[3];
+  int64  B[3];
+  int64  C[3];
+  int64  bias[3];
+  float  invArea;
+  float  z[3];
+  float  invW[3];
+  int32  bbox[4];
+  float  attr[{{Draw.NumFloats3}}];
+};
+
+// vertex shader for vertices [a_first, a_first + a_count): writes LiteRS::Vertex<detail::FloatArray<{{Draw.NumFloats}}>> with stride a_stride floats
+//
+export void {{Draw.Name}}_VS_ISPC(uniform uint32 a_first, uniform uint32 a_count,{% for Arg in Draw.UserArgs %} const void * uniform a_arg{{loop.index}},{% endfor %}
+                                  uniform float a_out[], uniform uint32 a_stride)
+{
+  {% for Arg in Draw.UserArgs %}
+  const uniform {{Arg.TypeISPC}} {{Arg.Name}} = *((uniform const {{Arg.TypeISPC}} * uniform)a_arg{{loop.index}});
+  {% endfor %}
+  foreach(i = 0 ... a_count)
+  {
+    {% if Draw.HasPS %}
+    {{Draw.Varyings}} varyings;
+    const float4 pos = {{Draw.VSOriginal}}(a_first + i{% for Arg in Draw.UserArgs %}, {{Arg.Name}}{% endfor %}, varyings);
+    {% else %}
+    const float4 pos = {{Draw.VSOriginal}}(a_first + i{% for Arg in Draw.UserArgs %}, {{Arg.Name}}{% endfor %});
+    {% endif %}
+    const int base = i*a_stride;
+    a_out[base + 0] = pos.x;
+    a_out[base + 1] = pos.y;
+    a_out[base + 2] = pos.z;
+    a_out[base + 3] = pos.w;
+    {% for Comp in Draw.VaryingComps %}
+    a_out[base + 4 + {{Comp.Offset}}] = varyings.{{Comp.Access}};
+    {% endfor %}
+  }
+}
+
+// rasterizes triangles a_tris[a_ids[0 ... a_triNum-1]] inside rectangle a_bin = [x0, x1) x [y0, y1)
+//
+export void {{Draw.Name}}_Raster_ISPC(uniform const {{Draw.Name}}_Tri a_tris[], uniform const uint32 a_ids[], uniform uint32 a_triNum,
+                                      uniform const int32 a_bin[4], uniform const int32 a_state[8], uniform float a_depth[]{% for Out in Draw.Outputs %},
+                                      uniform {% if Out.IsUint %}uint32 {% else %}float4 {% endif %}a_color{{loop.index}}[]{% endfor %})
+{
+  const uniform int  layout       = a_state[RS_STATE_LAYOUT];
+  const uniform int  pitch        = a_state[RS_STATE_PITCH];
+  const uniform bool depthTest    = (a_state[RS_STATE_DEPTH_TEST] != 0);
+  const uniform bool depthWrite   = (a_state[RS_STATE_DEPTH_WRITE] != 0);
+  const uniform int  depthCompare = a_state[RS_STATE_DEPTH_COMPARE];
+  const uniform int  blendMode    = a_state[RS_STATE_BLEND_MODE];
+
+  for(uniform uint32 k = 0; k < a_triNum; k++)
+  {
+    uniform const {{Draw.Name}}_Tri& t = a_tris[a_ids[k]];
+    const uniform int x0 = max(t.bbox[0], a_bin[0]);
+    const uniform int y0 = max(t.bbox[1], a_bin[1]);
+    const uniform int x1 = min(t.bbox[2], a_bin[2]);
+    const uniform int y1 = min(t.bbox[3], a_bin[3]);
+    if(x0 >= x1 || y0 >= y1)
+      continue;
+
+    for(uniform int by = RS_FloorDiv(y0, 4)*4; by < y1; by += 4)
+    {
+      for(uniform int bx = RS_FloorDiv(x0, 4)*4; bx < x1; bx += 4)
+      {
+        foreach(i = 0 ... 16) // 4x4 block, the same as a tile of LiteImage::Layout::TILED4x4
+        {
+          const int x = bx + (i & 3);
+          const int y = by + (i >> 2);
+          if(x < x0 || x >= x1 || y < y0 || y >= y1)
+            continue;
+          const int64 px = (int64)x*RS_SUBPIXEL_ONE + RS_SUBPIXEL_ONE/2;
+          const int64 py = (int64)y*RS_SUBPIXEL_ONE + RS_SUBPIXEL_ONE/2;
+          const int64 e0 = t.A[0]*px + t.B[0]*py + t.C[0];
+          const int64 e1 = t.A[1]*px + t.B[1]*py + t.C[1];
+          const int64 e2 = t.A[2]*px + t.B[2]*py + t.C[2];
+          if(((e0 + t.bias[0]) | (e1 + t.bias[1]) | (e2 + t.bias[2])) < 0)
+            continue;
+
+          const float b0   = (float)e0*t.invArea;
+          const float b1   = (float)e1*t.invArea;
+          const float b2   = (float)e2*t.invArea;
+          const int   offs = RS_PixelOffset(layout, pitch, x, y);
+          const float z    = b0*t.z[0] + b1*t.z[1] + b2*t.z[2];
+          if(depthTest)
+          {
+            if(!RS_Compare(depthCompare, z, a_depth[offs]))
+              continue;
+            if(depthWrite)
+              a_depth[offs] = z;
+          }
+          {% if Draw.HasPS %}
+
+          // perspective correct interpolation of varyings (detail::Interpolate) and pixel shader
+          //
+          const float q0 = b0*t.invW[0];
+          const float q1 = b1*t.invW[1];
+          const float q2 = b2*t.invW[2];
+          const float s  = 1.0f/(q0 + q1 + q2);
+          const float p0 = q0*s, p1 = q1*s, p2 = q2*s;
+          {{Draw.Varyings}} varyings;
+          {% for Comp in Draw.VaryingComps %}
+          varyings.{{Comp.Access}} = p0*t.attr[{{Comp.Offset}}] + p1*t.attr[{{Comp.Offset1}}] + p2*t.attr[{{Comp.Offset2}}];
+          {% endfor %}
+          const {{Draw.OutputType}} psOut = {{Draw.PSOriginal}}(varyings);
+          {% for Out in Draw.Outputs %}
+          {
+            const float4 c = psOut{% if Draw.OutputIsStruct %}.{{Out.Field}}{% endif %};
+            {% if Out.IsUint %}
+            a_color{{loop.index}}[offs] = RS_PackRGBA8((blendMode == 0) ? c : RS_Blend(blendMode, c, RS_UnpackRGBA8(a_color{{loop.index}}[offs])));
+            {% else %}
+            a_color{{loop.index}}[offs] = (blendMode == 0) ? c : RS_Blend(blendMode, c, a_color{{loop.index}}[offs]);
+            {% endif %}
+          }
+          {% endfor %}
+          {% endif %}
+        }
+      }
+    }
+  }
+}
+{% endfor %}
+{% endif %}

@@ -44,7 +44,7 @@ protected:
   float4 kernelVS_Shadow(uint32_t a_vertId) const;                        ///< depth only pass, no pixel shader
   float4 kernelVS_Main(uint32_t a_vertId, ShadowVaryings* a_out) const;
   float4 kernelPS_Main(const ShadowVaryings& a_in) const;
-  void   kernel2D_ToOutput(int a_width, int a_height, uint32_t* a_out);
+  virtual void   kernel2D_ToOutput(int a_width, int a_height, uint32_t* a_out);
 
   float  ShadowFactor(float4 a_lightPos, float a_bias) const;             ///< 3x3 PCF, 1 is lit
 

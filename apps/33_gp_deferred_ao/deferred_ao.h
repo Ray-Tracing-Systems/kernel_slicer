@@ -53,9 +53,9 @@ protected:
 
   float4     kernelVS_GBuffer(uint32_t a_vertId, GBufferVaryings* a_out) const;
   GBufferOut kernelPS_GBuffer(const GBufferVaryings& a_in) const;
-  void       kernel2D_SSAO(int a_width, int a_height);
-  void       kernel2D_BlurAO(int a_width, int a_height);
-  void       kernel2D_Shade(int a_width, int a_height, uint32_t* a_out, uint32_t* a_outAO);
+  virtual void       kernel2D_SSAO(int a_width, int a_height);
+  virtual void       kernel2D_BlurAO(int a_width, int a_height);
+  virtual void       kernel2D_Shade(int a_width, int a_height, uint32_t* a_out, uint32_t* a_outAO);
 
   std::vector<float4>   m_positions;
   std::vector<float4>   m_normals;

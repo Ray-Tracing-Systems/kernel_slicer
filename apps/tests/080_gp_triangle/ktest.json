@@ -3,6 +3,7 @@
         {"name": "slang",    "backend": "slang", "kmake": "kmake.json"},
         {"name": "slang_dr", "backend": "slang", "kmake": "kmake.json", "options": {"-gp_dynamic_rendering": 1}},
         {"name": "glsl",     "backend": "glsl",  "kmake": "kmake.json"},
-        {"name": "glsl_dr",  "backend": "glsl",  "kmake": "kmake.json", "options": {"-gp_dynamic_rendering": 1}}
+        {"name": "glsl_dr",  "backend": "glsl",  "kmake": "kmake.json", "options": {"-gp_dynamic_rendering": 1}},
+        {"name": "ispc",     "backend": "ispc",  "kmake": "kmake.json"}
     ]
 }

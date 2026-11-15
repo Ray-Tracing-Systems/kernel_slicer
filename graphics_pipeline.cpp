@@ -619,3 +619,142 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeGraphicsCommandCmdString(cl
   strOut << "  prevStageBits = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT; }";
   return strOut.str();
 }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////// ISPC: draws executed by LiteRS::DrawBackend ///////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// number of float components of varyings field type: float, float2, float3, float4
+static int FloatComponents(clang::QualType a_type)
+{
+  std::string name = a_type.getCanonicalType().getUnqualifiedType().getAsString();
+  for(const std::string& prefix : {"struct ", "class ", "LiteMath::"})
+    ReplaceFirst(name, prefix, "");
+  if(name == "float")  return 1;
+  if(name == "float2") return 2;
+  if(name == "float3") return 3;
+  if(name == "float4") return 4;
+  return 0;
+}
+
+/// C++ type of vertex shader argument as in detail::UserArgsOf: without reference and const
+static std::string DecayedTypeName(clang::QualType a_type)
+{
+  std::string name = a_type.getNonReferenceType().getCanonicalType().getUnqualifiedType().getAsString();
+  for(const std::string& prefix : {"struct ", "class "})
+    ReplaceFirst(name, prefix, "");
+  return name;
+}
+
+void kslicer::AddGraphicsToISPCJson(nlohmann::json& a_kernelsJson, const MainClassInfo& a_classInfo)
+{
+  a_kernelsJson["GPDrawsISPC"]     = std::vector<nlohmann::json>();
+  a_kernelsJson["GPPipelinesISPC"] = std::vector<std::string>();
+  a_kernelsJson["HasGraphics"]     = a_classInfo.graphics.Used();
+  if(!a_classInfo.graphics.Used())
+    return;
+
+  for(const auto& pipe : a_classInfo.graphics.pipelines)
+    a_kernelsJson["GPPipelinesISPC"].push_back(pipe.second.name);
+
+  for(const auto& drawPair : a_classInfo.graphics.draws)
+  {
+    const GPDrawInfo& draw = drawPair.second;
+    const auto pPipe = a_classInfo.graphics.pipelines.find(draw.pipeline);
+    const auto pVS   = a_classInfo.kernels.find(draw.vsKernel);
+    if(pPipe == a_classInfo.graphics.pipelines.end() || pVS == a_classInfo.kernels.end() || pVS->second.astNode == nullptr)
+      continue;
+    const clang::CXXMethodDecl* pVSDecl = pVS->second.astNode;
+    const bool hasPS = (draw.psKernel != "");
+
+    nlohmann::json drawJson;
+    drawJson["Name"]        = draw.name;
+    drawJson["Pipeline"]    = draw.pipeline;
+    drawJson["VSOriginal"]  = draw.vsKernel;
+    drawJson["PSOriginal"]  = draw.psKernel;
+    drawJson["HasPS"]       = hasPS;
+    drawJson["Indexed"]     = draw.indexed;
+    drawJson["HasDepth"]    = (pPipe->second.depthTarget != "");
+
+    // additional arguments of vertex shader: between vertex id and varyings
+    //
+    const unsigned numParams = pVSDecl->getNumParams();
+    const unsigned lastArg   = hasPS ? numParams - 1 : numParams;
+    drawJson["UserArgs"] = std::vector<nlohmann::json>();
+    for(unsigned i = 1; i < lastArg; i++)
+    {
+      const clang::ParmVarDecl* pParam = pVSDecl->getParamDecl(i);
+      nlohmann::json argJson;
+      argJson["Name"]     = pParam->getNameAsString();
+      argJson["Type"]     = DecayedTypeName(pParam->getType());
+      argJson["TypeISPC"] = a_classInfo.pShaderFuncRewriter->RewriteStdVectorTypeStr(DecayedTypeName(pParam->getType()));
+      drawJson["UserArgs"].push_back(argJson);
+    }
+
+    // varyings as an array of floats: every component of every field
+    //
+    int numFloats = 0;
+    drawJson["Varyings"]     = "";
+    drawJson["VaryingComps"] = std::vector<nlohmann::json>();
+    if(hasPS && numParams >= 2 && pVSDecl->getParamDecl(numParams-1)->getType()->isPointerType())
+    {
+      const clang::QualType varType = pVSDecl->getParamDecl(numParams-1)->getType()->getPointeeType();
+      drawJson["Varyings"] = ShaderTypeName(varType, a_classInfo);
+      if(const clang::RecordDecl* pRecord = varType->getAsRecordDecl())
+      {
+        for(const clang::FieldDecl* pField : pRecord->fields())
+        {
+          const int comps = FloatComponents(pField->getType());
+          const char* names[4] = {"x", "y", "z", "w"};
+          for(int c = 0; c < comps; c++)
+          {
+            nlohmann::json compJson;
+            compJson["Access"] = pField->getNameAsString() + ((comps == 1) ? std::string("") : std::string(".") + names[c]);
+            compJson["Offset"] = numFloats;
+            drawJson["VaryingComps"].push_back(compJson);
+            numFloats++;
+          }
+        }
+      }
+    }
+    const int arrayFloats = std::max(numFloats, 1); // detail::FloatArray<N> needs N >= 1
+    for(auto& comp : drawJson["VaryingComps"])
+    {
+      comp["Offset1"] = comp["Offset"].get<int>() + arrayFloats;
+      comp["Offset2"] = comp["Offset"].get<int>() + 2*arrayFloats;
+    }
+    drawJson["NumFloats"]  = arrayFloats;
+    drawJson["NumFloats3"] = 3*arrayFloats;
+
+    // pixel shader outputs and color targets
+    //
+    drawJson["Outputs"]        = std::vector<nlohmann::json>();
+    drawJson["OutputIsStruct"] = false;
+    drawJson["OutputType"]     = "float4";
+    const auto pPS = hasPS ? a_classInfo.kernels.find(draw.psKernel) : a_classInfo.kernels.end();
+    if(pPS != a_classInfo.kernels.end() && pPS->second.astNode != nullptr)
+    {
+      const clang::QualType retType = pPS->second.astNode->getReturnType();
+      const std::string     retName = ShaderTypeName(retType, a_classInfo);
+      const clang::CXXRecordDecl* pRecord = retType->getAsCXXRecordDecl();
+      std::vector<std::string> outNames;
+      if(retName == "float4" || pRecord == nullptr)
+        outNames.push_back("");
+      else
+      {
+        drawJson["OutputIsStruct"] = true;
+        drawJson["OutputType"]     = retName;
+        for(const clang::FieldDecl* pField : pRecord->fields())
+          outNames.push_back(pField->getNameAsString());
+      }
+      for(size_t i = 0; i < outNames.size() && i < pPipe->second.colorTargets.size(); i++)
+      {
+        nlohmann::json outJson;
+        outJson["Field"]  = outNames[i];
+        outJson["IsUint"] = (TargetFormat(a_classInfo, pPipe->second.colorTargets[i].member) == "VK_FORMAT_R32_UINT");
+        drawJson["Outputs"].push_back(outJson);
+      }
+    }
+    a_kernelsJson["GPDrawsISPC"].push_back(drawJson);
+  }
+}

@@ -7,6 +7,7 @@
 
 void kslicer::ISPCRewriter::Init()
 { 
+  m_removeStdQualifier = true;
   m_funReplacements.clear();
   //m_funReplacements["atomicAdd"] = "InterlockedAdd";
   //m_funReplacements["AtomicAdd"] = "InterlockedAdd";
@@ -63,10 +64,10 @@ std::string kslicer::ISPCRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
     const clang::ParmVarDecl* pParam  = fDecl->getParamDecl(i);
     const clang::QualType typeOfParam =	pParam->getType();
     std::string typeStr = typeOfParam.getAsString();
-    if(typeOfParam->isPointerType())
+    if(typeOfParam->isPointerType() && typeOfParam->getPointeeType()->isRecordType()) // 'Varyings* a_out' ==> 'Varyings& a_out': ISPC references are used as structures
+      typeStr = typeOfParam->getPointeeType().getAsString() + "&";
+    else if(typeOfParam->isPointerType())
       typeStr += "*";
-    else if(typeOfParam->isReferenceType())
-      typeStr += "&";
     
     result += RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
     if(i!=fDecl->getNumParams()-1)
@@ -87,17 +88,22 @@ bool kslicer::ISPCRewriter::NeedsVectorTypeRewrite(const std::string& a_str) // 
 
 bool kslicer::ISPCRewriter::VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl)        
 {
-  auto hash = kslicer::GetHashOfSourceRange(fDecl->getBody()->getSourceRange());
-  if(m_codeInfo->m_functionsDone.find(hash) == m_codeInfo->m_functionsDone.end())
+  if(clang::isa<clang::CXXMethodDecl>(fDecl)) // methods are processed separately
+    return true;
+
+  if(fDecl->hasBody() && WasNotRewrittenYet(fDecl->getBody()))  // bodies of local functions are rewritten: 'float(x)' ==> '(float)(x)', 'std::pow' ==> 'pow', ...
   {
-    kslicer::RewrittenFunction done;
-    done.funDecl = kslicer::GetRangeSourceCode(fDecl->getSourceRange(),            m_compiler); 
-    auto posBrace = done.funDecl.find("{");
+    RewrittenFunction done = RewriteFunction(fDecl);
+    done.funDecl = kslicer::GetRangeSourceCode(fDecl->getSourceRange(), m_compiler); // declaration is kept as is: ISPC understands C pointers of parameters
+    const auto posBrace = done.funDecl.find("{");
     if(posBrace != std::string::npos)
-      done.funDecl = done.funDecl.substr(0,posBrace); // discard func body source code
-    done.funBody = kslicer::GetRangeSourceCode(fDecl->getBody()->getSourceRange(), m_compiler);
-    m_codeInfo->m_functionsDone[hash] = done;
-  } 
+      done.funDecl = done.funDecl.substr(0, posBrace);
+    while(ReplaceFirst(done.funDecl, "LiteMath::", "")); // ISPC has no namespaces
+    const auto hash = GetHashOfSourceRange(fDecl->getBody()->getSourceRange());
+    if(m_codeInfo->m_functionsDone.find(hash) == m_codeInfo->m_functionsDone.end())
+      m_codeInfo->m_functionsDone[hash] = done;
+    MarkRewritten(fDecl->getBody());
+  }
   return true; 
 }
 
@@ -122,8 +128,36 @@ bool kslicer::ISPCRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
   return true; 
 }
 
+/// name of Image2D member in expression 'm_img' or 'this->m_img', empty string otherwise
+static std::string ImageMemberName(const clang::Expr* a_expr)
+{
+  const clang::Expr* expr = kslicer::RemoveImplicitCast(a_expr);
+  if(expr == nullptr || expr->getType()->isPointerType() || !kslicer::IsTexture(expr->getType()))
+    return "";
+  if(auto pMember = clang::dyn_cast<clang::MemberExpr>(expr))
+    return pMember->getMemberDecl()->getNameAsString();
+  return "";
+}
+
 bool kslicer::ISPCRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f)  
 { 
+  // 'm_img.sample(m_sampler, uv)' ==> 'LiteImageSample_<T>(m_img, m_img_info, m_sampler, uv)', see LiteMathAux/LiteImageISPC.h
+  //
+  if(f->getMethodDecl() != nullptr && f->getMethodDecl()->getNameAsString() == "sample" && f->getNumArgs() == 2 && WasNotRewrittenYet(f))
+  {
+    const std::string imageName = ImageMemberName(f->getImplicitObjectArgument());
+    auto pSampler = clang::dyn_cast<clang::MemberExpr>(kslicer::RemoveImplicitCast(f->getArg(0)));
+    if(imageName != "" && pSampler != nullptr)
+    {
+      auto pMember = m_codeInfo->allDataMembers.find(imageName);
+      const std::string elemType = (pMember != m_codeInfo->allDataMembers.end()) ? kslicer::ImageElemTypeISPC(RewriteStdVectorTypeStr(pMember->second.containerDataType)) : std::string("float4");
+      const std::string uv       = RecursiveRewrite(f->getArg(1));
+      ReplaceText(f->getSourceRange(), "LiteImageSample_" + elemType + "(" + imageName + ", " + imageName + "_info, " + pSampler->getMemberDecl()->getNameAsString() + ", " + uv + ")");
+      MarkRewritten(f);
+      return true;
+    }
+  }
+
   if(m_kernelMode)
   {
     // Get name of function
@@ -270,10 +304,16 @@ bool kslicer::ISPCRewriter::VisitCXXFunctionalCastExpr_Impl(clang::CXXFunctional
 
 bool kslicer::ISPCRewriter::VisitCallExpr_Impl(clang::CallExpr* call)                    
 { 
-  if(m_kernelMode && WasNotRewrittenYet(call))
+  if(m_kernelMode && WasNotRewrittenYet(call) && !clang::isa<clang::CXXOperatorCallExpr>(call)) // 'a*b' of LiteMath types is an operator call
   {
     clang::FunctionDecl* fDecl = call->getDirectCallee();
     if(fDecl == nullptr)
+      return true;
+
+    // 'Base::Func(...)' of composition; namespaces 'std::', 'LiteMath::' are removed in VisitDeclRefExpr_Impl
+    //
+    auto pCallee = clang::dyn_cast<clang::DeclRefExpr>(call->getCallee()->IgnoreParenImpCasts());
+    if(pCallee == nullptr || !pCallee->hasQualifier() || pCallee->getQualifier()->getAsNamespace() != nullptr)
       return true;
 
     const std::string fname    = fDecl->getNameInfo().getName().getAsString();
@@ -358,6 +398,20 @@ bool kslicer::ISPCRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
 
 bool kslicer::ISPCRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr) 
 { 
+  // 'm_img[int2(x,y)]' ==> 'm_img[LiteImageOffset(m_img_info, make_int2(x,y))]', see LiteMathAux/LiteImageISPC.h
+  //
+  if(expr->getOperator() == clang::OO_Subscript && expr->getNumArgs() == 2 && WasNotRewrittenYet(expr))
+  {
+    const std::string imageName = ImageMemberName(expr->getArg(0));
+    if(imageName != "")
+    {
+      const std::string coord = RecursiveRewrite(expr->getArg(1));
+      ReplaceText(expr->getSourceRange(), imageName + "[LiteImageOffset(" + imageName + "_info, " + coord + ")]");
+      MarkRewritten(expr);
+      return true;
+    }
+  }
+
   if(m_kernelMode)
   {
     FunctionRewriter2::VisitCXXOperatorCallExpr_Impl(expr);
@@ -370,6 +424,8 @@ bool kslicer::ISPCRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
 { 
   if(clang::isa<clang::ParmVarDecl>(decl)) // process else-where (VisitFunctionDecl_Impl)
     return true;
+  if(decl->isLocalVarDecl() && WasNotRewrittenYet(decl->getInit()))
+    RemoveLiteNamespaceQualifier(decl); // 'const LiteMath::float4x4 m' ==> 'const float4x4 m'
 
   if(m_kernelMode)
   {
@@ -459,6 +515,7 @@ bool kslicer::ISPCRewriter::VisitBinaryOperator_Impl(clang::BinaryOperator* expr
 
 bool  kslicer::ISPCRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr) 
 {
+  RemoveLiteNamespaceQualifier(expr); // ISPC has no namespaces: 'std::pow' and 'LiteMath::dot' are 'pow' and 'dot'
   if(m_kernelMode)
   { 
 
@@ -525,7 +582,7 @@ std::shared_ptr<kslicer::KernelRewriter> kslicer::ISPCCompiler::MakeKernRewriter
 
 std::string kslicer::ISPCCompiler::BuildCommand(const std::string& a_inputFile) const
 {
-  return std::string("ispc ") + a_inputFile + " --target=" + m_target + " -O2 ";
+  return std::string("ispc ") + a_inputFile + " --target=" + m_target + " -O2 --pic "; // position independent code: executables are PIE by default
 }
 
 void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings)
@@ -553,15 +610,30 @@ void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
       globalNames.insert(name);
       if(arg["IsAccelStruct"].get<bool>())
         accelStructs.push_back(name);
+      else if(arg["IsImage"].get<bool>() && arg.contains("ElemISPC"))  // Image2D: pointer to data and 'LiteImageInfo', see LiteMathAux/LiteImageISPC.h
+      {
+        nlohmann::json buff;
+        buff["Name"]    = name;
+        buff["Type"]    = arg["ElemISPC"];
+        buff["IsImage"] = true;
+        memberBuffers.push_back(buff);
+      }
       else if(arg["IsPointer"].get<bool>())
       {
         nlohmann::json buff;
-        buff["Name"] = name;
-        buff["Type"] = arg["Type"];
+        buff["Name"]    = name;
+        buff["Type"]    = arg["Type"];
+        buff["IsImage"] = false;
         memberBuffers.push_back(buff);
       }
     }
   }
+  std::set<std::string> samplers;
+  for(const auto& kernel : a_kernelsJson["Kernels"])
+    for(const auto& sampler : kernel["SamplersISPC"])
+      samplers.insert(sampler.get<std::string>());
+  a_kernelsJson["SamplersISPC"] = std::vector<std::string>(samplers.begin(), samplers.end());
+  kslicer::AddGraphicsToISPCJson(a_kernelsJson, *a_codeInfo); // draws of graphics pipeline (LiteRS), see graphics_pipeline.cpp
   a_kernelsJson["MemberBuffersISPC"] = memberBuffers;
   a_kernelsJson["AccelStructsISPC"]  = accelStructs;
   a_kernelsJson["UseAccelStruct"]    = (accelStructs.size() != 0);

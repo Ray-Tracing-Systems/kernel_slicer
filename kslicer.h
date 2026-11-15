@@ -934,6 +934,7 @@ namespace kslicer
     void RemoveLiteNamespaceQualifier(clang::NestedNameSpecifierLoc a_qualifier); ///<! 'LiteMath::' ==> '': shaders have no namespaces
     void RemoveLiteNamespaceQualifier(clang::DeclRefExpr* a_expr);                ///<! 'LiteMath::dot(a,b)' ==> 'dot(a,b)'
     void RemoveLiteNamespaceQualifier(clang::VarDecl* a_decl);                    ///<! 'const LiteMath::float4 x = ...' ==> 'const float4 x = ...', if declaration is not rewritten
+    bool m_removeStdQualifier = false;                                            ///<! also remove 'std::' (ISPC)
     bool IsUserFunction(const clang::FunctionDecl* a_func);           ///<! not from ignored folders (LiteMath and e.t.c.): kslicer generates copies of such functions for global memory
     const kslicer::ArgMatch* FindShitPointer(const clang::Expr* a_expr, std::vector<const clang::Expr*>* a_pAdds = nullptr) const; ///<! 'a_data' or 'a_data + k + ...' for pointer of m_shit
     std::string ShitPointerOffsetText(const kslicer::ArgMatch& a_pointer, const std::vector<const clang::Expr*>& a_adds);           ///<! 'a_dataOffset + (k) + ...'
@@ -2053,6 +2054,7 @@ namespace kslicer
   SHADER_TEX  ShaderTextureKind(const KernelInfo& a_kernel, const kslicer::umap<std::string, TEX_ACCESS>& a_flags, const std::string& a_name);
   std::string TextureDescriptorType(SHADER_TEX a_kind);
   std::string SlangTexelType(const std::string& a_dataTypeRewritten, SHADER_TEX a_kind);  ///<! 'T' in 'Texture2D<T>'
+  std::string ImageElemTypeISPC(const std::string& a_dataTypeRewritten);                  ///<! 'T' of 'Image2D<T>' in ISPC: 'uint', 'float', 'float4', ... (see LiteMathAux/LiteImageISPC.h)
 
   std::vector<kslicer::ArgMatch> MatchCallArgsForKernel(clang::CallExpr* call, const KernelInfo& k, const clang::CompilerInstance& a_compiler);
 

@@ -43,7 +43,7 @@ protected:
 
   float4 kernelVS_Cube(uint32_t a_vertId, float a_angle, TexVaryings* a_out) const;
   float4 kernelPS_Cube(const TexVaryings& a_in) const;
-  void   kernel2D_ToOutput(int a_width, int a_height, uint32_t* a_out);
+  virtual void   kernel2D_ToOutput(int a_width, int a_height, uint32_t* a_out);
 
   std::vector<float4>   m_positions;
   std::vector<float4>   m_normals;

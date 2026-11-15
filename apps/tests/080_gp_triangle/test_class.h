@@ -36,7 +36,7 @@ protected:
 
   float4 kernelVS_Color(uint32_t a_vertId, float a_angle, ColorVaryings* a_out) const; ///< returns clip space position
   float4 kernelPS_Color(const ColorVaryings& a_in) const;                             ///< returns color
-  void   kernel2D_ToOutput(int a_width, int a_height, uint32_t* a_out);              ///< ordinary kernel
+  virtual void   kernel2D_ToOutput(int a_width, int a_height, uint32_t* a_out);              ///< ordinary kernel
 
   std::vector<float4> m_positions;
   std::vector<float4> m_colors;

@@ -90,6 +90,16 @@ std::string kslicer::SlangTexelType(const std::string& a_dataTypeRewritten, SHAD
   return "float4";
 }
 
+std::string kslicer::ImageElemTypeISPC(const std::string& a_dataTypeRewritten)
+{
+  if(a_dataTypeRewritten == "uint" || a_dataTypeRewritten == "uint32_t" || a_dataTypeRewritten == "unsigned int" || a_dataTypeRewritten == "const uint32_t")
+    return "uint";
+  std::string res = a_dataTypeRewritten;
+  ReplaceFirst(res, "const ", "");
+  ReplaceFirst(res, "LiteMath::", "");
+  return res;
+}
+
 std::string kslicer::TextureMemberVulkanFormat(const DataMemberInfo& a_member, const std::string& a_dataTypeRewritten, bool a_useHalFloat)
 {
   const bool isUint  = (a_dataTypeRewritten == "uint" || a_dataTypeRewritten == "uint32_t" || a_dataTypeRewritten == "unsigned int");

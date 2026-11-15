@@ -1,4 +1,5 @@
 #include <vector>
+#include <array>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -24,6 +25,26 @@ struct ISPCPtr
   template<typename T> operator T*() const { return (T*)ptr; } 
   void* ptr; 
 };
+
+// Image2D and Sampler are passed to ISPC as data pointer and arrays of uint (see LiteMathAux/LiteImageISPC.h)
+//
+template<typename T>
+static inline std::array<uint32_t,4> ISPCImageInfo(const T& a_image) { return { a_image.width(), a_image.height(), a_image.pitch(), uint32_t(a_image.layout()) }; }
+/// copy of std::vector<float2> or std::vector<float3> with elements of 16 bytes, as ISPC 'float<2>' and 'float<3>'
+template<typename T>
+static inline std::vector< std::array<float,4> > ISPCPadded16(const std::vector<T>& a_data)
+{
+  constexpr size_t N = sizeof(T)/sizeof(float);
+  std::vector< std::array<float,4> > res(a_data.size());
+  for(size_t i = 0; i < a_data.size(); i++)
+  {
+    res[i] = {0.0f, 0.0f, 0.0f, 0.0f};
+    std::memcpy(res[i].data(), &a_data[i], N*sizeof(float));
+  }
+  return res;
+}
+template<typename S>
+static inline std::array<uint32_t,4> ISPCSamplerInfo(const S& a_sampler) { return { uint32_t(a_sampler.addressU), uint32_t(a_sampler.addressV), uint32_t(a_sampler.filter), 0u }; }
 {% if UseAccelStruct %}
 
 #ifdef USE_EMBREE4
@@ -60,15 +81,18 @@ struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data
   uint dummy_last;
 };
 
-class {{MainClassName}}_ISPC : public {{MainClassName}}
+class {{MainClassName}}_ISPC : public {{MainClassName}}{% if HasGraphics %}, public LiteRS::DrawBackend{% endif %}
+
 {
 public:
 
   {% for ctorDecl in Constructors %}
   {% if ctorDecl.NumParams == 0 %}
-  {{ctorDecl.ClassName}}_ISPC() {}
+  {{ctorDecl.ClassName}}_ISPC() {% if HasGraphics %}{ SetDrawBackends(); }{% else %}{}{% endif %}
+
   {% else %}
-  {{ctorDecl.ClassName}}_ISPC({{ctorDecl.Params}}) : {{ctorDecl.ClassName}}({{ctorDecl.PrevCall}}) {}
+  {{ctorDecl.ClassName}}_ISPC({{ctorDecl.Params}}) : {{ctorDecl.ClassName}}({{ctorDecl.PrevCall}}) {% if HasGraphics %}{ SetDrawBackends(); }{% else %}{}{% endif %}
+
   {% endif %}
   {% endfor %}
   ~{{MainClassName}}_ISPC(){}
@@ -91,8 +115,87 @@ protected:
 
   virtual void UpdatePlainMembers();
   virtual void ReadPlainMembers();
+  {% if HasGraphics %}
+
+  // graphics pipeline (LiteRS): draw commands of control functions call 'Draw' of 'LiteRS::Pipeline::backend'
+  //
+  void SetDrawBackends()
+  {
+    {% for Pipe in GPPipelinesISPC %}
+    {{Pipe}}.backend = this;
+    {% endfor %}
+  }
+
+  bool Draw(LiteRS::Pipeline& a_pipe, const LiteRS::ShaderKey& a_vs, const LiteRS::ShaderKey& a_ps, const uint32_t* a_indices, uint32_t a_num, const void* a_args) override
+  {
+    {% for Draw in GPDrawsISPC %}
+    if(&a_pipe == &{{Draw.Pipeline}} && (a_indices != nullptr) == {{Draw.Indexed}} && a_vs == LiteRS::MakeShaderKey(&{{MainClassName}}_ISPC::{{Draw.VSOriginal}}) &&
+       a_ps == {% if Draw.HasPS %}LiteRS::MakeShaderKey(&{{MainClassName}}_ISPC::{{Draw.PSOriginal}}){% else %}LiteRS::ShaderKey(){% endif %})
+    {
+      {{Draw.Name}}_ISPC(a_pipe, a_indices, a_num, *static_cast<const std::tuple<{% for Arg in Draw.UserArgs %}{{Arg.Type}}{% if not loop.is_last %}, {% endif %}{% endfor %}>*>(a_args));
+      return true;
+    }
+    {% endfor %}
+    return false; // unknown shaders: C++ implementation of LiteRS
+  }
+  {% for Draw in GPDrawsISPC %}
+
+  void {{Draw.Name}}_ISPC(LiteRS::Pipeline& a_pipe, const uint32_t* a_indices, uint32_t a_num, const std::tuple<{% for Arg in Draw.UserArgs %}{{Arg.Type}}{% if not loop.is_last %}, {% endif %}{% endfor %}>& a_args)
+  {
+    using V = LiteRS::detail::FloatArray<{{Draw.NumFloats}}>;
+    static_assert(sizeof(ispc::{{Draw.Name}}_Tri) == sizeof(LiteRS::detail::Triangle<V>), "different layout of triangle in C++ and ISPC");
+    [[maybe_unused]] const auto& args = a_args;
+    {% for Arg in Draw.UserArgs %}
+    [[maybe_unused]] const auto& {{Arg.Name}} = std::get<{{loop.index}}>(a_args); // for '_Bind_ISPC'
+    {% endfor %}
+    {% for Kernel in Kernels %}
+    {% if Kernel.Name == Draw.VSOriginal or Kernel.Name == Draw.PSOriginal %}
+    {% for Arg in Kernel.Args %}
+    {% if Arg.IsPointer and Arg.IsMember and (Arg.Type == "float2" or Arg.Type == "float3") %}
+    const auto {{Arg.Name}}_padded = ISPCPadded16({{Arg.Name}}); // ISPC float2 and float3 take 16 bytes
+    {% endif %}
+    {% endfor %}
+    ispc::{{Kernel.Name}}_Bind_ISPC({% include "inc_host_bind_args.cpp" %}); // class data for '{{Kernel.Name}}'
+    {% endif %}
+    {% endfor %}
+
+    // vertex shader: vertex 'i' is stored in verts[i - first]
+    //
+    uint32_t first = 0, vertNum = a_num;
+    if(a_indices != nullptr)
+    {
+      if(a_num == 0)
+        return;
+      uint32_t last = 0;
+      LiteRS::detail::IndexRange(a_indices, a_num, first, last);
+      vertNum = last - first + 1;
+    }
+    std::vector< LiteRS::Vertex<V> > verts(vertNum);
+    const uint32_t stride = uint32_t(sizeof(LiteRS::Vertex<V>)/sizeof(float));
+    constexpr uint32_t CHUNK = 4096;
+    #pragma omp parallel for if(a_pipe.cpu.multithreaded && vertNum > CHUNK)
+    for(int chunk = 0; chunk < int((vertNum + CHUNK - 1)/CHUNK); chunk++)
+    {
+      const uint32_t start = uint32_t(chunk)*CHUNK;
+      ispc::{{Draw.Name}}_VS_ISPC(first + start, std::min(CHUNK, vertNum - start),{% for Arg in Draw.UserArgs %} &std::get<{{loop.index}}>(args),{% endfor %} reinterpret_cast<float*>(verts.data() + start), stride);
+    }
+
+    // primitive assembly and setup in C++, rasterization of bins in ISPC
+    //
+    const LiteRS::detail::Target tgt = LiteRS::detail::MakeTarget(a_pipe);
+    const int32_t state[8] = { int32_t(tgt.layout), int32_t(tgt.pitch), tgt.depthTest ? 1 : 0, tgt.depthWrite ? 1 : 0, int32_t(tgt.depthCompare), int32_t(tgt.blendMode), 0, 0 };
+    LiteRS::detail::DrawVertexStreamByBins(a_pipe, verts.data(), a_indices, a_num, first,
+      [&](const LiteRS::detail::Triangle<V>* a_tris, const uint32_t* a_ids, uint32_t a_triNum, const LiteRS::detail::Rect& a_bin)
+    {
+      const int32_t bin[4] = { a_bin.x0, a_bin.y0, a_bin.x1, a_bin.y1 };
+      ispc::{{Draw.Name}}_Raster_ISPC(reinterpret_cast<const ispc::{{Draw.Name}}_Tri*>(a_tris), a_ids, a_triNum, bin, state, tgt.depth{% for Out in Draw.Outputs %}, ISPCPtr(tgt.{% if Out.IsUint %}colorU{% else %}colorF{% endif %}[{{loop.index}}]){% endfor %});
+    });
+  }
+  {% endfor %}
+  {% endif %}
 
   {% for Kernel in Kernels %}
+  {% if not Kernel.IsGraphics %}
   void {{Kernel.Name}}({% for Arg in Kernel.Args %}{% if not Arg.IsUBO and not Arg.IsMember %}{% if Arg.IsPointer %}{{Arg.Type}}* {{Arg.Name}}{% if loop.index1 != Kernel.LastArgNF %}, {% endif %}{% else %}{{Arg.Type}} {{Arg.Name}}{% if loop.index1 != Kernel.LastArgNF %}, {% endif %} {% endif %}{% endif %} {% endfor %}) {% if not Kernel.InitKPass %} override {% endif %}
   { 
     {% for Arg in Kernel.Args %}
@@ -100,7 +203,7 @@ protected:
     auto {{Arg.Name}}_impl = GetEmbreeImpl({{Arg.Name}}.get(), "{{Arg.Name}}");
     {% endif %}
     {% endfor %}
-    ispc::{{Kernel.Name}}_Bind_ISPC({% include "inc_host_args.cpp" %});
+    ispc::{{Kernel.Name}}_Bind_ISPC({% include "inc_host_bind_args.cpp" %});
     {% if Kernel.OpenMPAndISPC %}
     constexpr int BLOCK_SIZE = 64;
     [[maybe_unused]] auto* ubo = &m_uboData; // loop bounds may refer to class members as 'ubo[0].m_member'
@@ -129,6 +232,7 @@ protected:
     ispc::{{Kernel.Name}}_ISPC({% include "inc_host_args.cpp" %}); 
     {% endif %}
   }
+  {% endif %} {# /* not Kernel.IsGraphics */ #}
   {% endfor %}
 
   ispc::{{MainClassName}}{{MainClassSuffix}}_UBO_Data m_uboData;
@@ -173,6 +277,9 @@ void {{MainClassName}}_ISPC::ReadPlainMembers()
 {
   auto before = std::chrono::high_resolution_clock::now();
   UpdatePlainMembers();
+  {% if HasGraphics %}
+  SetDrawBackends(); // pipeline objects could be reassigned after constructor
+  {% endif %}
   {{MainClassName}}::{{MainFunc.Name}}({% for Arg in MainFunc.InOutVars %}{{Arg.Name}}{% if loop.index1 != MainFunc.InOutVarsNum %},{% endif %}{% endfor %});
   ReadPlainMembers();
   m_exTimeISPC["{{MainFunc.Name}}"] = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - before).count()/1000.f;
