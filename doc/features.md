@@ -102,7 +102,7 @@ follows the test configs and the code.
 ### Graphics pipeline
 
 Vertex and pixel shaders `kernelVS_/kernelPS_` with `LiteRS` commands in control functions
-(`apps/LiteMathAux/raster.h`, plan: [graphics_pipeline_plan.md](graphics_pipeline_plan.md)). Vulkan 1.0 only.
+(`apps/LiteMathAux/raster.h`, plan: [graphics_pipeline_plan.md](graphics_pipeline_plan.md)). Vulkan 1.0 by default, Vulkan 1.3 with `-gp_dynamic_rendering 1`; tests check both.
 
 | ID | Feature | Slang | GLSL | CUDA/HIP | ISPC | Tests and samples |
 |----|---------|:-----:|:----:|:--------:|:----:|-------------------|
@@ -111,6 +111,7 @@ Vertex and pixel shaders `kernelVS_/kernelPS_` with `LiteRS` commands in control
 | `gp_depth_only` | Depth only pass (VS without PS), shadow map read in PS | ✅ | ✅ | ❌ | ❌ | app 32 |
 | `gp_mrt` | Several color targets (PS returns a struct of `float4`) | ✅ | ✅ | ❌ | ❌ | app 33 |
 | `gp_textures_in_ps` | Texture with sampler in pixel shader | ✅ | ✅ | ❌ | ❌ | app 31 |
+| `gp_dynamic_rendering` | Vulkan 1.3 dynamic rendering and extended dynamic state (`-gp_dynamic_rendering 1`) | ✅ | ✅ | ❌ | ❌ | 080, 081, app 31, app 32, app 33 |
 | `gp_namespaces` | `LiteRS` and `LiteMath` names with and without namespace (`using`, namespace alias, argument dependent lookup) | ✅ | ✅ | ❌ | ❌ | 081 |
 
 ### Ray tracing and virtual functions

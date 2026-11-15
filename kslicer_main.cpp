@@ -349,6 +349,8 @@ int main(int argc, const char **argv)
       textGenSettings.enableTimeStamps = (atoi(params["-timestamps"].c_str()) != 0);
     if(params.find("-pipelinecache") != params.end())
       textGenSettings.usePipelineCache = (atoi(params["-pipelinecache"].c_str()) != 0);
+    if(params.find("-gp_dynamic_rendering") != params.end())
+      textGenSettings.gpDynamicRendering = (atoi(params["-gp_dynamic_rendering"].c_str()) != 0);
     textGenSettings.genSeparateGPUAPI = genGPUAPI;
     textGenSettings.interfaceName     = mainClassName;
     if(params.find("-makerInterfaceName") != params.end())

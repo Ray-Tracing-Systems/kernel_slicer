@@ -524,6 +524,17 @@ void kslicer::AddGraphicsToHostJson(nlohmann::json& a_hostJson, const MainClassI
     drawJson["IndexBuffer"] = draw.indexBuffer;
     drawJson["HasDepth"]    = (pPipe->second.depthTarget != "");
 
+    drawJson["PassTargets"] = std::vector<nlohmann::json>(); // all color targets of pipeline object: attachments of dynamic rendering
+    for(const auto& target : pPipe->second.colorTargets)
+    {
+      nlohmann::json targetJson;
+      targetJson["Name"]   = target.member;
+      targetJson["Format"] = TargetFormat(a_classInfo, target.member);
+      targetJson["IsUint"] = (targetJson["Format"] == "VK_FORMAT_R32_UINT");
+      drawJson["PassTargets"].push_back(targetJson);
+    }
+    drawJson["DepthTarget"] = pPipe->second.depthTarget;
+
     drawJson["ColorTargets"] = std::vector<nlohmann::json>();
     if(draw.psKernel != "")
     {

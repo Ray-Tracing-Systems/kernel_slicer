@@ -1,9 +1,24 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Graphics pipeline (LiteRS). Render targets always stay in VK_IMAGE_LAYOUT_GENERAL, so kernels and draws use them without
-// layout transitions; LiteRS::Clear is a separate command, render passes load and store attachments.
+// layout transitions; LiteRS::Clear is a separate command, {% if GPDynamicRendering %}draws load and store attachments.
+// Vulkan 1.3: dynamic rendering (no render passes and framebuffers) and extended dynamic state: 'cullMode', 'frontFace',
+// 'depthTest', 'depthWrite' and 'depthCompare' of LiteRS::Pipeline are read at every draw, 'blendMode' is baked into pipelines.{% else %}render passes load and store attachments.
+// Vulkan 1.0: render pass and framebuffer for each LiteRS::Pipeline member, its state is baked into pipelines.{% endif %}
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+{% if GPDynamicRendering %}
+static VkRenderingAttachmentInfo GPMakeRenderingAttachment(VkImageView a_view)
+{
+  VkRenderingAttachmentInfo info = {};
+  info.sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+  info.imageView   = a_view;
+  info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+  info.loadOp      = VK_ATTACHMENT_LOAD_OP_LOAD;
+  info.storeOp     = VK_ATTACHMENT_STORE_OP_STORE;
+  return info;
+}
+{% else %}
 static VkAttachmentDescription GPMakeAttachment(VkFormat a_format)
 {
   VkAttachmentDescription desc = {};
@@ -17,6 +32,7 @@ static VkAttachmentDescription GPMakeAttachment(VkFormat a_format)
   desc.finalLayout    = VK_IMAGE_LAYOUT_GENERAL;
   return desc;
 }
+{% endif %}
 
 static VkPipelineColorBlendAttachmentState GPMakeBlendState(LiteRS::BlendMode a_mode, bool a_integerTarget)
 {
@@ -66,6 +82,10 @@ void {{MainClassName}}{{MainClassSuffix}}::InitGraphics()
   DestroyGraphics();
   {% for Pipe in GPPipelines %}
 
+  {% if GPDynamicRendering %}
+  m_gp_{{Pipe.Name}}.width  = {{Pipe.SizeFrom}}.width();  // dynamic rendering: attachments are set at every draw
+  m_gp_{{Pipe.Name}}.height = {{Pipe.SizeFrom}}.height();
+  {% else %}
   // render pass and framebuffer for '{{Pipe.Name}}'
   {
     std::vector<VkAttachmentDescription> attachments;
@@ -109,10 +129,15 @@ void {{MainClassName}}{{MainClassSuffix}}::InitGraphics()
     framebufferInfo.layers          = 1;
     VK_CHECK_RESULT(vkCreateFramebuffer(m_device, &framebufferInfo, nullptr, &m_gp_{{Pipe.Name}}.framebuffer));
   }
+  {% endif %}
   {% endfor %}
   {% for Draw in GPDraws %}
 
+  {% if GPDynamicRendering %}
+  // graphics pipeline '{{Draw.Name}}': blend mode is taken from '{{Draw.Pipeline}}', call CommitDeviceData() again if you change it
+  {% else %}
   // graphics pipeline '{{Draw.Name}}': state is taken from '{{Draw.Pipeline}}', call CommitDeviceData() again if you change it
+  {% endif %}
   {
     const LiteRS::Pipeline& state = {{Draw.Pipeline}};
 
@@ -184,19 +209,44 @@ void {{MainClassName}}{{MainClassSuffix}}::InitGraphics()
     depthStencil.depthCompareOp   = VkCompareOp(uint32_t(state.depthCompare));
 
     std::vector<VkPipelineColorBlendAttachmentState> blendStates;
+    {% if GPDynamicRendering %}
+    std::vector<VkFormat> colorFormats;
+    {% for Target in Draw.PassTargets %}
+    blendStates.push_back(GPMakeBlendState(state.blendMode, {{Target.IsUint}}));
+    {% if not Draw.HasPS %}
+    blendStates.back().colorWriteMask = 0; // pass without pixel shader writes only depth
+    {% endif %}
+    colorFormats.push_back({{Target.Format}});
+    {% endfor %}
+    {% else %}
     {% for Target in Draw.ColorTargets %}
     blendStates.push_back(GPMakeBlendState(state.blendMode, {{Target.IsUint}}));
     {% endfor %}
+    {% endif %}
     VkPipelineColorBlendStateCreateInfo colorBlending = {};
     colorBlending.sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
     colorBlending.attachmentCount = uint32_t(blendStates.size());
     colorBlending.pAttachments    = blendStates.data();
 
-    VkDynamicState dynamicStates[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    {% if GPDynamicRendering %}
+    VkDynamicState dynamicStates[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR,
+                                       VK_DYNAMIC_STATE_CULL_MODE, VK_DYNAMIC_STATE_FRONT_FACE,
+                                       VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE, VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE, VK_DYNAMIC_STATE_DEPTH_COMPARE_OP };
+    {% else %}
+    VkDynamicState dynamicStates[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    {% endif %}
     VkPipelineDynamicStateCreateInfo dynamicState = {};
     dynamicState.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dynamicState.dynamicStateCount = 2;
+    dynamicState.dynamicStateCount = uint32_t(sizeof(dynamicStates)/sizeof(dynamicStates[0]));
     dynamicState.pDynamicStates    = dynamicStates;
+    {% if GPDynamicRendering %}
+
+    VkPipelineRenderingCreateInfo renderingInfo = {};
+    renderingInfo.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+    renderingInfo.colorAttachmentCount    = uint32_t(colorFormats.size());
+    renderingInfo.pColorAttachmentFormats = colorFormats.data();
+    renderingInfo.depthAttachmentFormat   = {% if Draw.HasDepth %}VK_FORMAT_D32_SFLOAT{% else %}VK_FORMAT_UNDEFINED{% endif %};
+    {% endif %}
 
     VkGraphicsPipelineCreateInfo pipelineInfo = {};
     pipelineInfo.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -211,7 +261,12 @@ void {{MainClassName}}{{MainClassSuffix}}::InitGraphics()
     pipelineInfo.pColorBlendState    = &colorBlending;
     pipelineInfo.pDynamicState       = &dynamicState;
     pipelineInfo.layout              = {{Draw.Name}}Layout;
+    {% if GPDynamicRendering %}
+    pipelineInfo.pNext               = &renderingInfo;
+    pipelineInfo.renderPass          = VK_NULL_HANDLE;
+    {% else %}
     pipelineInfo.renderPass          = m_gp_{{Draw.Pipeline}}.renderPass;
+    {% endif %}
     pipelineInfo.subpass             = 0;
     VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_device, m_pipelineCache, 1, &pipelineInfo, nullptr, &{{Draw.Name}}Pipeline));
 
@@ -257,6 +312,32 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Draw.Name}}Cmd(VkCommandBuffer a_co
 {
   const LiteRS::Pipeline& state = {{Draw.Pipeline}};
 
+  {% if GPDynamicRendering %}
+  std::vector<VkRenderingAttachmentInfo> colorAttachments;
+  {% for Target in Draw.PassTargets %}
+  colorAttachments.push_back(GPMakeRenderingAttachment(m_vdata.{{Target.Name}}View));
+  {% endfor %}
+  {% if Draw.HasDepth %}
+  const VkRenderingAttachmentInfo depthAttachment = GPMakeRenderingAttachment(m_vdata.{{Draw.DepthTarget}}View);
+  {% endif %}
+
+  VkRenderingInfo renderingInfo = {};
+  renderingInfo.sType                    = VK_STRUCTURE_TYPE_RENDERING_INFO;
+  renderingInfo.renderArea.extent.width  = m_gp_{{Draw.Pipeline}}.width;
+  renderingInfo.renderArea.extent.height = m_gp_{{Draw.Pipeline}}.height;
+  renderingInfo.layerCount               = 1;
+  renderingInfo.colorAttachmentCount     = uint32_t(colorAttachments.size());
+  renderingInfo.pColorAttachments        = colorAttachments.data();
+  renderingInfo.pDepthAttachment         = {% if Draw.HasDepth %}&depthAttachment{% else %}nullptr{% endif %};
+  vkCmdBeginRendering(a_commandBuffer, &renderingInfo);
+  vkCmdBindPipeline(a_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, {{Draw.Name}}Pipeline);
+
+  vkCmdSetCullMode       (a_commandBuffer, VkCullModeFlags(uint32_t(state.cullMode))); // LiteRS enums have the same values as Vulkan ones
+  vkCmdSetFrontFace      (a_commandBuffer, VkFrontFace(uint32_t(state.frontFace)));
+  vkCmdSetDepthTestEnable (a_commandBuffer, ({{Draw.HasDepth}} && state.depthTest) ? VK_TRUE : VK_FALSE);
+  vkCmdSetDepthWriteEnable(a_commandBuffer, ({{Draw.HasDepth}} && state.depthTest && state.depthWrite) ? VK_TRUE : VK_FALSE);
+  vkCmdSetDepthCompareOp (a_commandBuffer, VkCompareOp(uint32_t(state.depthCompare)));
+  {% else %}
   VkRenderPassBeginInfo beginInfo = {};
   beginInfo.sType                    = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
   beginInfo.renderPass               = m_gp_{{Draw.Pipeline}}.renderPass;
@@ -265,6 +346,7 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Draw.Name}}Cmd(VkCommandBuffer a_co
   beginInfo.renderArea.extent.height = m_gp_{{Draw.Pipeline}}.height;
   vkCmdBeginRenderPass(a_commandBuffer, &beginInfo, VK_SUBPASS_CONTENTS_INLINE);
   vkCmdBindPipeline(a_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, {{Draw.Name}}Pipeline);
+  {% endif %}
 
   const VkViewport viewport = { state.viewport.x, state.viewport.y, state.viewport.width, state.viewport.height, state.viewport.minDepth, state.viewport.maxDepth };
   const int32_t    x0       = std::max(int32_t(std::floor(state.viewport.x)), 0);
@@ -291,6 +373,10 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Draw.Name}}Cmd(VkCommandBuffer a_co
   {% else %}
   vkCmdDraw(a_commandBuffer, a_count, 1, 0, 0);
   {% endif %}
+  {% if GPDynamicRendering %}
+  vkCmdEndRendering(a_commandBuffer);
+  {% else %}
   vkCmdEndRenderPass(a_commandBuffer);
+  {% endif %}
 }
 {% endfor %}

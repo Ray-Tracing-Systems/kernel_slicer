@@ -9,6 +9,7 @@
 #ifdef USE_VULKAN
 #include "vk_context.h"
 std::shared_ptr<DeferredRender> CreateDeferredRender_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
+vk_utils::VulkanDeviceFeatures DeferredRender_Generated_ListRequiredDeviceFeatures();
 #endif
 
 int main(int argc, const char** argv)
@@ -29,8 +30,9 @@ int main(int argc, const char** argv)
   #ifdef USE_VULKAN
   if(onGPU)
   {
-    auto ctx = vk_utils::globalContextGet(enableValidationLayers, args.getOptionValue<int>("--gpu_id", 0));
-    pImpl    = CreateDeferredRender_Generated(ctx, WIDTH*HEIGHT);
+    auto features = DeferredRender_Generated_ListRequiredDeviceFeatures(); // Vulkan 1.3 with '-gp_dynamic_rendering 1'
+    auto ctx      = vk_utils::globalContextInit(features, enableValidationLayers, args.getOptionValue<int>("--gpu_id", 0));
+    pImpl         = CreateDeferredRender_Generated(ctx, WIDTH*HEIGHT);
   }
   else
   #endif

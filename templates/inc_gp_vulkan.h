@@ -1,4 +1,4 @@
-  // graphics pipeline (LiteRS): render passes for LiteRS::Pipeline members and graphics pipelines for draws; Vulkan 1.0 only
+  // graphics pipeline (LiteRS): {% if GPDynamicRendering %}graphics pipelines for draws, Vulkan 1.3 dynamic rendering{% else %}render passes for LiteRS::Pipeline members and graphics pipelines for draws, Vulkan 1.0{% endif %}
   //
   struct GPPassObjects
   {

@@ -4,7 +4,8 @@
 - этап 1 (CPU) выполнен;
 - этапы 2 и 3 (фронтенд и Vulkan/Slang, Vulkan 1.0) работают для тестов 080, 081 и демо 31, 32, 33 (`ktest.py` OK, без ошибок validation layers);
 - шаги 4a.1 (текстуры в Slang) и 4a.2 (GLSL-бэкенд) выполнены: все GP-примеры проходят на Slang и GLSL;
-- ISPC и dynamic rendering впереди.
+- dynamic rendering (`-gp_dynamic_rendering 1`) выполнен, тесты проверяют оба варианта Vulkan;
+- ISPC впереди.
 
 Реализация в трансляторе: [graphics_pipeline.h](../graphics_pipeline.h), [graphics_pipeline.cpp](../graphics_pipeline.cpp),
 шаблоны `templates/inc_gp_vulkan.h/.cpp`, `templates_slang/generated_gp.slang`. Остальной код транслятора затронут точечными хуками.
@@ -136,7 +137,7 @@ GBuf   C::kernelPS_B(const Varyings& a_in) const;                               
      запекается из `LiteRS::Pipeline` при создании; viewport и scissor — dynamic state (есть в 1.0);
    - пайплайны создаются в `CommitDeviceData()`, когда значения `LiteRS::Pipeline` уже заданы на host. Изменение
      состояния после этого требует повторного `CommitDeviceData()` (или отдельной функции пересоздания).
-   - Позже, отдельным опциональным шагом (опция kslicer): Vulkan 1.3, dynamic rendering и extended dynamic state для
+   - Опция `-gp_dynamic_rendering 1` (сделано, см. 4a): Vulkan 1.3, dynamic rendering и extended dynamic state для
      cull/depth, тогда render pass и framebuffer не нужны, а состояние можно менять без пересоздания пайплайнов.
 4. **Команды.** Каждая команда LiteRS переписывается в `tr_host_vulkan.cpp` (по аналогии со служебными вызовами `memcpy`/`sort`, `VisitCallExpr`):
    - `Clear` — в первой версии `vkCmdClearColorImage` / `vkCmdClearDepthStencilImage` (render pass с `loadOp = LOAD`);
@@ -203,7 +204,15 @@ GBuf   C::kernelPS_B(const Varyings& a_in) const;                               
      (`GL_EXT_samplerless_texture_functions`). Раньше чтение без сэмплера шло через storage image: это не работало для
      глубины D32 (карта теней) и для целей без `STORAGE` usage. Чтение `float`/`uint`-текстур берёт нужные компоненты (`.x`);
    - `cross(vec4, vec4)` в GLSL.
-3. Затем ISPC и опциональный dynamic rendering.
+3. ~~Опциональный dynamic rendering~~ (выполнено 2026-11-15): опция `-gp_dynamic_rendering 1`, Vulkan 1.3:
+   - нет `VkRenderPass`/`VkFramebuffer`, пайплайны создаются с `VkPipelineRenderingCreateInfo`, отрисовка —
+     `vkCmdBeginRendering` с `loadOp = LOAD` для всех целей объекта `Pipeline` (в проходе без PS запись цвета выключена);
+   - `cullMode`, `frontFace`, `depthTest`, `depthWrite`, `depthCompare` — динамическое состояние, читаются при каждой
+     отрисовке без пересоздания пайплайнов; `blendMode` по-прежнему запекается (нужен extended dynamic state 3);
+   - устройство создаётся с `<Class>_Generated_ListRequiredDeviceFeatures()` (Vulkan 1.3, `dynamicRendering`); `main.cpp`
+     всех GP-примеров переведены на эту функцию;
+   - в `ktest.json` каждого GP-примера четыре варианта: `slang`, `slang_dr`, `glsl`, `glsl_dr`.
+4. ISPC (этап 4).
 
 Новые тесты (`apps/tests`), по одной фиче, сравнение CPU и GPU (081 — пространства имён LiteMath/LiteRS — уже добавлен):
 

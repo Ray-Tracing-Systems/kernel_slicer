@@ -52,7 +52,9 @@ vk_utils::VulkanDeviceFeatures {{MainClassName}}{{MainClassSuffix}}_ListRequired
 {
   vk_utils::VulkanDeviceFeatures res;
   res.features2 = {{MainClassName}}{{MainClassSuffix}}::ListRequiredDeviceFeatures(res.extensionNames);
-  {% if SlangShaders and not UseVulkan11 %}
+  {% if GPDynamicRendering %}
+  res.apiVersion = VK_API_VERSION_1_3; // graphics pipeline with dynamic rendering and extended dynamic state
+  {% else if SlangShaders and not UseVulkan11 %}
   res.apiVersion = VK_API_VERSION_1_2;
   {% else %}
   res.apiVersion = VK_API_VERSION_1_1;
@@ -2472,6 +2474,13 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
   storage16BitFeatures.uniformAndStorageBuffer16BitAccess = VK_TRUE;
   storage16BitFeatures.storagePushConstant16              = VK_FALSE;
   (*ppNext) = &storage16BitFeatures; ppNext = &storage16BitFeatures.pNext;
+
+  {% endif %}
+  {% if GPDynamicRendering %}
+  static VkPhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures = {}; // core in Vulkan 1.3, as extended dynamic state
+  dynamicRenderingFeatures.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
+  dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
+  (*ppNext) = &dynamicRenderingFeatures; ppNext = &dynamicRenderingFeatures.pNext;
 
   {% endif %}
   {% if GlobalUseCoopVec %}

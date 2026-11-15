@@ -49,6 +49,7 @@ namespace kslicer
     bool enableCallable    = false;
     bool enableTimeStamps  = false;
     bool usePipelineCache  = false;
+    bool gpDynamicRendering = false; ///<! graphics pipeline (LiteRS): Vulkan 1.3 dynamic rendering and extended dynamic state instead of render passes ('-gp_dynamic_rendering 1')
     bool genSeparateGPUAPI = false;
     bool useCUBforCUDA     = true;
     bool skipUBORead       = false;
