@@ -2,8 +2,8 @@
 
 Рабочий документ. Состояние на 2026-11-15:
 - этап 1 (CPU) выполнен;
-- этапы 2 и 3 (фронтенд и Vulkan/Slang, Vulkan 1.0) работают для теста 080 и демо 32 (`ktest.py` OK, без ошибок validation layers);
-- демо 31 и 33 упираются в пробелы текстур Slang (выборка с `Sampler` у одиночной текстуры, запись в изображения в кернелах);
+- этапы 2 и 3 (фронтенд и Vulkan/Slang, Vulkan 1.0) работают для тестов 080, 081 и демо 31, 32, 33 (`ktest.py` OK, без ошибок validation layers);
+- шаг 4a.1 (текстуры в Slang) выполнен;
 - GLSL, ISPC и dynamic rendering впереди.
 
 Реализация в трансляторе: [graphics_pipeline.h](../graphics_pipeline.h), [graphics_pipeline.cpp](../graphics_pipeline.cpp),
@@ -88,8 +88,7 @@ GBuf   C::kernelPS_B(const Varyings& a_in) const;                               
 Общая процедурная геометрия: [apps/utils/simple_meshes.h](../apps/utils/simple_meshes.h).
 
 Сборка CPU-версии: `mkdir build && cd build && cmake -DUSE_VULKAN=OFF .. && make`, запуск из папки примера,
-результат `zout_cpu.bmp`. В `ktest.json` все варианты помечены `skip`, пока транслятор не поддерживает LiteRS.
-Все четыре примера уже разбираются kslicer без ошибок, но команды LiteRS пока игнорируются.
+результат `zout_cpu.bmp`. В `ktest.json` Slang-варианты включены, GLSL-варианты помечены `skip` до поддержки LiteRS в GLSL.
 
 ## 2. Этап 2 — фронтенд транслятора (общий для всех бэкендов)
 
@@ -183,13 +182,22 @@ GBuf   C::kernelPS_B(const Varyings& a_in) const;                               
 ## 4a. Ближайшие шаги и новые примеры
 
 Порядок работ (решение от 2026-11-15):
-1. Текстуры в Slang-бэкенде (общая доработка, нужна демо 31 и 33): выборка `m_texture.sample(m_sampler, uv)` у одиночной
-   текстуры с членом `Sampler`, запись в изображения в кернелах (`image_storage`), вызовы с явным `LiteMath::` и `cross()`
-   для `float4` в шейдерах.
+1. ~~Текстуры в Slang-бэкенде~~ (выполнено 2026-11-15, сняты `skip` у 006, 008, 066, app 14, app 15, app 31, app 33):
+   - вид текстуры в шейдере и дескриптор на хосте выбираются одной функцией `kslicer::SlangTextureKind`: запись в кернеле —
+     `RWTexture2D<T>` (storage image), `sample(sampler, uv)` — `Sampler2D<T>` (combined image sampler), остальное чтение —
+     `Texture2D<T>` (sampled image); изображения, которые где-то пишутся, остаются в лейауте `GENERAL`;
+   - `Image2D<uint32_t>`, который читается через `sample()`, на GPU — `R8G8B8A8_UNORM`, в шейдере `float4` (оба бэкенда).
+     Чтение таких текстур на CPU после GPU не планируется: CPU пишет, GPU читает;
+   - параметр-текстура функции: `Sampler2D<T>`, если функция делает `sample`, иначе `Texture2D<T>`, неконстантная ссылка —
+     `RWTexture2D<T>`;
+   - квалификаторы `LiteMath::`, `LiteImage::`, `LiteRS::` (и псевдонимы этих пространств) удаляются в шейдерах Slang/GLSL
+     у вызовов, констант и типов локальных переменных; `LiteRS::Pipeline` исключается из UBO по каноническому типу, поэтому
+     работают `using LiteRS::Pipeline`, `using LiteRS::DrawIndexedTriangles` и вызовы через ADL (тест 081);
+   - `cross(float4, float4)` в Slang; `cross3(float4, float4)` в шейдерах теперь даёт `w = 0`, как в LiteMath (было `w = 1`).
 2. GLSL-бэкенд для графического конвейера.
 3. Затем ISPC и опциональный dynamic rendering.
 
-Новые тесты (`apps/tests`), по одной фиче, сравнение CPU и GPU:
+Новые тесты (`apps/tests`), по одной фиче, сравнение CPU и GPU (081 — пространства имён LiteMath/LiteRS — уже добавлен):
 
 | # | Тест | Что проверяет |
 |---|------|---------------|

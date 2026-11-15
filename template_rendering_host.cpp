@@ -59,24 +59,64 @@ struct DSTextureAccess
 typedef typename kslicer::umap<std::string, kslicer::TEX_ACCESS>::const_iterator FlagsPointerType;
 typedef typename kslicer::umap<std::string, std::string>::const_iterator         SamplerPointerType;
 
-/// Slang declares all textures as read-only 'Texture2D' (see common_generated.slang): a texture without sampler is a sampled image
-static bool IsSlangSampledImage(const kslicer::MainClassInfo& a_classInfo, const kslicer::KernelInfo& a_kernel, const std::string& a_name)
+kslicer::SLANG_TEX kslicer::SlangTextureKind(const KernelInfo& a_kernel, const kslicer::umap<std::string, TEX_ACCESS>& a_flags, const std::string& a_name)
 {
-  return a_classInfo.pShaderCC->Name() == "Slang" && a_kernel.texAccessSampler.find(a_name) == a_kernel.texAccessSampler.end();
+  const auto pFlags = a_flags.find(a_name);
+  const int  flags  = (pFlags == a_flags.end()) ? 0 : int(pFlags->second);
+  if(flags & int(TEX_ACCESS::TEX_ACCESS_WRITE))
+    return SLANG_TEX::STORAGE;
+  if((flags & int(TEX_ACCESS::TEX_ACCESS_SAMPLE)) || a_kernel.texAccessSampler.find(a_name) != a_kernel.texAccessSampler.end())
+    return SLANG_TEX::COMBINED;
+  return SLANG_TEX::SAMPLED;
+}
+
+std::string kslicer::SlangTextureDescriptorType(SLANG_TEX a_kind)
+{
+  switch(a_kind)
+  {
+    case SLANG_TEX::STORAGE:  return "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
+    case SLANG_TEX::COMBINED: return "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
+    default:                  return "VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE";
+  };
+}
+
+std::string kslicer::SlangTexelType(const std::string& a_dataTypeRewritten, SLANG_TEX a_kind)
+{
+  const bool isUint = (a_dataTypeRewritten == "uint" || a_dataTypeRewritten == "uint32_t" || a_dataTypeRewritten == "unsigned int");
+  if(isUint)
+    return (a_kind == SLANG_TEX::COMBINED) ? "float4" : "uint"; // sampled 'Image2D<uint32_t>' is RGBA8_UNORM
+  if(a_dataTypeRewritten == "float" || a_dataTypeRewritten == "float2" || a_dataTypeRewritten == "float4")
+    return a_dataTypeRewritten;
+  return "float4";
+}
+
+std::string kslicer::TextureMemberVulkanFormat(const DataMemberInfo& a_member, const std::string& a_dataTypeRewritten, bool a_useHalFloat)
+{
+  const bool isUint  = (a_dataTypeRewritten == "uint" || a_dataTypeRewritten == "uint32_t" || a_dataTypeRewritten == "unsigned int");
+  const bool sampled = (int(a_member.tmask) & int(TEX_ACCESS::TEX_ACCESS_SAMPLE)) != 0;
+  if(isUint && sampled) // 'Image2D<uint32_t>::sample' on CPU reads RGBA8 colors, linear filtering needs normalized format
+    return "VK_FORMAT_R8G8B8A8_UNORM";
+  return InferenceVulkanTextureFormatFromTypeName(a_dataTypeRewritten, a_useHalFloat);
+}
+
+/// Slang: descriptor type follows declaration of texture in shader (see kslicer::SlangTextureKind)
+static DSTextureAccess ObtainDSTextureAccessSlang(const kslicer::KernelInfo& kernel, const kslicer::umap<std::string, kslicer::TEX_ACCESS>& a_flags, const std::string& a_name, bool isConstAccess)
+{
+  const auto pSampler  = kernel.texAccessSampler.find(a_name);
+  const auto kind      = kslicer::SlangTextureKind(kernel, a_flags, a_name);
+  DSTextureAccess result;
+  result.accessDSType  = kslicer::SlangTextureDescriptorType(kind);
+  result.accessLayout  = (isConstAccess && kind != kslicer::SLANG_TEX::STORAGE) ? "VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL" : "VK_IMAGE_LAYOUT_GENERAL"; // written images stay in GENERAL
+  result.SamplerName   = (kind == kslicer::SLANG_TEX::COMBINED && pSampler != kernel.texAccessSampler.end()) ? std::string("m_vdata.") + pSampler->second : std::string("VK_NULL_HANDLE");
+  return result;
 }
 
 DSTextureAccess ObtainDSTextureAccess(const kslicer::KernelInfo& kernel, const kslicer::umap<std::string, kslicer::TEX_ACCESS>& a_flags, FlagsPointerType pAccessFlags, 
-                                      SamplerPointerType pSampler, bool isConstAccess, bool a_sampledImage)
+                                      SamplerPointerType pSampler, bool isConstAccess)
 {
   DSTextureAccess result;
   std::string samplerName = (pSampler == kernel.texAccessSampler.end()) ? "VK_NULL_HANDLE" : std::string("m_vdata.") + pSampler->second;
-  if(a_sampledImage)
-  {
-    result.accessLayout = "VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL";
-    result.accessDSType = "VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE";
-    result.SamplerName  = "VK_NULL_HANDLE";
-  }
-  else if(pAccessFlags != a_flags.end())
+  if(pAccessFlags != a_flags.end())
   {
     result.accessLayout = "VK_IMAGE_LAYOUT_GENERAL";
     result.accessDSType = "VK_DESCRIPTOR_TYPE_STORAGE_IMAGE";
@@ -109,14 +149,18 @@ DSTextureAccess ObtainDSTextureAccessArg(const kslicer::MainClassInfo& a_classIn
   std::string argNameInKernel = kernel.args[argId].name;
   const auto pAccessFlags     = kernel.texAccessInArgs.find(argNameInKernel);
   const auto pSampler         = kernel.texAccessSampler.find(argNameInKernel);
-  return ObtainDSTextureAccess(kernel, kernel.texAccessInArgs, pAccessFlags, pSampler, isConstAccess, IsSlangSampledImage(a_classInfo, kernel, argNameInKernel));
+  if(a_classInfo.pShaderCC->Name() == "Slang")
+    return ObtainDSTextureAccessSlang(kernel, kernel.texAccessInArgs, argNameInKernel, isConstAccess);
+  return ObtainDSTextureAccess(kernel, kernel.texAccessInArgs, pAccessFlags, pSampler, isConstAccess);
 }
 
 DSTextureAccess ObtainDSTextureAccessMemb(const kslicer::MainClassInfo& a_classInfo, const kslicer::KernelInfo& kernel, const std::string& varName, bool isConstAccess)
 {
   const auto pAccessFlags     = kernel.texAccessInMemb.find(varName);
   const auto pSampler         = kernel.texAccessSampler.find(varName);
-  return ObtainDSTextureAccess(kernel, kernel.texAccessInMemb, pAccessFlags, pSampler, isConstAccess, IsSlangSampledImage(a_classInfo, kernel, varName));
+  if(a_classInfo.pShaderCC->Name() == "Slang")
+    return ObtainDSTextureAccessSlang(kernel, kernel.texAccessInMemb, varName, isConstAccess);
+  return ObtainDSTextureAccess(kernel, kernel.texAccessInMemb, pAccessFlags, pSampler, isConstAccess);
 }
 
 
@@ -843,7 +887,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     {
       json local;
       local["Name"]       = v.name;
-      local["Format"]     = kslicer::InferenceVulkanTextureFormatFromTypeName(a_classInfo.pShaderFuncRewriter->RewriteStdVectorTypeStr(v.containerDataType), a_classInfo.halfFloatTextures);
+      local["Format"]     = kslicer::TextureMemberVulkanFormat(v, a_classInfo.pShaderFuncRewriter->RewriteStdVectorTypeStr(v.containerDataType), a_classInfo.halfFloatTextures);
       local["Usage"]      = "VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT";
       local["NeedUpdate"] = false;
       local["NeedSampler"] = false;
@@ -863,7 +907,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       }
       else if( int(v.tmask) == (int(TEX_ACCESS::TEX_ACCESS_READ)   | int(TEX_ACCESS::TEX_ACCESS_WRITE)) )
       {
-        local["Usage"]      = "VK_IMAGE_USAGE_STORAGE_BIT";
+        local["Usage"]      = "VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT"; // Slang reads images, which are not written by kernel, as sampled images
         local["NeedUpdate"] = false;
       }
       else if( int(v.tmask) == (int(TEX_ACCESS::TEX_ACCESS_SAMPLE) | int(TEX_ACCESS::TEX_ACCESS_WRITE)))
@@ -1170,9 +1214,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         argData["IsTextureArray"] = true;
         hasTextureArray = true;
       }
-      else if(arg.IsTexture() && IsSlangSampledImage(a_classInfo, k, arg.name))
+      else if(arg.IsTexture() && a_classInfo.pShaderCC->Name() == "Slang")
       {
-        argData["Type"] = "VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE";
+        argData["Type"] = kslicer::SlangTextureDescriptorType(kslicer::SlangTextureKind(k, k.texAccessInArgs, arg.name));
       }
       else if(arg.IsTexture())
       {
@@ -1223,9 +1267,9 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       {
         argData["Type"] = "VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER";
       }
-      else if(container.second.isTexture() && IsSlangSampledImage(a_classInfo, k, container.second.name))
+      else if(container.second.isTexture() && a_classInfo.pShaderCC->Name() == "Slang")
       {
-        argData["Type"] = "VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE";
+        argData["Type"] = kslicer::SlangTextureDescriptorType(kslicer::SlangTextureKind(k, k.texAccessInMemb, container.second.name));
       }
       else if(container.second.isTexture())
       {

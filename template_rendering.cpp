@@ -501,14 +501,20 @@ static bool isConvertibleToInt(const std::string& str) {
 }
 
 
-/// element type of 'Image2D<T>' in shader, Slang declares textures as 'Texture2D<T>'
-static std::string ShaderTexelType(const std::string& a_rewrittenDataType)
+/// Slang declaration of texture: 'Texture2D<T>', 'Sampler2D<T>' or 'RWTexture2D<T>' (see kslicer::SlangTextureKind)
+static void PutSlangTextureToJson(json& argj, kslicer::SLANG_TEX a_kind, const std::string& a_rewrittenDataType)
 {
-  if(a_rewrittenDataType == "uint" || a_rewrittenDataType == "uint32_t" || a_rewrittenDataType == "unsigned int")
-    return "uint";
-  if(a_rewrittenDataType == "float" || a_rewrittenDataType == "float2" || a_rewrittenDataType == "float4")
-    return a_rewrittenDataType;
-  return "float4";
+  const std::string texelType = kslicer::SlangTexelType(a_rewrittenDataType, a_kind);
+  std::string format = "rgba32f";
+  if(texelType == "float")
+    format = "r32f";
+  else if(texelType == "float2")
+    format = "rg32f";
+  else if(texelType == "uint")
+    format = "r32ui";
+  argj["TexelType"]     = texelType;
+  argj["SlangTexKind"]  = (a_kind == kslicer::SLANG_TEX::STORAGE) ? "RWTexture2D" : ((a_kind == kslicer::SLANG_TEX::COMBINED) ? "Sampler2D" : "Texture2D");
+  argj["SlangImFormat"] = format;
 }
 
 json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
@@ -807,6 +813,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["TexelType"]     = "float4";
       argj["IsImageArray"]  = false;
       argj["IsAccelStruct"] = false;
+      if(commonArg.isImage)
+        PutSlangTextureToJson(argj, kslicer::SlangTextureKind(k, k.texAccessInArgs, commonArg.name), commonArg.imageDataType);
       argj["NeedFmt"]       = !commonArg.isSampler;
       argj["ImFormat"]      = commonArg.imageFormat;
       argj["IsPointer"]     = commonArg.isPointer;
@@ -910,6 +918,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         argj["NeedFmt"]  = false;
         argj["ImFormat"] = "";
         argj["SizeOffset"] = 0;
+        PutSlangTextureToJson(argj, kslicer::SLANG_TEX::COMBINED, "float4");
         usedCombinedImageSamplers = true;
       }
       else if(pVecMember->second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY)
@@ -931,7 +940,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         auto pMemberAccess = k.texAccessInMemb.find(pVecMember->second.name);
         auto accessFlags   = (pMemberAccess == k.texAccessInMemb.end()) ? kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE : pMemberAccess->second; //pVecMember->second.tmask;
         argj["IsImage"]  = true;
-        argj["TexelType"]= ShaderTexelType(pShaderRewriter->RewriteStdVectorTypeStr(pVecMember->second.containerDataType));
+        PutSlangTextureToJson(argj, kslicer::SlangTextureKind(k, k.texAccessInMemb, pVecMember->second.name), pShaderRewriter->RewriteStdVectorTypeStr(pVecMember->second.containerDataType));
         argj["Type"]     = a_classInfo.pShaderFuncRewriter->RewriteImageType(pVecMember->second.containerType, pVecMember->second.containerDataType, accessFlags, imageFormat);
         argj["NeedFmt"]  = (accessFlags != kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE);
         argj["ImFormat"] = imageFormat;

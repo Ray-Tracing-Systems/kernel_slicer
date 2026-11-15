@@ -442,6 +442,8 @@ std::vector<kslicer::ArgFinal> kslicer::MainClassInfo::GetKernelCommonArgs(const
         arg2.isImage   = true;
         arg2.isSampler = (pAccessFlags->second == kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE);
         arg2.imageType = pShaderFuncRewriter->RewriteImageType(arg.containerType, arg.containerDataType, pAccessFlags->second, arg2.imageFormat);
+        arg2.imageDataType = pShaderFuncRewriter->RewriteStdVectorTypeStr(arg.containerDataType);
+        arg2.imageAccess   = pAccessFlags->second;
       }
       else
       {

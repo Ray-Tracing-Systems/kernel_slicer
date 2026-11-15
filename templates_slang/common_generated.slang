@@ -6,7 +6,13 @@ layout (constant_id = {{KSpec.Id}}) const int {{KSpec.Name}} = {{KSpec.Id}}; //
 {% for Arg in Kernel.Args %}
 {% if not Arg.IsUBO %}
 {% if Arg.IsImage %}
-{% if Kernel.UseCombinedImageSampler or Kernel.IsGraphics %}[[vk::binding({{loop.index}}, {{Kernel.DSetId}})]] {% endif %}Texture2D<{% if existsIn(Arg, "TexelType") %}{{Arg.TexelType}}{% else %}float4{% endif %}> {{Arg.Name}}; //
+{% if Arg.IsImageArray %}
+{% if Kernel.UseCombinedImageSampler or Kernel.IsGraphics %}[[vk::binding({{loop.index}}, {{Kernel.DSetId}})]] {% endif %}Texture2D<float4> {{Arg.Name}}; //
+{% else if existsIn(Arg, "SlangTexKind") %}
+{% if Kernel.UseCombinedImageSampler or Kernel.IsGraphics %}[[vk::binding({{loop.index}}, {{Kernel.DSetId}})]] {% endif %}{% if Arg.SlangTexKind == "RWTexture2D" %}[[vk::image_format("{{Arg.SlangImFormat}}")]] {% endif %}{{Arg.SlangTexKind}}<{{Arg.TexelType}}> {{Arg.Name}}; //
+{% else %}
+{% if Kernel.UseCombinedImageSampler or Kernel.IsGraphics %}[[vk::binding({{loop.index}}, {{Kernel.DSetId}})]] {% endif %}Texture2D<float4> {{Arg.Name}}; //
+{% endif %}
 {% if Arg.IsImageArray %}
 [[vk::binding({{loop.index}}, {{Kernel.DSetId}})]] SamplerState {{Arg.NameSam}};
 {% endif %}

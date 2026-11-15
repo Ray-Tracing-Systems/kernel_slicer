@@ -257,7 +257,7 @@ void set_row2f(inout mat2 m, int col, vec2 value) { m[0][col] = value.x; m[1][co
 void set_row3f(inout mat3 m, int col, vec3 value) { m[0][col] = value.x; m[1][col] = value.y; m[2][col] = value.z; }
 void set_row4f(inout mat4 m, int col, vec4 value) { m[0][col] = value.x; m[1][col] = value.y; m[2][col] = value.z; m[3][col] = value.w; }
 
-vec4 cross3(vec4 a, vec4 b) { return vec4(cross(a.xyz, b.xyz), 1.0f); }
+vec4 cross3(vec4 a, vec4 b) { return vec4(cross(a.xyz, b.xyz), 0.0f); } // w = 0 as in LiteMath
 
 struct Box4f 
 { 

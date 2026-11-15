@@ -92,14 +92,12 @@ follows the test configs and the code.
 | `fp16` | `half` arithmetic and conversions | 🟡² | 🟡³ | ❔ | ❔ | 022, 053, 070 |
 | `storage_8_16bit` | 8/16-bit types in buffers and UBO | ✅ | ✅ | ❔ | ❔ | 060, 053 |
 | `buffer_reference` | Buffer device address (`-with_buffer_reference`) | ❌ | ✅ | ❔ | ❔ | 039 |
-| `textures` | Textures and samplers (`ITexture2D`, combined image sampler) | 🟡⁴ | ✅ | ❌ | ❔ | 006, 007, 008, app 14, app 15, app 20 |
-| `image_storage` | Writable images (`Texture2D<float4>` output) | ❌ | ✅ | ❌ | ❔ | 066 |
+| `textures` | Textures and samplers (`ITexture2D`, combined image sampler, `Image2D` + `Sampler` members); sampled `Image2D<uint32_t>` is RGBA8_UNORM on GPU | ✅ | ✅ | ❌ | ❔ | 006, 007, 008, app 14, app 15, app 20, app 31 |
+| `image_storage` | Writable images (`Image2D<T>` written by kernels) | ✅ | ✅ | ❌ | ❔ | 066, app 33 |
 | `half_textures` | Textures stored in half precision (`-halfTex 1`) | ❌ | ✅ | ❌ | ❔ | 066, app 14 |
 
 ² 053 and 070 work, 022 (`-forceEnableHalf`) fails to compile.
 ³ 022 and 070 work, 053 (`as_half`/`bit_cast`) fails to compile.
-⁴ Arrays of textures (007) work. A single combined image sampler member (006, 008) and the texture
-samples app 14, app 15 fail to compile.
 
 ### Graphics pipeline
 
@@ -108,14 +106,12 @@ Vertex and pixel shaders `kernelVS_/kernelPS_` with `LiteRS` commands in control
 
 | ID | Feature | Slang | GLSL | CUDA/HIP | ISPC | Tests and samples |
 |----|---------|:-----:|:----:|:--------:|:----:|-------------------|
-| `gp_draw` | `LiteRS::DrawTriangles` with VS and PS, render targets, depth test, `LiteRS::Clear` | ✅ | ❌ | ❌ | ❌ | 080, app 32 |
-| `gp_indexed` | `LiteRS::DrawIndexedTriangles` (index buffer is a member vector) | ✅ | ❌ | ❌ | ❌ | app 32 |
+| `gp_draw` | `LiteRS::DrawTriangles` with VS and PS, render targets, depth test, `LiteRS::Clear` | ✅ | ❌ | ❌ | ❌ | 080, 081, app 32 |
+| `gp_indexed` | `LiteRS::DrawIndexedTriangles` (index buffer is a member vector) | ✅ | ❌ | ❌ | ❌ | 081, app 31, app 32 |
 | `gp_depth_only` | Depth only pass (VS without PS), shadow map read in PS | ✅ | ❌ | ❌ | ❌ | app 32 |
-| `gp_mrt` | Several color targets (PS returns a struct of `float4`) | ❔⁵ | ❌ | ❌ | ❌ | app 33 |
-| `gp_textures_in_ps` | Texture with sampler in pixel shader | ❌⁵ | ❌ | ❌ | ❌ | app 31 |
-
-⁵ The samples are blocked by Slang texture support: app 33 writes images in kernels (`image_storage`),
-app 31 samples a texture member with a `Sampler` member (`textures`).
+| `gp_mrt` | Several color targets (PS returns a struct of `float4`) | ✅ | ❌ | ❌ | ❌ | app 33 |
+| `gp_textures_in_ps` | Texture with sampler in pixel shader | ✅ | ❌ | ❌ | ❌ | app 31 |
+| `gp_namespaces` | `LiteRS` and `LiteMath` names with and without namespace (`using`, namespace alias, argument dependent lookup) | ✅ | ❌ | ❌ | ❌ | 081 |
 
 ### Ray tracing and virtual functions
 

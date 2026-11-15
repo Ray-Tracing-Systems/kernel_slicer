@@ -2408,6 +2408,7 @@ bool kslicer::GLSLRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
 {
   if(CheckLocalGlobalPtrUse(expr))
     return true;
+  RemoveLiteNamespaceQualifier(expr);
   if(m_kernelMode)
     VisitDeclRefExprKernel(expr);
   RenameReservedIdentifier(expr);

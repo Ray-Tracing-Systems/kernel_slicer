@@ -247,7 +247,8 @@ void set_col2f(inout float2x2 m, int col, float2 value) { m[0][col] = value.x; m
 void set_col3f(inout float3x3 m, int col, float3 value) { m[0][col] = value.x; m[1][col] = value.y; m[2][col] = value.z; }
 void set_col4f(inout float4x4 m, int col, float4 value) { m[0][col] = value.x; m[1][col] = value.y; m[2][col] = value.z; m[3][col] = value.w; }
 
-float4 cross3(float4 a, float4 b) { return float4(cross(a.xyz, b.xyz), 1.0f); }
+float4 cross3(float4 a, float4 b) { return float4(cross(a.xyz, b.xyz), 0.0f); } // w = 0 as in LiteMath
+float4 cross (float4 a, float4 b) { return cross3(a, b); }
 
 struct Box4f 
 { 
