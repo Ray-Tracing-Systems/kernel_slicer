@@ -13,8 +13,8 @@ struct LiteImageInfo   ///< size and layout of Image2D (LiteImage::Layout: 0 is 
 {
   uint32 width;
   uint32 height;
-  uint32 pitch;        ///< width for LINEAR, number of tiles in a row for TILED4x4
-  uint32 layout;
+  uint32 pitch;        ///< width for LINEAR, number of tiles in a row for TILED4x4, number of bins in a row for TILED4x4_BINS
+  uint32 layout;       ///< bits 0-7: LiteImage::Layout, bits 8-15: log2 of bin size for TILED4x4_BINS
 };
 
 struct LiteSamplerInfo ///< LiteImage::Sampler: address modes (0 WRAP, 2 CLAMP) and filter (0 NEAREST, 1 LINEAR)
@@ -31,9 +31,18 @@ struct LiteSamplerInfo ///< LiteImage::Sampler: address modes (0 WRAP, 2 CLAMP) 
 /// LiteImage::PixelOffset
 static inline int LiteImagePixelOffset(uniform const LiteImageInfo& a_info, int x, int y)
 {
-  if(a_info.layout == 0)
-    return y*(uniform int)a_info.pitch + x;
-  return ((((y >> 2)*(uniform int)a_info.pitch) + (x >> 2)) << 4) + ((y & 3) << 2) + (x & 3);
+  const uniform int layout = (uniform int)(a_info.layout & 0xFF);
+  const uniform int pitch  = (uniform int)a_info.pitch;
+  if(layout == 0)
+    return y*pitch + x;
+  const int inTile = ((y & 3) << 2) + (x & 3);
+  if(layout == 1)
+    return ((((y >> 2)*pitch) + (x >> 2)) << 4) + inTile;
+  const uniform int binShift = (uniform int)((a_info.layout >> 8) & 0xFF);
+  const uniform int mask     = (1 << binShift) - 1;
+  const int bin  = (y >> binShift)*pitch + (x >> binShift);
+  const int tile = ((y & mask) >> 2)*((mask + 1) >> 2) + ((x & mask) >> 2);
+  return (bin << (2*binShift)) + (tile << 4) + inTile;
 }
 
 static inline int LiteImageOffset(uniform const LiteImageInfo& a_info, int2 a_coord)  { return LiteImagePixelOffset(a_info, a_coord.x, a_coord.y); }

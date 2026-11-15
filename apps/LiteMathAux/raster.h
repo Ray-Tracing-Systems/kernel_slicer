@@ -32,6 +32,8 @@
 #include <algorithm>
 #include <utility>
 #include <cstring>
+#include <chrono>
+#include <memory>
 #endif
 
 #include "LiteMath.h"
@@ -70,9 +72,23 @@ namespace LiteRS
     int        smallTriArea  = 64;   ///< AUTO: triangles with a bounding box smaller than this (in pixels) are rasterized per pixel, the others by 4x4 blocks
     int        binSize       = 64;   ///< the screen is split into bins of binSize x binSize pixels which are rasterized in parallel
     bool       multithreaded = true;
+    bool       collectStats  = false; ///< measure time of stages of draws to Pipeline::stats
+  };
+
+  /**
+  \brief Time of stages of draws (CPU rasterizer, C++ and ISPC), accumulated while CPUSettings::collectStats is true.
+  */
+  struct CPUStats
+  {
+    double   vertexMs   = 0.0; ///< vertex shader
+    double   setupMs    = 0.0; ///< primitive assembly, clipping, setup and binning
+    double   rasterMs   = 0.0; ///< rasterization, depth test, pixel shader and writing colors
+    uint64_t triangles  = 0;   ///< triangles after setup
+    uint32_t draws      = 0;
   };
 
   struct DrawBackend;
+  namespace detail { struct BinningCache; };
 
   /**
   \brief Fixed function state and render targets of the graphics pipeline. Shaders are not stored here: they are given
@@ -102,11 +118,15 @@ namespace LiteRS
     float4      clearColor   = float4(0.0f, 0.0f, 0.0f, 0.0f); ///< for all color targets
     float       clearDepth   = 1.0f;
     CPUSettings cpu;
+    CPUStats    stats;
 
     Image2D<float4>*   colorF[MAX_COLOR_TARGETS] = {}; ///< RGBA32F color targets
     Image2D<uint32_t>* colorU[MAX_COLOR_TARGETS] = {}; ///< RGBA8 color targets
     Image2D<float>*    depth = nullptr;                ///< D32 depth target
     DrawBackend*       backend = nullptr;              ///< set by generated code (ISPC): it executes draws with known shaders, see DrawBackend
+#ifndef KERNEL_SLICER
+    std::shared_ptr<detail::BinningCache> binningCache; ///< buffers of detail::DrawVertexStreamByBins reused by draws
+#endif
   };
 
   /**
@@ -156,6 +176,15 @@ namespace LiteRS
 
     struct Rect { int x0, y0, x1, y1; };   ///< [x0, x1) x [y0, y1)
 
+    /// milliseconds since construction if a_enabled (CPUSettings::collectStats), 0 otherwise
+    struct StageTimer
+    {
+      explicit StageTimer(bool a_enabled) : enabled(a_enabled) { if(enabled) start = std::chrono::high_resolution_clock::now(); }
+      double Ms() const { return enabled ? std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - start).count() : 0.0; }
+      bool enabled;
+      std::chrono::high_resolution_clock::time_point start;
+    };
+
     struct NoVaryings { float unused; };   ///< varyings of a depth only pass
 
     static inline Rect Intersect(const Rect& a, const Rect& b)
@@ -177,6 +206,7 @@ namespace LiteRS
       int               height = 0;
       LiteImage::Layout layout = LiteImage::Layout::LINEAR;
       unsigned int      pitch  = 0;
+      unsigned int      binShift = 6;        ///< log2 of bin size of LiteImage::Layout::TILED4x4_BINS
       Rect              scissor;             ///< viewport rectangle clamped to the target size
       float             vpScale[3];          ///< screen = ndc*vpScale + vpOffset
       float             vpOffset[3];
@@ -187,7 +217,10 @@ namespace LiteRS
       CompareOp         depthCompare;
       BlendMode         blendMode;
 
-      int Offset(int x, int y) const { return int(LiteImage::PixelOffset(layout, pitch, unsigned(x), unsigned(y))); }
+      int Offset(int x, int y) const { return int(LiteImage::PixelOffset(layout, pitch, unsigned(x), unsigned(y), binShift)); }
+
+      /// bins of rasterizer: bins of TILED4x4_BINS targets (every thread works with its own continuous part of memory), a_settings.binSize otherwise
+      int BinSize(const CPUSettings& a_settings) const { return (layout == LiteImage::Layout::TILED4x4_BINS) ? (1 << binShift) : std::max(a_settings.binSize, BLOCK_SIZE); }
     };
 
     template<typename T>
@@ -199,10 +232,11 @@ namespace LiteRS
       {
         t.width  = int(a_image->width());
         t.height = int(a_image->height());
-        t.layout = a_image->layout();
-        t.pitch  = a_image->pitch();
+        t.layout   = a_image->layout();
+        t.pitch    = a_image->pitch();
+        t.binShift = a_image->binShift();
       }
-      assert(int(a_image->width()) == t.width && int(a_image->height()) == t.height && a_image->layout() == t.layout);
+      assert(int(a_image->width()) == t.width && int(a_image->height()) == t.height && a_image->layout() == t.layout && a_image->binShift() == t.binShift);
     }
 
     static inline Target MakeTarget(const Pipeline& a_pipe)
@@ -631,7 +665,7 @@ namespace LiteRS
         return;
 
       const Rect& sc = a_tgt.scissor;
-      const int   bs = std::max(a_settings.binSize, BLOCK_SIZE);
+      const int   bs = a_tgt.BinSize(a_settings);
       const int   binsX = (sc.x1 - 1)/bs - sc.x0/bs + 1;
       const int   binsY = (sc.y1 - 1)/bs - sc.y0/bs + 1;
 
@@ -683,6 +717,7 @@ namespace LiteRS
       static_assert(sizeof(V) % sizeof(float) == 0, "LiteRS: varyings must consist of float, float2, float3, float4 fields");
       const Target tgt = MakeTarget(a_pipe);
 
+      StageTimer setupTimer(a_pipe.cpu.collectStats);
       std::vector< Triangle<V> > tris;
       tris.reserve(a_num/3);
       for(uint32_t i = 0; i + 2 < a_num; i += 3)
@@ -692,6 +727,9 @@ namespace LiteRS
         else
           AssembleTriangle(tgt, a_verts[a_indices[i + 0] - a_indexBase], a_verts[a_indices[i + 1] - a_indexBase], a_verts[a_indices[i + 2] - a_indexBase], tris);
       }
+      a_pipe.stats.setupMs   += setupTimer.Ms();
+      a_pipe.stats.triangles += tris.size();
+      a_pipe.stats.draws     += a_pipe.cpu.collectStats ? 1 : 0;
 
       auto shadePixel = [&](const Triangle<V>& tri, int x, int y, float b0, float b1, float b2)
       {
@@ -706,17 +744,21 @@ namespace LiteRS
           WriteColors(tgt, offs, a_ps(in));
         }
       };
+      StageTimer rasterTimer(a_pipe.cpu.collectStats);
       RasterizeAll(a_pipe.cpu, tgt, tris, shadePixel);
+      a_pipe.stats.rasterMs += rasterTimer.Ms();
     }
 
     /// runs vertex shader for vertices [a_first, a_first + a_num); a_vs(vertexId, Vertex<V>&) writes one vertex
     template<typename V, typename VSFn>
-    static std::vector< Vertex<V> > RunVertexShader(const Pipeline& a_pipe, uint32_t a_first, uint32_t a_num, VSFn a_vs)
+    static std::vector< Vertex<V> > RunVertexShader(Pipeline& a_pipe, uint32_t a_first, uint32_t a_num, VSFn a_vs)
     {
+      StageTimer timer(a_pipe.cpu.collectStats);
       std::vector< Vertex<V> > verts(a_num);
       #pragma omp parallel for if(a_pipe.cpu.multithreaded && a_num >= 4096)
       for(int i = 0; i < int(a_num); i++)
         a_vs(a_first + uint32_t(i), verts[i]);
+      a_pipe.stats.vertexMs += timer.Ms();
       return verts;
     }
 
@@ -751,47 +793,185 @@ namespace LiteRS
            a_binFn(tris, triIds, triNum, binRect) for every bin of the screen; bins are processed in parallel, triangles
            of a bin are given in submission order (see RasterizeAll).
     */
+    /// buffer without initialization of elements, it keeps memory between draws
+    struct RawBuffer
+    {
+      void* Get(size_t a_bytes)
+      {
+        if(a_bytes > capacity)
+        {
+          capacity = a_bytes + a_bytes/4;
+          data.reset(new uint64_t[(capacity + 7)/8]);
+        }
+        return data.get();
+      }
+      std::unique_ptr<uint64_t[]> data;
+      size_t capacity = 0;
+    };
+
+    /// binned triangles of one portion of input triangles: CSR lists of bins, ids are global or (SPILL_BIT | index in spill)
+    struct BinningPortion
+    {
+      std::vector<uint8_t>  spill;     ///< Triangle<V> produced by clipping in addition to the first triangle of input triangle
+      std::vector<uint32_t> pairs;     ///< (bin, id) pairs in submission order
+      std::vector<uint32_t> binStart;  ///< CSR: ids of bin b are ids[binStart[b] ... binStart[b+1])
+      std::vector<uint32_t> ids;
+      uint32_t              produced = 0; ///< number of triangles after setup
+    };
+
+    struct BinningCache
+    {
+      RawBuffer                   tris;
+      std::vector<BinningPortion> portions;
+      std::vector<uint32_t>       binStart;
+      std::vector<uint32_t>       ids;
+    };
+
+    /**
+    \brief For back ends of DrawBackend: assembles and sets up triangles from transformed vertices and calls
+           a_binFn(tris, triIds, triNum, binRect) for every bin of the screen; bins are processed in parallel, triangles
+           of a bin are given in submission order (see RasterizeAll).
+           Portions of input triangles are assembled, set up and binned in parallel: the first triangle produced from input
+           triangle i is stored to tris[i], additional triangles of clipping are stored after all input triangles.
+    */
     template<typename V, typename BinFn>
     static void DrawVertexStreamByBins(Pipeline& a_pipe, const Vertex<V>* a_verts, const uint32_t* a_indices, uint32_t a_num, uint32_t a_indexBase, BinFn a_binFn)
     {
-      const Target tgt = MakeTarget(a_pipe);
-      std::vector< Triangle<V> > tris;
-      tris.reserve(a_num/3);
-      for(uint32_t i = 0; i + 2 < a_num; i += 3)
+      constexpr uint32_t SPILL_BIT   = 0x80000000u;
+      constexpr uint32_t PORTION_TRI = 16384;
+      using Tri = Triangle<V>;
+
+      const Target tgt   = MakeTarget(a_pipe);
+      const Rect&  sc    = tgt.scissor;
+      const int    bs    = tgt.BinSize(a_pipe.cpu);
+      const int    binsX = (sc.x1 - 1)/bs - sc.x0/bs + 1;
+      const int    binsY = (sc.y1 - 1)/bs - sc.y0/bs + 1;
+      const int    binsN = binsX*binsY;
+      if(a_pipe.binningCache == nullptr)
+        a_pipe.binningCache = std::make_shared<BinningCache>();
+      BinningCache& cache = *a_pipe.binningCache;
+
+      StageTimer setupTimer(a_pipe.cpu.collectStats);
+      const uint32_t inputTris = a_num/3;
+      const int      portionsN = int((inputTris + PORTION_TRI - 1)/PORTION_TRI);
+      if(cache.portions.size() < size_t(portionsN))
+        cache.portions.resize(size_t(portionsN));
+      Tri* tris = reinterpret_cast<Tri*>(cache.tris.Get(sizeof(Tri)*size_t(inputTris)));
+
+      // (1) assembly, setup and binning of portions in parallel
+      //
+      #pragma omp parallel for schedule(dynamic, 1) if(a_pipe.cpu.multithreaded && portionsN >= 4) // waking threads up costs about a millisecond
+      for(int p = 0; p < portionsN; p++)
       {
-        if(a_indices == nullptr)
-          AssembleTriangle(tgt, a_verts[i + 0], a_verts[i + 1], a_verts[i + 2], tris);
-        else
-          AssembleTriangle(tgt, a_verts[a_indices[i + 0] - a_indexBase], a_verts[a_indices[i + 1] - a_indexBase], a_verts[a_indices[i + 2] - a_indexBase], tris);
+        BinningPortion& portion = cache.portions[size_t(p)];
+        portion.spill.clear();
+        portion.pairs.clear();
+        portion.produced = 0;
+        const uint32_t first = uint32_t(p)*PORTION_TRI;
+        const uint32_t last  = std::min(first + PORTION_TRI, inputTris);
+        std::vector<Tri> produced;
+        produced.reserve(8);
+        for(uint32_t tri = first; tri < last; tri++)
+        {
+          produced.clear();
+          const uint32_t i = tri*3;
+          if(a_indices == nullptr)
+            AssembleTriangle(tgt, a_verts[i + 0], a_verts[i + 1], a_verts[i + 2], produced);
+          else
+            AssembleTriangle(tgt, a_verts[a_indices[i + 0] - a_indexBase], a_verts[a_indices[i + 1] - a_indexBase], a_verts[a_indices[i + 2] - a_indexBase], produced);
+          portion.produced += uint32_t(produced.size());
+          for(size_t k = 0; k < produced.size(); k++)
+          {
+            uint32_t id = tri;
+            if(k == 0)
+              tris[tri] = produced[0];
+            else
+            {
+              id = SPILL_BIT | uint32_t(portion.spill.size()/sizeof(Tri));
+              const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&produced[k]);
+              portion.spill.insert(portion.spill.end(), bytes, bytes + sizeof(Tri));
+            }
+            const Rect& bb = produced[k].bbox;
+            for(int by = bb.y0/bs; by <= (bb.y1 - 1)/bs; by++)
+            {
+              for(int bx = bb.x0/bs; bx <= (bb.x1 - 1)/bs; bx++)
+              {
+                portion.pairs.push_back(uint32_t((by - sc.y0/bs)*binsX + (bx - sc.x0/bs)));
+                portion.pairs.push_back(id);
+              }
+            }
+          }
+        }
+        // stable counting sort of pairs by bin
+        portion.binStart.assign(size_t(binsN) + 1, 0);
+        for(size_t k = 0; k < portion.pairs.size(); k += 2)
+          portion.binStart[portion.pairs[k] + 1]++;
+        for(int b = 0; b < binsN; b++)
+          portion.binStart[size_t(b) + 1] += portion.binStart[size_t(b)];
+        portion.ids.resize(portion.pairs.size()/2);
+        std::vector<uint32_t> fill(portion.binStart.begin(), portion.binStart.end() - 1);
+        for(size_t k = 0; k < portion.pairs.size(); k += 2)
+          portion.ids[fill[portion.pairs[k]]++] = portion.pairs[k + 1];
       }
-      if(tris.empty())
-        return;
 
-      const Rect& sc    = tgt.scissor;
-      const int   bs    = std::max(a_pipe.cpu.binSize, BLOCK_SIZE);
-      const int   binsX = (sc.x1 - 1)/bs - sc.x0/bs + 1;
-      const int   binsY = (sc.y1 - 1)/bs - sc.y0/bs + 1;
-
-      std::vector< std::vector<uint32_t> > bins(size_t(binsX*binsY));
-      for(uint32_t triId = 0; triId < uint32_t(tris.size()); triId++)
+      // (2) triangles of clipping are placed after input triangles, CSR of all bins in order of portions
+      //
+      std::vector<size_t> spillStart(size_t(portionsN) + 1, size_t(inputTris));
+      for(int p = 0; p < portionsN; p++)
+        spillStart[size_t(p) + 1] = spillStart[size_t(p)] + cache.portions[size_t(p)].spill.size()/sizeof(Tri);
+      const size_t trisNum = spillStart.back();
+      if(trisNum > inputTris)
       {
-        const Rect& bb = tris[triId].bbox;
-        for(int by = bb.y0/bs; by <= (bb.y1 - 1)/bs; by++)
-          for(int bx = bb.x0/bs; bx <= (bb.x1 - 1)/bs; bx++)
-            bins[size_t((by - sc.y0/bs)*binsX + (bx - sc.x0/bs))].push_back(triId);
+        std::vector<Tri> copy(tris, tris + inputTris); // rare case: clipping produced additional triangles
+        tris = reinterpret_cast<Tri*>(cache.tris.Get(sizeof(Tri)*trisNum));
+        std::copy(copy.begin(), copy.end(), tris);
+        for(int p = 0; p < portionsN; p++)
+          std::memcpy(tris + spillStart[size_t(p)], cache.portions[size_t(p)].spill.data(), cache.portions[size_t(p)].spill.size());
       }
 
+      cache.binStart.assign(size_t(binsN) + 1, 0);
+      for(int b = 0; b < binsN; b++)
+      {
+        uint32_t count = 0;
+        for(int p = 0; p < portionsN; p++)
+          count += cache.portions[size_t(p)].binStart[size_t(b) + 1] - cache.portions[size_t(p)].binStart[size_t(b)];
+        cache.binStart[size_t(b) + 1] = cache.binStart[size_t(b)] + count;
+      }
+      cache.ids.resize(cache.binStart.back());
+      #pragma omp parallel for schedule(dynamic, 4) if(a_pipe.cpu.multithreaded && cache.ids.size() > 65536) // waking threads up costs milliseconds
+      for(int b = 0; b < binsN; b++)
+      {
+        uint32_t dst = cache.binStart[size_t(b)];
+        for(int p = 0; p < portionsN; p++)
+        {
+          const BinningPortion& portion = cache.portions[size_t(p)];
+          for(uint32_t k = portion.binStart[size_t(b)]; k < portion.binStart[size_t(b) + 1]; k++)
+          {
+            const uint32_t id = portion.ids[k];
+            cache.ids[dst++] = (id & SPILL_BIT) ? uint32_t(spillStart[size_t(p)]) + (id & ~SPILL_BIT) : id;
+          }
+        }
+      }
+      a_pipe.stats.setupMs += setupTimer.Ms();
+      for(int p = 0; p < portionsN; p++)
+        a_pipe.stats.triangles += cache.portions[size_t(p)].produced;
+      a_pipe.stats.draws     += a_pipe.cpu.collectStats ? 1 : 0;
+
+      // (3) bins are rasterized in parallel
+      //
+      StageTimer rasterTimer(a_pipe.cpu.collectStats);
       #pragma omp parallel for schedule(dynamic, 1) if(a_pipe.cpu.multithreaded)
-      for(int binId = 0; binId < binsX*binsY; binId++)
+      for(int b = 0; b < binsN; b++)
       {
-        const std::vector<uint32_t>& ids = bins[size_t(binId)];
-        if(ids.empty())
+        const uint32_t count = cache.binStart[size_t(b) + 1] - cache.binStart[size_t(b)];
+        if(count == 0)
           continue;
-        const int  bx  = binId % binsX + sc.x0/bs;
-        const int  by  = binId / binsX + sc.y0/bs;
+        const int  bx  = b % binsX + sc.x0/bs;
+        const int  by  = b / binsX + sc.y0/bs;
         const Rect bin = Intersect(Rect{bx*bs, by*bs, (bx + 1)*bs, (by + 1)*bs}, sc);
-        a_binFn(tris.data(), ids.data(), uint32_t(ids.size()), bin);
+        a_binFn(tris, cache.ids.data() + cache.binStart[size_t(b)], count, bin);
       }
+      a_pipe.stats.rasterMs += rasterTimer.Ms();
     }
 
   }; // namespace detail

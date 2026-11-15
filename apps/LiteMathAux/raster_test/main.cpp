@@ -104,10 +104,10 @@ static std::vector<Vert> MakeRandomTris(int a_num, float a_size, int a_width, in
 
 struct Target
 {
-  Target(int w, int h, Layout a_layout = Layout::LINEAR)
+  Target(int w, int h, Layout a_layout = Layout::LINEAR, unsigned a_binSize = 64)
   {
-    color.resize(w, h, a_layout);
-    depth.resize(w, h, a_layout);
+    color.resize(w, h, a_layout, a_binSize);
+    depth.resize(w, h, a_layout, a_binSize);
     pipe.SetColorTarget(color);
     pipe.SetDepthTarget(depth);
     pipe.SetViewport(0, 0, w, h);
@@ -173,19 +173,19 @@ static bool TestEquivalence(int w, int h)
   Draw(ref.pipe, verts);
 
   bool allOk = true;
-  for(auto layout : {Layout::LINEAR, Layout::TILED4x4})
+  for(auto layout : {Layout::LINEAR, Layout::TILED4x4, Layout::TILED4x4_BINS})
   {
     for(auto algo : {LiteRS::RasterAlgo::PIXEL, LiteRS::RasterAlgo::BLOCK, LiteRS::RasterAlgo::AUTO})
     {
       for(bool mt : {false, true})
       {
-        Target t(w, h, layout);
+        Target t(w, h, layout, 32); // TILED4x4_BINS: bins of 32x32 pixels, the rasterizer uses them as its bins
         t.pipe.cpu.algo          = algo;
         t.pipe.cpu.multithreaded = mt;
         LiteRS::Clear(t.pipe);
         Draw(t.pipe, verts);
         const int diff = CountDifferent(ref, t);
-        std::cout << "  equal to PIXEL/ST/LINEAR: " << AlgoName(algo) << (mt ? " MT " : " ST ") << (layout == Layout::LINEAR ? "LINEAR  " : "TILED4x4")
+        std::cout << "  equal to PIXEL/ST/LINEAR: " << AlgoName(algo) << (mt ? " MT " : " ST ") << (layout == Layout::LINEAR ? "LINEAR  " : (layout == Layout::TILED4x4 ? "TILED4x4" : "BINS32  "))
                   << ", different pixels: " << diff << std::endl;
         allOk = allOk && (diff == 0);
       }
@@ -252,7 +252,7 @@ static bool TestClipping(int w, int h)
   return allOk;
 }
 
-/// tiled layout of Image2D: pixel access, sampling, conversion of layouts and saving give the same results as LINEAR
+/// tiled layouts of Image2D (TILED4x4, TILED4x4_BINS): pixel access, sampling, conversion of layouts and saving give the same results as LINEAR
 static bool TestTiledImage()
 {
   const int w = 37, h = 23;   // not a multiple of the tile size
@@ -261,10 +261,13 @@ static bool TestTiledImage()
     for(int x = 0; x < w; x++)
       lin[int2(x, y)] = float4(float(x), float(y), float(x*y), 1.0f);
 
-  Image2D<float4> tiled = lin;
-  tiled.setLayout(Layout::TILED4x4);
-
   int bad = 0;
+  struct LayoutCase { Layout layout; unsigned binSize; };
+  for(const LayoutCase& lc : {LayoutCase{Layout::TILED4x4, 64}, LayoutCase{Layout::TILED4x4_BINS, 8}, LayoutCase{Layout::TILED4x4_BINS, 16}, LayoutCase{Layout::TILED4x4_BINS, 64}})
+  {
+  Image2D<float4> tiled = lin;
+  tiled.setLayout(lc.layout, lc.binSize);
+
   for(int y = 0; y < h; y++)
     for(int x = 0; x < w; x++)
       bad += (tiled[int2(x, y)].z != lin[int2(x, y)].z) ? 1 : 0;
@@ -293,6 +296,7 @@ static bool TestTiledImage()
   for(size_t i = 0; i < lin.vector().size(); i++)
     bad += (back.vector()[i].z != lin.vector()[i].z) ? 1 : 0;
   bad += (LiteImage::MSE(lin, tiled) != 0.0f) ? 1 : 0;
+  }
 
   std::cout << "  tiled Image2D: errors in access, sampling, layout conversion and MSE: " << bad << std::endl;
   return bad == 0;

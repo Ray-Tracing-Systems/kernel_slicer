@@ -99,7 +99,7 @@ follows the test configs and the code.
 ² 053 and 070 work, 022 (`-forceEnableHalf`) fails to compile.
 ³ 022 and 070 work, 053 (`as_half`/`bit_cast`) fails to compile.
 ⁸ ISPC: `Image2D` members of the class (`m_img[int2]` read and write, `sample` of `Image2D<uint32_t>` and
-`Image2D<float4>` with a `Sampler` member, LINEAR and TILED4x4 layouts, `apps/LiteMathAux/LiteImageISPC.h`): app 31,
+`Image2D<float4>` with a `Sampler` member, LINEAR, TILED4x4 and TILED4x4_BINS layouts, `apps/LiteMathAux/LiteImageISPC.h`): app 31,
 app 33. Images as kernel arguments and `ITexture2D` are not supported.
 
 ### Graphics pipeline
@@ -110,8 +110,8 @@ rasterization of 4x4 blocks in ISPC, triangle setup and binning in C++ (`LiteRS:
 
 | ID | Feature | Slang | GLSL | CUDA/HIP | ISPC | Tests and samples |
 |----|---------|:-----:|:----:|:--------:|:----:|-------------------|
-| `gp_draw` | `LiteRS::DrawTriangles` with VS and PS, render targets, depth test, `LiteRS::Clear` | ✅ | ✅ | ❌ | ✅ | 080, 081, app 32 |
-| `gp_indexed` | `LiteRS::DrawIndexedTriangles` (index buffer is a member vector) | ✅ | ✅ | ❌ | ✅ | 081, app 31, app 32 |
+| `gp_draw` | `LiteRS::DrawTriangles` with VS and PS, render targets, depth test, `LiteRS::Clear` | ✅ | ✅ | ❌ | ✅ | 080, 081, app 32, app 34 |
+| `gp_indexed` | `LiteRS::DrawIndexedTriangles` (index buffer is a member vector) | ✅ | ✅ | ❌ | ✅ | 081, app 31, app 32, app 34 |
 | `gp_depth_only` | Depth only pass (VS without PS), shadow map read in PS | ✅ | ✅ | ❌ | ✅ | app 32 |
 | `gp_mrt` | Several color targets (PS returns a struct of `float4`) | ✅ | ✅ | ❌ | ✅ | app 33 |
 | `gp_textures_in_ps` | Texture with sampler in pixel shader | ✅ | ✅ | ❌ | ✅ | app 31 |

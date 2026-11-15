@@ -664,6 +664,8 @@ void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   std::filesystem::path kernelHeader = rawName;
   kernelHeader.concat("_kernels.h");
   std::string build = this->BuildCommand(outFileName.u8string()) + " -o " + kernelTarget.u8string() + " -h " + kernelHeader.u8string();
+  if(a_kernelsJson["HasGraphics"].get<bool>())
+    build += " --opt=disable-fma"; // graphics pipeline: depth and coverage the same as in C++ (it is compiled without FMA contraction)
   if(a_kernelsJson["UseAccelStruct"].get<bool>())
   {
     // Embree ISPC headers: 'embree3/*.isph' are stored near 'CrossRT.h'; for Embree 4 set EMBREE4_FLAGS="-I<embree4>/include -DUSE_EMBREE4"

@@ -29,7 +29,7 @@ struct ISPCPtr
 // Image2D and Sampler are passed to ISPC as data pointer and arrays of uint (see LiteMathAux/LiteImageISPC.h)
 //
 template<typename T>
-static inline std::array<uint32_t,4> ISPCImageInfo(const T& a_image) { return { a_image.width(), a_image.height(), a_image.pitch(), uint32_t(a_image.layout()) }; }
+static inline std::array<uint32_t,4> ISPCImageInfo(const T& a_image) { return { a_image.width(), a_image.height(), a_image.pitch(), uint32_t(a_image.layout()) | (a_image.binShift() << 8) }; }
 /// copy of std::vector<float2> or std::vector<float3> with elements of 16 bytes, as ISPC 'float<2>' and 'float<3>'
 template<typename T>
 static inline std::vector< std::array<float,4> > ISPCPadded16(const std::vector<T>& a_data)
@@ -170,20 +170,24 @@ protected:
       LiteRS::detail::IndexRange(a_indices, a_num, first, last);
       vertNum = last - first + 1;
     }
+    LiteRS::detail::StageTimer vsTimer(a_pipe.cpu.collectStats);
     std::vector< LiteRS::Vertex<V> > verts(vertNum);
     const uint32_t stride = uint32_t(sizeof(LiteRS::Vertex<V>)/sizeof(float));
     constexpr uint32_t CHUNK = 4096;
-    #pragma omp parallel for if(a_pipe.cpu.multithreaded && vertNum > CHUNK)
+    #pragma omp parallel for if(a_pipe.cpu.multithreaded && vertNum >= 16*CHUNK) // waking threads up costs about a millisecond
     for(int chunk = 0; chunk < int((vertNum + CHUNK - 1)/CHUNK); chunk++)
     {
       const uint32_t start = uint32_t(chunk)*CHUNK;
       ispc::{{Draw.Name}}_VS_ISPC(first + start, std::min(CHUNK, vertNum - start),{% for Arg in Draw.UserArgs %} &std::get<{{loop.index}}>(args),{% endfor %} reinterpret_cast<float*>(verts.data() + start), stride);
     }
 
+    a_pipe.stats.vertexMs += vsTimer.Ms();
+
     // primitive assembly and setup in C++, rasterization of bins in ISPC
     //
     const LiteRS::detail::Target tgt = LiteRS::detail::MakeTarget(a_pipe);
-    const int32_t state[8] = { int32_t(tgt.layout), int32_t(tgt.pitch), tgt.depthTest ? 1 : 0, tgt.depthWrite ? 1 : 0, int32_t(tgt.depthCompare), int32_t(tgt.blendMode), 0, 0 };
+    const int32_t state[12] = { int32_t(tgt.layout), int32_t(tgt.pitch), tgt.depthTest ? 1 : 0, tgt.depthWrite ? 1 : 0, int32_t(tgt.depthCompare), int32_t(tgt.blendMode),
+                                int32_t(a_pipe.cpu.algo), a_pipe.cpu.smallTriArea, int32_t(tgt.binShift), 0, 0, 0 }; // see RS_STATE_* in raster_ispc.h
     LiteRS::detail::DrawVertexStreamByBins(a_pipe, verts.data(), a_indices, a_num, first,
       [&](const LiteRS::detail::Triangle<V>* a_tris, const uint32_t* a_ids, uint32_t a_triNum, const LiteRS::detail::Rect& a_bin)
     {

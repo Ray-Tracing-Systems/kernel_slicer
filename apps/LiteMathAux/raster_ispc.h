@@ -9,6 +9,25 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define RS_SUBPIXEL_ONE 256
+#define RS_MAX_BIN      128  ///< bins up to RS_MAX_BIN x RS_MAX_BIN pixels use the queue of pixels of small triangles
+#define RS_QUEUE_SIZE   256  ///< size of the queue of pixels, multiple of programCount
+#define RS_MAX_INT32_AREA 8192 ///< inside triangles with smaller bounding box edge functions fit int32: 2*8192*256^2 = 2^30
+#ifndef RS_TINY_TRI_AREA
+#define RS_TINY_TRI_AREA 16 ///< triangles with smaller bounding box are rasterized by scalar code
+#endif
+#define RS_BLOCK_PARTS  4    ///< a 4x4 block is processed by 16/programCount gangs, programCount >= 4
+
+/// pixels of small triangles which passed the depth test and wait for the pixel shader
+struct RSPixelQueue
+{
+  int count;
+  int offs [RS_QUEUE_SIZE]; ///< offset of pixel in render targets
+  int local[RS_QUEUE_SIZE]; ///< index of pixel in the bin, for 'pending' flags
+  int tri  [RS_QUEUE_SIZE]; ///< index of triangle
+  int b0   [RS_QUEUE_SIZE]; ///< screen space barycentrics (floats as int bits)
+  int b1   [RS_QUEUE_SIZE];
+  int b2   [RS_QUEUE_SIZE];
+};
 
 /// state of draw: indices in 'state[]' argument of '<Draw>_Raster_ISPC'
 #define RS_STATE_LAYOUT        0
@@ -17,13 +36,36 @@
 #define RS_STATE_DEPTH_WRITE   3
 #define RS_STATE_DEPTH_COMPARE 4
 #define RS_STATE_BLEND_MODE    5
+#define RS_STATE_ALGO          6  ///< LiteRS::RasterAlgo
+#define RS_STATE_SMALL_TRI_AREA 7 ///< CPUSettings::smallTriArea
+#define RS_STATE_BIN_SHIFT     8  ///< log2 of bin size of TILED4x4_BINS
+#define RS_STATE_SIZE          12
 
-/// LiteImage::PixelOffset
-static inline int RS_PixelOffset(uniform int a_layout, uniform int a_pitch, int x, int y)
+/// LiteImage::PixelOffset: layout 0 is LINEAR, 1 is TILED4x4, 2 is TILED4x4_BINS with bins of (1 << a_binShift) pixels
+static inline int RS_PixelOffset(uniform int a_layout, uniform int a_pitch, uniform int a_binShift, int x, int y)
 {
   if(a_layout == 0)
     return y*a_pitch + x;
-  return ((((y >> 2)*a_pitch) + (x >> 2)) << 4) + ((y & 3) << 2) + (x & 3);
+  const int inTile = ((y & 3) << 2) + (x & 3);
+  if(a_layout == 1)
+    return ((((y >> 2)*a_pitch) + (x >> 2)) << 4) + inTile;
+  const uniform int mask = (1 << a_binShift) - 1;
+  const int bin  = (y >> a_binShift)*a_pitch + (x >> a_binShift);
+  const int tile = ((y & mask) >> 2)*((mask + 1) >> 2) + ((x & mask) >> 2);
+  return (bin << (2*a_binShift)) + (tile << 4) + inTile;
+}
+
+static inline uniform int RS_PixelOffset(uniform int a_layout, uniform int a_pitch, uniform int a_binShift, uniform int x, uniform int y)
+{
+  if(a_layout == 0)
+    return y*a_pitch + x;
+  const uniform int inTile = ((y & 3) << 2) + (x & 3);
+  if(a_layout == 1)
+    return ((((y >> 2)*a_pitch) + (x >> 2)) << 4) + inTile;
+  const uniform int mask = (1 << a_binShift) - 1;
+  const uniform int bin  = (y >> a_binShift)*a_pitch + (x >> a_binShift);
+  const uniform int tile = ((y & mask) >> 2)*((mask + 1) >> 2) + ((x & mask) >> 2);
+  return (bin << (2*a_binShift)) + (tile << 4) + inTile;
 }
 
 static inline uniform int RS_FloorDiv(uniform int a, uniform int b) { return (a >= 0) ? a / b : -((-a + b - 1) / b); }
