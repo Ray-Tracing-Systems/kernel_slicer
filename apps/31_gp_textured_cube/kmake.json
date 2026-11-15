@@ -1,0 +1,12 @@
+{
+    "mainClass"     : "TexturedCube",
+    "options" : {
+        "-shaderCC"    : "slang",
+        "-reorderLoops": "YX"
+    },
+    "source" : ["textured_cube.cpp"],
+    "includeProcess" : [],
+    "includeIgnore"  : ["../LiteMath", "../LiteMathAux", "../utils", "../../TINYSTL"],
+    "defines" : {"KERNEL_SLICER": ""},
+    "end" : ""
+}

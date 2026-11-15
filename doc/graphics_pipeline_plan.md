@@ -1,0 +1,178 @@
+# План: графический конвейер (VS + PS) в kernel_slicer
+
+Рабочий документ. Состояние на 2026-11-15: этап 1 (CPU) выполнен, этапы 2–5 впереди.
+
+## 0. Принятые решения
+
+| Вопрос | Решение |
+|--------|---------|
+| API | Вариант A: команды `LiteRS` в управляющей функции явно называют шейдеры |
+| Пространство имён, файл | `LiteRS`, [apps/LiteMathAux/raster.h](../apps/LiteMathAux/raster.h) |
+| Шейдеры | const-функции главного класса `kernelVS_*`, `kernelPS_*`, пишутся на одну вершину / один пиксель |
+| Данные вершин | VS сам читает члены класса по номеру вершины (vertex pulling), описания формата вершин нет |
+| Состояние конвейера | объект `LiteRS::Pipeline` — член класса, настраивается в обычных host-функциях |
+| Соглашения | Vulkan: 0 ≤ z ≤ w, NDC y = -1 — верхняя строка, центр пикселя +0.5, `VkFrontFace`; GL-матрицы LiteMath домножаются на `OpenglToVulkanProjectionMatrixFix()` |
+| Варьинги | только поля float, float2, float3, float4; все интерполируются с перспективной коррекцией |
+| Лейаут изображений на CPU | `LiteImage::Layout::TILED4x4` в `Image2D` (одноуровневые тайлы 4x4, адрес — сдвиги и маски) |
+| Индексированная отрисовка | есть (`DrawIndexedTriangles`) |
+| Клиппинг | в CPU-эталоне есть (near/far/guard band), в ISPC откладывается |
+
+### API в одном месте
+
+```cpp
+// host-функция (не управляющая): настройка
+m_pipeline.SetColorTarget(m_color);        // Image2D<float4> или Image2D<uint32_t> (RGBA8), индекс цели 0..3
+m_pipeline.SetDepthTarget(m_depth);        // Image2D<float>
+m_pipeline.SetViewport(0, 0, w, h);
+m_pipeline.cullMode = LiteRS::CullMode::BACK;
+
+// управляющая функция
+LiteRS::Clear(m_pipeline);
+LiteRS::DrawTriangles(m_pipeline, this, &C::kernelVS_A, &C::kernelPS_A, vertNum, args...);               // VS + PS
+LiteRS::DrawTriangles(m_pipeline, this, &C::kernelVS_Depth, vertNum, args...);                           // только глубина
+LiteRS::DrawIndexedTriangles(m_pipeline, this, &C::kernelVS_A, &C::kernelPS_A, m_indices.data(), n, args...);
+LiteRS::DrawIndexedTriangles(m_pipeline, this, &C::kernelVS_Depth, m_indices.data(), n, args...);
+kernel2D_Post(w, h, a_out);                // обычный кернел читает цели как Image2D
+
+// шейдеры
+float4 C::kernelVS_A(uint32_t a_vertId, Args... a_args, Varyings* a_out) const; // возвращает clip-позицию
+float4 C::kernelVS_Depth(uint32_t a_vertId, Args... a_args) const;
+float4 C::kernelPS_A(const Varyings& a_in) const;                                // цвет цели 0
+GBuf   C::kernelPS_B(const Varyings& a_in) const;                                // структура из float4: цели 0, 1, ...
+```
+
+Дополнительные аргументы `args...` команды отрисовки передаются в VS. PS получает данные только через варьинги и
+члены класса. Шейдеры — const: они выполняются параллельно и не меняют данные класса.
+
+## 1. Этап 1 — CPU-эталон, тесты, демо (выполнен)
+
+### 1.1 LiteRS (CPU)
+
+- Фиксированная точка (8 бит субпикселя, int64 для функций рёбер), правило top-left.
+- Клиппинг Сазерленда–Ходжмана по near, far и guard band (±64w) с интерполяцией варьингов.
+- Отбраковка граней по `VkFrontFace`.
+- Два алгоритма растеризации: попиксельный half-space и блоки 4x4 (пустой/полный/частичный блок). Выбор AUTO по
+  площади bbox (`Pipeline::cpu.smallTriArea`, по умолчанию 64).
+- Многопоточность: sort-middle, корзины 64x64, OpenMP; порядок треугольников в пикселе сохраняется.
+- Ранний тест глубины (PS не меняет глубину и не делает discard), смешивание NONE / ALPHA / ADD, до 4 целей цвета.
+- Индексированная отрисовка: VS выполняется по одному разу для каждой вершины из диапазона [min, max] индексов.
+- Цели могут быть линейными или тайловыми (все цели одного прохода — с одинаковыми размером и лейаутом).
+- Под `KERNEL_SLICER` транслятор видит только типы и объявления команд, а реализация скрыта.
+
+### 1.2 Тайловый лейаут Image2D (сабмодуль LiteMath, коммит делает автор сабмодуля)
+
+- `enum class Layout { LINEAR, TILED4x4 }`, `resize(w, h, layout)`, `setLayout()`, `layout()`, `pitch()`, `offset(x,y)`.
+- Свободная функция `PixelOffset(layout, pitch, x, y)`.
+- `operator[]` и `sample()` (bilinear и nearest) учитывают лейаут.
+- `SaveImage` для тайловых изображений сначала переводит их в линейный вид.
+- Арифметические операторы сохраняют лейаут. `MSE` и новая `LinearPixels()` работают в линейном виде.
+- По умолчанию LINEAR, поэтому старый код не меняется.
+
+### 1.3 Примеры
+
+| Пример | Что проверяет |
+|--------|---------------|
+| `apps/tests/080_gp_triangle` | один треугольник, неиндексированная отрисовка, аргумент VS, тайловые цели, обычный кернел после отрисовки |
+| `apps/31_gp_textured_cube` | индексированная отрисовка, текстура (`Image2D<uint32_t>` + `Sampler`) в PS, цель RGBA8, отбраковка задних граней |
+| `apps/32_gp_shadow_map` | два объекта `Pipeline`, проход только с глубиной в карту теней 2048², `CullMode::FRONT`, чтение карты теней в PS (PCF 3x3) |
+| `apps/33_gp_deferred_ao` | 3 цели цвета (PS возвращает структуру), затем три обычных кернела: SSAO, размытие, освещение |
+| `apps/LiteMathAux/raster_test` | юнит-тесты растеризатора и тайлового `Image2D`; `--bench` — замеры алгоритмов |
+
+Общая процедурная геометрия: [apps/utils/simple_meshes.h](../apps/utils/simple_meshes.h).
+
+Сборка CPU-версии: `mkdir build && cd build && cmake -DUSE_VULKAN=OFF .. && make`, запуск из папки примера,
+результат `zout_cpu.bmp`. В `ktest.json` все варианты помечены `skip`, пока транслятор не поддерживает LiteRS.
+Все четыре примера уже разбираются kslicer без ошибок, но команды LiteRS пока игнорируются.
+
+## 2. Этап 2 — фронтенд транслятора (общий для всех бэкендов)
+
+1. **Шейдеры как новый вид кернелов.**
+   - Добавить префиксы `kernelVS_` и `kernelPS_` в `POSSIBLE_KERNEL_NAMES` ([kslicer_def.cpp](../kslicer_def.cpp)).
+   - В `KernelInfo` добавить поле стадии (`NONE / VERTEX / PIXEL`) и описание сигнатуры: номер вершины, пользовательские аргументы, выход-варьинги, вход PS, тип результата PS.
+   - Тела транслируются так же, как member-функции и RTV-кернелы без `tid` (циклов-потоков нет).
+   - `IsKernel` и `RemoveKernelPrefix` должны работать без изменений в остальном коде.
+2. **Распознавание команд в управляющей функции** ([ast_matchers.cpp](../ast_matchers.cpp), initial pass).
+   - Матчеры `callExpr` на `LiteRS::Clear / DrawTriangles / DrawIndexedTriangles`.
+   - Из аргументов извлекаются член-`Pipeline` (MemberExpr), указатели на методы (`&C::kernelVS_*` → CXXMethodDecl), буфер индексов (`m_vec.data()`), выражение количества и доп. аргументы.
+   - Функция с командами LiteRS считается управляющей, даже если в ней нет обычных кернелов. VS и PS добавляются в `UsedKernels`.
+   - В `MainFuncInfo` появляется список `DrawCallInfo` с диапазонами исходного кода, чтобы потом переписать вызов.
+3. **Члены класса.**
+   - `LiteRS::Pipeline` — host-only объект, его надо исключить из UBO. Сейчас он туда попадает: проверено, `Pipeline m_pipeline` оказывается в `*_UBO_Data`.
+   - Цели находятся статически: матчер на `Pipeline::SetColorTarget / SetDepthTarget` в любых методах класса с аргументом — членом `Image2D`. Это даёт пары (pipeline, индекс цели) → член-изображение и его формат.
+   - Сгенерированный код в `CommitDeviceData()` проверяет `assert`-ом, что указатели в `Pipeline` указывают на те же члены.
+4. **Типы.** Структуры варьингов и выходов PS выгружаются в общий заголовок шейдеров. Проверки с понятными ошибками:
+   - поля только float-типов;
+   - результат PS — `float4` или структура из `float4`, не больше 4 целей;
+   - последний аргумент VS с варьингами — указатель;
+   - шейдеры — const;
+   - для прохода только с глубиной VS без варьингов.
+5. **Используемые данные шейдеров** (векторы, текстуры, POD-члены) собираются тем же механизмом, что и для кернелов. Разница в том, что набор дескрипторов виден стадиям VERTEX|FRAGMENT.
+6. **TINYSTL.** Добавлять интерфейсы (без реализации), которых не хватает host-коду примеров: `std::move` (сейчас в `Image2D::setLayout` обходится копированием), `vector::insert(it, initializer_list)`, `<random>`. В примерах сейчас стоят обходы, после расширения TINYSTL их можно убрать. Сам `raster.h` остаётся разделённым по `KERNEL_SLICER`: транслятору нужны только объявления команд.
+
+Критерий готовности этапа: для всех четырёх примеров в логе kslicer видны найденные VS/PS и команды, `Pipeline` не
+попадает в UBO, структуры варьингов есть в общем заголовке.
+
+## 3. Этап 3 — Vulkan (сначала Slang, затем GLSL)
+
+1. **Шейдеры.**
+   - Новый шаблон `templates_slang/generated_gp.slang` с точками входа `[shader("vertex")]` и `[shader("fragment")]` (или два шаблона).
+   - Вход VS — `SV_VertexID`. Выход VS — структура `{ float4 pos : SV_Position; Varyings v : TEXCOORD0..N }`.
+   - Выход PS — `SV_Target0..N`.
+   - Те же объявления буферов, текстур и UBO, что у compute-кернелов. Доп. аргументы VS идут в push constants.
+   - `build_slang.sh` компилирует с `-stage vertex/fragment -entry ...`.
+   - GLSL: шаблоны `.vert` / `.frag`.
+2. **Изображения-цели.**
+   - Usage (`template_rendering_host.cpp`, сейчас `local["Usage"]`): `COLOR_ATTACHMENT` или `DEPTH_STENCIL_ATTACHMENT` + `SAMPLED`/`STORAGE` по использованию.
+   - Глубина — `D32_SFLOAT`. Чтение глубины в шейдерах (карта теней в PS, `m_shadowMap[int2]`) — через sampled-вид с DEPTH aspect, т.к. storage для D32 обычно не поддерживается.
+3. **Пайплайны.**
+   - Vulkan 1.3: dynamic rendering, dynamic state для viewport/scissor и extended dynamic state для `cullMode`, `frontFace`, `depthTest/Write/CompareOp`.
+   - Отсюда одна `VkPipeline` на тройку (VS, PS, форматы целей + blend). Blend запекается.
+   - Пайплайны создаются при инициализации (форматы известны статически), состояние берётся из `LiteRS::Pipeline` во время записи команд. Поэтому изменение `cullMode` и т.п. на host не требует пересоздания.
+   - Новые фичи устройства — в `ListRequiredDeviceFeatures`.
+4. **Команды.** Каждая команда LiteRS переписывается в `tr_host_vulkan.cpp` (по аналогии со служебными вызовами `memcpy`/`sort`, `VisitCallExpr`):
+   - `Clear` — `loadOp = CLEAR` следующего `vkCmdBeginRendering` той же цели, если между ними нет других обращений к цели; иначе `vkCmdClearColorImage` / `vkCmdClearDepthStencilImage`;
+   - `Draw*`:
+     - переходы лейаутов (`GENERAL` ↔ `COLOR_ATTACHMENT_OPTIMAL` / `DEPTH_ATTACHMENT_OPTIMAL`);
+     - `vkCmdBeginRendering`, bind pipeline и набора дескрипторов (graphics bind point), push constants;
+     - `vkCmdDraw` или `vkCmdBindIndexBuffer + vkCmdDrawIndexed` (буфер индексов получает usage `INDEX_BUFFER`);
+     - `vkCmdEndRendering`.
+   - Барьеры compute → vertex/fragment и attachment → compute: расширить существующую логику барьеров (`vk_class_init.cpp`, около строки 1550).
+5. **Тайловые Image2D на GPU.** Генерированные копирования (`UpdateTextureMembers`, `vk_class.cpp:246` использует `data()`) и чтение изображений обратно должны линеаризовать тайловые данные (`LiteImage::LinearPixels`). То же — во всех местах бэкендов, где используется `Image2D::data()`.
+6. **Таймстемпы** (`-timestamps 1`): время каждой отрисовки по имени `DrawTriangles_<VS>_<PS>` или по имени PS.
+7. **Проверка.**
+   - Снять `skip` в `ktest.json`. Сравнение CPU/GPU — по доле различающихся пикселей (< 0.5%), т.к. правило заполнения и точность растеризации GPU могут отличаться на рёбрах.
+   - Без ошибок validation layers.
+   - Slang и GLSL оба.
+   - Добавить конфигурации в `.vscode/launch*.json`.
+   - Строки в [doc/features.md](features.md): `gp_draw`, `gp_indexed`, `gp_depth_only`, `gp_mrt`, `image_layout_tiled`.
+
+## 4. Этап 4 — ISPC
+
+1. **Структура.**
+   - Общая часть растеризатора (setup, раскладка по корзинам, обход блоков) — библиотека на ISPC + C++ рядом с `raster.h` (например `apps/LiteMathAux/raster_ispc.h/.ispc`). Она параметризуется сгенерированным кодом.
+   - VS — `foreach` по вершинам (как IPV 1D), результат во временный буфер вершин.
+   - PS — varying-функция, которую генерированная функция `Draw_<VS>_<PS>_ISPC` вызывает на ганге пикселей.
+2. **Блок 4x4 = тайл.**
+   - Маска покрытия считается как varying по 16 пикселям тайла (AVX2 `i32x8` — 2 итерации, AVX-512 `x16` — 1).
+   - Тест глубины маскированный, интерполяция варьингов varying, вызов PS на ганге, запись в 16 подряд идущих пикселей цели TILED4x4 (выровненные векторные load/store). Здесь окупается тайловый лейаут.
+3. **Мелкие треугольники.**
+   - Попиксельный путь: ганг по пикселям bbox (bbox ≤ 16 пикселей — одна итерация).
+   - Порог AUTO подобрать бенчмарком на ISPC по аналогии с `raster_test --bench`. В скалярном C++ блоки выигрывают только с ~48–64 px, в ISPC порог должен быть заметно ниже.
+4. **Потоки.** Сначала sort-middle по корзинам 64x64 через задачи ISPC (`ispc_tasksys.cpp`); setup и раскладку по корзинам тоже распараллелить. Позже можно сравнить с sort-last с блокировками тайлов (по статье).
+5. **Клиппинг.** v1 — только тривиальное отбрасывание; треугольники, пересекающие near (w ≤ ε), отбрасываются с предупреждением в документации. v2 — порт клиппинга из `raster.h`.
+6. **Изображения в ISPC** (текстуры в `doc/features.md` для ISPC сейчас ❔): `Image2D::sample`, `operator[]` с учётом лейаута, цели.
+7. **Проверка.** Покрытие должно совпадать с C++-эталоном побитово (та же фиксированная точка). Цвет — с точностью до порядка операций float.
+
+## 5. Этап 5 — документация
+
+- Пользовательская документация (`doc/graphics_pipeline.md`): API, правила для шейдеров, ограничения.
+- Справочник в skill: `.claude/skills/kernel-slicer/references/graphics.md`, ссылка в SKILL.md и в таблице образцов.
+- Обновить `doc/features.md` и `README.md`.
+
+## 6. Риски и открытые вопросы
+
+- Правило заполнения и субпиксельная точность GPU зависят от реализации: точного совпадения рёбер с CPU не будет, только допуск.
+- Изменение `Image2D` в сабмодуле затрагивает все места, где `data()` трактуется как линейный буфер (копирование на GPU, ISPC, CUDA). Пока тайловый лейаут не включён явно, поведение прежнее.
+- Отрисовка по частям буфера индексов (`m_indices.data() + first`) и цикл отрисовок по объектам в первую версию не входят. В примерах сцена собрана в один меш. Возможно расширение аргументом `firstIndex`.
+- Чтение цели текущего прохода в его же PS (feedback loop) запрещено, транслятор должен выдавать ошибку.
+- В управляющей функции используется `uint32_t(m_indices.size())`: это host-код, но надо проверить, что транслятор его не трогает.

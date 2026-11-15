@@ -1,0 +1,12 @@
+{
+    "mainClass"     : "ShadowRender",
+    "options" : {
+        "-shaderCC"    : "slang",
+        "-reorderLoops": "YX"
+    },
+    "source" : ["shadow_map.cpp"],
+    "includeProcess" : [],
+    "includeIgnore"  : ["../LiteMath", "../LiteMathAux", "../utils", "../../TINYSTL"],
+    "defines" : {"KERNEL_SLICER": ""},
+    "end" : ""
+}
