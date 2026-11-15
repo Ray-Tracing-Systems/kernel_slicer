@@ -75,7 +75,9 @@ def _execute(cmd, cwd, log, timeout, env=None):
     log.write(f'\n$ cd {cwd}\n$ {" ".join(cmd)}\n')
     log.flush()
     try:
-        p = subprocess.run(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        # stdin is not inherited: commands are not interactive, and on Windows a child which gets the console input handle
+        # may change console mode (e.g. virtual terminal input); with parallel jobs such changes are not restored correctly
+        p = subprocess.run(cmd, cwd=cwd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                            timeout=timeout, env=env)
         out = p.stdout.decode('utf-8', errors='replace')
         rc = p.returncode
