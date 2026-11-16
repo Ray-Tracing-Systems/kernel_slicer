@@ -70,7 +70,8 @@ if(USE_LLVM22)
     endif()
 endif()
 
-target_include_directories(kslicer PRIVATE include ${LLVM_INCLUDE_DIRS} ${CLANG_INCLUDE_DIRS})
+target_include_directories(kslicer SYSTEM PRIVATE ${LLVM_INCLUDE_DIRS} ${CLANG_INCLUDE_DIRS})
+target_include_directories(kslicer PRIVATE include)
 target_link_directories(kslicer PRIVATE ${LLVM_LIBRARY_DIRS})
 target_link_libraries(kslicer PRIVATE clangTooling)
 
