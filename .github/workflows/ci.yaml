@@ -40,4 +40,4 @@ jobs:
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DUSE_LLVM22=ON -DLLVM_ROOT=${{ runner.temp }}\llvm -DClang_ROOT=${{ runner.temp }}\llvm
 
       - name: Build
-        run: cmake --build build --config Release --parallel
+        run: cmake --build build --config Release -j 1
