@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+
+      - name: Get source code
+        uses: actions/checkout@v7
+
+      - name: Install llvm
+        if: runner.os == 'Windows'
+        run: |
+          curl -o llvm.tar.xz -L https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.8/clang+llvm-22.1.8-x86_64-pc-windows-msvc.tar.xz
+          7z x llvm.tar.xz
+          7z x llvm.tar
+          move clang+llvm-22.1.8-x86_64-pc-windows-msvc ${{ runner.temp }}/llvm
+
+      - name: Install llvm
+        if: runner.os == 'Linux'
+        run: |
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 22 all
+
+      - name: CMake configuration
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DUSE_LLVM22=ON -DLLVM_ROOT=${{ runner.temp }}\llvm -DClang_ROOT=${{ runner.temp }}\llvm
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
