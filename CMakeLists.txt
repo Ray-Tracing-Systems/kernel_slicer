@@ -52,9 +52,24 @@ add_executable(kslicer
 )
 
 target_compile_definitions(kslicer PRIVATE ${LLVM_DEFINITIONS} ${CLANG_DEFINITIONS})
+
 if(USE_LLVM22)
-  target_compile_definitions(kslicer PRIVATE KSLICER_USE_LLVM22=1)
+    target_compile_definitions(kslicer PRIVATE KSLICER_USE_LLVM22=1)
+
+    # Imported target LLVMDebugInfoPDB wants to link with a library which probably wouldn't be present.
+    # Clearing INTERFACE_LINK_LIBRARIES does not break linking, so that library is not need anyway.
+    set_target_properties(LLVMDebugInfoPDB PROPERTIES INTERFACE_LINK_LIBRARIES "")
+
+    if(WIN32 AND(NOT MINGW))
+        # When linking with clang static libraries on Windows this macro should be defined for macro CLANG_ABI to be defined correctly.
+        # Not doing so can cause linking warnings (and possible silent errors)
+        # Normally, this macro is added during CMake configuration of clang/llvm project and then propagated through imported targets in ClangTargets.cmake,
+        # but if clang/llvm is built on Windows not by msvc but by clang then this macro is not defined.
+        # It is a bug and it is already fixed in llvm 23.0.
+        target_compile_definitions(kslicer PRIVATE CLANG_BUILD_STATIC)
+    endif()
 endif()
+
 target_include_directories(kslicer PRIVATE include ${LLVM_INCLUDE_DIRS} ${CLANG_INCLUDE_DIRS})
 target_link_directories(kslicer PRIVATE ${LLVM_LIBRARY_DIRS})
 target_link_libraries(kslicer PRIVATE clangTooling)
