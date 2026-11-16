@@ -5,6 +5,9 @@
 #include <cmath>
 #include <string>
 
+using LiteRS::Clear;
+using LiteRS::DrawIndexedTriangles;
+
 void ShadowRender::SetViewport(int a_width, int a_height)
 {
   const SimpleMeshes::Mesh scene = SimpleMeshes::CreateTestScene();
@@ -41,11 +44,15 @@ void ShadowRender::Render(int a_width, int a_height, uint32_t* a_out)
 {
   auto start = std::chrono::high_resolution_clock::now();
 
-  LiteRS::Clear(m_shadowPass);
-  LiteRS::DrawIndexedTriangles(m_shadowPass, this, &ShadowRender::kernelVS_Shadow, m_indices.data(), uint32_t(m_indices.size()));
+  Clear(m_shadowPass);
+  DrawIndexedTriangles(m_shadowPass, this, 
+                       &ShadowRender::kernelVS_Shadow, 
+                       m_indices.data(), uint32_t(m_indices.size()));
 
-  LiteRS::Clear(m_mainPass);
-  LiteRS::DrawIndexedTriangles(m_mainPass, this, &ShadowRender::kernelVS_Main, &ShadowRender::kernelPS_Main, m_indices.data(), uint32_t(m_indices.size()));
+  Clear(m_mainPass);
+  DrawIndexedTriangles(m_mainPass, this, 
+                       &ShadowRender::kernelVS_Main, &ShadowRender::kernelPS_Main, 
+                       m_indices.data(), uint32_t(m_indices.size()));
 
   kernel2D_ToOutput(a_width, a_height, a_out);
 
