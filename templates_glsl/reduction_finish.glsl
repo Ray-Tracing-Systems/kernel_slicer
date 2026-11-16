@@ -1,5 +1,6 @@
 #version 460
 #extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_samplerless_texture_functions : require
 {% if Kernel.UseSubGroups %}
 #extension GL_KHR_shader_subgroup_arithmetic: enable
 {% endif %}

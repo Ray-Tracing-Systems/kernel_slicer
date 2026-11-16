@@ -261,7 +261,7 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateTextureMembers(std::shared_ptr<
   barriers[{{loop.index}}].srcAccessMask       = 0;
   barriers[{{loop.index}}].dstAccessMask       = VK_ACCESS_SHADER_READ_BIT;
   barriers[{{loop.index}}].image               = m_vdata.{{Var.Name}}Texture;
-  barriers[{{loop.index}}].subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+  barriers[{{loop.index}}].subresourceRange.aspectMask     = {{Var.Aspect}};
   barriers[{{loop.index}}].subresourceRange.baseMipLevel   = 0;
   barriers[{{loop.index}}].subresourceRange.levelCount     = 1;
   barriers[{{loop.index}}].subresourceRange.baseArrayLayer = 0;
@@ -303,6 +303,7 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Name}}_UpdateIndirect()
 }
 
 {% endif %}
+{% if not Kernel.IsGraphics %}
 void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Decl}}
 {
   {% if not Kernel.UseRayGen %}
@@ -406,6 +407,7 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Kernel.Decl}}
   vkCmdDispatch(m_currCmdBuffer, 1, 1, 1);
   {% endif %}
 }
+{% endif %} {# /* not Kernel.IsGraphics */ #}
 
 ## endfor
 

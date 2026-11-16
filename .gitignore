@@ -165,3 +165,11 @@ apps/18_simple_shadow_cast/test_class_kernels.*
 apps/18_simple_shadow_cast/z_build_ispc.sh
 
 ktest_logs/
+
+# output of ISPC back end (-shaderCC ispc) in samples
+apps/**/*_ispc.cpp
+apps/**/*_kernels.ispc
+apps/**/*_kernels.h
+apps/**/*_kernels.o
+apps/**/z_build_ispc.sh
+apps/**/z_build_ispc.bat

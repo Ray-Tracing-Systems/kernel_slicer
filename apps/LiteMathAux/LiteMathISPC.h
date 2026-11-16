@@ -164,11 +164,56 @@ static inline float4 mul4x4x4(float4x4 m, float4 v)
   return res;
 }
 
+static inline float4 operator*(float4x4 m, float4 v) { return mul4x4x4(m, v); } // as LiteMath::operator*(float4x4, float4)
+
+static inline float4x4 operator*(float4x4 m1, float4x4 m2)
+{
+  float4x4 res;
+  res.m_col[0] = mul4x4x4(m1, m2.m_col[0]);
+  res.m_col[1] = mul4x4x4(m1, m2.m_col[1]);
+  res.m_col[2] = mul4x4x4(m1, m2.m_col[2]);
+  res.m_col[3] = mul4x4x4(m1, m2.m_col[3]);
+  return res;
+}
+
+static inline float4x4 rotate4x4X(float phi)
+{
+  float4x4 res;
+  res.m_col[0] = make_float4(1.0f,      0.0f,     0.0f, 0.0f);
+  res.m_col[1] = make_float4(0.0f, +cos(phi), +sin(phi), 0.0f);
+  res.m_col[2] = make_float4(0.0f, -sin(phi), +cos(phi), 0.0f);
+  res.m_col[3] = make_float4(0.0f,      0.0f,     0.0f, 1.0f);
+  return res;
+}
+
+static inline float4x4 rotate4x4Y(float phi)
+{
+  float4x4 res;
+  res.m_col[0] = make_float4(+cos(phi), 0.0f, -sin(phi), 0.0f);
+  res.m_col[1] = make_float4(     0.0f, 1.0f,      0.0f, 0.0f);
+  res.m_col[2] = make_float4(+sin(phi), 0.0f, +cos(phi), 0.0f);
+  res.m_col[3] = make_float4(     0.0f, 0.0f,      0.0f, 1.0f);
+  return res;
+}
+
+static inline float4x4 rotate4x4Z(float phi)
+{
+  float4x4 res;
+  res.m_col[0] = make_float4(+cos(phi), sin(phi), 0.0f, 0.0f);
+  res.m_col[1] = make_float4(-sin(phi), cos(phi), 0.0f, 0.0f);
+  res.m_col[2] = make_float4(     0.0f,     0.0f, 1.0f, 0.0f);
+  res.m_col[3] = make_float4(     0.0f,     0.0f, 0.0f, 1.0f);
+  return res;
+}
+
 //static inline float3 reflect(const float3 dir, const float3 normal) { return normal * dot(dir, normal) * (-2.0f) + dir; }
 
 static inline float  fract(float x) { return x - floor(x); }
 //static inline float  clamp(float u, float a, float b) { return min(max(a, u), b); }
 static inline float4 clamp(const float4 u, float a, float b) { return make_float4(clamp(u.x, a, b), clamp(u.y, a, b), clamp(u.z, a, b), clamp(u.w, a, b)); }
+static inline float4 clamp(const float4 u, const float4 a, const float4 b) { return make_float4(clamp(u.x, a.x, b.x), clamp(u.y, a.y, b.y), clamp(u.z, a.z, b.z), clamp(u.w, a.w, b.w)); }
+static inline float  lerp(const float a, const float b, float t)   { return a + t*(b - a); }
+static inline float4 lerp(const float4 a, const float4 b, float t) { return a + t*(b - a); }
 
 typedef struct float3x3T
 {
@@ -219,6 +264,10 @@ static inline float dot (float3 a, float3 b)  { return a.x*b.x + a.y*b.y + a.z*b
 
 static inline float  length(float3 a) { return sqrt(dot(a,a)); }
 static inline float3 normalize(float3 a) { float lenInv = 1.0f/length(a); return a*lenInv; }
+static inline float  length(float4 a) { return sqrt(dot(a,a)); }
+static inline float4 normalize(float4 a) { float lenInv = 1.0f/length(a); return a*lenInv; } // as LiteMath: 4 components
+static inline float  length3(float4 a) { return sqrt(dot3(a,a)); }
+static inline float4 normalize3(float4 a) { float lenInv = 1.0f/length3(a); return a*lenInv; }
 
 static inline float3 shuffle_xzy(float3 a) { return make_float3(a.x, a.z, a.y); }
 static inline float3 shuffle_yxz(float3 a) { return make_float3(a.y, a.x, a.z); }
@@ -231,6 +280,8 @@ static inline float3 cross(float3 a, float3 b)
   const float3 b_yzx = shuffle_yzx(b);
   return shuffle_yzx(a*b_yzx - a_yzx*b);
 }
+static inline float4 cross3(float4 a, float4 b) { return make_float4(a.y*b.z - a.z*b.y, a.z*b.x - a.x*b.z, a.x*b.y - a.y*b.x, 0.0f); } // w = 0 as in LiteMath
+static inline float4 cross (float4 a, float4 b) { return cross3(a, b); }
 
 
 //static inline float atomic_max_global(uniform float * uniform ptr, uniform float value) 

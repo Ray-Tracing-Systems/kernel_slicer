@@ -5,6 +5,7 @@ import glob
 import json
 import time
 import shutil
+import atexit
 import argparse
 import subprocess
 
@@ -22,6 +23,32 @@ EPILOG = """examples:
   python3 ktest.py --rerun-failed --write-launch    rerun failed runs, write .vscode/launch_failed.json
   python3 ktest.py --external ~/proj/kmake.json --cmake-dir ~/proj   generate and build external project
 """
+
+
+def keep_windows_console_mode():
+    """Windows: saves modes of console input and output and restores them at exit of ktest.
+    Console mode is shared by all processes attached to the console. A program run by ktest may change it (for example,
+    enable virtual terminal input, then arrows and Ctrl+V give escape sequences in cmd.exe) and restore it at exit;
+    with parallel jobs one program may 'restore' the mode changed by another one, so the console stays broken."""
+    if not IS_WINDOWS:
+        return
+    try:
+        import ctypes
+        from ctypes import wintypes
+        kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+        saved = []
+        for std_handle in (-10, -11):  # STD_INPUT_HANDLE, STD_OUTPUT_HANDLE
+            handle = kernel32.GetStdHandle(std_handle)
+            mode   = wintypes.DWORD()
+            if handle and kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+                saved.append((handle, mode.value))
+
+        def restore():
+            for handle, mode in saved:
+                kernel32.SetConsoleMode(handle, mode)
+        atexit.register(restore)
+    except (ImportError, OSError, AttributeError):
+        pass
 
 
 def find_kslicer(root):
@@ -215,6 +242,7 @@ def select_failed(root, log_root):
 
 
 def main(argv, root):
+    keep_windows_console_mode()  # saves the mode before 'os.system' below changes it, restores it at exit
     if IS_WINDOWS:
         os.system('')  # enables ANSI colors in Windows console
     interactive_cmd = None

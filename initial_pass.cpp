@@ -1,4 +1,5 @@
 #include "initial_pass.h"
+#include "graphics_pipeline.h"
 #include <iostream>
 #include <vector>
 #include <string>
@@ -544,6 +545,7 @@ kslicer::DataMemberInfo kslicer::ExtractMemberInfo(const std::string& a_name, co
   member.sizeInBytes = 0;
   member.offsetInTargetBuffer = 0;
   member.isConst     = qt.isConstQualified();
+  member.isHostOnly  = kslicer::IsHostOnlyMemberType(qt.getCanonicalType().getAsString()); // canonical: 'Pipeline' after 'using LiteRS::Pipeline' is 'LiteRS::Pipeline'
 
   // now we should check werther this field is std::vector<XXX> or just XXX;
   //

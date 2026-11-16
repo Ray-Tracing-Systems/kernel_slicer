@@ -441,7 +441,12 @@ std::vector<kslicer::ArgFinal> kslicer::MainClassInfo::GetKernelCommonArgs(const
         CheckTextureAccessFlags(pAccessFlags->second, arg.name, a_kernel.name);
         arg2.isImage   = true;
         arg2.isSampler = (pAccessFlags->second == kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE);
-        arg2.imageType = pShaderFuncRewriter->RewriteImageType(arg.containerType, arg.containerDataType, pAccessFlags->second, arg2.imageFormat);
+        auto accessFlags = pAccessFlags->second;
+        if(kslicer::ShaderTextureKind(a_kernel, a_kernel.texAccessInArgs, arg.name) == kslicer::SHADER_TEX::COMBINED) // sampled in called function only
+          accessFlags = kslicer::TEX_ACCESS(int(accessFlags) | int(kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE));
+        arg2.imageType = pShaderFuncRewriter->RewriteImageType(arg.containerType, arg.containerDataType, accessFlags, arg2.imageFormat);
+        arg2.imageDataType = pShaderFuncRewriter->RewriteStdVectorTypeStr(arg.containerDataType);
+        arg2.imageAccess   = accessFlags;
       }
       else
       {

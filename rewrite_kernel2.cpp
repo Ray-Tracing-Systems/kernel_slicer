@@ -630,6 +630,61 @@ bool  kslicer::FunctionRewriter2::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr
   return true;
 }
 
+/// true for namespaces of LiteMath, LiteImage and LiteRS: their functions and constants have the same names in shaders
+static bool IsLiteNamespace(const clang::NamespaceDecl* a_ns)
+{
+  if(a_ns == nullptr)
+    return false;
+  const std::string name = a_ns->getNameAsString();
+  return (name == "LiteMath" || name == "LiteImage" || name == "LiteRS");
+}
+
+void kslicer::FunctionRewriter2::RemoveLiteNamespaceQualifier(clang::NestedNameSpecifierLoc a_qualifier)
+{
+  if(!a_qualifier)
+    return;
+  
+  // all parts of qualifier must be namespaces of LiteMath/LiteImage/LiteRS (or '::'), 'Class::member' is not changed
+  //
+  for(const clang::NestedNameSpecifier* pSpec = a_qualifier.getNestedNameSpecifier(); pSpec != nullptr; pSpec = pSpec->getPrefix())
+  {
+    if(pSpec->getKind() == clang::NestedNameSpecifier::Global)
+      continue;
+    const clang::NamespaceDecl* pNamespace = nullptr;
+    if(pSpec->getKind() == clang::NestedNameSpecifier::Namespace)
+      pNamespace = pSpec->getAsNamespace();
+    else if(pSpec->getKind() == clang::NestedNameSpecifier::NamespaceAlias)
+      pNamespace = pSpec->getAsNamespaceAlias()->getNamespace();
+    if(!IsLiteNamespace(pNamespace) && !(m_removeStdQualifier && pNamespace != nullptr && pNamespace->isStdNamespace()))
+      return;
+  }
+
+  const clang::SourceRange range = a_qualifier.getSourceRange();
+  if(!range.isValid() || range.getBegin().isMacroID())
+    return;
+  const auto rangeHash = kslicer::GetHashOfSourceRange(range); // copies of rewriter in RecursiveRewrite visit the same node again
+  if(m_pRewrittenNodes->find(rangeHash) != m_pRewrittenNodes->end())
+    return;
+  m_pRewrittenNodes->insert(rangeHash);
+  m_rewriter.RemoveText(range);
+}
+
+void kslicer::FunctionRewriter2::RemoveLiteNamespaceQualifier(clang::DeclRefExpr* a_expr)
+{
+  if(a_expr->hasQualifier() && WasNotRewrittenYet(a_expr))
+    RemoveLiteNamespaceQualifier(a_expr->getQualifierLoc());
+}
+
+void kslicer::FunctionRewriter2::RemoveLiteNamespaceQualifier(clang::VarDecl* a_decl)
+{
+  const clang::TypeSourceInfo* pTypeInfo = a_decl->getTypeSourceInfo();
+  if(pTypeInfo == nullptr)
+    return;
+  clang::TypeLoc typeLoc = pTypeInfo->getTypeLoc().getUnqualifiedLoc(); // 'const LiteMath::float4x4' ==> 'LiteMath::float4x4'
+  if(auto elaborated = typeLoc.getAs<clang::ElaboratedTypeLoc>())
+    RemoveLiteNamespaceQualifier(elaborated.getQualifierLoc());
+}
+
 bool kslicer::FunctionRewriter2::VisitFloatingLiteral_Impl(clang::FloatingLiteral* expr) 
 {
   return true;

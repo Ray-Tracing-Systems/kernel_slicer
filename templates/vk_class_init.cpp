@@ -52,7 +52,9 @@ vk_utils::VulkanDeviceFeatures {{MainClassName}}{{MainClassSuffix}}_ListRequired
 {
   vk_utils::VulkanDeviceFeatures res;
   res.features2 = {{MainClassName}}{{MainClassSuffix}}::ListRequiredDeviceFeatures(res.extensionNames);
-  {% if SlangShaders and not UseVulkan11 %}
+  {% if GPDynamicRendering %}
+  res.apiVersion = VK_API_VERSION_1_3; // graphics pipeline with dynamic rendering and extended dynamic state
+  {% else if SlangShaders and not UseVulkan11 %}
   res.apiVersion = VK_API_VERSION_1_2;
   {% else %}
   res.apiVersion = VK_API_VERSION_1_1;
@@ -440,6 +442,9 @@ void {{MainClassName}}{{MainClassSuffix}}::DeleteDeviceData()
 
 {{MainClassName}}{{MainClassSuffix}}::~{{MainClassName}}{{MainClassSuffix}}()
 {
+  {% if HasGraphics %}
+  DestroyGraphics();
+  {% endif %}
   {% if EnableTimeStamps %}
   if(m_queryPoolTimestamps != VK_NULL_HANDLE)
     vkDestroyQueryPool(m_device, m_queryPoolTimestamps, nullptr);
@@ -573,6 +578,9 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
   kspec = &m_specsForWGSize;
   {% endif %}
   {{Kernel.Name}}DSLayout = Create{{Kernel.Name}}DSLayout();
+  {% if Kernel.IsGraphics %}
+  // vertex or pixel shader: graphics pipelines are created for draws in InitGraphics()
+  {% else %}
   {% if Kernel.IsMega %}
   if(m_megaKernelFlags.enable{{Kernel.Name}})
   {% else %}
@@ -667,6 +675,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitKernel_{{Kernel.Name}}(const char
   {% endif %}
   MakeComputePipelineOnly(shaderPath.c_str(), {% if ShaderSingleFile %}"main"{% else %}"{{Kernel.OriginalName}}_Finish"{% endif %}, kspec, {{Kernel.Name}}DSLayout, {{Kernel.Name}}Layout, &{{Kernel.Name}}FinishPipeline);
   {% endif %} {# /* if Kernel.HasLoopFinish */ #}
+  {% endif %} {# /* not Kernel.IsGraphics */ #}
 }
 
 ## endfor
@@ -1505,7 +1514,7 @@ VkImageView {{MainClassName}}{{MainClassSuffix}}::CreateView(VkFormat a_format, 
     createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
   }
 
-  createInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+  createInfo.subresourceRange.aspectMask     = (a_format == VK_FORMAT_D32_SFLOAT) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT; // depth targets of graphics pipeline
   createInfo.subresourceRange.baseMipLevel   = 0;
   createInfo.subresourceRange.levelCount     = 1;
   createInfo.subresourceRange.baseArrayLayer = 0;
@@ -2467,6 +2476,13 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
   (*ppNext) = &storage16BitFeatures; ppNext = &storage16BitFeatures.pNext;
 
   {% endif %}
+  {% if GPDynamicRendering %}
+  static VkPhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures = {}; // core in Vulkan 1.3, as extended dynamic state
+  dynamicRenderingFeatures.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
+  dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
+  (*ppNext) = &dynamicRenderingFeatures; ppNext = &dynamicRenderingFeatures.pNext;
+
+  {% endif %}
   {% if GlobalUseCoopVec %}
   static VkPhysicalDeviceCooperativeVectorFeaturesNV coopVecFeatures = {};
   coopVecFeatures.sType             = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_VECTOR_FEATURES_NV;
@@ -2487,3 +2503,6 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
 }
 
 {{MainClassName}}{{MainClassSuffix}}::MegaKernelIsEnabled {{MainClassName}}{{MainClassSuffix}}::m_megaKernelFlags;
+{% if HasGraphics %}
+{% include "inc_gp_vulkan.cpp" %}
+{% endif %}

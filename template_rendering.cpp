@@ -501,6 +501,22 @@ static bool isConvertibleToInt(const std::string& str) {
 }
 
 
+/// Slang declaration of texture: 'Texture2D<T>', 'Sampler2D<T>' or 'RWTexture2D<T>' (see kslicer::ShaderTextureKind)
+static void PutSlangTextureToJson(json& argj, kslicer::SHADER_TEX a_kind, const std::string& a_rewrittenDataType)
+{
+  const std::string texelType = kslicer::SlangTexelType(a_rewrittenDataType, a_kind);
+  std::string format = "rgba32f";
+  if(texelType == "float")
+    format = "r32f";
+  else if(texelType == "float2")
+    format = "rg32f";
+  else if(texelType == "uint")
+    format = "r32ui";
+  argj["TexelType"]     = texelType;
+  argj["SlangTexKind"]  = (a_kind == kslicer::SHADER_TEX::STORAGE) ? "RWTexture2D" : ((a_kind == kslicer::SHADER_TEX::COMBINED) ? "Sampler2D" : "Texture2D");
+  argj["SlangImFormat"] = format;
+}
+
 json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
                                     const std::vector<kslicer::FuncData>& usedFunctions,
                                     const std::vector<kslicer::DeclInClass>& usedDecl,
@@ -794,9 +810,12 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["SrcName"]  = commonArg.name; // name in C++ code and in config
       argj["IsUBO"]    = commonArg.isDefinedInClass;
       argj["IsImage"]  = commonArg.isImage;
+      argj["TexelType"]     = "float4";
       argj["IsImageArray"]  = false;
       argj["IsAccelStruct"] = false;
-      argj["NeedFmt"]       = !commonArg.isSampler;
+      if(commonArg.isImage)
+        PutSlangTextureToJson(argj, kslicer::ShaderTextureKind(k, k.texAccessInArgs, commonArg.name), commonArg.imageDataType);
+      argj["NeedFmt"]       = commonArg.isImage && (int(commonArg.imageAccess) & int(kslicer::TEX_ACCESS::TEX_ACCESS_WRITE)) != 0; // format only for storage images
       argj["ImFormat"]      = commonArg.imageFormat;
       argj["IsPointer"]     = commonArg.isPointer;
       argj["IsMember"]      = false;
@@ -899,6 +918,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         argj["NeedFmt"]  = false;
         argj["ImFormat"] = "";
         argj["SizeOffset"] = 0;
+        PutSlangTextureToJson(argj, kslicer::SHADER_TEX::COMBINED, "float4");
         usedCombinedImageSamplers = true;
       }
       else if(pVecMember->second.kind == kslicer::DATA_KIND::KIND_TEXTURE_SAMPLER_COMBINED_ARRAY)
@@ -918,10 +938,14 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       {
         std::string imageFormat;
         auto pMemberAccess = k.texAccessInMemb.find(pVecMember->second.name);
-        auto accessFlags   = (pMemberAccess == k.texAccessInMemb.end()) ? kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE : pMemberAccess->second; //pVecMember->second.tmask;
+        auto accessFlags   = (pMemberAccess == k.texAccessInMemb.end()) ? kslicer::TEX_ACCESS::TEX_ACCESS_NOTHING : pMemberAccess->second; //pVecMember->second.tmask;
+        if(kslicer::ShaderTextureKind(k, k.texAccessInMemb, pVecMember->second.name) == kslicer::SHADER_TEX::COMBINED) // sampled in called function only
+          accessFlags = kslicer::TEX_ACCESS(int(accessFlags) | int(kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE));
         argj["IsImage"]  = true;
+        PutSlangTextureToJson(argj, kslicer::ShaderTextureKind(k, k.texAccessInMemb, pVecMember->second.name), pShaderRewriter->RewriteStdVectorTypeStr(pVecMember->second.containerDataType));
+        argj["ElemISPC"] = kslicer::ImageElemTypeISPC(pShaderRewriter->RewriteStdVectorTypeStr(pVecMember->second.containerDataType)); // ISPC: pointer to data of image
         argj["Type"]     = a_classInfo.pShaderFuncRewriter->RewriteImageType(pVecMember->second.containerType, pVecMember->second.containerDataType, accessFlags, imageFormat);
-        argj["NeedFmt"]  = (accessFlags != kslicer::TEX_ACCESS::TEX_ACCESS_SAMPLE);
+        argj["NeedFmt"]  = (int(accessFlags) & int(kslicer::TEX_ACCESS::TEX_ACCESS_WRITE)) != 0;             // format only for storage images
         argj["ImFormat"] = imageFormat;
         argj["SizeOffset"] = 0;
       }
@@ -1114,6 +1138,16 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["UserArgs"]     = userArgs;
     kernelJson["OriginalArgs"] = allArgs;
     kernelJson["Name"]         = k.name;
+    kslicer::AddGraphicsToKernelJson(kernelJson, k, a_classInfo);
+    kernelJson["SamplersISPC"] = std::vector<std::string>(); // 'Sampler' members used by 'texture.sample(sampler, uv)', ISPC passes their state to kernels
+    {
+      std::vector<std::string> samplers;
+      for(const auto& texSampler : k.texAccessSampler)
+        if(std::find(samplers.begin(), samplers.end(), texSampler.second) == samplers.end())
+          samplers.push_back(texSampler.second);
+      std::sort(samplers.begin(), samplers.end());
+      kernelJson["SamplersISPC"] = samplers;
+    }
     kernelJson["UBOBinding"]   = args.size(); // for circle
     kernelJson["HasEpilog"]    = k.isBoolTyped || reductionVars.size() != 0 || reductionArrs.size() != 0;
     kernelJson["IsBoolean"]    = k.isBoolTyped;

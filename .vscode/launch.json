@@ -368,6 +368,51 @@
         },
 
         {
+            "name"   : "Launch (app_31/Slang)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["${workspaceFolder}/apps/31_gp_textured_cube/kmake.json",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
+            "externalConsole": false,
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
+                {
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+
+        {
+            "name"   : "Launch (app_32/Slang)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["${workspaceFolder}/apps/32_gp_shadow_map/kmake.json",
+                        "-DKERNEL_SLICER",
+                        "-v"],
+            "stopAtEntry"    : false,
+            "cwd"            : "${workspaceFolder}",
+            "environment"    : [],
+            "externalConsole": false,
+            "MIMode"         : "gdb",
+            "setupCommands"  : [
+                {
+                    "description"   : "Enable pretty-printing for gdb",
+                    "text"          : "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
             "name"   : "Launch (test_007/Slang)",
             "type"   : "cppdbg",
             "request": "launch",
@@ -1004,6 +1049,46 @@
             "request": "launch",
             "program": "${workspaceFolder}/cmake-build-release/kslicer",
             "args"   : ["${workspaceFolder}/apps/tests/053_ashalf/kmake.json", "-shaderCC", "slang"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (test_080/Slang)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["${workspaceFolder}/apps/tests/080_gp_triangle/kmake.json", "-shaderCC", "slang"],
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "Launch (test_081/Slang)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/cmake-build-release/kslicer",
+            "args"   : ["${workspaceFolder}/apps/tests/081_gp_namespaces/kmake.json", "-shaderCC", "slang"],
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",
             "environment": [],

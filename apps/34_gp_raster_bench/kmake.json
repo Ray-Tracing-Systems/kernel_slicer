@@ -1,0 +1,12 @@
+{
+    "mainClass"     : "RasterBench",
+    "options" : {
+        "-shaderCC"    : "slang",
+        "-reorderLoops": "YX"
+    },
+    "source" : ["raster_bench.cpp"],
+    "includeProcess" : [],
+    "includeIgnore"  : ["../LiteMath", "../LiteMathAux", "../utils", "../../TINYSTL"],
+    "defines" : {"KERNEL_SLICER": ""},
+    "end" : ""
+}

@@ -5,6 +5,7 @@
 #include <vector>
 #include <map>
 #include "kslicer_containers.h"
+#include "graphics_pipeline.h"
 #include <algorithm>
 #include <sstream>
 #include <filesystem>
@@ -48,6 +49,7 @@ namespace kslicer
     bool enableCallable    = false;
     bool enableTimeStamps  = false;
     bool usePipelineCache  = false;
+    bool gpDynamicRendering = false; ///<! graphics pipeline (LiteRS): Vulkan 1.3 dynamic rendering and extended dynamic state instead of render passes ('-gp_dynamic_rendering 1')
     bool genSeparateGPUAPI = false;
     bool useCUBforCUDA     = true;
     bool skipUBORead       = false;
@@ -374,6 +376,8 @@ namespace kslicer
 
     uint32_t GetDim() const
     {
+      if(gpStage != GP_STAGE::NONE) // vertex and pixel shaders are not dispatched as compute kernels
+        return 1;
       if(loopIters.size() != 0)
         return uint32_t(loopIters.size());
 
@@ -410,6 +414,7 @@ namespace kslicer
     bool usedInExitExpr = false;                ///<! used by RTV pattern; if kernel is used in Control Function in if(kernelXXX()) --> break or return extression
     bool checkThreadFlags = false;              ///<! used by RTV pattern; if Kernel.shouldCheckExitFlag --> insert check flags code in kernel
     bool isMega           = false;
+    GP_STAGE gpStage      = GP_STAGE::NONE;     ///<! vertex or pixel shader of graphics pipeline (see graphics_pipeline.h)
 
     std::string RetType;                         ///<! kernel return type
     std::string DeclCmd;                         ///<! used during class header to print declaration of current 'XXXCmd' for current 'kernel_XXX'
@@ -477,6 +482,8 @@ namespace kslicer
     KernelInfo::LoopIter loopIter;     ///<! used if thiscariable is a loopIter
     std::string imageType;
     std::string imageFormat;
+    std::string imageDataType;                   ///<! 'T' of 'Image2D<T>' rewritten for shaders
+    TEX_ACCESS  imageAccess = TEX_ACCESS::TEX_ACCESS_NOTHING;
     bool        isDefinedInClass = false;
     bool        isThreadFlags    = false;
     bool        isImage          = false;
@@ -509,6 +516,7 @@ namespace kslicer
     bool isConst           = false; ///<! const float4 BACKGROUND_COLOR = ... (they should not be read back)
     bool isSingle          = false; ///<! single struct inside buffer, not a vector (vector with size() == 1), special case for all_references and other service needs
     bool bindWithRef       = false; ///<! if bound with buffer reference
+    bool isHostOnly        = false; ///<! LiteRS::Pipeline and other objects of graphics pipeline: not placed to UBO (see graphics_pipeline.h)
 
     bool hasPrefix = false;
     bool hasIntersectionShader = false; ///<! indicate that this acceleration structure has user-defined intersection procedure
@@ -923,6 +931,10 @@ namespace kslicer
     bool RewriteLocalGlobalPtrDecl  (clang::VarDecl* a_decl);       ///<! 'const float* p = &m_vec[e];'   ==> 'uint pOffset = e;'
     bool RewriteGlobalPtrAccess     (clang::Expr* a_expr);          ///<! 'p[i]', '*p', 'p->x'           ==> 'm_vec[pOffset + i]', ...
     bool CheckLocalGlobalPtrUse     (clang::DeclRefExpr* a_expr);   ///<! error for other uses of local pointer variable 
+    void RemoveLiteNamespaceQualifier(clang::NestedNameSpecifierLoc a_qualifier); ///<! 'LiteMath::' ==> '': shaders have no namespaces
+    void RemoveLiteNamespaceQualifier(clang::DeclRefExpr* a_expr);                ///<! 'LiteMath::dot(a,b)' ==> 'dot(a,b)'
+    void RemoveLiteNamespaceQualifier(clang::VarDecl* a_decl);                    ///<! 'const LiteMath::float4 x = ...' ==> 'const float4 x = ...', if declaration is not rewritten
+    bool m_removeStdQualifier = false;                                            ///<! also remove 'std::' (ISPC)
     bool IsUserFunction(const clang::FunctionDecl* a_func);           ///<! not from ignored folders (LiteMath and e.t.c.): kslicer generates copies of such functions for global memory
     const kslicer::ArgMatch* FindShitPointer(const clang::Expr* a_expr, std::vector<const clang::Expr*>* a_pAdds = nullptr) const; ///<! 'a_data' or 'a_data + k + ...' for pointer of m_shit
     std::string ShitPointerOffsetText(const kslicer::ArgMatch& a_pointer, const std::vector<const clang::Expr*>& a_adds);           ///<! 'a_dataOffset + (k) + ...'
@@ -1722,6 +1734,7 @@ namespace kslicer
 
     kslicer::uset<std::string>                 usedServiceCalls; ///<! memcpy, memset, scan, sort and e.t.c.
     kslicer::umap<std::string, ServiceCall>    serviceCalls;     ///<! actual list of used service calls
+    GraphicsInfo                               graphics;         ///<! graphics pipeline: LiteRS::Pipeline members and draws (see graphics_pipeline.h)
 
     kslicer::umap<std::string, const clang::CXXMethodDecl*> allMemberFunctions;  ///<! in fact this is used for a specific case, RTV pattern, full impl function, check for user define 'XXXBlock' function for control function 'XXX'
                                                                                       ///<! and we do not support overloading here ...
@@ -2029,6 +2042,19 @@ namespace kslicer
   DataMemberInfo ExtractMemberInfo(clang::FieldDecl* fd, const clang::ASTContext& astContext);
   DataMemberInfo ExtractMemberInfo(const std::string& a_name, const clang::QualType a_type, const clang::ASTContext& astContext);
   std::string InferenceVulkanTextureFormatFromTypeName(const std::string& a_typeName, bool a_useHalFloat);
+  std::string TextureMemberVulkanFormat(const DataMemberInfo& a_member, const std::string& a_dataTypeRewritten, bool a_useHalFloat); ///<! sampled 'Image2D<uint32_t>' is RGBA8_UNORM
+
+  /**
+  \brief How texture is declared in a kernel/shader and bound on host (Slang | GLSL):
+          SAMPLED  -- 'Texture2D<T>'   | 'texture2D', read with operator[], VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+          COMBINED -- 'Sampler2D<T>'   | 'sampler2D', texture.sample(sampler, uv), VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+          STORAGE  -- 'RWTexture2D<T>' | 'image2D',   written by kernel, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE.
+  */
+  enum class SHADER_TEX { SAMPLED = 0, COMBINED = 1, STORAGE = 2 };
+  SHADER_TEX  ShaderTextureKind(const KernelInfo& a_kernel, const kslicer::umap<std::string, TEX_ACCESS>& a_flags, const std::string& a_name);
+  std::string TextureDescriptorType(SHADER_TEX a_kind);
+  std::string SlangTexelType(const std::string& a_dataTypeRewritten, SHADER_TEX a_kind);  ///<! 'T' in 'Texture2D<T>'
+  std::string ImageElemTypeISPC(const std::string& a_dataTypeRewritten);                  ///<! 'T' of 'Image2D<T>' in ISPC: 'uint', 'float', 'float4', ... (see LiteMathAux/LiteImageISPC.h)
 
   std::vector<kslicer::ArgMatch> MatchCallArgsForKernel(clang::CallExpr* call, const KernelInfo& k, const clang::CompilerInstance& a_compiler);
 

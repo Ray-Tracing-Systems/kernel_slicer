@@ -349,6 +349,8 @@ int main(int argc, const char **argv)
       textGenSettings.enableTimeStamps = (atoi(params["-timestamps"].c_str()) != 0);
     if(params.find("-pipelinecache") != params.end())
       textGenSettings.usePipelineCache = (atoi(params["-pipelinecache"].c_str()) != 0);
+    if(params.find("-gp_dynamic_rendering") != params.end())
+      textGenSettings.gpDynamicRendering = (atoi(params["-gp_dynamic_rendering"].c_str()) != 0);
     textGenSettings.genSeparateGPUAPI = genGPUAPI;
     textGenSettings.interfaceName     = mainClassName;
     if(params.find("-makerInterfaceName") != params.end())
@@ -995,6 +997,7 @@ int main(int argc, const char **argv)
   inputCodeInfo.ctors                = firstPassData.rv.mci.ctors;
   inputCodeInfo.allMemberFunctions   = firstPassData.rv.mci.funMembers;
   inputCodeInfo.ProcessAllSetters(firstPassData.rv.mci.m_setters, compiler);
+  kslicer::ProcessGraphicsPipelines(inputCodeInfo, compiler); // render targets of LiteRS::Pipeline members
 
   std::vector<kslicer::DeclInClass> generalDecls = firstPassData.rv.GetExtractedDecls();
   //debugPrintToFile(generalDecls, "zud_after_extracted.txt");
@@ -1032,6 +1035,7 @@ int main(int argc, const char **argv)
       std::cout << "  process control function: " << mainFuncRef.Name.c_str() << "(...)" << std::endl;
       auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
       std::cout << "  process control function: " << mainFuncRef.Name.c_str() << "(...) --> " << GetClangToolingErrorCodeMessage(res) << std::endl;
+      kslicer::ProcessGraphicsCommands(mainFuncRef, inputCodeInfo, compiler); // LiteRS commands mark vertex and pixel shaders as used kernels
 
       // filter out unused kernels
       //
@@ -1134,6 +1138,8 @@ int main(int argc, const char **argv)
 
     for(auto& arg : kernel.args) // it is important to run this loop after second stage at which kernel matchers are applied!
       inputCodeInfo.ProcessKernelArg(arg, kernel);
+    if(kernel.gpStage != kslicer::GP_STAGE::NONE)
+      kslicer::PrepareGraphicsKernel(kernel);
 
     kernel.isIndirect = inputCodeInfo.IsIndirect(kernel);
     if(kernel.isIndirect)
@@ -1170,6 +1176,7 @@ int main(int argc, const char **argv)
   std::cout << "{" << std::endl;
 
   std::vector<kslicer::FuncData> usedFunctions = kslicer::ExtractUsedFunctions(inputCodeInfo, compiler); // recursive processing of functions used by kernel, extracting all needed functions
+  kslicer::AddGraphicsShadersAsMemberFunctions(inputCodeInfo);
   //debugPrintToFile(usedFunctions, "zuf_after_extract.txt");
   
   std::vector<kslicer::DeclInClass> usedDecls;

@@ -105,6 +105,48 @@ bool kslicer::SlangRewriter::NeedsVectorTypeRewrite(const std::string& a_str) //
   return (m_typesReplacement.find(typeStr) != m_typesReplacement.end());
 }
 
+namespace
+{
+  /// finds 'a_param.sample(...)' in function body: such texture parameter is 'Sampler2D<T>' in Slang
+  class TextureParamSampleFinder : public clang::RecursiveASTVisitor<TextureParamSampleFinder>
+  {
+  public:
+    TextureParamSampleFinder(const clang::ParmVarDecl* a_param) : m_param(a_param) {}
+    bool VisitCXXMemberCallExpr(clang::CXXMemberCallExpr* a_call)
+    {
+      const auto pMethod = a_call->getMethodDecl();
+      if(pMethod == nullptr || (pMethod->getNameAsString() != "sample" && pMethod->getNameAsString() != "Sample"))
+        return true;
+      auto pRef = clang::dyn_cast<clang::DeclRefExpr>(a_call->getImplicitObjectArgument()->IgnoreParenImpCasts());
+      if(pRef != nullptr && pRef->getDecl() == m_param)
+        found = true;
+      return !found;
+    }
+    bool found = false;
+  private:
+    const clang::ParmVarDecl* m_param;
+  };
+}
+
+/// 'const Image2D<T>&' parameter: 'Sampler2D<T>' if function samples it, 'Texture2D<T>' otherwise; 'Image2D<T>&' is 'RWTexture2D<T>'
+static std::string SlangTextureParamType(const clang::FunctionDecl* a_func, const clang::ParmVarDecl* a_param, const std::string& a_containerDataType, bool a_isConst)
+{
+  kslicer::SHADER_TEX kind = a_isConst ? kslicer::SHADER_TEX::SAMPLED : kslicer::SHADER_TEX::STORAGE;
+  if(a_isConst && a_func->hasBody())
+  {
+    TextureParamSampleFinder finder(a_param);
+    finder.TraverseStmt(a_func->getBody());
+    if(finder.found)
+      kind = kslicer::SHADER_TEX::COMBINED;
+  }
+  const std::string texelType = kslicer::SlangTexelType(a_containerDataType, kind);
+  if(kind == kslicer::SHADER_TEX::COMBINED)
+    return "Sampler2D<" + texelType + ">";
+  if(kind == kslicer::SHADER_TEX::STORAGE)
+    return "RWTexture2D<" + texelType + ">";
+  return "Texture2D<" + texelType + ">";
+}
+
 std::string kslicer::SlangRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
 {
   std::string retT   = RewriteStdVectorTypeStr(fDecl->getReturnType().getAsString());
@@ -197,9 +239,7 @@ std::string kslicer::SlangRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
             std::string containerType, containerDataType;
             auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl);
             kslicer::SplitContainerTypes(specDecl, containerType, containerDataType);
-            ReplaceFirst(containerType, "Texture", "sampler");
-            ReplaceFirst(containerType, "Image",   "sampler");
-            result += std::string("in ") + containerType + " " + pParam->getNameAsString();
+            result += SlangTextureParamType(fDecl, pParam, RewriteStdVectorTypeStr(containerDataType), true) + " " + pParam->getNameAsString();
           }
           else
             result += std::string("in ") + dataType.getAsString() + " " + pParam->getNameAsString();
@@ -216,6 +256,15 @@ std::string kslicer::SlangRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
         if(m_codeInfo->megakernelRTV && (typeStr.find("Texture") != std::string::npos || typeStr.find("Image") != std::string::npos))
         {
           result += std::string("uint a_dummyOf") + pParam->getNameAsString();
+        }
+        else if((typeStr.find("Texture") != std::string::npos || typeStr.find("Image") != std::string::npos) && 
+                 typeOfParam->getPointeeType()->getAsRecordDecl() != nullptr && 
+                 clang::isa<clang::ClassTemplateSpecializationDecl>(typeOfParam->getPointeeType()->getAsRecordDecl()))
+        {
+          std::string containerType, containerDataType;
+          auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeOfParam->getPointeeType()->getAsRecordDecl());
+          kslicer::SplitContainerTypes(specDecl, containerType, containerDataType);
+          result += SlangTextureParamType(fDecl, pParam, RewriteStdVectorTypeStr(containerDataType), false) + " " + pParam->getNameAsString();
         }
         else
           result += std::string("inout ") + RewriteStdVectorTypeStr(typeStr2) + " " + pParam->getNameAsString();
@@ -445,6 +494,14 @@ bool kslicer::SlangRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExp
         }
       }
       
+      if(baseName == "" && objName.find_first_of("[") == std::string::npos) // single texture: 'Sampler2D' in shader, combined image sampler on host
+      {
+        const std::string rewrittenText = objName + ".SampleLevel(" + texCoord + ", 0)";
+        ReplaceText(call->getSourceRange(), rewrittenText);
+        MarkRewritten(call);
+        return true;
+      }
+
       if(baseName == "")
       {
         auto posBraceOpen  = objName.find_first_of("[");
@@ -1038,6 +1095,8 @@ bool kslicer::SlangRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
     ReplaceText(decl->getSourceRange(), lastRewrittenText);
     MarkRewritten(pValue);
   }
+  else if(decl->isLocalVarDecl() && WasNotRewrittenYet(decl->getInit()))
+    RemoveLiteNamespaceQualifier(decl);
   
   //if(wasSet) 
   //  this->ResetCurrFuncInfo();  
@@ -1271,6 +1330,7 @@ bool  kslicer::SlangRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr)
 {
   if(CheckLocalGlobalPtrUse(expr))
     return true;
+  RemoveLiteNamespaceQualifier(expr);
   if(m_kernelMode)
   { 
     std::string originalText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
@@ -1532,12 +1592,18 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
     std::string outFileName           = kernelName + ".slang";
     std::filesystem::path outFilePath = shaderPath / outFileName;
     const bool isMega = a_codeInfo->megakernelsByName.find(kernelName) != a_codeInfo->megakernelsByName.end(); // RTV control function joined to megakernel
-    const std::filesystem::path templatePath = isMega ? templatePathMega : templatePathUsual;
+    const int  gpStage = kernel.value()["GPStage"]; // vertex (1) or pixel (2) shader of graphics pipeline, see graphics_pipeline.h
+    const std::filesystem::path templatePath = (gpStage != 0) ? templatesFolder / "generated_gp.slang" : (isMega ? templatePathMega : templatePathUsual);
     kslicer::ApplyJsonToTemplate(templatePath.c_str(), outFilePath, currKerneJson);
     
     std::string targetString;
     std::string targetSuffix;
-    if(m_wgpuEnabled)
+    if(gpStage != 0)
+    {
+      targetString = " -o ";
+      targetSuffix = (gpStage == 1) ? ".vert.spv" : ".frag.spv";
+    }
+    else if(m_wgpuEnabled)
     {
       targetString = " -target wgsl -stage compute -entry main -o ";
       targetSuffix = ".wgsl";

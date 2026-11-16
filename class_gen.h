@@ -52,6 +52,7 @@ namespace kslicer
     std::string MakeKernelCallCmdString(CXXMemberCallExpr* f);
     std::string MakeKernelCallCmdString(CXXMemberCallExpr* f, const std::string& a_kernelName);
     std::string MakeServiceKernelCallCmdString(CallExpr* call, const std::string& a_name);
+    std::string MakeGraphicsCommandCmdString(CallExpr* call, const GPCommand& a_cmd); ///<! LiteRS commands, see graphics_pipeline.cpp
 
     Rewriter&                      m_rewriter;
     const clang::CompilerInstance& m_compiler;

@@ -62,6 +62,7 @@ Complete command lines for every sample and test are in `.vscode/launch_slang.js
 | `-gen_gpu_api 1` | `0` | Additionally generate an interface `I<MainClass><Suffix>` with the GPU-specific API (`...Cmd` functions, buffer setters) that the generated class implements |
 | `-timestamps 1` | `0` | GPU timestamps for every kernel; read them with `GetExecutionTime("kernel2D_Name", t)`: `t[0]` average, `t[1]` min, `t[2]` max in ms |
 | `-pipelinecache 1` | `0` | Use a Vulkan pipeline cache when creating pipelines |
+| `-gp_dynamic_rendering 1` | `0` | Graphics pipeline (`LiteRS`): Vulkan 1.3 dynamic rendering instead of render passes and framebuffers; cull mode, front face and depth state of `LiteRS::Pipeline` become dynamic state (read at every draw), blend mode stays baked into pipelines. The application must create the device with `<MainClass><Suffix>_ListRequiredDeviceFeatures()` |
 | `-mt_shader_compile 0` | `1` | Generate a sequential shader build script instead of the parallel one (Linux; Windows `.bat` scripts are always sequential) |
 | `-skip_shader_includes 0` | `1` | Add `-I..` and include folders to the `slangc` command lines (usually not needed) |
 | `-auxshadercc "<flags>"` | | Extra flags for the shader compiler in the build script |

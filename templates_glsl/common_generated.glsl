@@ -76,18 +76,18 @@ struct AllBufferReferences
 {% for Arg in Kernel.Args %}
 {% if not Arg.IsUBO %} 
 {% if Arg.IsImage %}
-layout(binding = {{loop.index}}, set = 0{% if Arg.NeedFmt%}, {{Arg.ImFormat}}{% endif %}) uniform {{Arg.Type}} {{Arg.Name}}; //
+layout(binding = {{loop.index}}, set = {% if Kernel.IsGraphics %}{{Kernel.DSetId}}{% else %}0{% endif %}{% if Arg.NeedFmt%}, {{Arg.ImFormat}}{% endif %}) uniform {{Arg.Type}} {{Arg.Name}}; //
 {% else if Arg.IsAccelStruct %}
-layout(binding = {{loop.index}}, set = 0) uniform accelerationStructureEXT {{Arg.Name}};
+layout(binding = {{loop.index}}, set = {% if Kernel.IsGraphics %}{{Kernel.DSetId}}{% else %}0{% endif %}) uniform accelerationStructureEXT {{Arg.Name}};
 {% else %}
-layout(binding = {{loop.index}}, set = 0{% if existsIn(Arg, "ScalarLayout") and Arg.ScalarLayout %}, scalar{% endif %}) {%if Arg.IsConst%} readonly {% endif %} buffer data{{loop.index}} { {{Arg.Type}} {{Arg.Name}}{% if not Arg.IsSingle %}[]{% endif %}; }; // 
+layout(binding = {{loop.index}}, set = {% if Kernel.IsGraphics %}{{Kernel.DSetId}}{% else %}0{% endif %}{% if existsIn(Arg, "ScalarLayout") and Arg.ScalarLayout %}, scalar{% endif %}) {%if Arg.IsConst or Kernel.IsGraphics%} readonly {% endif %} buffer data{{loop.index}} { {{Arg.Type}} {{Arg.Name}}{% if not Arg.IsSingle %}[]{% endif %}; }; // 
 {% if Arg.NeedUintAlias %}
-layout(binding = {{loop.index}}, set = 0) buffer data{{loop.index}}_asUint { uint {{Arg.Name}}_asUint[]; }; // the same buffer viewed as 'uint' for CAS in float atomics emulation
+layout(binding = {{loop.index}}, set = {% if Kernel.IsGraphics %}{{Kernel.DSetId}}{% else %}0{% endif %}) buffer data{{loop.index}}_asUint { uint {{Arg.Name}}_asUint[]; }; // the same buffer viewed as 'uint' for CAS in float atomics emulation
 {% endif %}
 {% endif %} {# /* Arg.IsImage */ #}
 {% endif %} {# /* not Arg.IsUBO */ #}
 {% endfor %}
-layout(binding = {{length(Kernel.Args)}}, set = 0) {%if Kernel.UniformUBO%} uniform {% else %} {%if Kernel.ContantUBO%} readonly {% endif %} buffer {% endif %} dataUBO { {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo; };
+layout(binding = {{length(Kernel.Args)}}, set = {% if Kernel.IsGraphics %}{{Kernel.DSetId}}{% else %}0{% endif %}) {%if Kernel.UniformUBO%} uniform {% else %} {%if Kernel.ContantUBO or Kernel.IsGraphics%} readonly {% endif %} buffer {% endif %} dataUBO { {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo; };
 
 {% for Array in Kernel.ThreadLocalArrays %}
 {{Array.Type}} {{Array.Name}}[{{Array.Size}}];
