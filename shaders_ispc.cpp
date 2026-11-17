@@ -313,7 +313,13 @@ bool kslicer::ISPCRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     // 'Base::Func(...)' of composition; namespaces 'std::', 'LiteMath::' are removed in VisitDeclRefExpr_Impl
     //
     auto pCallee = clang::dyn_cast<clang::DeclRefExpr>(call->getCallee()->IgnoreParenImpCasts());
-    if(pCallee == nullptr || !pCallee->hasQualifier() || pCallee->getQualifier()->getAsNamespace() != nullptr)
+    if(pCallee == nullptr || !pCallee->hasQualifier())
+      return true;
+#ifdef KSLICER_USE_LLVM22
+    if(pCallee->getQualifier().getKind() == clang::NestedNameSpecifier::Kind::Namespace)
+#else
+    if(pCallee->getQualifier()->getAsNamespace() != nullptr)
+#endif
       return true;
 
     const std::string fname    = fDecl->getNameInfo().getName().getAsString();

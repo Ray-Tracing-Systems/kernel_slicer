@@ -646,6 +646,17 @@ void kslicer::FunctionRewriter2::RemoveLiteNamespaceQualifier(clang::NestedNameS
   
   // all parts of qualifier must be namespaces of LiteMath/LiteImage/LiteRS (or '::'), 'Class::member' is not changed
   //
+#ifdef KSLICER_USE_LLVM22
+  for(auto spec = a_qualifier.getNestedNameSpecifier(); spec;)
+  {
+    if(spec.getKind() == clang::NestedNameSpecifier::Kind::Global)
+      break;
+    if(spec.getKind() != clang::NestedNameSpecifier::Kind::Namespace)
+      return;
+    const auto nsAndPrefix = spec.getAsNamespaceAndPrefix();
+    const clang::NamespaceDecl* pNamespace = nsAndPrefix.Namespace->getNamespace();
+    spec = nsAndPrefix.Prefix;
+#else
   for(const clang::NestedNameSpecifier* pSpec = a_qualifier.getNestedNameSpecifier(); pSpec != nullptr; pSpec = pSpec->getPrefix())
   {
     if(pSpec->getKind() == clang::NestedNameSpecifier::Global)
@@ -655,6 +666,7 @@ void kslicer::FunctionRewriter2::RemoveLiteNamespaceQualifier(clang::NestedNameS
       pNamespace = pSpec->getAsNamespace();
     else if(pSpec->getKind() == clang::NestedNameSpecifier::NamespaceAlias)
       pNamespace = pSpec->getAsNamespaceAlias()->getNamespace();
+#endif
     if(!IsLiteNamespace(pNamespace) && !(m_removeStdQualifier && pNamespace != nullptr && pNamespace->isStdNamespace()))
       return;
   }
@@ -681,8 +693,22 @@ void kslicer::FunctionRewriter2::RemoveLiteNamespaceQualifier(clang::VarDecl* a_
   if(pTypeInfo == nullptr)
     return;
   clang::TypeLoc typeLoc = pTypeInfo->getTypeLoc().getUnqualifiedLoc(); // 'const LiteMath::float4x4' ==> 'LiteMath::float4x4'
+#ifdef KSLICER_USE_LLVM22
+  // Clang 22 stores qualifiers directly on the named type instead of ElaboratedTypeLoc.
+  if(auto tag = typeLoc.getAs<clang::TagTypeLoc>())
+    RemoveLiteNamespaceQualifier(tag.getQualifierLoc());
+  else if(auto typedefLoc = typeLoc.getAs<clang::TypedefTypeLoc>())
+    RemoveLiteNamespaceQualifier(typedefLoc.getQualifierLoc());
+  else if(auto templateLoc = typeLoc.getAs<clang::TemplateSpecializationTypeLoc>())
+    RemoveLiteNamespaceQualifier(templateLoc.getQualifierLoc());
+  else if(auto usingLoc = typeLoc.getAs<clang::UsingTypeLoc>())
+    RemoveLiteNamespaceQualifier(usingLoc.getQualifierLoc());
+  else if(auto unresolvedUsing = typeLoc.getAs<clang::UnresolvedUsingTypeLoc>())
+    RemoveLiteNamespaceQualifier(unresolvedUsing.getQualifierLoc());
+#else
   if(auto elaborated = typeLoc.getAs<clang::ElaboratedTypeLoc>())
     RemoveLiteNamespaceQualifier(elaborated.getQualifierLoc());
+#endif
 }
 
 bool kslicer::FunctionRewriter2::VisitFloatingLiteral_Impl(clang::FloatingLiteral* expr) 
