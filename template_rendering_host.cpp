@@ -85,6 +85,8 @@ std::string kslicer::SlangTexelType(const std::string& a_dataTypeRewritten, SHAD
   const bool isUint = (a_dataTypeRewritten == "uint" || a_dataTypeRewritten == "uint32_t" || a_dataTypeRewritten == "unsigned int");
   if(isUint)
     return (a_kind == SHADER_TEX::COMBINED) ? "float4" : "uint"; // sampled 'Image2D<uint32_t>' is RGBA8_UNORM
+  if(a_dataTypeRewritten == "uint4")
+    return "uint4"; // raw integer attachments must not undergo float conversion on load
   if(a_dataTypeRewritten == "float" || a_dataTypeRewritten == "float2" || a_dataTypeRewritten == "float4")
     return a_dataTypeRewritten;
   return "float4";

@@ -386,7 +386,12 @@ void {{MainClassName}}{{MainClassSuffix}}::Clear_{{Pipe.Name}}Cmd(VkCommandBuffe
   {% for Target in Pipe.ColorTargets %}
   {
     VkClearColorValue clearValue = {};
-    {% if Target.IsUint %}
+    {% if Target.IsRawUint4 %}
+    clearValue.uint32[0] = state.clearUintColor.x;
+    clearValue.uint32[1] = state.clearUintColor.y;
+    clearValue.uint32[2] = state.clearUintColor.z;
+    clearValue.uint32[3] = state.clearUintColor.w;
+    {% else if Target.IsUint %}
     clearValue.uint32[0] = LiteRS::detail::PackRGBA8(state.clearColor); // RGBA8 target is stored as uint
     {% else %}
     clearValue.float32[0] = state.clearColor.x;

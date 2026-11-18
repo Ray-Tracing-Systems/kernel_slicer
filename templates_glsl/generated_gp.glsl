@@ -45,7 +45,7 @@ layout(location = 0) in {{Kernel.GPVaryings}} gpVaryings; // output of vertex sh
 {% endif %}
 
 {% for Out in Kernel.GPOutputs %}
-layout(location = {{loop.index}}) out {% if Out.IsUint %}uint {% else %}vec4 {% endif %}gpOut_{{Out.Name}};
+layout(location = {{loop.index}}) out {{Out.Type}} gpOut_{{Out.Name}};
 {% endfor %}
 
 uint GPPackRGBA8(vec4 a_color) // RGBA8 targets (Image2D<uint32_t>) are R32_UINT images, R is in the lowest byte as on CPU
@@ -59,10 +59,10 @@ void main()
   {% if Kernel.GPOutputIsStruct %}
   const {{Kernel.GPOutputType}} psOut = {{Kernel.GPFuncName}}({% if Kernel.GPHasVaryings %}gpVaryings{% endif %});
   {% for Out in Kernel.GPOutputs %}
-  gpOut_{{Out.Name}} = {% if Out.IsUint %}GPPackRGBA8(psOut.{{Out.Name}}){% else %}psOut.{{Out.Name}}{% endif %};
+  gpOut_{{Out.Name}} = {% if Out.PackRGBA8 %}GPPackRGBA8(psOut.{{Out.Name}}){% else %}psOut.{{Out.Name}}{% endif %};
   {% endfor %}
   {% else %}
-  gpOut_color0 = {% if Kernel.GPOutputs.0.IsUint %}GPPackRGBA8({{Kernel.GPFuncName}}({% if Kernel.GPHasVaryings %}gpVaryings{% endif %})){% else %}{{Kernel.GPFuncName}}({% if Kernel.GPHasVaryings %}gpVaryings{% endif %}){% endif %};
+  gpOut_color0 = {% if Kernel.GPOutputs.0.PackRGBA8 %}GPPackRGBA8({{Kernel.GPFuncName}}({% if Kernel.GPHasVaryings %}gpVaryings{% endif %})){% else %}{{Kernel.GPFuncName}}({% if Kernel.GPHasVaryings %}gpVaryings{% endif %}){% endif %};
   {% endif %}
 }
 {% endif %}

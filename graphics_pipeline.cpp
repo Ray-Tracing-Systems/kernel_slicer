@@ -409,7 +409,7 @@ void kslicer::AddGraphicsToKernelJson(nlohmann::json& a_kernelJson, const Kernel
     a_kernelJson["GPVaryings"]    = ShaderTypeName(pFunc->getParamDecl(0)->getType(), a_classInfo);
   }
 
-  std::vector<bool> uintTargets; // RGBA8 targets are R32_UINT on GPU, color is packed to uint in pixel shader
+  std::vector<std::string> targetFormats; // RGBA8 is packed to R32_UINT; raw uint4 keeps all bits
   for(const auto& draw : a_classInfo.graphics.draws)
   {
     if(draw.second.psKernel != a_kernel.name)
@@ -417,7 +417,7 @@ void kslicer::AddGraphicsToKernelJson(nlohmann::json& a_kernelJson, const Kernel
     const auto pPipe = a_classInfo.graphics.pipelines.find(draw.second.pipeline);
     if(pPipe != a_classInfo.graphics.pipelines.end())
       for(const auto& target : pPipe->second.colorTargets)
-        uintTargets.push_back(TargetFormat(a_classInfo, target.member) == "VK_FORMAT_R32_UINT");
+        targetFormats.push_back(TargetFormat(a_classInfo, target.member));
     break;
   }
 
@@ -425,11 +425,13 @@ void kslicer::AddGraphicsToKernelJson(nlohmann::json& a_kernelJson, const Kernel
   const std::string     retName = ShaderTypeName(retType, a_classInfo);
   a_kernelJson["GPOutputType"]  = retName;
   const clang::CXXRecordDecl* pRecord = retType->getAsCXXRecordDecl();
-  if(retName == "float4" || retName == "vec4" || pRecord == nullptr)
+  if(retName == "float4" || retName == "vec4" || retName == "uint4" || retName == "uvec4" || pRecord == nullptr)
   {
     nlohmann::json out;
     out["Name"]   = "color0";
-    out["IsUint"] = !uintTargets.empty() && uintTargets[0];
+    const std::string format = targetFormats.empty() ? "" : targetFormats[0];
+    out["PackRGBA8"] = (format == "VK_FORMAT_R32_UINT");
+    out["Type"] = a_classInfo.pShaderFuncRewriter->RewriteStdVectorTypeStr(format == "VK_FORMAT_R32G32B32A32_UINT" ? "uint4" : (format == "VK_FORMAT_R32_UINT" ? "uint" : "float4"));
     a_kernelJson["GPOutputs"].push_back(out);
     return;
   }
@@ -440,7 +442,9 @@ void kslicer::AddGraphicsToKernelJson(nlohmann::json& a_kernelJson, const Kernel
     const size_t index = a_kernelJson["GPOutputs"].size();
     nlohmann::json out;
     out["Name"]   = pField->getNameAsString();
-    out["IsUint"] = (index < uintTargets.size()) && uintTargets[index];
+    const std::string format = index < targetFormats.size() ? targetFormats[index] : "";
+    out["PackRGBA8"] = (format == "VK_FORMAT_R32_UINT");
+    out["Type"] = a_classInfo.pShaderFuncRewriter->RewriteStdVectorTypeStr(format == "VK_FORMAT_R32G32B32A32_UINT" ? "uint4" : (format == "VK_FORMAT_R32_UINT" ? "uint" : "float4"));
     a_kernelJson["GPOutputs"].push_back(out);
   }
 }
@@ -499,7 +503,8 @@ void kslicer::AddGraphicsToHostJson(nlohmann::json& a_hostJson, const MainClassI
       nlohmann::json targetJson;
       targetJson["Name"]   = target.member;
       targetJson["Format"] = TargetFormat(a_classInfo, target.member);
-      targetJson["IsUint"] = (targetJson["Format"] == "VK_FORMAT_R32_UINT");
+      targetJson["IsRawUint4"] = (targetJson["Format"] == "VK_FORMAT_R32G32B32A32_UINT");
+      targetJson["IsUint"] = (targetJson["Format"] == "VK_FORMAT_R32_UINT" || targetJson["IsRawUint4"].get<bool>());
       pipeJson["ColorTargets"].push_back(targetJson);
     }
     pipeJson["HasDepth"]    = (pipe.second.depthTarget != "");
@@ -534,7 +539,8 @@ void kslicer::AddGraphicsToHostJson(nlohmann::json& a_hostJson, const MainClassI
       nlohmann::json targetJson;
       targetJson["Name"]   = target.member;
       targetJson["Format"] = TargetFormat(a_classInfo, target.member);
-      targetJson["IsUint"] = (targetJson["Format"] == "VK_FORMAT_R32_UINT");
+      targetJson["IsRawUint4"] = (targetJson["Format"] == "VK_FORMAT_R32G32B32A32_UINT");
+      targetJson["IsUint"] = (targetJson["Format"] == "VK_FORMAT_R32_UINT" || targetJson["IsRawUint4"].get<bool>());
       drawJson["PassTargets"].push_back(targetJson);
     }
     drawJson["DepthTarget"] = pPipe->second.depthTarget;
@@ -545,7 +551,8 @@ void kslicer::AddGraphicsToHostJson(nlohmann::json& a_hostJson, const MainClassI
       for(const auto& target : pPipe->second.colorTargets)
       {
         nlohmann::json targetJson;
-        targetJson["IsUint"] = (TargetFormat(a_classInfo, target.member) == "VK_FORMAT_R32_UINT");
+        const std::string format = TargetFormat(a_classInfo, target.member);
+        targetJson["IsUint"] = (format == "VK_FORMAT_R32_UINT" || format == "VK_FORMAT_R32G32B32A32_UINT");
         drawJson["ColorTargets"].push_back(targetJson);
       }
     }

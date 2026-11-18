@@ -512,6 +512,8 @@ static void PutSlangTextureToJson(json& argj, kslicer::SHADER_TEX a_kind, const 
     format = "rg32f";
   else if(texelType == "uint")
     format = "r32ui";
+  else if(texelType == "uint4")
+    format = "rgba32ui";
   argj["TexelType"]     = texelType;
   argj["SlangTexKind"]  = (a_kind == kslicer::SHADER_TEX::STORAGE) ? "RWTexture2D" : ((a_kind == kslicer::SHADER_TEX::COMBINED) ? "Sampler2D" : "Texture2D");
   argj["SlangImFormat"] = format;

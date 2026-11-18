@@ -118,6 +118,7 @@ rasterization of 4x4 blocks in ISPC, triangle setup and binning in C++ (`LiteRS:
 | `gp_dynamic_rendering` | Vulkan 1.3 dynamic rendering and extended dynamic state (`-gp_dynamic_rendering 1`) | ✅ | ✅ | ❌ | ❌ | 080, 081, app 31, app 32, app 33 |
 | `gp_namespaces` | `LiteRS` and `LiteMath` names with and without namespace (`using`, namespace alias, argument dependent lookup) | ✅ | ✅ | ❌ | ✅ | 081 |
 | `gp_resize` | `ResizeGraphicsTargets()` after host image resize, before recording commands; preserves scene buffers and updates target descriptors | ✅ | ✅ | ❌ | ❔ | 080 |
+| `gp_raw_uint4` | Raw `Image2D<uint4>` attachments (`RGBA32_UINT`), `uint4` pixel outputs, mixed float/uint MRT and `clearUintColor`; integer attachments ignore blending | ✅ | ✅ | ❌ | ❌ | 082 |
 
 ### Ray tracing and virtual functions
 

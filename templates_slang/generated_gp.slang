@@ -35,11 +35,7 @@ GPVertexOut main(uint a_vertexId : SV_VertexID, uniform KernelArgs kgenArgs)
 struct GPPixelOut
 {
   {% for Out in Kernel.GPOutputs %}
-  {% if Out.IsUint %}
-  uint   {{Out.Name}} : SV_Target{{loop.index}};
-  {% else %}
-  float4 {{Out.Name}} : SV_Target{{loop.index}};
-  {% endif %}
+  {{Out.Type}} {{Out.Name}} : SV_Target{{loop.index}};
   {% endfor %}
 };
 
@@ -56,10 +52,10 @@ GPPixelOut main(GPVertexOut a_in)
   {% if Kernel.GPOutputIsStruct %}
   const {{Kernel.GPOutputType}} psOut = {{Kernel.GPFuncName}}(a_in.v);
   {% for Out in Kernel.GPOutputs %}
-  res.{{Out.Name}} = {% if Out.IsUint %}GPPackRGBA8(psOut.{{Out.Name}}){% else %}psOut.{{Out.Name}}{% endif %};
+  res.{{Out.Name}} = {% if Out.PackRGBA8 %}GPPackRGBA8(psOut.{{Out.Name}}){% else %}psOut.{{Out.Name}}{% endif %};
   {% endfor %}
   {% else %}
-  res.color0 = {% if Kernel.GPOutputs.0.IsUint %}GPPackRGBA8({{Kernel.GPFuncName}}(a_in.v)){% else %}{{Kernel.GPFuncName}}(a_in.v){% endif %};
+  res.color0 = {% if Kernel.GPOutputs.0.PackRGBA8 %}GPPackRGBA8({{Kernel.GPFuncName}}(a_in.v)){% else %}{{Kernel.GPFuncName}}(a_in.v){% endif %};
   {% endif %}
   return res;
 }
