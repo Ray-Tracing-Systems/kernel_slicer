@@ -1,0 +1,11 @@
+{
+    "mainClass": "InstancedMeshes",
+    "options": {
+        "-reorderLoops": "YX"
+    },
+    "source": ["test_class.cpp"],
+    "includeProcess": [],
+    "includeIgnore": ["../../LiteMath", "../../LiteMathAux", "../../utils"],
+    "defines": {"KERNEL_SLICER": ""},
+    "end": ""
+}

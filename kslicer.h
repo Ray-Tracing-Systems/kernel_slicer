@@ -415,6 +415,7 @@ namespace kslicer
     bool checkThreadFlags = false;              ///<! used by RTV pattern; if Kernel.shouldCheckExitFlag --> insert check flags code in kernel
     bool isMega           = false;
     GP_STAGE gpStage      = GP_STAGE::NONE;     ///<! vertex or pixel shader of graphics pipeline (see graphics_pipeline.h)
+    bool     gpInstanced  = false;              ///<! vertex shader of instanced draws: the second argument is instance id
 
     std::string RetType;                         ///<! kernel return type
     std::string DeclCmd;                         ///<! used during class header to print declaration of current 'XXXCmd' for current 'kernel_XXX'

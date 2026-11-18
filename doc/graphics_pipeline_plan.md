@@ -5,7 +5,8 @@
 - этапы 2 и 3 (фронтенд и Vulkan/Slang, Vulkan 1.0) работают для тестов 080, 081 и демо 31, 32, 33 (`ktest.py` OK, без ошибок validation layers);
 - шаги 4a.1 (текстуры в Slang) и 4a.2 (GLSL-бэкенд) выполнены: все GP-примеры проходят на Slang и GLSL;
 - dynamic rendering (`-gp_dynamic_rendering 1`) выполнен, тесты проверяют оба варианта Vulkan;
-- этап 4 (ISPC), первая версия, выполнен: все GP-примеры проходят на ISPC, результат почти побитово совпадает с C++.
+- этап 4 (ISPC), первая версия, выполнен: все GP-примеры проходят на ISPC, результат почти побитово совпадает с C++;
+- instancing (2026-11-18): `DrawInstancedTriangles`, `DrawIndexedInstancedTriangles` на Slang и GLSL, тесты 083, 084, демо 35, см. 4b.
 
 Реализация в трансляторе: [graphics_pipeline.h](../graphics_pipeline.h), [graphics_pipeline.cpp](../graphics_pipeline.cpp),
 шаблоны `templates/inc_gp_vulkan.h/.cpp`, `templates_slang/generated_gp.slang`. Остальной код транслятора затронут точечными хуками.
@@ -23,6 +24,7 @@
 | Варьинги | только поля float, float2, float3, float4; все интерполируются с перспективной коррекцией |
 | Лейаут изображений на CPU | `LiteImage::Layout::TILED4x4` в `Image2D` (одноуровневые тайлы 4x4, адрес — сдвиги и маски) |
 | Индексированная отрисовка | есть (`DrawIndexedTriangles`) |
+| Instancing | `Draw[Indexed]InstancedTriangles(..., count, instCount, args...)`, номер экземпляра — второй аргумент VS, без `firstInstance` |
 | Клиппинг | в CPU-эталоне есть (near/far/guard band), в ISPC откладывается |
 
 ### API в одном месте
@@ -40,11 +42,14 @@ LiteRS::DrawTriangles(m_pipeline, this, &C::kernelVS_A, &C::kernelPS_A, vertNum,
 LiteRS::DrawTriangles(m_pipeline, this, &C::kernelVS_Depth, vertNum, args...);                           // только глубина
 LiteRS::DrawIndexedTriangles(m_pipeline, this, &C::kernelVS_A, &C::kernelPS_A, m_indices.data(), n, args...);
 LiteRS::DrawIndexedTriangles(m_pipeline, this, &C::kernelVS_Depth, m_indices.data(), n, args...);
+LiteRS::DrawInstancedTriangles(m_pipeline, this, &C::kernelVS_I, &C::kernelPS_A, vertNum, instNum, args...);  // экземпляры
+LiteRS::DrawIndexedInstancedTriangles(m_pipeline, this, &C::kernelVS_I, &C::kernelPS_A, m_indices.data(), n, instNum, args...);
 kernel2D_Post(w, h, a_out);                // обычный кернел читает цели как Image2D
 
 // шейдеры
 float4 C::kernelVS_A(uint32_t a_vertId, Args... a_args, Varyings* a_out) const; // возвращает clip-позицию
 float4 C::kernelVS_Depth(uint32_t a_vertId, Args... a_args) const;
+float4 C::kernelVS_I(uint32_t a_vertId, uint32_t a_instId, Args... a_args, Varyings* a_out) const;   // VS instanced-отрисовок
 float4 C::kernelPS_A(const Varyings& a_in) const;                                // цвет цели 0
 GBuf   C::kernelPS_B(const Varyings& a_in) const;                                // структура из float4: цели 0, 1, ...
 ```
@@ -289,8 +294,26 @@ linear|tiled|bins] [--binsize N] [--size N]`) печатает время ста
 |---|------|----------------|
 | 11 | Wireframe | каркас поверх сплошной заливки; первый вариант — в PS по барицентрическим координатам (VS выдаёт барицентрики как варьинг): без новых фич Vulkan и без новых команд. Позже, при необходимости, `LiteRS::DrawLines` (`LINE_LIST`, Vulkan 1.0) с растеризатором отрезков на CPU; `polygonMode = LINE` требует `fillModeNonSolid` и в ядро 1.0 не входит |
 | 14 | Постобработка | рендер во `float4`, затем bloom/тонмаппинг обычными кернелами (по мотивам app 05/28) |
-| 16 | Instancing | много копий меша; нужно расширение API: номер экземпляра в VS (`DrawTrianglesInstanced` или аргумент) |
+| ~~16~~ | ~~Instancing~~ | сделано: app 35, см. 4b |
 | 18 | Гибрид растеризации и трассировки лучей | G-буфер растеризацией, тени через `m_pAccelStruct->RayQuery_AnyHit` в обычном кернеле (ray query) |
+
+## 4b. Instancing (сделано 2026-11-18)
+
+- API: `DrawInstancedTriangles(pipe, this, &VS, [&PS,] vertNum, instNum, args...)` и
+  `DrawIndexedInstancedTriangles(pipe, this, &VS, [&PS,] m_indices.data(), indexNum, instNum, args...)`, как
+  `vkCmdDraw[Indexed]` с `instanceCount`. VS: `float4 VS(uint32_t a_vertexId, uint32_t a_instanceId, Args..., V* a_out) const`.
+  Данные экземпляров VS читает из членов класса по `a_instanceId`. `firstInstance` нет: смещение передаётся аргументом VS.
+- Один VS нельзя использовать и в instanced, и в обычной отрисовке (сигнатуры разные) — транслятор выдаёт ошибку.
+- CPU: `detail::DrawInstancedStream` выполняет VS для всех экземпляров одним вызовом и рисует один поток треугольников
+  в порядке Vulkan (экземпляр 0, затем 1, ...). ISPC пока выполняет instanced-отрисовки C++-кодом (`DrawBackend` не вызывается).
+- Транслятор: `GPCommand::instanced`, суффикс `_Instanced` в имени отрисовки, `KernelInfo::gpInstanced` (у VS убирается
+  второй аргумент), `SV_InstanceID` / `gl_InstanceIndex`, `a_instNum` в `Draw*Cmd`. Неизвестная команда `LiteRS::` в
+  управляющей функции — теперь ошибка (раньше вызов молча оставался в host-коде).
+- Попутно исправлено: вызовы одной пары шейдеров с разными буферами индексов (раньше все рисовали первым буфером, теперь
+  буфер — аргумент `Draw*Cmd`), буферы индексов создаются с `VK_BUFFER_USAGE_INDEX_BUFFER_BIT`.
+- Тесты: 083 (`DrawInstancedTriangles` + проход только с глубиной), 084 (`DrawIndexedInstancedTriangles`, данные
+  экземпляров в `std::vector<float4x4>`, разные буферы индексов, обычная отрисовка в том же проходе, indexed instanced только с
+  глубиной). Демо 35: ~1000 экземпляров трёх мешей и пол.
 
 ## 5a. Двухуровневый тайлинг (сделано 2026-11-15)
 

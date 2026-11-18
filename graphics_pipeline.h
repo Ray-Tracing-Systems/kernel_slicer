@@ -53,8 +53,8 @@ namespace kslicer
     std::string pipeline;      ///<! LiteRS::Pipeline member
     std::string vsKernel;      ///<! 'kernelVS_XXX'
     std::string psKernel;      ///<! 'kernelPS_XXX', empty for depth only pass
-    bool        indexed = false;
-    std::string indexBuffer;   ///<! member vector with indices for indexed draw
+    bool        indexed   = false;
+    bool        instanced = false; ///<! DrawInstancedTriangles, DrawIndexedInstancedTriangles
   };
 
   /**
@@ -67,15 +67,17 @@ namespace kslicer
     std::string              pipeline;
     std::string              vsKernel;
     std::string              psKernel;
-    bool                     indexed = false;
+    bool                     indexed   = false;
+    bool                     instanced = false;
     std::string              indexBuffer;
-    std::vector<const void*> countAndArgs;  ///<! clang::Expr* of vertex/index count and of additional vertex shader arguments
+    std::vector<const void*> countAndArgs;  ///<! clang::Expr* of vertex/index count, [instance count,] additional vertex shader arguments
   };
 
   struct GraphicsInfo
   {
     kslicer::umap<std::string, GPPipelineInfo> pipelines; ///<! by member name
     kslicer::umap<std::string, GPDrawInfo>     draws;     ///<! by GPDrawInfo::name
+    kslicer::uset<std::string>                 indexBuffers; ///<! member vectors used as index buffers; calls of one draw may use different index buffers
     bool Used() const { return !draws.empty(); }
   };
 
@@ -83,8 +85,11 @@ namespace kslicer
   std::string GraphicsShortKernelName(const std::string& a_kernelName);   ///<! 'kernelVS_XXX' --> 'VS_XXX', otherwise empty string
   bool        IsHostOnlyMemberType(const std::string& a_typeName);         ///<! LiteRS objects are used on host only, they are not placed to UBO
 
-  /// parses LiteRS command, returns false if a_call is not a LiteRS command
+  /// parses LiteRS command, returns false if a_call is not a LiteRS command (or is an unknown LiteRS function)
   bool        ParseGraphicsCommand(const clang::CallExpr* a_call, GPCommand& a_cmd);
+
+  /// returns true if a_call is a call of a function from namespace LiteRS
+  bool        IsLiteRSCall(const clang::CallExpr* a_call);
 
   /// name of generated function for draw command 'Draw_<VS>_<PS>_<pipeline>'
   std::string GraphicsDrawName(const GPCommand& a_cmd);

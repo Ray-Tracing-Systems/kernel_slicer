@@ -25,10 +25,10 @@ struct KernelArgs
 };
 
 [shader("vertex")]
-GPVertexOut main(uint a_vertexId : SV_VertexID, uniform KernelArgs kgenArgs)
+GPVertexOut main(uint a_vertexId : SV_VertexID, {% if Kernel.GPInstanced %}uint a_instanceId : SV_InstanceID, {% endif %}uniform KernelArgs kgenArgs)
 {
   GPVertexOut res;
-  res.pos = {{Kernel.GPFuncName}}(a_vertexId{% for UserArg in Kernel.UserArgs %}, kgenArgs.{{UserArg.Name}}{% endfor %}{% if Kernel.GPHasVaryings %}, res.v{% endif %});
+  res.pos = {{Kernel.GPFuncName}}(a_vertexId{% if Kernel.GPInstanced %}, a_instanceId{% endif %}{% for UserArg in Kernel.UserArgs %}, kgenArgs.{{UserArg.Name}}{% endfor %}{% if Kernel.GPHasVaryings %}, res.v{% endif %});
   return res;
 }
 {% else %}

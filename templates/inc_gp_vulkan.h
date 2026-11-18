@@ -21,7 +21,7 @@
   };
   VkPipelineLayout {{Draw.Name}}Layout   = VK_NULL_HANDLE;
   VkPipeline       {{Draw.Name}}Pipeline = VK_NULL_HANDLE;
-  virtual void {{Draw.Name}}Cmd(VkCommandBuffer a_commandBuffer, VkDescriptorSet a_dsVS, VkDescriptorSet a_dsPS, uint32_t a_count{% for Arg in Draw.UserArgs %}, {{Arg.Type}} {{Arg.Name}}{% endfor %});
+  virtual void {{Draw.Name}}Cmd(VkCommandBuffer a_commandBuffer, VkDescriptorSet a_dsVS, VkDescriptorSet a_dsPS, {% if Draw.Indexed %}VkBuffer a_indexBuffer, {% endif %}uint32_t a_count{% if Draw.Instanced %}, uint32_t a_instNum{% endif %}{% for Arg in Draw.UserArgs %}, {{Arg.Type}} {{Arg.Name}}{% endfor %});
   {% endfor %}
   VkMemoryBarrier m_gpBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_MEMORY_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT };
   virtual void InitGraphics();    ///< creates render passes, framebuffers and graphics pipelines; called by CommitDeviceData()

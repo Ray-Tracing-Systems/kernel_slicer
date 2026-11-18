@@ -413,7 +413,7 @@ void {{MainClassName}}{{MainClassSuffix}}::Clear_{{Pipe.Name}}Cmd(VkCommandBuffe
 {% endfor %}
 {% for Draw in GPDraws %}
 
-void {{MainClassName}}{{MainClassSuffix}}::{{Draw.Name}}Cmd(VkCommandBuffer a_commandBuffer, VkDescriptorSet a_dsVS, VkDescriptorSet a_dsPS, uint32_t a_count{% for Arg in Draw.UserArgs %}, {{Arg.Type}} {{Arg.Name}}{% endfor %})
+void {{MainClassName}}{{MainClassSuffix}}::{{Draw.Name}}Cmd(VkCommandBuffer a_commandBuffer, VkDescriptorSet a_dsVS, VkDescriptorSet a_dsPS, {% if Draw.Indexed %}VkBuffer a_indexBuffer, {% endif %}uint32_t a_count{% if Draw.Instanced %}, uint32_t a_instNum{% endif %}{% for Arg in Draw.UserArgs %}, {{Arg.Type}} {{Arg.Name}}{% endfor %})
 {
   const LiteRS::Pipeline& state = {{Draw.Pipeline}};
 
@@ -473,10 +473,10 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Draw.Name}}Cmd(VkCommandBuffer a_co
   vkCmdPushConstants(a_commandBuffer, {{Draw.Name}}Layout, VK_SHADER_STAGE_VERTEX_BIT, 0, uint32_t(sizeof(pcData)), &pcData);
 
   {% if Draw.Indexed %}
-  vkCmdBindIndexBuffer(a_commandBuffer, m_vdata.{{Draw.IndexBuffer}}Buffer, 0, VK_INDEX_TYPE_UINT32);
-  vkCmdDrawIndexed(a_commandBuffer, a_count, 1, 0, 0, 0);
+  vkCmdBindIndexBuffer(a_commandBuffer, a_indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+  vkCmdDrawIndexed(a_commandBuffer, a_count, {% if Draw.Instanced %}a_instNum{% else %}1{% endif %}, 0, 0, 0);
   {% else %}
-  vkCmdDraw(a_commandBuffer, a_count, 1, 0, 0);
+  vkCmdDraw(a_commandBuffer, a_count, {% if Draw.Instanced %}a_instNum{% else %}1{% endif %}, 0, 0);
   {% endif %}
   {% if GPDynamicRendering %}
   vkCmdEndRendering(a_commandBuffer);

@@ -66,11 +66,17 @@ static std::string MethodNameOf(const clang::Expr* a_expr)
   return pRef->getDecl()->getNameAsString();
 }
 
-bool kslicer::ParseGraphicsCommand(const clang::CallExpr* a_call, GPCommand& a_cmd)
+bool kslicer::IsLiteRSCall(const clang::CallExpr* a_call)
 {
   const clang::FunctionDecl* pFunc = a_call->getDirectCallee();
-  if(pFunc == nullptr || pFunc->getQualifiedNameAsString().find("LiteRS::") != 0)
+  return pFunc != nullptr && pFunc->getQualifiedNameAsString().find("LiteRS::") == 0;
+}
+
+bool kslicer::ParseGraphicsCommand(const clang::CallExpr* a_call, GPCommand& a_cmd)
+{
+  if(!IsLiteRSCall(a_call))
     return false;
+  const clang::FunctionDecl* pFunc = a_call->getDirectCallee();
 
   const std::string fname = pFunc->getNameAsString();
   a_cmd = GPCommand();
@@ -83,14 +89,17 @@ bool kslicer::ParseGraphicsCommand(const clang::CallExpr* a_call, GPCommand& a_c
     a_cmd.kind = GPCommand::KIND::CLEAR;
     return true;
   }
-  else if(fname != "DrawTriangles" && fname != "DrawIndexedTriangles")
+  else if(fname != "DrawTriangles" && fname != "DrawIndexedTriangles" && fname != "DrawInstancedTriangles" && fname != "DrawIndexedInstancedTriangles")
     return false;
 
   // DrawTriangles(pipe, this, &C::kernelVS_X, [&C::kernelPS_X,] count, args...)
   // DrawIndexedTriangles(pipe, this, &C::kernelVS_X, [&C::kernelPS_X,] m_indices.data(), count, args...)
+  // DrawInstancedTriangles(pipe, this, &C::kernelVS_X, [&C::kernelPS_X,] count, instCount, args...)
+  // DrawIndexedInstancedTriangles(pipe, this, &C::kernelVS_X, [&C::kernelPS_X,] m_indices.data(), count, instCount, args...)
   //
-  a_cmd.kind    = GPCommand::KIND::DRAW;
-  a_cmd.indexed = (fname == "DrawIndexedTriangles");
+  a_cmd.kind      = GPCommand::KIND::DRAW;
+  a_cmd.indexed   = (fname == "DrawIndexedTriangles"   || fname == "DrawIndexedInstancedTriangles");
+  a_cmd.instanced = (fname == "DrawInstancedTriangles" || fname == "DrawIndexedInstancedTriangles");
   if(a_call->getNumArgs() < 4)
     return true;
   a_cmd.vsKernel = MethodNameOf(a_call->getArg(2));
@@ -109,7 +118,7 @@ bool kslicer::ParseGraphicsCommand(const clang::CallExpr* a_call, GPCommand& a_c
 std::string kslicer::GraphicsDrawName(const GPCommand& a_cmd)
 {
   const std::string psName = (a_cmd.psKernel != "") ? a_cmd.psKernel.substr(PS_PREFIX.size()) : std::string("DepthOnly");
-  return "Draw_" + a_cmd.vsKernel.substr(VS_PREFIX.size()) + "_" + psName + "_" + a_cmd.pipeline + (a_cmd.indexed ? "_Indexed" : "");
+  return "Draw_" + a_cmd.vsKernel.substr(VS_PREFIX.size()) + "_" + psName + "_" + a_cmd.pipeline + (a_cmd.indexed ? "_Indexed" : "") + (a_cmd.instanced ? "_Instanced" : "");
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -183,18 +192,21 @@ namespace
   class CommandsVisitor : public clang::RecursiveASTVisitor<CommandsVisitor>
   {
   public:
-    CommandsVisitor(std::vector<std::pair<kslicer::GPCommand, const clang::CallExpr*> >& a_out) : m_out(a_out) {}
+    CommandsVisitor(std::vector<std::pair<kslicer::GPCommand, const clang::CallExpr*> >& a_out, const clang::SourceManager& a_sm) : m_out(a_out), m_sm(a_sm) {}
 
     bool VisitCallExpr(clang::CallExpr* a_call)
     {
       kslicer::GPCommand cmd;
       if(kslicer::ParseGraphicsCommand(a_call, cmd))
         m_out.push_back(std::make_pair(cmd, a_call));
+      else if(kslicer::IsLiteRSCall(a_call)) // otherwise the call would silently remain in generated host code
+        kslicer::PrintError("LiteRS: unknown command '" + a_call->getDirectCallee()->getNameAsString() + "' in control function", a_call->getSourceRange(), m_sm);
       return true;
     }
 
   private:
     std::vector<std::pair<kslicer::GPCommand, const clang::CallExpr*> >& m_out;
+    const clang::SourceManager& m_sm;
   };
 };
 
@@ -221,7 +233,7 @@ void kslicer::ProcessGraphicsCommands(MainFuncInfo& a_mainFunc, MainClassInfo& a
     return;
 
   std::vector<std::pair<GPCommand, const clang::CallExpr*> > commands;
-  CommandsVisitor visitor(commands);
+  CommandsVisitor visitor(commands, a_compiler.getSourceManager());
   visitor.TraverseStmt(const_cast<clang::Stmt*>(pDef->getBody()));
 
   const auto& sm = a_compiler.getSourceManager();
@@ -275,8 +287,22 @@ void kslicer::ProcessGraphicsCommands(MainFuncInfo& a_mainFunc, MainClassInfo& a
         kslicer::PrintError("LiteRS: shader '" + shaderName + "' is not found among member functions of the main class", call->getSourceRange(), sm);
         continue;
       }
-      pKernel->second.usedInMainFunc = true;
-      pKernel->second.gpStage        = GraphicsStageByKernelName(shaderName);
+      // instance id is the second argument of vertex shader of instanced draws, so one vertex shader can not be used in both kinds of draws
+      //
+      KernelInfo& kernel = pKernel->second;
+      if(kernel.gpStage == GP_STAGE::VERTEX && kernel.gpInstanced != cmd.instanced)
+        kslicer::PrintError("LiteRS: vertex shader '" + shaderName + "' is used both in instanced and in not instanced draws, this is not supported", call->getSourceRange(), sm);
+      if(GraphicsStageByKernelName(shaderName) == GP_STAGE::VERTEX && cmd.instanced)
+      {
+        const clang::CXXMethodDecl* pDecl = kernel.astNode;
+        const bool idIsOk = (pDecl != nullptr && pDecl->getNumParams() >= 2 && pDecl->getParamDecl(1)->getType()->isUnsignedIntegerType() &&
+                             !pDecl->getParamDecl(1)->getType()->isPointerType());
+        if(!idIsOk)
+          kslicer::PrintError("LiteRS: vertex shader '" + shaderName + "' of instanced draw must be 'float4 " + shaderName + "(uint32_t a_vertexId, uint32_t a_instanceId, ...) const'", call->getSourceRange(), sm);
+      }
+      kernel.usedInMainFunc = true;
+      kernel.gpStage        = GraphicsStageByKernelName(shaderName);
+      kernel.gpInstanced    = cmd.instanced && (kernel.gpStage == GP_STAGE::VERTEX);
       a_mainFunc.UsedKernels.insert(shaderName);
     }
 
@@ -285,8 +311,10 @@ void kslicer::ProcessGraphicsCommands(MainFuncInfo& a_mainFunc, MainClassInfo& a
     draw.vsKernel    = cmd.vsKernel;
     draw.psKernel    = cmd.psKernel;
     draw.indexed     = cmd.indexed;
-    draw.indexBuffer = cmd.indexBuffer;
+    draw.instanced   = cmd.instanced;
     draw.name        = GraphicsDrawName(cmd);
+    if(cmd.indexBuffer != "")
+      a_codeInfo.graphics.indexBuffers.insert(cmd.indexBuffer);
     a_codeInfo.graphics.draws[draw.name] = draw;
   }
 }
@@ -299,10 +327,11 @@ void kslicer::PrepareGraphicsKernel(KernelInfo& a_kernel)
     return;
   }
 
-  // 'VS(uint32_t a_vertexId, Args..., V* a_out)': vertex id comes from rasterizer, varyings go to rasterizer; other args are push constants
+  // 'VS(uint32_t a_vertexId, [uint32_t a_instanceId,] Args..., V* a_out)': vertex and instance ids come from rasterizer,
+  // varyings go to rasterizer; other args are push constants
   //
   std::vector<KernelInfo::ArgInfo> args;
-  for(size_t i = 1; i < a_kernel.args.size(); i++)
+  for(size_t i = a_kernel.gpInstanced ? 2 : 1; i < a_kernel.args.size(); i++)
   {
     const bool isLast = (i + 1 == a_kernel.args.size());
     if(isLast && a_kernel.args[i].IsPointer())
@@ -379,6 +408,7 @@ void kslicer::AddGraphicsToKernelJson(nlohmann::json& a_kernelJson, const Kernel
 {
   a_kernelJson["IsGraphics"]       = (a_kernel.gpStage != GP_STAGE::NONE);
   a_kernelJson["GPStage"]          = int(a_kernel.gpStage);
+  a_kernelJson["GPInstanced"]      = a_kernel.gpInstanced;
   a_kernelJson["DSetId"]           = (a_kernel.gpStage == GP_STAGE::PIXEL) ? 1 : 0; // vertex shader uses set 0, pixel shader uses set 1
   a_kernelJson["GPFuncName"]       = a_kernel.name;
   a_kernelJson["GPHasVaryings"]    = false;
@@ -478,6 +508,9 @@ void kslicer::AddGraphicsToHostJson(nlohmann::json& a_hostJson, const MainClassI
     a_hostJson["GPRenderTargets"].push_back(var);
   }
 
+  for(auto& var : a_hostJson["ClassVectorVars"]) // index buffers of draws need VK_BUFFER_USAGE_INDEX_BUFFER_BIT
+    var["IsGPIndexBuffer"] = (a_classInfo.graphics.indexBuffers.find(var["Name"].get<std::string>()) != a_classInfo.graphics.indexBuffers.end());
+
   for(auto& mainFunc : a_hostJson["MainFunctions"])
   {
     for(auto& ds : mainFunc["DescriptorSets"])
@@ -530,7 +563,7 @@ void kslicer::AddGraphicsToHostJson(nlohmann::json& a_hostJson, const MainClassI
     drawJson["PS"]          = GraphicsShortKernelName(draw.psKernel);
     drawJson["PSFile"]      = draw.psKernel + ".frag.spv";
     drawJson["Indexed"]     = draw.indexed;
-    drawJson["IndexBuffer"] = draw.indexBuffer;
+    drawJson["Instanced"]   = draw.instanced;
     drawJson["HasDepth"]    = (pPipe->second.depthTarget != "");
 
     drawJson["PassTargets"] = std::vector<nlohmann::json>(); // all color targets of pipeline object: attachments of dynamic rendering
@@ -620,10 +653,13 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeGraphicsCommandCmdString(cl
     strOut << "m_allGeneratedDS[" << descriptorSetOf(a_cmd.psKernel) << "]";
   else
     strOut << "VK_NULL_HANDLE";
+  if(a_cmd.indexed)
+    strOut << ", m_vdata." << a_cmd.indexBuffer << "Buffer";
   for(size_t i = 0; i < a_cmd.countAndArgs.size(); i++)
   {
     const auto pArg = static_cast<const clang::Expr*>(a_cmd.countAndArgs[i]);
-    strOut << ", " << ((i == 0) ? "uint32_t(" + RecursiveRewrite(pArg) + ")" : RecursiveRewrite(pArg));
+    const bool isCount = (i == 0) || (i == 1 && a_cmd.instanced); // vertex (index) count and instance count
+    strOut << ", " << (isCount ? "uint32_t(" + RecursiveRewrite(pArg) + ")" : RecursiveRewrite(pArg));
   }
   strOut << ");" << std::endl;
   strOut << "  vkCmdPipelineBarrier(a_commandBuffer, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 1, &m_gpBarrier, 0, nullptr, 0, nullptr);" << std::endl;
@@ -674,6 +710,8 @@ void kslicer::AddGraphicsToISPCJson(nlohmann::json& a_kernelsJson, const MainCla
     const auto pPipe = a_classInfo.graphics.pipelines.find(draw.pipeline);
     const auto pVS   = a_classInfo.kernels.find(draw.vsKernel);
     if(pPipe == a_classInfo.graphics.pipelines.end() || pVS == a_classInfo.kernels.end() || pVS->second.astNode == nullptr)
+      continue;
+    if(draw.instanced) // LiteRS::DrawBackend does not support instancing yet, LiteRS executes such draws by C++ code
       continue;
     const clang::CXXMethodDecl* pVSDecl = pVS->second.astNode;
     const bool hasPS = (draw.psKernel != "");

@@ -33,10 +33,10 @@ void main()
 {
   {% if Kernel.GPHasVaryings %}
   {{Kernel.GPVaryings}} varyings;
-  gl_Position = {{Kernel.GPFuncName}}(uint(gl_VertexIndex){% for UserArg in Kernel.UserArgs %}, kgenArgs.{{UserArg.Name}}{% endfor %}, varyings);
+  gl_Position = {{Kernel.GPFuncName}}(uint(gl_VertexIndex){% if Kernel.GPInstanced %}, uint(gl_InstanceIndex){% endif %}{% for UserArg in Kernel.UserArgs %}, kgenArgs.{{UserArg.Name}}{% endfor %}, varyings);
   gpVaryings  = varyings;
   {% else %}
-  gl_Position = {{Kernel.GPFuncName}}(uint(gl_VertexIndex){% for UserArg in Kernel.UserArgs %}, kgenArgs.{{UserArg.Name}}{% endfor %});
+  gl_Position = {{Kernel.GPFuncName}}(uint(gl_VertexIndex){% if Kernel.GPInstanced %}, uint(gl_InstanceIndex){% endif %}{% for UserArg in Kernel.UserArgs %}, kgenArgs.{{UserArg.Name}}{% endfor %});
   {% endif %}
 }
 {% else %}

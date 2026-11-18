@@ -111,14 +111,18 @@ rasterization of 4x4 blocks in ISPC, triangle setup and binning in C++ (`LiteRS:
 | ID | Feature | Slang | GLSL | CUDA/HIP | ISPC | Tests and samples |
 |----|---------|:-----:|:----:|:--------:|:----:|-------------------|
 | `gp_draw` | `LiteRS::DrawTriangles` with VS and PS, render targets, depth test, `LiteRS::Clear` | ✅ | ✅ | ❌ | ✅ | 080, 081, app 32, app 34 |
-| `gp_indexed` | `LiteRS::DrawIndexedTriangles` (index buffer is a member vector) | ✅ | ✅ | ❌ | ✅ | 081, app 31, app 32, app 34 |
+| `gp_indexed` | `LiteRS::DrawIndexedTriangles` (index buffer is a member vector; calls of one shader pair may use different index buffers) | ✅ | ✅ | ❌ | ✅ | 081, 084, app 31, app 32, app 34, app 35 |
+| `gp_instanced` | `LiteRS::DrawInstancedTriangles`, `LiteRS::DrawIndexedInstancedTriangles` (instance id is the second argument of VS), also depth only | ✅ | ✅ | ❌ | 🟡⁹ | 083, 084, app 35 |
 | `gp_depth_only` | Depth only pass (VS without PS), shadow map read in PS | ✅ | ✅ | ❌ | ✅ | app 32 |
 | `gp_mrt` | Several color targets (PS returns a struct of `float4`) | ✅ | ✅ | ❌ | ✅ | app 33 |
 | `gp_textures_in_ps` | Texture with sampler in pixel shader | ✅ | ✅ | ❌ | ✅ | app 31 |
-| `gp_dynamic_rendering` | Vulkan 1.3 dynamic rendering and extended dynamic state (`-gp_dynamic_rendering 1`) | ✅ | ✅ | ❌ | ❌ | 080, 081, app 31, app 32, app 33 |
+| `gp_dynamic_rendering` | Vulkan 1.3 dynamic rendering and extended dynamic state (`-gp_dynamic_rendering 1`) | ✅ | ✅ | ❌ | ❌ | 080, 081, 083, 084, app 31, app 32, app 33, app 35 |
 | `gp_namespaces` | `LiteRS` and `LiteMath` names with and without namespace (`using`, namespace alias, argument dependent lookup) | ✅ | ✅ | ❌ | ✅ | 081 |
 | `gp_resize` | `ResizeGraphicsTargets()` after host image resize, before recording commands; preserves scene buffers and updates target descriptors | ✅ | ✅ | ❌ | ❔ | 080 |
 | `gp_raw_uint4` | Raw `Image2D<uint4>` attachments (`RGBA32_UINT`), `uint4` pixel outputs, mixed float/uint MRT and `clearUintColor`; integer attachments ignore blending | ✅ | ✅ | ❌ | ❌ | 082 |
+
+⁹ ISPC: instanced draws give correct results, but they are executed by the C++ implementation of LiteRS
+(`LiteRS::DrawBackend` does not support instancing yet).
 
 ### Ray tracing and virtual functions
 

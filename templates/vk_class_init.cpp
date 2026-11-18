@@ -1113,7 +1113,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
   {% else if HasCommitAppendedFunc and Var.AppendId >= 0 %}
   // '{{Var.Name}}' is created in CreateAppendGroupBuffers({{Var.AppendGroup}}): each group of CommitAppendedData() has its own allocation
   {% else %}
-  m_vdata.{{Var.Name}}Buffer = vk_utils::createBuffer(m_device, {{Var.Name}}{{Var.AccessSymb}}capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  m_vdata.{{Var.Name}}Buffer = vk_utils::createBuffer(m_device, {{Var.Name}}{{Var.AccessSymb}}capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT{% if existsIn(Var, "IsGPIndexBuffer") and Var.IsGPIndexBuffer %} | VK_BUFFER_USAGE_INDEX_BUFFER_BIT{% endif %});
   memberVectors.push_back(m_vdata.{{Var.Name}}Buffer);
   {% endif %}
   {% endfor %}
