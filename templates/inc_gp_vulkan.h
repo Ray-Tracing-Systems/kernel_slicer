@@ -26,3 +26,9 @@
   VkMemoryBarrier m_gpBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_MEMORY_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT };
   virtual void InitGraphics();    ///< creates render passes, framebuffers and graphics pipelines; called by CommitDeviceData()
   virtual void DestroyGraphics();
+  void InitGraphicsTargets();
+  void DestroyGraphicsTargets();
+  {% for Target in GPRenderTargets %}
+  VkDeviceMemory m_gpMemory_{{Target.Name}} = VK_NULL_HANDLE;
+  VkExtent2D m_gpSize_{{Target.Name}} = {};
+  {% endfor %}

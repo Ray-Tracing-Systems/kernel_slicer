@@ -385,6 +385,10 @@ void {{MainClassName}}{{MainClassSuffix}}::DeleteDeviceData()
 {
   if(m_commitCount == 0)
     return;
+  {% if HasGraphics %}
+  DestroyGraphics(); // framebuffers must be destroyed before their image views
+  DestroyGraphicsTargets();
+  {% endif %}
   vkDestroyBuffer(m_device, m_classDataBuffer, nullptr);
   {% for Table in RemapTables %}
   vkDestroyBuffer(m_device, m_vdata.{{Table.Name}}RemapTableBuffer, nullptr);
@@ -404,10 +408,12 @@ void {{MainClassName}}{{MainClassSuffix}}::DeleteDeviceData()
   vkDestroyBuffer(m_device, m_vdata.localTempBuffer, nullptr);
   {% endif %}
   {% for Var in ClassTextureVars %}
+  {% if not Var.IsRenderTarget %}
   vkDestroyImage    (m_device, m_vdata.{{Var.Name}}Texture, nullptr);
   vkDestroyImageView(m_device, m_vdata.{{Var.Name}}View, nullptr);
   if(m_vdata.{{Var.Name}}Sampler != VK_NULL_HANDLE)
      vkDestroySampler(m_device, m_vdata.{{Var.Name}}Sampler, nullptr);
+  {% endif %}
   {% endfor %}
   {% for Var in ClassTexArrayVars %}
   for(auto obj : m_vdata.{{Var.Name}}ArrayTexture)
@@ -1112,11 +1118,13 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
   {% endif %}
   {% endfor %}
   {% for Var in ClassTextureVars %}
+  {% if not Var.IsRenderTarget %}
   m_vdata.{{Var.Name}}Texture = CreateTexture2D({{Var.Name}}{{Var.AccessSymb}}width(), {{Var.Name}}{{Var.AccessSymb}}height(), VkFormat({{Var.Format}}), {{Var.Usage}});
   {% if Var.NeedSampler %}
   m_vdata.{{Var.Name}}Sampler = CreateSampler({{Var.Name}}->sampler());
   {% endif %}
   memberTextures.push_back(m_vdata.{{Var.Name}}Texture);
+  {% endif %}
   {% endfor %}
   
   {% for Var in ClassTexArrayVars %}
@@ -1150,6 +1158,9 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
   memberVectors.push_back(m_vdata.localTempBuffer);
   {% endif %}
   AllocMemoryForMemberBuffersAndImages(memberVectors, memberTextures);
+  {% if HasGraphics %}
+  InitGraphicsTargets();
+  {% endif %}
   {% if HasCommitAppendedFunc %}
   for(uint32_t groupId = 0; groupId < uint32_t(m_appendGroups.size()); groupId++)
     CreateAppendGroupBuffers(groupId, false); // also remembers size() and capacity() of vectors: they are copied to GPU by UpdateDeviceData()
@@ -1719,9 +1730,11 @@ void {{MainClassName}}{{MainClassSuffix}}::AllocMemoryForMemberBuffersAndImages(
   VkMemoryRequirements memoryRequirements;
 
   {% for Var in ClassTextureVars %}
+  {% if not Var.IsRenderTarget %}
   formats.push_back(VkFormat({{Var.Format}}));
   views.push_back(&m_vdata.{{Var.Name}}View);
   textures.push_back(m_vdata.{{Var.Name}}Texture);
+  {% endif %}
   {% endfor %}
   {% for Var in ClassTexArrayVars %}
   for(size_t i=0;i< m_vdata.{{Var.Name}}ArrayTexture.size(); i++)

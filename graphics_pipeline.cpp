@@ -450,16 +450,19 @@ void kslicer::AddGraphicsToHostJson(nlohmann::json& a_hostJson, const MainClassI
   a_hostJson["HasGraphics"] = a_classInfo.graphics.Used();
   a_hostJson["GPPipelines"] = std::vector<nlohmann::json>();
   a_hostJson["GPDraws"]     = std::vector<nlohmann::json>();
+  a_hostJson["GPRenderTargets"] = std::vector<nlohmann::json>();
 
   // render targets are created with attachment usage, stay in GENERAL layout and are not copied from CPU
   //
   for(auto& var : a_hostJson["ClassTextureVars"])
   {
     var["Aspect"] = "VK_IMAGE_ASPECT_COLOR_BIT";
+    var["IsRenderTarget"] = false;
     bool isDepth = false;
     if(!a_classInfo.graphics.Used() || !IsGraphicsRenderTarget(a_classInfo, var["Name"].get<std::string>(), &isDepth))
       continue;
     var["NeedUpdate"] = false;
+    var["IsRenderTarget"] = true;
     if(isDepth)
     {
       var["Format"] = "VK_FORMAT_D32_SFLOAT";
@@ -468,6 +471,7 @@ void kslicer::AddGraphicsToHostJson(nlohmann::json& a_hostJson, const MainClassI
     }
     else
       var["Usage"]  = var["Usage"].get<std::string>() + " | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT";
+    a_hostJson["GPRenderTargets"].push_back(var);
   }
 
   for(auto& mainFunc : a_hostJson["MainFunctions"])

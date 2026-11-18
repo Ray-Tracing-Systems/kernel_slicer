@@ -686,7 +686,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         data["KernelsDecls"].push_back("virtual void " + cf.megakernel.DeclCmd + ";");
 
     for(const auto& k : a_classInfo.kernels)
-      if(k.second.pattern != PATTERN_TP::PATTERN_RTV)
+      if(k.second.pattern != PATTERN_TP::PATTERN_RTV && k.second.gpStage == kslicer::GP_STAGE::NONE)
         data["KernelsDecls"].push_back("virtual void " + k.second.DeclCmd + ";");
   }
   else

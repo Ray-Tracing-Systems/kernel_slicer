@@ -187,6 +187,9 @@ public:
 
 ## endfor
   virtual ~{{MainClassName}}{{MainClassSuffix}}();
+  {% if HasGraphics %}
+  void ResizeGraphicsTargets(); ///< host only: resize images on CPU first, then call before recording commands; preserves scene buffers
+  {% endif %}
 
   {% for SetterFunc in SetterFuncs %}
   {{SetterFunc}}

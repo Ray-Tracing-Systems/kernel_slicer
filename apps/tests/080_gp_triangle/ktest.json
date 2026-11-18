@@ -1,6 +1,7 @@
 {
     "variants": [
         {"name": "slang",    "backend": "slang", "kmake": "kmake.json"},
+        {"name": "slang_mega", "backend": "slang", "kmake": "kmake.json", "options": {"-megakernel": 1, "-vulkan_ver": 11, "-spirv_ver": 13}},
         {"name": "slang_dr", "backend": "slang", "kmake": "kmake.json", "options": {"-gp_dynamic_rendering": 1}},
         {"name": "glsl",     "backend": "glsl",  "kmake": "kmake.json"},
         {"name": "glsl_dr",  "backend": "glsl",  "kmake": "kmake.json", "options": {"-gp_dynamic_rendering": 1}},

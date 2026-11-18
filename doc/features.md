@@ -105,7 +105,7 @@ app 33. Images as kernel arguments and `ITexture2D` are not supported.
 ### Graphics pipeline
 
 Vertex and pixel shaders `kernelVS_/kernelPS_` with `LiteRS` commands in control functions
-(`apps/LiteMathAux/raster.h`, plan: [graphics_pipeline_plan.md](graphics_pipeline_plan.md)). Vulkan 1.0 by default, Vulkan 1.3 with `-gp_dynamic_rendering 1`; tests check both. ISPC: vertex and pixel shaders and
+(`apps/LiteMath/raster.h`, compatibility include in `apps/LiteMathAux/raster.h`, plan: [graphics_pipeline_plan.md](graphics_pipeline_plan.md)). Vulkan 1.0 by default, Vulkan 1.3 with `-gp_dynamic_rendering 1`; tests check both. ISPC: vertex and pixel shaders and
 rasterization of 4x4 blocks in ISPC, triangle setup and binning in C++ (`LiteRS::DrawBackend`).
 
 | ID | Feature | Slang | GLSL | CUDA/HIP | ISPC | Tests and samples |
@@ -117,6 +117,7 @@ rasterization of 4x4 blocks in ISPC, triangle setup and binning in C++ (`LiteRS:
 | `gp_textures_in_ps` | Texture with sampler in pixel shader | ✅ | ✅ | ❌ | ✅ | app 31 |
 | `gp_dynamic_rendering` | Vulkan 1.3 dynamic rendering and extended dynamic state (`-gp_dynamic_rendering 1`) | ✅ | ✅ | ❌ | ❌ | 080, 081, app 31, app 32, app 33 |
 | `gp_namespaces` | `LiteRS` and `LiteMath` names with and without namespace (`using`, namespace alias, argument dependent lookup) | ✅ | ✅ | ❌ | ✅ | 081 |
+| `gp_resize` | `ResizeGraphicsTargets()` after host image resize, before recording commands; preserves scene buffers and updates target descriptors | ✅ | ✅ | ❌ | ❔ | 080 |
 
 ### Ray tracing and virtual functions
 

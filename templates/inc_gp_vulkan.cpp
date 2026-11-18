@@ -58,6 +58,106 @@ static VkPipelineColorBlendAttachmentState GPMakeBlendState(LiteRS::BlendMode a_
   return state;
 }
 
+// Render targets have their own allocations so a growing viewport does not re-upload
+// geometry, textures, random generators or accumulation buffers.
+void {{MainClassName}}{{MainClassSuffix}}::InitGraphicsTargets()
+{
+  {% for Target in GPRenderTargets %}
+  {
+    auto& image = m_vdata.{{Target.Name}}Texture;
+    image = CreateTexture2D({{Target.Name}}{{Target.AccessSymb}}width(), {{Target.Name}}{{Target.AccessSymb}}height(), VkFormat({{Target.Format}}), {{Target.Usage}});
+    VkMemoryRequirements req;
+    vkGetImageMemoryRequirements(m_device, image, &req);
+    VkMemoryAllocateInfo alloc = {};
+    alloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    alloc.allocationSize = req.size;
+    alloc.memoryTypeIndex = vk_utils::findMemoryType(req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_physicalDevice);
+    VK_CHECK_RESULT(vkAllocateMemory(m_device, &alloc, nullptr, &m_gpMemory_{{Target.Name}}));
+    VK_CHECK_RESULT(vkBindImageMemory(m_device, image, m_gpMemory_{{Target.Name}}, 0));
+    m_vdata.{{Target.Name}}View = CreateView(VkFormat({{Target.Format}}), image);
+    m_gpSize_{{Target.Name}} = { {{Target.Name}}{{Target.AccessSymb}}width(), {{Target.Name}}{{Target.AccessSymb}}height() };
+  }
+  {% endfor %}
+}
+
+void {{MainClassName}}{{MainClassSuffix}}::DestroyGraphicsTargets()
+{
+  {% for Target in GPRenderTargets %}
+  vkDestroyImageView(m_device, m_vdata.{{Target.Name}}View, nullptr);
+  vkDestroyImage(m_device, m_vdata.{{Target.Name}}Texture, nullptr);
+  vkFreeMemory(m_device, m_gpMemory_{{Target.Name}}, nullptr);
+  m_vdata.{{Target.Name}}View = VK_NULL_HANDLE;
+  m_vdata.{{Target.Name}}Texture = VK_NULL_HANDLE;
+  m_gpMemory_{{Target.Name}} = VK_NULL_HANDLE;
+  m_gpSize_{{Target.Name}} = {};
+  {% endfor %}
+}
+
+void {{MainClassName}}{{MainClassSuffix}}::ResizeGraphicsTargets()
+{
+  if(m_commitCount == 0)
+    return;
+  bool changed = false;
+  {% for Target in GPRenderTargets %}
+  changed = changed || m_gpSize_{{Target.Name}}.width != {{Target.Name}}{{Target.AccessSymb}}width() || m_gpSize_{{Target.Name}}.height != {{Target.Name}}{{Target.AccessSymb}}height();
+  {% endfor %}
+  if(!changed)
+    return;
+  VK_CHECK_RESULT(vkDeviceWaitIdle(m_device));
+  DestroyGraphics();
+  DestroyGraphicsTargets();
+  InitGraphicsTargets();
+
+  auto copyHelper = m_pLastCopyHelper;
+  VkCommandBuffer cmd = copyHelper->CmdBuffer();
+  VK_CHECK_RESULT(vkResetCommandBuffer(cmd, 0));
+  VkCommandBufferBeginInfo begin = {};
+  begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+  begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+  VK_CHECK_RESULT(vkBeginCommandBuffer(cmd, &begin));
+  {% for Target in GPRenderTargets %}
+  {
+    VkImageMemoryBarrier barrier = {};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+    barrier.image = m_vdata.{{Target.Name}}Texture;
+    barrier.subresourceRange = { {{Target.Aspect}}, 0, 1, 0, 1 };
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+  }
+  {% endfor %}
+  VK_CHECK_RESULT(vkEndCommandBuffer(cmd));
+  vk_utils::executeCommandBufferNow(cmd, copyHelper->TransferQueue(), m_device);
+
+  {% for MainFunc in MainFunctions %}
+  {% for DS in MainFunc.DescriptorSets %}
+  {% for Arg in DS.Args %}
+  {% if Arg.IsTexture %}
+  {% for Target in GPRenderTargets %}
+  {% if Arg.NameOriginal == Target.Name %}
+  {
+    VkDescriptorImageInfo image = { {{Arg.SamplerName}}, m_vdata.{{Target.Name}}View, VK_IMAGE_LAYOUT_GENERAL };
+    VkWriteDescriptorSet write = {};
+    write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    write.dstSet = m_allGeneratedDS[{{DS.Id}}];
+    write.dstBinding = {{Arg.Id}};
+    write.descriptorCount = 1;
+    write.descriptorType = {{Arg.AccessDSType}};
+    write.pImageInfo = &image;
+    vkUpdateDescriptorSets(m_device, 1, &write, 0, nullptr);
+  }
+  {% endif %}
+  {% endfor %}
+  {% endif %}
+  {% endfor %}
+  {% endfor %}
+  {% endfor %}
+  InitGraphics();
+}
+
 void {{MainClassName}}{{MainClassSuffix}}::DestroyGraphics()
 {
   {% for Draw in GPDraws %}
