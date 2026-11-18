@@ -18,6 +18,7 @@ namespace clang
 {
   class CompilerInstance;
   class CallExpr;
+  class SourceManager;
 };
 
 namespace kslicer
@@ -73,11 +74,26 @@ namespace kslicer
     std::vector<const void*> countAndArgs;  ///<! clang::Expr* of vertex/index count, [instance count,] additional vertex shader arguments
   };
 
+  /**
+  \brief Call of a draw command with counts which are read from data of the class (members, 'm_vec.size()'): the counts are
+         known only on GPU, so they are written to indirect buffer by a compute shader and the draw is vkCmdDraw[Indexed]Indirect.
+         Counts from arguments and local variables of control function are passed to that shader as push constants.
+  */
+  struct GPIndirectDraw
+  {
+    uint32_t    id      = 0;     ///<! index of the command in indirect buffer
+    bool        indexed = false;
+    std::string countExpr;       ///<! shader expression of vertex (index) count, empty if it is computed on host
+    std::string instExpr;        ///<! shader expression of instance count, empty if it is computed on host (or is 1)
+  };
+
   struct GraphicsInfo
   {
     kslicer::umap<std::string, GPPipelineInfo> pipelines; ///<! by member name
     kslicer::umap<std::string, GPDrawInfo>     draws;     ///<! by GPDrawInfo::name
     kslicer::uset<std::string>                 indexBuffers; ///<! member vectors used as index buffers; calls of one draw may use different index buffers
+    std::vector<GPIndirectDraw>                indirectDraws;
+    kslicer::umap<std::string, uint32_t>       indirectDrawByCall; ///<! 'ControlFunc:line:column' of command call --> GPIndirectDraw::id
     bool Used() const { return !draws.empty(); }
   };
 
@@ -90,6 +106,9 @@ namespace kslicer
 
   /// returns true if a_call is a call of a function from namespace LiteRS
   bool        IsLiteRSCall(const clang::CallExpr* a_call);
+
+  /// key of a command call for GraphicsInfo::indirectDrawByCall
+  std::string GraphicsCallKey(const std::string& a_controlFunc, const clang::CallExpr* a_call, const clang::SourceManager& a_sm);
 
   /// name of generated function for draw command 'Draw_<VS>_<PS>_<pipeline>'
   std::string GraphicsDrawName(const GPCommand& a_cmd);

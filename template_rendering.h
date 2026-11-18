@@ -33,6 +33,7 @@ namespace kslicer
 
   /// graphics pipeline (graphics_pipeline.cpp): pipelines and draws for host code templates
   void AddGraphicsToHostJson(nlohmann::json& a_hostJson, const MainClassInfo& a_classInfo);
+  nlohmann::json GraphicsIndirectDrawsJson(const MainClassInfo& a_classInfo); ///<! 'GPIndirectDraws' for update shader of indirect draws, see graphics_pipeline.cpp
 
   nlohmann::json PrepareUBOJson(MainClassInfo& a_classInfo,
                                 const std::vector<kslicer::DataMemberInfo>& a_dataMembers,

@@ -160,6 +160,21 @@ void {{MainClassName}}{{MainClassSuffix}}::ResizeGraphicsTargets()
 
 void {{MainClassName}}{{MainClassSuffix}}::DestroyGraphics()
 {
+  {% if HasGPIndirect %}
+  if(m_gpIndirectPipeline != VK_NULL_HANDLE)
+    vkDestroyPipeline(m_device, m_gpIndirectPipeline, nullptr);
+  if(m_gpIndirectLayout != VK_NULL_HANDLE)
+    vkDestroyPipelineLayout(m_device, m_gpIndirectLayout, nullptr);
+  if(m_gpIndirectDSPool != VK_NULL_HANDLE)
+    vkDestroyDescriptorPool(m_device, m_gpIndirectDSPool, nullptr); // frees m_gpIndirectDS
+  if(m_gpIndirectDSLayout != VK_NULL_HANDLE)
+    vkDestroyDescriptorSetLayout(m_device, m_gpIndirectDSLayout, nullptr);
+  m_gpIndirectPipeline = VK_NULL_HANDLE;
+  m_gpIndirectLayout   = VK_NULL_HANDLE;
+  m_gpIndirectDSPool   = VK_NULL_HANDLE;
+  m_gpIndirectDS       = VK_NULL_HANDLE;
+  m_gpIndirectDSLayout = VK_NULL_HANDLE;
+  {% endif %}
   {% for Draw in GPDraws %}
   if({{Draw.Name}}Pipeline != VK_NULL_HANDLE)
     vkDestroyPipeline(m_device, {{Draw.Name}}Pipeline, nullptr);
@@ -180,6 +195,76 @@ void {{MainClassName}}{{MainClassSuffix}}::DestroyGraphics()
 void {{MainClassName}}{{MainClassSuffix}}::InitGraphics()
 {
   DestroyGraphics();
+  {% if HasGPIndirect %}
+
+  // compute pipeline which writes counts of indirect draws: set 0 = { class data (UBO), m_gpIndirectBuffer }
+  {
+    VkDescriptorSetLayoutBinding bindings[2] = {};
+    for(uint32_t i = 0; i < 2; i++)
+    {
+      bindings[i].binding         = i;
+      bindings[i].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+      bindings[i].descriptorCount = 1;
+      bindings[i].stageFlags      = VK_SHADER_STAGE_COMPUTE_BIT;
+    }
+    VkDescriptorSetLayoutCreateInfo dsLayoutInfo = {};
+    dsLayoutInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    dsLayoutInfo.bindingCount = 2;
+    dsLayoutInfo.pBindings    = bindings;
+    VK_CHECK_RESULT(vkCreateDescriptorSetLayout(m_device, &dsLayoutInfo, nullptr, &m_gpIndirectDSLayout));
+
+    const VkDescriptorPoolSize poolSize = { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2 };
+    VkDescriptorPoolCreateInfo poolInfo = {};
+    poolInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.maxSets       = 1;
+    poolInfo.poolSizeCount = 1;
+    poolInfo.pPoolSizes    = &poolSize;
+    VK_CHECK_RESULT(vkCreateDescriptorPool(m_device, &poolInfo, nullptr, &m_gpIndirectDSPool));
+
+    VkDescriptorSetAllocateInfo allocInfo = {};
+    allocInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool     = m_gpIndirectDSPool;
+    allocInfo.descriptorSetCount = 1;
+    allocInfo.pSetLayouts        = &m_gpIndirectDSLayout;
+    VK_CHECK_RESULT(vkAllocateDescriptorSets(m_device, &allocInfo, &m_gpIndirectDS));
+
+    const VkDescriptorBufferInfo bufferInfos[2] = { {m_classDataBuffer, 0, VK_WHOLE_SIZE}, {m_gpIndirectBuffer, 0, VK_WHOLE_SIZE} };
+    VkWriteDescriptorSet writes[2] = {};
+    for(uint32_t i = 0; i < 2; i++)
+    {
+      writes[i].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      writes[i].dstSet          = m_gpIndirectDS;
+      writes[i].dstBinding      = i;
+      writes[i].descriptorCount = 1;
+      writes[i].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+      writes[i].pBufferInfo     = &bufferInfos[i];
+    }
+    vkUpdateDescriptorSets(m_device, 2, writes, 0, nullptr);
+
+    const VkPushConstantRange  pcRange    = { VK_SHADER_STAGE_COMPUTE_BIT, 0, 3*sizeof(uint32_t) }; // draw id, counts computed on host
+    VkPipelineLayoutCreateInfo layoutInfo = {};
+    layoutInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    layoutInfo.setLayoutCount         = 1;
+    layoutInfo.pSetLayouts            = &m_gpIndirectDSLayout;
+    layoutInfo.pushConstantRangeCount = 1;
+    layoutInfo.pPushConstantRanges    = &pcRange;
+    VK_CHECK_RESULT(vkCreatePipelineLayout(m_device, &layoutInfo, nullptr, &m_gpIndirectLayout));
+
+    const std::string shaderPath = AlterShaderPath("{{ShaderFolder}}/z_gp_update_indirect.comp.spv");
+    auto           code          = vk_utils::readSPVFile(shaderPath.c_str());
+    VkShaderModule module        = vk_utils::createShaderModule(m_device, code);
+
+    VkComputePipelineCreateInfo pipelineInfo = {};
+    pipelineInfo.sType        = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineInfo.stage.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    pipelineInfo.stage.stage  = VK_SHADER_STAGE_COMPUTE_BIT;
+    pipelineInfo.stage.module = module;
+    pipelineInfo.stage.pName  = "main";
+    pipelineInfo.layout       = m_gpIndirectLayout;
+    VK_CHECK_RESULT(vkCreateComputePipelines(m_device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_gpIndirectPipeline));
+    vkDestroyShaderModule(m_device, module, nullptr);
+  }
+  {% endif %}
   {% for Pipe in GPPipelines %}
 
   {% if GPDynamicRendering %}
@@ -411,9 +496,20 @@ void {{MainClassName}}{{MainClassSuffix}}::Clear_{{Pipe.Name}}Cmd(VkCommandBuffe
   {% endif %}
 }
 {% endfor %}
+{% if HasGPIndirect %}
+
+void {{MainClassName}}{{MainClassSuffix}}::GPUpdateIndirectCmd(VkCommandBuffer a_commandBuffer, uint32_t a_indirectId, uint32_t a_hostCount, uint32_t a_hostInstNum)
+{
+  const uint32_t args[3] = { a_indirectId, a_hostCount, a_hostInstNum };
+  vkCmdBindPipeline      (a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_gpIndirectPipeline);
+  vkCmdBindDescriptorSets(a_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_gpIndirectLayout, 0, 1, &m_gpIndirectDS, 0, nullptr);
+  vkCmdPushConstants     (a_commandBuffer, m_gpIndirectLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, uint32_t(sizeof(args)), args);
+  vkCmdDispatch          (a_commandBuffer, 1, 1, 1);
+}
+{% endif %}
 {% for Draw in GPDraws %}
 
-void {{MainClassName}}{{MainClassSuffix}}::{{Draw.Name}}Cmd(VkCommandBuffer a_commandBuffer, VkDescriptorSet a_dsVS, VkDescriptorSet a_dsPS, {% if Draw.Indexed %}VkBuffer a_indexBuffer, {% endif %}uint32_t a_count{% if Draw.Instanced %}, uint32_t a_instNum{% endif %}{% for Arg in Draw.UserArgs %}, {{Arg.Type}} {{Arg.Name}}{% endfor %})
+void {{MainClassName}}{{MainClassSuffix}}::{{Draw.Name}}Cmd(VkCommandBuffer a_commandBuffer, VkDescriptorSet a_dsVS, VkDescriptorSet a_dsPS, {% if Draw.Indexed %}VkBuffer a_indexBuffer, {% endif %}uint32_t a_count{% if Draw.Instanced %}, uint32_t a_instNum{% endif %}, uint32_t a_indirectId{% for Arg in Draw.UserArgs %}, {{Arg.Type}} {{Arg.Name}}{% endfor %})
 {
   const LiteRS::Pipeline& state = {{Draw.Pipeline}};
 
@@ -474,8 +570,18 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Draw.Name}}Cmd(VkCommandBuffer a_co
 
   {% if Draw.Indexed %}
   vkCmdBindIndexBuffer(a_commandBuffer, a_indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+  {% if HasGPIndirect %}
+  if(a_indirectId != GP_DIRECT_DRAW) // counts were written to m_gpIndirectBuffer by GPUpdateIndirectCmd
+    vkCmdDrawIndexedIndirect(a_commandBuffer, m_gpIndirectBuffer, VkDeviceSize(a_indirectId)*8*sizeof(uint32_t), 1, 0);
+  else
+  {% endif %}
   vkCmdDrawIndexed(a_commandBuffer, a_count, {% if Draw.Instanced %}a_instNum{% else %}1{% endif %}, 0, 0, 0);
   {% else %}
+  {% if HasGPIndirect %}
+  if(a_indirectId != GP_DIRECT_DRAW) // counts were written to m_gpIndirectBuffer by GPUpdateIndirectCmd
+    vkCmdDrawIndirect(a_commandBuffer, m_gpIndirectBuffer, VkDeviceSize(a_indirectId)*8*sizeof(uint32_t), 1, 0);
+  else
+  {% endif %}
   vkCmdDraw(a_commandBuffer, a_count, {% if Draw.Instanced %}a_instNum{% else %}1{% endif %}, 0, 0);
   {% endif %}
   {% if GPDynamicRendering %}

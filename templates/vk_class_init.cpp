@@ -430,6 +430,10 @@ void {{MainClassName}}{{MainClassSuffix}}::DeleteDeviceData()
   vkDestroyBuffer(m_device, m_indirectBuffer, nullptr);
   m_indirectBuffer = VK_NULL_HANDLE;
   {% endif %}
+  {% if HasGPIndirect %}
+  vkDestroyBuffer(m_device, m_gpIndirectBuffer, nullptr);
+  m_gpIndirectBuffer = VK_NULL_HANDLE;
+  {% endif %}
   FreeAllAllocations(m_allMems); // only memory allocated in InitDeviceData; internal buffers memory (InitBuffers) is in m_internalMems
   {% if HasCommitAppendedFunc %}
   for(auto& group : m_appendGroups) // buffers of tracked vectors are destroyed above, together with other member vectors
@@ -1149,6 +1153,10 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
   m_vdata.{{Sam}} = CreateSampler({{Sam}});
   {% endfor %}
 
+  {% if HasGPIndirect %}
+  m_gpIndirectBuffer = vk_utils::createBuffer(m_device, {{length(GPIndirectDraws)}}*8*sizeof(uint32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
+  memberVectors.push_back(m_gpIndirectBuffer);
+  {% endif %}
   {% if length(IndirectDispatches) > 0 %}
   m_indirectBuffer = vk_utils::createBuffer(m_device, {{IndirectBufferSize}}*sizeof(uint32_t)*4, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
   memberVectors.push_back(m_indirectBuffer);

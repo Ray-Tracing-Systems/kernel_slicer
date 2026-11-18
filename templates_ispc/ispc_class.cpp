@@ -235,6 +235,9 @@ protected:
     {% else %}
     ispc::{{Kernel.Name}}_ISPC({% include "inc_host_args.cpp" %}); 
     {% endif %}
+    {% if HasGraphics %}
+    ReadPlainMembers(); // LiteRS draws of control function are executed by C++ code, counts of draws may read data written by the kernel
+    {% endif %}
   }
   {% endif %} {# /* not Kernel.IsGraphics */ #}
   {% endfor %}

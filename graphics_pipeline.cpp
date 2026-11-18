@@ -53,6 +53,100 @@ static std::string MemberNameOf(const clang::Expr* a_expr)
   return "";
 }
 
+/// 'this->m_x' or 'm_x' where m_x is a field of the class
+static const clang::FieldDecl* ThisFieldOf(const clang::Expr* a_expr)
+{
+  auto pMember = clang::dyn_cast<clang::MemberExpr>(a_expr->IgnoreParenImpCasts());
+  if(pMember == nullptr || !clang::isa<clang::CXXThisExpr>(pMember->getBase()->IgnoreParenImpCasts()))
+    return nullptr;
+  return clang::dyn_cast<clang::FieldDecl>(pMember->getMemberDecl());
+}
+
+/// true if expression reads data of the class: fields or sizes of member vectors
+static bool ReadsClassData(const clang::Stmt* a_stmt)
+{
+  if(a_stmt == nullptr)
+    return false;
+  if(auto pExpr = clang::dyn_cast<clang::Expr>(a_stmt))
+    if(ThisFieldOf(pExpr) != nullptr)
+      return true;
+  for(const clang::Stmt* child : a_stmt->children())
+    if(ReadsClassData(child))
+      return true;
+  return false;
+}
+
+/**
+\brief Shader code of count of draw command which reads data of the class: fields (and elements of array fields) are read from
+       UBO, 'm_vec.size()' is 'm_vec_size' of UBO, constant subexpressions are evaluated. Returns false for other expressions
+       (arguments and local variables of control function, function calls).
+*/
+static bool CountExprForShader(const clang::Expr* a_expr, const kslicer::MainClassInfo& a_info, const clang::ASTContext& a_ctx, std::string& a_out)
+{
+  const clang::Expr* expr = a_expr->IgnoreParenImpCasts();
+  clang::Expr::EvalResult result;
+  if(!expr->isValueDependent() && !ReadsClassData(expr) && expr->EvaluateAsInt(result, a_ctx))
+  {
+    a_out = std::to_string(result.Val.getInt().getZExtValue()) + "u";
+    return true;
+  }
+  if(auto pCast = clang::dyn_cast<clang::ExplicitCastExpr>(expr)) // 'uint32_t(x)', '(uint32_t)x', 'static_cast<uint32_t>(x)'
+  {
+    std::string sub;
+    if(!CountExprForShader(pCast->getSubExpr(), a_info, a_ctx, sub))
+      return false;
+    a_out = "uint(" + sub + ")";
+    return true;
+  }
+  if(const clang::FieldDecl* pField = ThisFieldOf(expr))
+  {
+    if(a_info.allDataMembers.find(pField->getNameAsString()) == a_info.allDataMembers.end())
+      return false;
+    a_out = a_info.pShaderCC->UBOAccess(pField->getNameAsString());
+    return true;
+  }
+  if(auto pCall = clang::dyn_cast<clang::CXXMemberCallExpr>(expr)) // 'm_vec.size()'
+  {
+    const clang::FieldDecl* pField = ThisFieldOf(pCall->getImplicitObjectArgument());
+    if(pField == nullptr || pCall->getMethodDecl() == nullptr || pCall->getMethodDecl()->getNameAsString() != "size")
+      return false;
+    a_out = a_info.pShaderCC->UBOAccess(pField->getNameAsString() + "_size");
+    return true;
+  }
+  if(auto pIndex = clang::dyn_cast<clang::ArraySubscriptExpr>(expr)) // 'm_counts[MESH_ID]'
+  {
+    std::string base, index;
+    if(!CountExprForShader(pIndex->getBase(), a_info, a_ctx, base) || !CountExprForShader(pIndex->getIdx(), a_info, a_ctx, index))
+      return false;
+    a_out = base + "[" + index + "]";
+    return true;
+  }
+  if(auto pBin = clang::dyn_cast<clang::BinaryOperator>(expr))
+  {
+    std::string lhs, rhs;
+    if(pBin->isAssignmentOp() || pBin->isCommaOp() || !CountExprForShader(pBin->getLHS(), a_info, a_ctx, lhs) || !CountExprForShader(pBin->getRHS(), a_info, a_ctx, rhs))
+      return false;
+    a_out = "(" + lhs + " " + pBin->getOpcodeStr().str() + " " + rhs + ")";
+    return true;
+  }
+  if(auto pCond = clang::dyn_cast<clang::ConditionalOperator>(expr))
+  {
+    std::string cond, lhs, rhs;
+    if(!CountExprForShader(pCond->getCond(), a_info, a_ctx, cond) || !CountExprForShader(pCond->getTrueExpr(), a_info, a_ctx, lhs) ||
+       !CountExprForShader(pCond->getFalseExpr(), a_info, a_ctx, rhs))
+      return false;
+    a_out = "(" + cond + " ? " + lhs + " : " + rhs + ")";
+    return true;
+  }
+  return false;
+}
+
+std::string kslicer::GraphicsCallKey(const std::string& a_controlFunc, const clang::CallExpr* a_call, const clang::SourceManager& a_sm)
+{
+  const clang::SourceLocation loc = a_call->getBeginLoc();
+  return a_controlFunc + ":" + std::to_string(a_sm.getSpellingLineNumber(loc)) + ":" + std::to_string(a_sm.getSpellingColumnNumber(loc));
+}
+
 /// name of member function in expression '&Class::func'; empty string otherwise
 static std::string MethodNameOf(const clang::Expr* a_expr)
 {
@@ -315,6 +409,58 @@ void kslicer::ProcessGraphicsCommands(MainFuncInfo& a_mainFunc, MainClassInfo& a
     draw.name        = GraphicsDrawName(cmd);
     if(cmd.indexBuffer != "")
       a_codeInfo.graphics.indexBuffers.insert(cmd.indexBuffer);
+
+    // counts which read data of the class (members, 'm_vec.size()') are known only on GPU: the draw is indirect;
+    // counts from arguments, local variables and constants are computed on host as usual
+    //
+    const std::string callKey = GraphicsCallKey(a_mainFunc.Name, call, sm);
+    const size_t      countsNum = std::min<size_t>(cmd.instanced ? 2 : 1, cmd.countAndArgs.size());
+    std::string       counts[2];
+    bool              indirect = false, countsAreOk = true;
+    for(size_t i = 0; i < countsNum; i++)
+    {
+      const auto pCount = static_cast<const clang::Expr*>(cmd.countAndArgs[i]);
+      if(!ReadsClassData(pCount))
+        continue;
+      indirect = true;
+      if(!CountExprForShader(pCount, a_codeInfo, a_compiler.getASTContext(), counts[i]))
+      {
+        kslicer::PrintError("LiteRS: count of draw reads data of the class, so it is computed on GPU (indirect draw), but it also uses "
+                            "variables or functions of the control function; use only members, 'm_vec.size()' and constants, "
+                            "or read the value into a local variable to make an ordinary draw", call->getSourceRange(), sm);
+        countsAreOk = false;
+      }
+    }
+    if(indirect && countsAreOk && a_codeInfo.graphics.indirectDrawByCall.find(callKey) == a_codeInfo.graphics.indirectDrawByCall.end())
+    {
+      GPIndirectDraw indirectDraw;
+      indirectDraw.id        = uint32_t(a_codeInfo.graphics.indirectDraws.size());
+      indirectDraw.indexed   = cmd.indexed;
+      indirectDraw.countExpr = counts[0];
+      indirectDraw.instExpr  = counts[1];
+      a_codeInfo.graphics.indirectDraws.push_back(indirectDraw);
+      a_codeInfo.graphics.indirectDrawByCall[callKey] = indirectDraw.id;
+    }
+    for(size_t i = 0; i < countsNum; i++) // members of indirect counts are read from UBO
+    {
+      std::vector<const clang::Stmt*> stack = { static_cast<const clang::Expr*>(cmd.countAndArgs[i]) };
+      while(!stack.empty())
+      {
+        const clang::Stmt* pStmt = stack.back();
+        stack.pop_back();
+        if(pStmt == nullptr)
+          continue;
+        if(auto pExpr = clang::dyn_cast<clang::Expr>(pStmt))
+          if(const clang::FieldDecl* pField = ThisFieldOf(pExpr))
+          {
+            auto pMember = a_codeInfo.allDataMembers.find(pField->getNameAsString());
+            if(pMember != a_codeInfo.allDataMembers.end())
+              pMember->second.usedInMainFn = true;
+          }
+        for(const clang::Stmt* child : pStmt->children())
+          stack.push_back(child);
+      }
+    }
     a_codeInfo.graphics.draws[draw.name] = draw;
   }
 }
@@ -479,12 +625,29 @@ void kslicer::AddGraphicsToKernelJson(nlohmann::json& a_kernelJson, const Kernel
   }
 }
 
+nlohmann::json kslicer::GraphicsIndirectDrawsJson(const MainClassInfo& a_classInfo)
+{
+  nlohmann::json draws = std::vector<nlohmann::json>();
+  for(const auto& draw : a_classInfo.graphics.indirectDraws)
+  {
+    nlohmann::json drawJson;
+    drawJson["Id"]        = draw.id;
+    drawJson["Indexed"]   = draw.indexed;
+    drawJson["CountExpr"] = draw.countExpr;
+    drawJson["InstExpr"]  = draw.instExpr;
+    draws.push_back(drawJson);
+  }
+  return draws;
+}
+
 void kslicer::AddGraphicsToHostJson(nlohmann::json& a_hostJson, const MainClassInfo& a_classInfo)
 {
   a_hostJson["HasGraphics"] = a_classInfo.graphics.Used();
   a_hostJson["GPPipelines"] = std::vector<nlohmann::json>();
   a_hostJson["GPDraws"]     = std::vector<nlohmann::json>();
   a_hostJson["GPRenderTargets"] = std::vector<nlohmann::json>();
+  a_hostJson["GPIndirectDraws"] = GraphicsIndirectDrawsJson(a_classInfo);
+  a_hostJson["HasGPIndirect"]   = !a_classInfo.graphics.indirectDraws.empty();
 
   // render targets are created with attachment usage, stay in GENERAL layout and are not copied from CPU
   //
@@ -646,8 +809,29 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeGraphicsCommandCmdString(cl
     return pFound->second;
   };
 
+  // counts which read data of the class are computed on GPU (indirect draw, see ProcessGraphicsCommands), other counts on host
+  //
+  const auto& indirectDraws = m_pCodeInfo->graphics.indirectDrawByCall;
+  const auto  pIndirect     = indirectDraws.find(GraphicsCallKey(m_mainFuncName, call, m_compiler.getSourceManager()));
+  const bool  indirect      = (pIndirect != indirectDraws.end());
+  const size_t countsNum    = std::min<size_t>(a_cmd.instanced ? 2 : 1, a_cmd.countAndArgs.size());
+  std::string hostCounts[2] = {"0u", "1u"};
+  for(size_t i = 0; i < countsNum; i++)
+  {
+    const auto pCount = static_cast<const clang::Expr*>(a_cmd.countAndArgs[i]);
+    if(!indirect || !ReadsClassData(pCount))
+      hostCounts[i] = "uint32_t(" + RecursiveRewrite(pCount) + ")";
+  }
+
   const size_t dsVS = descriptorSetOf(a_cmd.vsKernel);
-  strOut << "{ vkCmdPipelineBarrier(a_commandBuffer, prevStageBits, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 1, &m_gpBarrier, 0, nullptr, 0, nullptr);" << std::endl;
+  if(indirect)
+  {
+    strOut << "{ vkCmdPipelineBarrier(a_commandBuffer, prevStageBits, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 1, &m_gpBarrier, 0, nullptr, 0, nullptr);" << std::endl;
+    strOut << "  GPUpdateIndirectCmd(a_commandBuffer, " << pIndirect->second << ", " << hostCounts[0] << ", " << hostCounts[1] << "); // counts are read from class data on GPU" << std::endl;
+    strOut << "  vkCmdPipelineBarrier(a_commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, 0, 1, &m_gpBarrier, 0, nullptr, 0, nullptr);" << std::endl;
+  }
+  else
+    strOut << "{ vkCmdPipelineBarrier(a_commandBuffer, prevStageBits, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 1, &m_gpBarrier, 0, nullptr, 0, nullptr);" << std::endl;
   strOut << "  " << GraphicsDrawName(a_cmd) << "Cmd(a_commandBuffer, m_allGeneratedDS[" << dsVS << "], ";
   if(a_cmd.psKernel != "")
     strOut << "m_allGeneratedDS[" << descriptorSetOf(a_cmd.psKernel) << "]";
@@ -655,12 +839,11 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeGraphicsCommandCmdString(cl
     strOut << "VK_NULL_HANDLE";
   if(a_cmd.indexed)
     strOut << ", m_vdata." << a_cmd.indexBuffer << "Buffer";
-  for(size_t i = 0; i < a_cmd.countAndArgs.size(); i++)
-  {
-    const auto pArg = static_cast<const clang::Expr*>(a_cmd.countAndArgs[i]);
-    const bool isCount = (i == 0) || (i == 1 && a_cmd.instanced); // vertex (index) count and instance count
-    strOut << ", " << (isCount ? "uint32_t(" + RecursiveRewrite(pArg) + ")" : RecursiveRewrite(pArg));
-  }
+  for(size_t i = 0; i < countsNum; i++)
+    strOut << ", " << (indirect ? std::string("0u") : hostCounts[i]);
+  strOut << ", " << (indirect ? std::to_string(pIndirect->second) : std::string("GP_DIRECT_DRAW"));
+  for(size_t i = countsNum; i < a_cmd.countAndArgs.size(); i++) // additional arguments of vertex shader
+    strOut << ", " << RecursiveRewrite(static_cast<const clang::Expr*>(a_cmd.countAndArgs[i]));
   strOut << ");" << std::endl;
   strOut << "  vkCmdPipelineBarrier(a_commandBuffer, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 1, &m_gpBarrier, 0, nullptr, 0, nullptr);" << std::endl;
   strOut << "  prevStageBits = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT; }";

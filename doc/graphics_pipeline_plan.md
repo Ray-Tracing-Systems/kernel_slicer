@@ -6,7 +6,8 @@
 - шаги 4a.1 (текстуры в Slang) и 4a.2 (GLSL-бэкенд) выполнены: все GP-примеры проходят на Slang и GLSL;
 - dynamic rendering (`-gp_dynamic_rendering 1`) выполнен, тесты проверяют оба варианта Vulkan;
 - этап 4 (ISPC), первая версия, выполнен: все GP-примеры проходят на ISPC, результат почти побитово совпадает с C++;
-- instancing (2026-11-18): `DrawInstancedTriangles`, `DrawIndexedInstancedTriangles` на Slang и GLSL, тесты 083, 084, демо 35, см. 4b.
+- instancing (2026-11-18): `DrawInstancedTriangles`, `DrawIndexedInstancedTriangles` на Slang и GLSL, тесты 083, 084, демо 35, см. 4b;
+- indirect draws (2026-11-18): числа отрисовок из данных класса считаются на GPU, тесты 085, 086, 087, см. 4c.
 
 Реализация в трансляторе: [graphics_pipeline.h](../graphics_pipeline.h), [graphics_pipeline.cpp](../graphics_pipeline.cpp),
 шаблоны `templates/inc_gp_vulkan.h/.cpp`, `templates_slang/generated_gp.slang`. Остальной код транслятора затронут точечными хуками.
@@ -314,6 +315,34 @@ linear|tiled|bins] [--binsize N] [--size N]`) печатает время ста
 - Тесты: 083 (`DrawInstancedTriangles` + проход только с глубиной), 084 (`DrawIndexedInstancedTriangles`, данные
   экземпляров в `std::vector<float4x4>`, разные буферы индексов, обычная отрисовка в том же проходе, indexed instanced только с
   глубиной). Демо 35: ~1000 экземпляров трёх мешей и пол.
+
+## 4c. Indirect draws (сделано 2026-11-18)
+
+Новых команд нет, правило как у indirect dispatch: если число вершин (индексов) или экземпляров в аргументах команды
+читает данные класса — POD-член, элемент члена-массива, `m_vec.size()` или выражение из них и констант, — отрисовка
+становится indirect, и число берётся на GPU в момент отрисовки (после предыдущих кернелов):
+
+```cpp
+kernel1D_Cull(n);   // m_visible.push_back(i) на GPU
+LiteRS::DrawIndexedInstancedTriangles(m_pipeline, this, &C::kernelVS_I, &C::kernelPS_A,
+                                      m_indices.data(), uint32_t(m_indices.size()), uint32_t(m_visible.size()));
+```
+
+- Число из локальной переменной или аргумента управляющей функции (`const uint32_t n = uint32_t(m_vec.size());`) —
+  обычная отрисовка: оно считается на хосте при записи команд и не видит изменений, сделанных кернелами на GPU (тест 087).
+- Член класса вперемешку с переменными управляющей функции в одном числе — ошибка транслятора. Разные числа одной
+  команды могут быть разного вида: число с хоста передаётся шейдеру push-константой (последняя отрисовка теста 087).
+- Генерация: у каждого вызова — команда из 8 uint в `m_gpIndirectBuffer`; один compute-шейдер на класс
+  (`z_gp_update_indirect`, `switch` по номеру вызова) пишет `VkDraw[Indexed]IndirectCommand` из UBO, затем барьер
+  `COMPUTE → DRAW_INDIRECT` и `vkCmdDraw[Indexed]Indirect`. Vulkan 1.0, без дополнительных фич.
+- Все прежние GP-примеры с `uint32_t(m_indices.size())` теперь indirect (лишний проход из одного потока и барьер на
+  отрисовку). Возможная оптимизация: обновлять подряд идущие отрисовки одним проходом.
+- ISPC: управляющая функция выполняется C++-кодом, поэтому после каждого ISPC-кернела класса с графикой члены копируются
+  обратно (`ReadPlainMembers`), и числа отрисовок видят результат кернелов. Тесты 085, 086 на ISPC пропущены:
+  ISPC-бэкенд не поддерживает `push_back` в кернелах.
+- Открытый вопрос: Slang компилирует `SV_InstanceID` в `InstanceIndex - BaseInstance` с capability `DrawParameters`
+  (`shaderDrawParameters`). Для `firstInstance = 0` это не влияет на результат; `SV_VulkanInstanceID` текущая версия
+  slangc не поддерживает.
 
 ## 5a. Двухуровневый тайлинг (сделано 2026-11-15)
 

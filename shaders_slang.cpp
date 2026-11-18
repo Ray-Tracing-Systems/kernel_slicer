@@ -1650,6 +1650,14 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
     }
   }
 
+  if(!a_codeInfo->graphics.indirectDraws.empty()) // counts of indirect draws of graphics pipeline, see graphics_pipeline.cpp
+  {
+    nlohmann::json params = copy;
+    params["GPIndirectDraws"] = kslicer::GraphicsIndirectDrawsJson(*a_codeInfo);
+    kslicer::ApplyJsonToTemplate(templatesFolder / "z_gp_update_indirect.slang", shaderPath / "z_gp_update_indirect.slang", params);
+    buildSH << "slangc z_gp_update_indirect.slang -o z_gp_update_indirect.comp.spv" << includePaths.c_str() << "-warnings-disable 39001" << std::endl;
+  }
+
   if(a_codeInfo->usedServiceCalls.find("memcpy") != a_codeInfo->usedServiceCalls.end())
   {
     nlohmann::json dummy;
