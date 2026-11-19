@@ -56,5 +56,7 @@ int main(int argc, const char** argv)
   JSONLog::write("array", outArray2);
   JSONLog::saveToFile("zout_"+backendName+".json");
 
+  pImpl = nullptr;           // Vulkan objects of the class first, then the context
+  vk_utils::globalContextDestroy();
   return 0;
 }

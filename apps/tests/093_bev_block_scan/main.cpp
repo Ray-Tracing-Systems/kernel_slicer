@@ -93,5 +93,10 @@ int main(int argc, const char** argv)
   JSONLog::write("check", failed == 0 ? "PASSED!" : "FAILED!");
   JSONLog::saveToFile(onGPU ? "zout_gpu.json" : (onISPC ? "zout_ispc.json" : "zout_cpu.json"));
   std::cout << (failed == 0 ? "PASSED" : "FAILED") << std::endl;
+
+  pImpl = nullptr;           // Vulkan objects of the class first, then the context
+  #ifdef USE_VULKAN
+  vk_utils::globalContextDestroy();
+  #endif
   return 0;
 }

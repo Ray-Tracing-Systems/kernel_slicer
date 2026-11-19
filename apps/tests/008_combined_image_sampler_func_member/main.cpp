@@ -44,5 +44,7 @@ int main(int argc, const char** argv)
   else
     LiteImage::SaveBMP("zout_cpu.bmp", color.data(), width, height);  
 
+  pImpl = nullptr;           // Vulkan objects of the class first, then the context
+  vk_utils::globalContextDestroy();
   return 0;
 }

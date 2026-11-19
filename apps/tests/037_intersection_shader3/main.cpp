@@ -51,5 +51,7 @@ int main(int argc, const char** argv)
   std::cout << "Render(exec) = " << timings[0] << " ms " << std::endl;
   
   pImpl = nullptr;
+  pImpl = nullptr;           // Vulkan objects of the class first, then the context
+  vk_utils::globalContextDestroy();
   return 0;
 }

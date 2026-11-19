@@ -71,5 +71,7 @@ int main(int argc, const char** argv)
   std::cout << "ProcessPoints(exec) = " << timings[0]              << " ms " << std::endl;
   std::cout << "ProcessPoints(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
   std::cout << "ProcessPoints(ovrh) = " << timings[3]              << " ms " << std::endl;
+  pImpl = nullptr;           // Vulkan objects of the class first, then the context
+  vk_utils::globalContextDestroy();
   return 0;
 }
