@@ -51,8 +51,8 @@ follows the test configs and the code.
 |----|---------|:-----:|:----:|:--------:|:----:|-------------------|
 | `ipv` | IPV kernels `kernel1D_/2D_/3D_` (parallel `for`) | ✅ | ✅ | ✅ | ✅ | 048, 043, app 05, app 25, app 30 |
 | `rtv` | RTV kernels `kernel_` (code of one thread, payload between kernels) | ✅ | ✅ | ❔ | ❔ | 051, 067, app 01, app 07 |
-| `bev` | Block Expansion kernels `kernelBE1D_` with shared memory | 🧪 | 🧪 | ❔ | 🧪 | 030, 092, 093 |
-| `bev_nested` | Block Expansion: `[[parallel]]` loops inside ordinary loops and `if` of the block, variables of the block (each GPU thread has its own copy, statements that write memory are executed by one thread) | 🧪 | 🧪 | ❔ | 🧪 | 092, 093 |
+| `bev` | Block Expansion kernels `kernelBE1D_` with shared memory | 🧪 | 🧪 | ❔ | 🧪 | 030, 092, 093, 094 |
+| `bev_nested` | Block Expansion: `[[parallel]]` loops inside ordinary loops and `if` of the block, variables of the block (each GPU thread has its own copy, statements that write memory are executed by one thread) | 🧪 | 🧪 | ❔ | 🧪 | 092, 093, 094 |
 | `megakernel` | One shader per control function (`-megakernel 1`) | ✅ | ✅ | ❔ | ❌ | 057, 067, app 07, app 20 |
 | `persistent_rays` | Persistent rays in RTV megakernels (`-persistent 1`) | 🧪 | 🧪 | ❔ | ❔ | — ⁰ |
 | `indirect_dispatch` | Dispatch size computed on GPU (loop bound is a class member) | ✅ | ✅ | ❔ | ❔ | 059, 057 |

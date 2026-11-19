@@ -440,6 +440,7 @@ namespace kslicer
       std::vector<const clang::DeclStmt*>  sharedDecls;    ///<! arrays of the block, top level of the body: shared memory
       kslicer::uset<const clang::VarDecl*> sharedVars;     ///<! variables of 'sharedDecls'
       kslicer::uset<const clang::VarDecl*> uniformVars;    ///<! variables of the block (not of parallel loops): 'uniform' in ISPC
+      kslicer::uset<std::string>           uniformFuncs;   ///<! functions called from the code of the block (not of parallel loops), also indirectly
       bool enabled = false;
       std::string wgNames[3] = {"unknown", "unknown", "unknown"};
       std::string wgTypes[3] = {"uint", "uint", "uint"};
@@ -1140,7 +1141,8 @@ namespace kslicer
     ISPCRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo) : FunctionRewriter2(R,a_compiler,a_codeInfo) { Init();}
     ~ISPCRewriter(){ }
 
-    kslicer::uset<unsigned> m_uniformDeclLocs; ///<! 'uniform ' is already inserted at these locations (block expansion kernels)
+    std::shared_ptr< kslicer::uset<unsigned> > m_uniformDeclLocs = std::make_shared< kslicer::uset<unsigned> >(); ///<! 'uniform ' is already inserted at these locations (shared by copies of the rewriter)
+    bool m_uniformFunction = false;            ///<! uniform overload of a function: local variables are 'uniform'
 
     bool VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl)   override;
     bool VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl) override;
@@ -1482,6 +1484,7 @@ namespace kslicer
     virtual std::string BEBarrier() const { return "GroupMemoryBarrierWithGroupSync();"; }     ///<! barrier of work group; "" if not needed
     virtual std::string BESingleThreadCond(const KernelInfo& a_kernel) const;                  ///<! condition of thread 0 of work group; "" if not needed
     std::string         RewriteBEBody(const KernelInfo& a_kernel, std::shared_ptr<KernelRewriter> pRewriter); ///<! code of a block for 'Kernel.SourceBE'
+    virtual std::string BEUniformFunction(const clang::FunctionDecl* a_func, MainClassInfo* a_codeInfo, const clang::CompilerInstance& a_compiler) { return ""; } ///<! ISPC: uniform overload of a function called from the code of a block
     
     // for RTV only
     //
@@ -1540,6 +1543,7 @@ namespace kslicer
     std::string RewriteBEParallelFor(const clang::ForStmt* forExpr, std::shared_ptr<KernelRewriter> pRewriter, const KernelInfo& a_kernel) override;
     std::string BEBarrier() const override { return ""; }                                   // 'foreach' is finished before the next statement
     std::string BESingleThreadCond(const KernelInfo& a_kernel) const override { return ""; } // code of a single thread is uniform
+    std::string BEUniformFunction(const clang::FunctionDecl* a_func, MainClassInfo* a_codeInfo, const clang::CompilerInstance& a_compiler) override;
 
     std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit) override;
     std::shared_ptr<KernelRewriter>            MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,

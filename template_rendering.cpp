@@ -1664,6 +1664,21 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         
       shaderFeatures = shaderFeatures || pVisitorF->GetShaderFeatures();
     }
+
+    // block expansion, ISPC: uniform overloads of functions called from the code of blocks, in the same order (callees first)
+    //
+    kslicer::uset<std::string> uniformFuncs;
+    for(const auto& k : a_classInfo.kernels)
+      for(const auto& name : k.second.be.uniformFuncs)
+        uniformFuncs.insert(name);
+    for(const auto& f : usedFunctions)
+    {
+      if(f.isMember || !uniformFuncs.contains(f.name))
+        continue;
+      const std::string text = a_classInfo.pShaderCC->BEUniformFunction(f.astNode, &a_classInfo, compiler);
+      if(text != "")
+        data["LocalFunctions"].push_back(text);
+    }
   }
 
   if(atLeastOneKernelIsRTV)

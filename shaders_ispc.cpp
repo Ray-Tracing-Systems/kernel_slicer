@@ -433,13 +433,29 @@ bool kslicer::ISPCRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
   if(decl->isLocalVarDecl() && WasNotRewrittenYet(decl->getInit()))
     RemoveLiteNamespaceQualifier(decl); // 'const LiteMath::float4x4 m' ==> 'const float4x4 m'
 
-  // block expansion: variables of the block (shared arrays and variables of single thread code) are 'uniform'
+  // block expansion: variables of the block (shared arrays and variables of single thread code) are 'uniform',
+  // as well as local variables of uniform overloads of functions called from this code
   //
-  if(m_kernelMode && m_pCurrKernel != nullptr && m_pCurrKernel->be.enabled && decl->isLocalVarDecl() && m_pCurrKernel->be.uniformVars.contains(decl))
+  const bool uniformInKernel = m_kernelMode && m_pCurrKernel != nullptr && m_pCurrKernel->be.enabled && m_pCurrKernel->be.uniformVars.contains(decl);
+  if(decl->isLocalVarDecl() && (uniformInKernel || m_uniformFunction))
   {
     const unsigned loc = decl->getBeginLoc().getRawEncoding(); // 'int a, b;': both declarations start at 'int'
-    if(m_uniformDeclLocs.insert(loc).second)
+    if(m_uniformDeclLocs->insert(loc).second)
       m_rewriter.InsertTextBefore(decl->getBeginLoc(), "uniform ");
+  }
+
+  // ISPC needs a literal for array size, 'float a[TILE*TILE]' ==> 'float a[256]'; size depending on template parameter is a macro, see templates
+  //
+  if(decl->isLocalVarDecl() && decl->getTypeSourceInfo() != nullptr)
+  {
+    auto arrayLoc = decl->getTypeSourceInfo()->getTypeLoc().getAs<clang::ConstantArrayTypeLoc>();
+    auto pArray   = clang::dyn_cast<clang::ConstantArrayType>(decl->getType().getTypePtr());
+    const clang::Expr* sizeExpr = arrayLoc.isNull() ? nullptr : arrayLoc.getSizeExpr();
+    if(pArray != nullptr && sizeExpr != nullptr && !clang::isa<clang::IntegerLiteral>(sizeExpr->IgnoreParenImpCasts()) && WasNotRewrittenYet(sizeExpr))
+    {
+      ReplaceText(sizeExpr->getSourceRange(), std::to_string(pArray->getSize().getZExtValue()));
+      MarkRewritten(sizeExpr);
+    }
   }
 
   if(m_kernelMode)
@@ -679,6 +695,46 @@ std::string kslicer::ISPCCompiler::RewriteBEParallelFor(const clang::ForStmt* fo
   return "for(" + typeName + " " + name + " = " + start + " + programIndex; " + cond + "; " + name + " += programCount)\n" + bodyText;
 }
 
+// block expansion: code of a block is uniform, so functions called from it need uniform overloads:
+// 'uint DivUp(uint a, uint b)' ==> 'static inline uniform uint DivUp(uniform uint a, uniform uint b)', local variables are uniform too
+//
+std::string kslicer::ISPCCompiler::BEUniformFunction(const clang::FunctionDecl* a_func, MainClassInfo* a_codeInfo, const clang::CompilerInstance& a_compiler)
+{
+  if(a_func == nullptr || !a_func->hasBody())
+    return "";
+
+  clang::Rewriter rewrite2;
+  rewrite2.setSourceMgr(a_compiler.getSourceManager(), a_compiler.getLangOpts());
+  auto pRewriter = std::make_shared<ISPCRewriter>(rewrite2, a_compiler, a_codeInfo);
+  pRewriter->m_uniformFunction = true;
+
+  auto TypeName = [&](clang::QualType a_type)
+  {
+    std::string name = pRewriter->RewriteStdVectorTypeStr(a_type.getAsString());
+    while(ReplaceFirst(name, "LiteMath::", ""));
+    return name;
+  };
+
+  const clang::QualType retType = a_func->getReturnType();
+  std::string text = "static inline " + (retType->isVoidType() ? std::string("void") : "uniform " + TypeName(retType)) + " " + a_func->getNameAsString() + "(";
+  for(unsigned i = 0; i < a_func->getNumParams(); i++)
+  {
+    const clang::ParmVarDecl* pParam = a_func->getParamDecl(i);
+    const clang::QualType type = pParam->getType();
+    if(type->isReferenceType())
+      text += "uniform " + TypeName(type.getNonReferenceType()) + "& ";
+    else if(type->isPointerType())
+      text += "uniform " + TypeName(type->getPointeeType()) + "* uniform ";
+    else
+      text += "uniform " + TypeName(type) + " ";
+    text += pParam->getNameAsString();
+    if(i + 1 != a_func->getNumParams())
+      text += ", ";
+  }
+  text += ") // uniform overload: called from the code of a block\n";
+  return text + pRewriter->RecursiveRewrite(a_func->getBody());
+}
+
 std::string kslicer::ISPCCompiler::BuildCommand(const std::string& a_inputFile) const
 {
   return std::string("ispc ") + a_inputFile + " --target=" + m_target + " -O2 --pic "; // position independent code: executables are PIE by default
@@ -840,6 +896,10 @@ std::string kslicer::ISPCCompiler::PrintHeaderDecl(const DeclInClass& a_decl, co
     break;
     case kslicer::DECL_IN_CLASS::DECL_CONSTANT:
     ReplaceFirst(typeInCL, "_Bool", "bool");
+    if(typeInCL.rfind("const ", 0) == 0)                 // without 'uniform' a global variable of ISPC is varying
+      typeInCL = "const uniform " + typeInCL.substr(6);
+    else
+      typeInCL = "uniform " + typeInCL;
     result = typeInCL + " " + a_decl.name + " = " + kslicer::GetRangeSourceCode(a_decl.srcRange, a_compiler) + ";";
     break;
     case kslicer::DECL_IN_CLASS::DECL_TYPEDEF:

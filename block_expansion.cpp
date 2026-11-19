@@ -43,7 +43,33 @@ namespace
     return finder.found;
   }
 
-  // variables of the block: all local variables except of those declared inside parallel loops
+  // functions of the program called directly: not methods and not functions of libraries
+  //
+  const clang::FunctionDecl* UserCallee(const clang::CallExpr* a_call)
+  {
+    const clang::FunctionDecl* pFunc = a_call->getDirectCallee();
+    if(pFunc == nullptr || clang::isa<clang::CXXMethodDecl>(pFunc) || !pFunc->hasBody())
+      return nullptr;
+    const std::string name = pFunc->getQualifiedNameAsString();
+    for(const char* ns : {"std::", "LiteMath::", "LiteImage::", "LiteNN::", "LiteRS::"})
+      if(name.rfind(ns, 0) == 0)
+        return nullptr;
+    return pFunc;
+  }
+
+  class CalleesVisitor : public clang::RecursiveASTVisitor<CalleesVisitor>
+  {
+  public:
+    bool VisitCallExpr(clang::CallExpr* a_call)
+    {
+      if(auto pFunc = UserCallee(a_call))
+        callees.push_back(pFunc);
+      return true;
+    }
+    std::vector<const clang::FunctionDecl*> callees;
+  };
+
+  // variables of the block (all local variables except of those declared inside parallel loops) and functions called from the same code
   //
   class BlockVarsVisitor : public clang::RecursiveASTVisitor<BlockVarsVisitor>
   {
@@ -56,6 +82,13 @@ namespace
       return clang::RecursiveASTVisitor<BlockVarsVisitor>::TraverseForStmt(a_for);
     }
     bool VisitVarDecl(clang::VarDecl* a_decl) { m_vars.insert(a_decl); return true; }
+    bool VisitCallExpr(clang::CallExpr* a_call)
+    {
+      if(auto pFunc = UserCallee(a_call))
+        funcs.push_back(pFunc);
+      return true;
+    }
+    std::vector<const clang::FunctionDecl*> funcs;
   private:
     kslicer::uset<const clang::VarDecl*>& m_vars;
     const clang::CompilerInstance&        m_compiler;
@@ -376,6 +409,20 @@ kslicer::KernelInfo::BlockExpansionInfo ExtractBlocks(const clang::CompoundStmt*
 
   BlockVarsVisitor blockVars(be.uniformVars, a_compiler);
   blockVars.TraverseStmt(const_cast<clang::CompoundStmt*>(a_body));
+
+  // functions called from the code of the block and functions called from them
+  //
+  std::vector<const clang::FunctionDecl*> stack = blockVars.funcs;
+  while(!stack.empty())
+  {
+    const clang::FunctionDecl* pFunc = stack.back();
+    stack.pop_back();
+    if(!be.uniformFuncs.insert(pFunc->getNameAsString()).second)
+      continue;
+    CalleesVisitor callees;
+    callees.TraverseStmt(pFunc->getBody());
+    stack.insert(stack.end(), callees.callees.begin(), callees.callees.end());
+  }
 
   // arrays at the top level of the block are placed in shared memory
   //
