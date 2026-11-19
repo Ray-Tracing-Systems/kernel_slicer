@@ -1,7 +1,8 @@
 # План: паттерн Block Expansion Vectorization (BEV)
 
 Рабочий документ. Ветка `bev`. Состояние на 2026-11-20: этапы 1 (ISPC, тест 030), 2 (вложенный `[[parallel]]`,
-вариант II, тесты 092, 093) и 3 (tiled GEMM, тест 094) выполнены. Следующий — этап 4 (`LiteNN::*Block`).
+вариант II, тесты 092, 093), 3 (tiled GEMM, тест 094) и 4 (`LiteNN::LinearForwardBlock`, кооперативные матрицы,
+тест 095) выполнены. Следующий — этап 5 (`kernelBE2D_`).
 
 ## 0. Порядок работы над каждой фичей
 
@@ -65,7 +66,7 @@
 | T1 | `092_bev_block_reduce` | редукция деревом в shared memory, барьеры внутри цикла | F1 | ✅ Slang, GLSL, ISPC |
 | T2 | `093_bev_block_scan` | scan в блоке + суммы блоков, полный scan миллионов элементов; локальная переменная блока меняется в цикле (`src`) и читается из памяти (`offset`) | F1, F2 | ✅ Slang, GLSL, ISPC |
 | T5 | `094_bev_tiled_gemm` | GEMM с тайлами в shared memory, цикл по K (1D BEV, ручная индексация); вспомогательная функция в коде блока; сравнение с наивным IPV GEMM | F1, F2 | ✅ Slang, GLSL, ISPC |
-| T7 | `095_bev_mlp_batch` | MLP 16→64→64→16 по батчу из 64 векторов на блок: слой = `LiteNN::LinearForwardBlock`, ReLU — параллельный цикл | F1, F2, F5 | C++ готов, согласование |
+| T7 | `095_bev_mlp_batch` | MLP 16→64→64→16 по батчу из 64 векторов на блок: слой = `LiteNN::LinearForwardBlock`, ReLU — параллельный цикл | F1, F2, F5 | ✅ Slang, ISPC |
 | T3 | `bev_local_sort` | bitonic в shared memory | F1 | резерв |
 | T4 | `bev_histogram` | атомики по shared memory | F4 | резерв |
 | T6 | `bev_coopmat_gemm` | GEMM через `LiteNN::MatMulBlock` | F5 | резерв |
@@ -145,10 +146,27 @@
       в `apps/LiteMathAux/neural.h` (порядок аргументов как у `LinearForward`, плюс размер батча; вход fp16, выход
       fp32 без округления; размеры кратны `BLOCK_TILE = 16`); T7: `apps/tests/095_bev_mlp_batch`, эталон в `main` —
       поштучный `LinearForward`;
-- [ ] согласование API и T7;
-- [ ] размеры кооперативных матриц на Radeon 8060S (`vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR`), размер подгруппы;
-- [ ] Slang (`CoopMat`), ISPC;
-- [ ] при необходимости T6.
+- [x] согласование API и T7: пока одна функция слоя, только смещения (таблица слоёв `m_layers` — позже),
+      `LinearForward_ReLUBlock` — позже; цель — удобный инструмент, а не фреймворк для нейросетей;
+- [x] Radeon 8060S (RADV): `VK_KHR_cooperative_matrix`, 16x16x16 fp16 x fp16 -> fp16/fp32, область подгруппы,
+      размер подгруппы 64 (минимум 32);
+- [x] вызов `LiteNN::*Block` в коде блока — коллективный оператор (все потоки, барьеры до и после),
+      `RewriteBEBlockFunction` back end'а; в параллельном цикле или внутри выражения — ошибка; аргументы разбирает
+      `ParseLinearForwardBlock` (вход и выход — массивы блока, размеры — константы, кратные 16);
+- [x] Slang: каждая подгруппа считает тайлы 16x16 результата (`coopMatLoad` из shared memory и из буфера весов,
+      W^T — column-major, `coopMatMulAdd`, `store` в shared memory), затем все потоки добавляют bias;
+      API Slang этой версии: `CoopMatScope.Subgroup`, `coopMatLoad<...>(массив, элемент, шаг, layout)`,
+      `c.store(...)`, `coopMatMulAdd(a, b, c, CoopMatMatrixOperands.None)`;
+- [x] host: `useCoopMat` ==> `VkPhysicalDeviceCooperativeMatrixFeaturesKHR` и расширение; в `main` теста —
+      `BatchMLP_Generated_ListRequiredDeviceFeatures()`;
+- [x] ISPC: `foreach` по выходам слоя, накопление в fp32; `half` — `typedef float16 half` в LiteMathISPC.h,
+      `half(x)` ==> `(half)(x)`, тип элементов буферов `class half_float::half` ==> `half`,
+      `__fp16` заголовка ISPC ==> `_Float16` для GCC;
+- [x] GLSL: ошибка трансляции «только Slang»;
+- [x] проверка: 095 на Slang (validation layers без ошибок) и ISPC (три модели потоков), ошибка против поштучного
+      `LinearForward` не больше 5e-4; Radeon 8060S, 4M векторов MLP 16-64-64-16: 17.1 мс (3.0 TFLOPS);
+      ISPC avx2-i32x8, 1M векторов: 147 мс (88 GFLOPS);
+- [ ] T6 (`MatMulBlock`) — по мере необходимости.
 
 ### Этап 5. `kernelBE2D_` (отдельно)
 

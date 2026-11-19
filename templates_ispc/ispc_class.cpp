@@ -9,6 +9,9 @@
 #include <iostream>
 
 #include "{{MainInclude}}"
+#if defined(__GNUC__) && !defined(__clang__) && !defined(__aarch64__) && !defined(__fp16)
+#define __fp16 _Float16 // ISPC header declares 'float16' as '__fp16' (clang), GCC on x86 names this type '_Float16'
+#endif
 #include "{{MainISPCFile}}"
 ## for Decl in ClassDecls  
 {% if Decl.InClass and Decl.IsType %}

@@ -1491,6 +1491,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["GlobalUse8BitStorage"]  = shaderFeatures.use8BitStorage;
   data["GlobalUse16BitStorage"] = shaderFeatures.use16BitStorage;
   data["GlobalUseCoopVec"]      = shaderFeatures.useCoopVec;
+  data["GlobalUseCoopMat"]      = shaderFeatures.useCoopMat;
 
   bool useScalarLayout = false; // at least one buffer in shaders is declared with scalar layout: VK_EXT_scalar_block_layout
   for(const auto& k : a_classInfo.kernels)

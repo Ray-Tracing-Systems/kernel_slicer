@@ -294,7 +294,23 @@ bool kslicer::ISPCRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* 
 //
 bool kslicer::ISPCRewriter::VisitCXXFunctionalCastExpr_Impl(clang::CXXFunctionalCastExpr* cast)
 {
-  if(!cast->getType()->isBuiltinType() || !WasNotRewrittenYet(cast))
+  if(!WasNotRewrittenYet(cast))
+    return true;
+
+  // 'half(x)': LiteMath::half is a class (half_float::half), in ISPC it is 'float16'
+  //
+  const clang::RecordDecl* pRecord = cast->getType()->getAsRecordDecl();
+  if(pRecord != nullptr && pRecord->getNameAsString() == "half")
+  {
+    const clang::Expr* sub = cast->getSubExpr()->IgnoreImplicit();
+    if(auto pCtor = clang::dyn_cast<clang::CXXConstructExpr>(sub); pCtor != nullptr && pCtor->getNumArgs() == 1)
+      sub = pCtor->getArg(0);
+    ReplaceText(cast->getSourceRange(), "(half)(" + RecursiveRewrite(sub) + ")");
+    MarkRewritten(cast);
+    return true;
+  }
+
+  if(!cast->getType()->isBuiltinType())
     return true;
   const std::string typeName = RewriteStdVectorTypeStr(cast->getTypeAsWritten().getAsString());
   ReplaceText(cast->getSourceRange(), "(" + typeName + ")(" + RecursiveRewrite(cast->getSubExpr()) + ")");
@@ -735,6 +751,37 @@ std::string kslicer::ISPCCompiler::BEUniformFunction(const clang::FunctionDecl* 
   return text + pRewriter->RecursiveRewrite(a_func->getBody());
 }
 
+// block expansion: 'LiteNN::LinearForwardBlock(w, matOffs, biasOffs, in, IN, out, OUT, BATCH)' in uniform code of a block:
+// outputs of the layer are computed by the gang ('foreach'), accumulation in fp32 in the same order as on CPU
+//
+std::string kslicer::ISPCCompiler::RewriteBEBlockFunction(const clang::CallExpr* a_call, std::shared_ptr<KernelRewriter> pRewriter, const KernelInfo& a_kernel)
+{
+  BELinearForwardArgs args;
+  if(!ParseLinearForwardBlock(a_call, pRewriter, a_kernel, &args))
+    return "// LiteNN::LinearForwardBlock: error";
+
+  const std::string IN     = std::to_string(args.inDim);
+  const std::string OUT    = std::to_string(args.outDim);
+  const std::string STRIDE = std::to_string(args.stride);
+
+  std::stringstream out;
+  out << "{ // LiteNN::LinearForwardBlock: " << args.out << "[" << args.batch << " x " << OUT << "] = " << args.in << "[" << args.batch << " x " << IN << "] * W^T + bias\n";
+  out << "  const uniform uint kgen_matOffs  = " << args.matOffs << ";\n";
+  out << "  const uniform uint kgen_biasOffs = " << args.biasOffs << ";\n";
+  out << "  for(uniform uint kgen_b = 0; kgen_b < " << args.batch << "; kgen_b++)\n";
+  out << "  {\n";
+  out << "    foreach(kgen_j = 0 ... " << OUT << ")\n";
+  out << "    {\n";
+  out << "      float kgen_acc = 0.0f;\n";
+  out << "      for(uniform uint kgen_p = 0; kgen_p < " << IN << "; kgen_p++)\n";
+  out << "        kgen_acc += (float)" << args.weights << "[kgen_matOffs + kgen_j*" << STRIDE << " + kgen_p]*(float)" << args.in << "[kgen_b*" << IN << " + kgen_p];\n";
+  out << "      " << args.out << "[kgen_b*" << OUT << " + kgen_j] = kgen_acc + (float)" << args.weights << "[kgen_biasOffs + kgen_j];\n";
+  out << "    }\n";
+  out << "  }\n";
+  out << "}\n";
+  return out.str();
+}
+
 std::string kslicer::ISPCCompiler::BuildCommand(const std::string& a_inputFile) const
 {
   return std::string("ispc ") + a_inputFile + " --target=" + m_target + " -O2 --pic "; // position independent code: executables are PIE by default
@@ -748,6 +795,21 @@ void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   //
   const std::filesystem::path rawName = a_kernelsJson["MainRawName"].get<std::string>();
   a_kernelsJson["MainISPCFile"] = rawName.filename().u8string() + "_kernels.h";
+
+  // LiteMath::half is 'class half_float::half' in canonical types of arguments, in ISPC it is 'half' (typedef of 'float16')
+  //
+  for(auto& kernel : a_kernelsJson["Kernels"])
+  {
+    for(auto& arg : kernel["Args"])
+    {
+      if(!arg.contains("Type") || !arg["Type"].is_string())
+        continue;
+      std::string type = arg["Type"];
+      while(ReplaceFirst(type, "class half_float::half", "half"));
+      while(ReplaceFirst(type, "half_float::half", "half"));
+      arg["Type"] = type;
+    }
+  }
 
   // member functions access class data directly, so all member buffers and acceleration structures used by kernels
   // are also placed to global variables of ISPC file; each kernel sets them before work

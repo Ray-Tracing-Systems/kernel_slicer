@@ -177,6 +177,7 @@ namespace kslicer
       useDoubleAtomicAdd = useDoubleAtomicAdd || rhs.useDoubleAtomicAdd;
       useInterlockedAdd3f = useInterlockedAdd3f || rhs.useInterlockedAdd3f;
       useCoopVec          = useCoopVec          || rhs.useCoopVec;
+      useCoopMat          = useCoopMat          || rhs.useCoopMat;
       use8BitStorage     = use8BitStorage     || rhs.use8BitStorage;
       use16BitStorage    = use16BitStorage    || rhs.use16BitStorage;
 
@@ -193,6 +194,7 @@ namespace kslicer
     bool useDoubleAtomicAdd = false;
     bool useInterlockedAdd3f = false; ///<! LiteMath::InterlockedAdd3f is called, so its implementation is put to common shader header
     bool useCoopVec          = false; ///<! LiteNN::LinearForward is called: cooperative vectors (VK_NV_cooperative_vector)
+    bool useCoopMat          = false; ///<! LiteNN::*Block is called in block expansion kernel: cooperative matrices (VK_KHR_cooperative_matrix)
     bool use8BitStorage     = false;
     bool use16BitStorage    = false;
   };
@@ -1485,6 +1487,7 @@ namespace kslicer
     virtual std::string BESingleThreadCond(const KernelInfo& a_kernel) const;                  ///<! condition of thread 0 of work group; "" if not needed
     std::string         RewriteBEBody(const KernelInfo& a_kernel, std::shared_ptr<KernelRewriter> pRewriter); ///<! code of a block for 'Kernel.SourceBE'
     virtual std::string BEUniformFunction(const clang::FunctionDecl* a_func, MainClassInfo* a_codeInfo, const clang::CompilerInstance& a_compiler) { return ""; } ///<! ISPC: uniform overload of a function called from the code of a block
+    virtual std::string RewriteBEBlockFunction(const clang::CallExpr* a_call, std::shared_ptr<KernelRewriter> pRewriter, const KernelInfo& a_kernel) { return ""; } ///<! 'LiteNN::*Block' executed by the whole group; "" if not supported
     
     // for RTV only
     //
@@ -1544,6 +1547,7 @@ namespace kslicer
     std::string BEBarrier() const override { return ""; }                                   // 'foreach' is finished before the next statement
     std::string BESingleThreadCond(const KernelInfo& a_kernel) const override { return ""; } // code of a single thread is uniform
     std::string BEUniformFunction(const clang::FunctionDecl* a_func, MainClassInfo* a_codeInfo, const clang::CompilerInstance& a_compiler) override;
+    std::string RewriteBEBlockFunction(const clang::CallExpr* a_call, std::shared_ptr<KernelRewriter> pRewriter, const KernelInfo& a_kernel) override;
 
     std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit) override;
     std::shared_ptr<KernelRewriter>            MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,
@@ -1604,6 +1608,7 @@ namespace kslicer
 
     void GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings) override;
 
+    std::string RewriteBEBlockFunction(const clang::CallExpr* a_call, std::shared_ptr<KernelRewriter> pRewriter, const KernelInfo& a_kernel) override;
     std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const override;
     void        GetThreadSizeNames(std::string a_strs[3])               const override;
     std::string GetSubgroupOpCode(const kslicer::KernelInfo::ReductionAccess& a_access) const override;
@@ -2121,6 +2126,18 @@ namespace kslicer
   std::vector<const clang::CXXRecordDecl*> ExtractAndSortBaseClasses(const std::vector<const clang::CXXRecordDecl*>& classes, const clang::CXXRecordDecl* derived);
 
   void ExtractBlockSizeFromCall(clang::CXXMemberCallExpr* f, kslicer::KernelInfo& kernel, const clang::CompilerInstance& compiler);
+  /**
+  \brief arguments of 'LiteNN::LinearForwardBlock(weights, matOffs, biasOffs, in, inDim, out, outDim, batch)' in block expansion kernel
+  */
+  struct BELinearForwardArgs
+  {
+    std::string weights, matOffs, biasOffs;  ///<! rewritten for the back end
+    std::string in, out;                     ///<! names of arrays of the block
+    uint32_t inDim = 0, outDim = 0, batch = 0;
+    uint32_t stride = 0;                     ///<! row stride of the matrix of weights, 'LiteNN::RowStride(inDim)'
+  };
+  bool ParseLinearForwardBlock(const clang::CallExpr* a_call, std::shared_ptr<KernelRewriter> pRewriter, const KernelInfo& a_kernel, BELinearForwardArgs* a_args);
+
   bool RewriteBlockExpansionCallsISPC(const clang::CXXMethodDecl* a_controlFunc, kslicer::umap<std::string, KernelInfo>& a_kernels, clang::Rewriter& a_rewriter, const clang::CompilerInstance& a_compiler);
 
   void ProcessFunctionsInQueueBFS(kslicer::MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler, std::queue<kslicer::FuncData>& functionsToProcess, kslicer::umap<uint64_t, kslicer::FuncData>& usedFunctions);

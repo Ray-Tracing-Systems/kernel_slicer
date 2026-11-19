@@ -1384,6 +1384,53 @@ void kslicer::SlangCompiler::ProcessVectorTypesString(std::string& a_str)
   }
 }
 
+// block expansion: 'LiteNN::LinearForwardBlock(w, matOffs, biasOffs, in, IN, out, OUT, BATCH)' with cooperative matrices 16x16x16:
+// every subgroup computes tiles 16x16 of 'out[BATCH x OUT] = in[BATCH x IN] * W^T' (W is row-major 'OUT x stride', so W^T is column-major),
+// then all threads of the group add biases
+//
+std::string kslicer::SlangCompiler::RewriteBEBlockFunction(const clang::CallExpr* a_call, std::shared_ptr<KernelRewriter> pRewriter, const KernelInfo& a_kernel)
+{
+  BELinearForwardArgs args;
+  if(!ParseLinearForwardBlock(a_call, pRewriter, a_kernel, &args))
+    return "// LiteNN::LinearForwardBlock: error";
+
+  uint32_t wgSize[3] = {a_kernel.wgSize[0], a_kernel.wgSize[1], a_kernel.wgSize[2]};
+  const std::string localId  = LocalIdExpr(1, wgSize);
+  const std::string bsize    = a_kernel.be.wgNames[0];
+  const std::string IN       = std::to_string(args.inDim);
+  const std::string OUT      = std::to_string(args.outDim);
+  const std::string STRIDE   = std::to_string(args.stride);
+  const std::string tilesOut = std::to_string(args.outDim/16);
+  const std::string tilesAll = std::to_string((args.batch/16)*(args.outDim/16));
+  const std::string matA     = "CoopMat<half, CoopMatScope.Subgroup, 16, 16, CoopMatMatrixUse.MatrixA>";
+  const std::string matB     = "CoopMat<half, CoopMatScope.Subgroup, 16, 16, CoopMatMatrixUse.MatrixB>";
+  const std::string matC     = "CoopMat<float, CoopMatScope.Subgroup, 16, 16, CoopMatMatrixUse.MatrixAccumulator>";
+
+  std::stringstream out;
+  out << "{ // LiteNN::LinearForwardBlock: " << args.out << "[" << args.batch << " x " << OUT << "] = " << args.in << "[" << args.batch << " x " << IN << "] * W^T + bias, cooperative matrices\n";
+  out << "  const uint kgen_matOffs   = " << args.matOffs << ";\n";
+  out << "  const uint kgen_subgroup  = " << localId << " / WaveGetLaneCount();\n";
+  out << "  const uint kgen_subgroups = " << bsize << " / WaveGetLaneCount();\n";
+  out << "  for(uint kgen_tile = kgen_subgroup; kgen_tile < " << tilesAll << "; kgen_tile += kgen_subgroups)\n";
+  out << "  {\n";
+  out << "    const uint kgen_row = (kgen_tile / " << tilesOut << ")*16; // vectors of the batch\n";
+  out << "    const uint kgen_col = (kgen_tile % " << tilesOut << ")*16; // outputs of the layer\n";
+  out << "    " << matC << " kgen_c = " << matC << "(0.0f);\n";
+  out << "    for(uint kgen_k = 0; kgen_k < " << IN << "; kgen_k += 16)\n";
+  out << "    {\n";
+  out << "      let kgen_a = coopMatLoad<half, CoopMatScope.Subgroup, 16, 16, CoopMatMatrixUse.MatrixA>(" << args.in << ", kgen_row*" << IN << " + kgen_k, " << IN << ", CoopMatMatrixLayout.RowMajor);\n";
+  out << "      let kgen_b = coopMatLoad<half, CoopMatScope.Subgroup, 16, 16, CoopMatMatrixUse.MatrixB>(" << args.weights << ", kgen_matOffs + kgen_col*" << STRIDE << " + kgen_k, " << STRIDE << ", CoopMatMatrixLayout.ColumnMajor);\n";
+  out << "      kgen_c = coopMatMulAdd(kgen_a, kgen_b, kgen_c, CoopMatMatrixOperands.None);\n";
+  out << "    }\n";
+  out << "    kgen_c.store(" << args.out << ", kgen_row*" << OUT << " + kgen_col, " << OUT << ", CoopMatMatrixLayout.RowMajor);\n";
+  out << "  }\n";
+  out << "}\n";
+  out << BEBarrier() << "\n";
+  out << "for(uint kgen_i = " << localId << "; kgen_i < " << args.batch*args.outDim << "; kgen_i += " << bsize << ") // biases\n";
+  out << "  " << args.out << "[kgen_i] += float(" << args.weights << "[" << args.biasOffs << " + kgen_i % " << OUT << "]);\n";
+  return out.str();
+}
+
 std::string kslicer::SlangCompiler::LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const
 {
   // uint3 a_localTID  : SV_GroupThreadID

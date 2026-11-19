@@ -81,6 +81,7 @@ follows the test configs and the code.
 | `atomics_float_emul` | Float atomics emulated with CAS (`-atomicf_emul 1`) | ✅ | ✅ | ❔ | ❔ | 042, 054, 056 |
 | `hash_map` | `std::unordered_map` members; `clear()` in control functions (zero fill on GPU) | ✅ | ❌ | ❔ | ❔ | 055, 056 |
 | `nn_coop_vec` | Small neural networks with cooperative vectors (`LiteNN`) | 🧪¹ | ❌ | ❌ | ❌ | 071, 072, 073 |
+| `bev_nn_block` | `LiteNN::LinearForwardBlock` in block expansion kernels: a layer for a batch of vectors in shared memory, cooperative matrices 16x16x16 fp16/fp32 (`VK_KHR_cooperative_matrix`) | 🧪 | ❌ | ❔ | 🧪 | 095 |
 
 ¹ Needs `VK_NV_cooperative_vector` (NVIDIA). Not available on the GPU of the last check.
 

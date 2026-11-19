@@ -1191,7 +1191,7 @@ bool kslicer::GLSLRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
   const clang::FunctionDecl* pCallee = call->getDirectCallee();
   if(pCallee != nullptr && pCallee->getQualifiedNameAsString().rfind("LiteNN::", 0) == 0 && WasNotRewrittenYet(call))
   {
-    kslicer::PrintError("LiteNN functions (cooperative vectors) are supported only by Slang back end, use '-shaderCC slang'", call->getSourceRange(), m_compiler.getSourceManager());
+    kslicer::PrintError("LiteNN functions (cooperative vectors and matrices) are supported only by Slang back end, use '-shaderCC slang'", call->getSourceRange(), m_compiler.getSourceManager());
     MarkRewritten(call);
     return true;
   }

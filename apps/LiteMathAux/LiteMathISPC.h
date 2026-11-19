@@ -1,6 +1,8 @@
 #ifndef ISPC_MATH_H
 #define ISPC_MATH_H
 
+typedef float16  half;   // LiteMath::half
+
 typedef float<2> float2;
 typedef float<3> float3;
 typedef float<4> float4;

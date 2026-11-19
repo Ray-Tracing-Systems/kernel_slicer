@@ -2519,6 +2519,14 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
   deviceExtensions.push_back(VK_NV_COOPERATIVE_VECTOR_EXTENSION_NAME);
 
   {% endif %}
+  {% if GlobalUseCoopMat %}
+  static VkPhysicalDeviceCooperativeMatrixFeaturesKHR coopMatFeatures = {}; // LiteNN block functions in block expansion kernels
+  coopMatFeatures.sType             = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_KHR;
+  coopMatFeatures.cooperativeMatrix = VK_TRUE;
+  (*ppNext) = &coopMatFeatures; ppNext = &coopMatFeatures.pNext;
+  deviceExtensions.push_back(VK_KHR_COOPERATIVE_MATRIX_EXTENSION_NAME);
+
+  {% endif %}
   {% if GlobalUseScalarLayout %} {# /* buffers of float3 and of structures with padding in std430 */ #}
   static VkPhysicalDeviceScalarBlockLayoutFeatures scalarLayoutFeatures = {};
   scalarLayoutFeatures.sType             = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES;

@@ -43,6 +43,38 @@ namespace
     return finder.found;
   }
 
+  // 'LiteNN::LinearForwardBlock(...)' and other block level functions: executed by all threads of the group together
+  //
+  const clang::CallExpr* BlockFunctionCall(const clang::Stmt* a_stmt)
+  {
+    auto pCall = clang::dyn_cast_or_null<clang::CallExpr>(a_stmt);
+    const clang::FunctionDecl* pFunc = (pCall == nullptr) ? nullptr : pCall->getDirectCallee();
+    if(pFunc == nullptr)
+      return nullptr;
+    const std::string name = pFunc->getQualifiedNameAsString();
+    const bool isBlock = name.rfind("LiteNN::", 0) == 0 && name.size() > 5 && name.compare(name.size() - 5, 5, "Block") == 0;
+    return isBlock ? pCall : nullptr;
+  }
+
+  class BlockFunctionFinder : public clang::RecursiveASTVisitor<BlockFunctionFinder>
+  {
+  public:
+    bool VisitCallExpr(clang::CallExpr* a_call)
+    {
+      if(found == nullptr && BlockFunctionCall(a_call) != nullptr)
+        found = a_call;
+      return true;
+    }
+    const clang::CallExpr* found = nullptr;
+  };
+
+  const clang::CallExpr* FindBlockFunction(const clang::Stmt* a_stmt)
+  {
+    BlockFunctionFinder finder;
+    finder.TraverseStmt(const_cast<clang::Stmt*>(a_stmt));
+    return finder.found;
+  }
+
   // functions of the program called directly: not methods and not functions of libraries
   //
   const clang::FunctionDecl* UserCallee(const clang::CallExpr* a_call)
@@ -278,6 +310,14 @@ namespace
         m_lines.push_back(line);
     }
 
+    void LinesRaw(const std::string& a_text)                  // generated text, its own indentation from column 0
+    {
+      std::istringstream input(a_text);
+      std::string line;
+      while(std::getline(input, line))
+        m_lines.push_back(line.empty() ? line : m_indent + line);
+    }
+
     void Barrier()
     {
       if(m_barrier == "" || (!m_lines.empty() && m_lines.back() == m_indent + m_barrier))
@@ -322,6 +362,8 @@ namespace
         auto pFor = clang::dyn_cast<clang::ForStmt>(a_stmt);
         if(ContainsParallelFor(pFor->getBody(), m_compiler))
           Error("'[[parallel]]' loop inside a parallel loop is not supported", pFor->getBody());
+        if(auto pCall = FindBlockFunction(pFor->getBody()))
+          Error("block level function must be called from the code of the block, not from a parallel loop", pCall);
         Barrier();
         Lines(m_pCC->RewriteBEParallelFor(pFor, m_pRewriter, m_kernel), a_stmt);
         Barrier();
@@ -364,6 +406,22 @@ namespace
           Error("a parallel loop may be placed only inside 'for', 'while', 'do', 'if' and '{}'", a_stmt);
         return;
       }
+
+      if(auto pCall = BlockFunctionCall(a_stmt))               // block level function: all threads, reads and writes shared memory
+      {
+        const std::string text = m_pCC->RewriteBEBlockFunction(pCall, m_pRewriter, m_kernel);
+        if(text == "")
+        {
+          Error("'" + pCall->getDirectCallee()->getQualifiedNameAsString() + "' is not supported by this back end", a_stmt);
+          return;
+        }
+        Barrier();
+        LinesRaw(text);
+        Barrier();
+        return;
+      }
+      if(auto pCall = FindBlockFunction(a_stmt))
+        Error("block level function must be called as a separate statement", pCall);
 
       EffectsVisitor effects(m_kernel.be);
       effects.TraverseStmt(const_cast<clang::Stmt*>(a_stmt));
@@ -444,7 +502,8 @@ kslicer::KernelInfo::BlockExpansionInfo ExtractBlocks(const clang::CompoundStmt*
     {
       auto pVar = clang::dyn_cast<clang::VarDecl>(decl);
       be.sharedVars.insert(pVar);
-      if(pVar->hasInit())
+      auto pCtor = clang::dyn_cast_or_null<clang::CXXConstructExpr>(pVar->getInit()); // 'half a[N]': implicit default constructor, not an initializer
+      if(pVar->hasInit() && !(pCtor != nullptr && pCtor->getNumArgs() == 0))
         kslicer::PrintError("block expansion: arrays of the block are placed in shared memory and can't be initialized", pDecl->getSourceRange(), a_compiler.getSourceManager());
     }
   }
@@ -462,6 +521,65 @@ void kslicer::MainClassInfo::ProcessBlockExpansionKernel(KernelInfo& a_kernel, c
   std::cout << "  BlockExpansion: " << a_kernel.name.c_str() << std::endl;
   
   a_kernel.be = ExtractBlocks(kernelBody2, a_compiler);
+
+  if(FindBlockFunction(kernelBody2) != nullptr)            // LiteNN block functions: cooperative matrices, fp16 in shared memory and buffers
+  {
+    globalShaderFeatures.useCoopMat      = true;
+    globalShaderFeatures.useHalfType     = true;
+    globalShaderFeatures.use16BitStorage = true;
+  }
+}
+
+bool kslicer::ParseLinearForwardBlock(const clang::CallExpr* a_call, std::shared_ptr<KernelRewriter> pRewriter, const KernelInfo& a_kernel, BELinearForwardArgs* a_args)
+{
+  const clang::CompilerInstance& compiler = pRewriter->GetCompiler();
+  const clang::SourceManager&    sm       = compiler.getSourceManager();
+  if(a_call->getDirectCallee()->getNameAsString() != "LinearForwardBlock" || a_call->getNumArgs() != 8)
+  {
+    kslicer::PrintError("unknown block level function", a_call->getSourceRange(), sm);
+    return false;
+  }
+
+  bool ok = true;
+  auto ArrayOfBlock = [&](const clang::Expr* a_expr)
+  {
+    auto pRef = clang::dyn_cast<clang::DeclRefExpr>(a_expr->IgnoreParenImpCasts());
+    auto pVar = (pRef == nullptr) ? nullptr : clang::dyn_cast<clang::VarDecl>(pRef->getDecl());
+    if(pVar == nullptr || !a_kernel.be.sharedVars.contains(pVar))
+    {
+      kslicer::PrintError("LiteNN::LinearForwardBlock: input and output must be arrays of the block (declared at the top level of the block)", a_expr->getSourceRange(), sm);
+      ok = false;
+      return std::string("");
+    }
+    return pVar->getNameAsString();
+  };
+  auto Dimension = [&](const clang::Expr* a_expr)
+  {
+    auto value = a_expr->getIntegerConstantExpr(compiler.getASTContext());
+    if(!value || value->getExtValue() <= 0 || value->getExtValue() % 16 != 0)
+    {
+      kslicer::PrintError("LiteNN::LinearForwardBlock: sizes must be compile time constants, multiples of 16 (LiteNN::BLOCK_TILE)", a_expr->getSourceRange(), sm);
+      ok = false;
+      return uint32_t(16);
+    }
+    return uint32_t(value->getExtValue());
+  };
+
+  a_args->weights  = pRewriter->RecursiveRewrite(a_call->getArg(0));
+  a_args->matOffs  = pRewriter->RecursiveRewrite(a_call->getArg(1));
+  a_args->biasOffs = pRewriter->RecursiveRewrite(a_call->getArg(2));
+  a_args->in       = ArrayOfBlock(a_call->getArg(3));
+  a_args->inDim    = Dimension(a_call->getArg(4));
+  a_args->out      = ArrayOfBlock(a_call->getArg(5));
+  a_args->outDim   = Dimension(a_call->getArg(6));
+  a_args->batch    = Dimension(a_call->getArg(7));
+  a_args->stride   = (a_args->inDim + 7) / 8 * 8;          // LiteNN::RowStride
+  if(ok && a_args->in == a_args->out)
+  {
+    kslicer::PrintError("LiteNN::LinearForwardBlock: input and output must be different arrays", a_call->getSourceRange(), sm);
+    ok = false;
+  }
+  return ok;
 }
 
 std::string kslicer::IShaderCompiler::RewriteBESharedDecl(const clang::DeclStmt* decl, std::shared_ptr<KernelRewriter> pRewriter)
