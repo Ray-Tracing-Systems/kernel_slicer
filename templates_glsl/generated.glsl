@@ -97,19 +97,10 @@ void main()
   {% endif %}
   {% endif %}
   {% if Kernel.EnableBlockExpansion %}
-  {% for Block in Kernel.SourceBE %}
-  {% if Block.IsParallel %}
-  barrier();
-  {
-  {{Block.Text}}
-  }
-  barrier();
-  {% else %}
-  if(gl_LocalInvocationID[0] == 0) {
-  {{Block.Text}}
-  }
-  {% endif %}
-  {% endfor %}
+  // BLOCK-EXPANDED KERNEL BODY: parallel loops are executed by all threads of the group, statements that write memory by thread 0,
+  // other statements by all threads (each thread has its own copy of variables of the block)
+  //
+{{Kernel.SourceBE}}
   {% else %}
   if(runThisThread)
   {

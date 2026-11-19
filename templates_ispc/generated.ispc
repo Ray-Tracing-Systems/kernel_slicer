@@ -191,6 +191,72 @@ export void {{Kernel.Name}}_Bind_ISPC( // sets class data for member functions, 
 
 {% if not Kernel.IsGraphics %}
 
+{% if Kernel.EnableBlockExpansion %}
+{% for TID in Kernel.ThreadSizeBE %}
+#define {{TID.Name}} {{TID.Value}}u // template parameter of '{{Kernel.Name}}'
+{% endfor %}
+
+// block expansion: one iteration of the outer loop processes a block; code of a single thread is uniform,
+// parallel loops of the block are 'foreach' over the gang, arrays of the block are uniform local arrays
+//
+static void {{Kernel.Name}}_Blocks(
+{% include "inc_args.ispc" %}
+  uniform struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo[1], uniform int a_blockStart, uniform int a_blockEnd)
+{
+  for(uniform {{Kernel.ThreadId0.Type}} {{Kernel.ThreadId0.Name}} = a_blockStart; {{Kernel.ThreadId0.Name}} < a_blockEnd; {{Kernel.ThreadId0.Name}}++)
+  {
+    {% for Var in Kernel.SharedBE %}
+    {{Var}}
+    {% endfor %}
+{{Kernel.SourceBE}}
+  }
+}
+
+{% if Kernel.SingleThreadISPC %}
+export void {{Kernel.Name}}_ISPC(
+{% include "inc_args.ispc" %}
+  uniform struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo[1])
+{
+  {{Kernel.InitSource}}
+  {{Kernel.Name}}_Blocks({% include "inc_call_args.ispc" %}ubo, {{Kernel.ThreadId0.Start}}, {{Kernel.ThreadId0.Size}});
+  {{Kernel.FinishSource}}
+}
+{% else if Kernel.OpenMPAndISPC %}
+export void {{Kernel.Name}}_ISPC(
+{% include "inc_args.ispc" %}
+  uniform struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo[1],
+  uniform int _start, uniform int _end, uniform int _ycoord)
+{
+  {{Kernel.Name}}_Blocks({% include "inc_call_args.ispc" %}ubo, _start, _end);
+}
+{% else %}
+task void {{Kernel.Name}}_Task(
+{% include "inc_args.ispc" %}
+  uniform struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo[1],
+  uniform int _start, uniform int _end, uniform int _span)
+{
+  const uniform int blockStart = _start + taskIndex * _span;
+  const uniform int blockEnd   = min(blockStart + _span, _end);
+  {{Kernel.Name}}_Blocks({% include "inc_call_args.ispc" %}ubo, blockStart, blockEnd);
+}
+
+export void {{Kernel.Name}}_ISPC(
+{% include "inc_args.ispc" %}
+  uniform struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo[1])
+{
+  {{Kernel.InitSource}}
+  const uniform int l_start = {{Kernel.ThreadId0.Start}};
+  const uniform int l_size  = {{Kernel.ThreadId0.Size}};
+  const uniform int span    = max(1, 16384/(uniform int){% for TID in Kernel.ThreadSizeBE %}{% if loop.index == 0 %}{{TID.Name}}{% endif %}{% endfor %}); // blocks per task: about 16K elements
+  launch[(l_size - l_start + span - 1)/span] {{Kernel.Name}}_Task({% include "inc_call_args.ispc" %}ubo, l_start, l_size, span);
+  sync;
+  {{Kernel.FinishSource}}
+}
+{% endif %}
+{% for TID in Kernel.ThreadSizeBE %}
+#undef {{TID.Name}}
+{% endfor %}
+{% else %}
 {% if Kernel.SingleThreadISPC %}
 export void {{Kernel.Name}}_ISPC(
 {% include "inc_args.ispc" %}
@@ -313,6 +379,7 @@ export void {{Kernel.Name}}_ISPC(
 }
 {% endif %}
 {% endif %}
+{% endif %} {# /* Kernel.EnableBlockExpansion */ #}
 {% endif %} {# /* not Kernel.IsGraphics */ #}
 
 ## endfor

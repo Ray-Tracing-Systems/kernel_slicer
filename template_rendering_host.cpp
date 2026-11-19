@@ -1848,6 +1848,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
     data2["MainFuncDeclCmd"]      = mainFunc.GeneratedDecl;
     data2["MainFuncTextCmd"]      = mainFunc.CodeGenerated;
+    data2["CallsBlockExpansion"]  = mainFunc.callsBlockExpansion;
     data2["ReturnType"]           = mainFunc.ReturnType;
     data2["IsVoid"]               = (mainFunc.ReturnType == "void");
     data2["IsRTV"]                = (mainFunc.pattern == kslicer::PATTERN_TP::PATTERN_RTV);

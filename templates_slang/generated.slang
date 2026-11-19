@@ -94,21 +94,10 @@ void main(uint3 a_globalTID: SV_DispatchThreadID, {% if Kernel.HasEpilog or Kern
   {% endif %} 
   {% endif %}
   {% if Kernel.EnableBlockExpansion %}
-  {% for Block in Kernel.SourceBE %}
-  {% if Block.IsParallel %}
-  GroupMemoryBarrierWithGroupSync();
-  // BLOCK-EXPANDED KERNEL BODY:
+  // BLOCK-EXPANDED KERNEL BODY: parallel loops are executed by all threads of the group, statements that write memory by thread 0,
+  // other statements by all threads (each thread has its own copy of variables of the block)
   //
-  {
-  {{Block.Text}}
-  }
-  GroupMemoryBarrierWithGroupSync();
-  {% else %}
-  if(a_localTID[0] == 0) {
-  {{Block.Text}}
-  }
-  {% endif %}
-  {% endfor %}
+{{Kernel.SourceBE}}
   {% else %}
   {% if Kernel.IsBoolean %}
   bool kgenExitCond = false;

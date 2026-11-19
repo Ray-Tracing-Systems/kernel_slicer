@@ -187,6 +187,14 @@ void kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang:
       sourceCode = rewrite2.getRewrittenText(clang::SourceRange(b,e));
       a_mainFunc.GeneratedDecl = kslicer::GetControlFuncDeclCUDA(a_node, compiler);
     }
+    else if(pHostCC->Name() == "ISPC")
+    {
+      // block expansion kernels are templates and can't be overriden, so their calls in a copy of control function go to the generated class
+      //
+      a_mainFunc.callsBlockExpansion = kslicer::RewriteBlockExpansionCallsISPC(a_node, kernels, rewrite2, compiler);
+      if(a_mainFunc.callsBlockExpansion)
+        sourceCode = rewrite2.getRewrittenText(clang::SourceRange(b,e));
+    }
     
     size_t bracePos = sourceCode.find("{");
     if(bracePos != std::string::npos)

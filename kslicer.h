@@ -434,17 +434,12 @@ namespace kslicer
     kslicer::umap<std::string, ArrayData>         threadLocalArrays;
     std::map<std::string, TemplatedFunctionLM>         templatedFunctionsLM;
    
-    struct BEBlock
-    {
-      bool                  isParallel = false;
-      const clang::ForStmt* forLoop    = nullptr;
-      const clang::Stmt*    astNode    = nullptr;
-    };
-
     struct BlockExpansionInfo
     {
-      std::vector<const clang::DeclStmt*> sharedDecls;
-      std::vector<BEBlock>                statements;
+      const clang::CompoundStmt*           body = nullptr; ///<! body of the loop over blocks
+      std::vector<const clang::DeclStmt*>  sharedDecls;    ///<! arrays of the block, top level of the body: shared memory
+      kslicer::uset<const clang::VarDecl*> sharedVars;     ///<! variables of 'sharedDecls'
+      kslicer::uset<const clang::VarDecl*> uniformVars;    ///<! variables of the block (not of parallel loops): 'uniform' in ISPC
       bool enabled = false;
       std::string wgNames[3] = {"unknown", "unknown", "unknown"};
       std::string wgTypes[3] = {"uint", "uint", "uint"};
@@ -681,6 +676,7 @@ namespace kslicer
     std::string CodeGenerated;
     std::string OriginalDecl;
     std::string MegaKernelCall;
+    bool        callsBlockExpansion = false; ///<! ISPC: control function calls block expansion kernels, 'CodeGenerated' is its copy
 
     size_t startDSNumber = 0;
     size_t endDSNumber   = 0;
@@ -1144,6 +1140,8 @@ namespace kslicer
     ISPCRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo) : FunctionRewriter2(R,a_compiler,a_codeInfo) { Init();}
     ~ISPCRewriter(){ }
 
+    kslicer::uset<unsigned> m_uniformDeclLocs; ///<! 'uniform ' is already inserted at these locations (block expansion kernels)
+
     bool VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl)   override;
     bool VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl) override;
 
@@ -1479,8 +1477,11 @@ namespace kslicer
     // for block expansion
     //
     virtual std::string RewriteBESharedDecl(const clang::DeclStmt* decl, std::shared_ptr<KernelRewriter> pRewriter);
-    virtual std::string RewriteBEParallelFor(const clang::ForStmt* forExpr, std::shared_ptr<KernelRewriter> pRewriter);
+    virtual std::string RewriteBEParallelFor(const clang::ForStmt* forExpr, std::shared_ptr<KernelRewriter> pRewriter, const KernelInfo& a_kernel);
     virtual std::string RewriteBEStmt(const clang::Stmt* stmt, std::shared_ptr<KernelRewriter> pRewriter);
+    virtual std::string BEBarrier() const { return "GroupMemoryBarrierWithGroupSync();"; }     ///<! barrier of work group; "" if not needed
+    virtual std::string BESingleThreadCond(const KernelInfo& a_kernel) const;                  ///<! condition of thread 0 of work group; "" if not needed
+    std::string         RewriteBEBody(const KernelInfo& a_kernel, std::shared_ptr<KernelRewriter> pRewriter); ///<! code of a block for 'Kernel.SourceBE'
     
     // for RTV only
     //
@@ -1536,6 +1537,9 @@ namespace kslicer
     std::string ReplaceCallFromStdNamespace(const std::string& a_call, const std::string& a_typeName) const override;
     bool        BuffersAsPointersInShaders() const override { return false; }
     bool        SupportAtomicGlobal(const KernelInfo::ReductionAccess& acc) const override { return true; }
+    std::string RewriteBEParallelFor(const clang::ForStmt* forExpr, std::shared_ptr<KernelRewriter> pRewriter, const KernelInfo& a_kernel) override;
+    std::string BEBarrier() const override { return ""; }                                   // 'foreach' is finished before the next statement
+    std::string BESingleThreadCond(const KernelInfo& a_kernel) const override { return ""; } // code of a single thread is uniform
 
     std::shared_ptr<kslicer::FunctionRewriter> MakeFuncRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo, kslicer::ShittyFunction a_shit) override;
     std::shared_ptr<KernelRewriter>            MakeKernRewriter(clang::Rewriter &R, const clang::CompilerInstance& a_compiler, MainClassInfo* a_codeInfo,
@@ -1556,6 +1560,7 @@ namespace kslicer
 
     void GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings) override;
 
+    std::string BEBarrier() const override { return "barrier();"; }
     std::string LocalIdExpr(uint32_t a_kernelDim, uint32_t a_wgSize[3]) const override;
     void        GetThreadSizeNames(std::string a_strs[3])               const override;
     std::string GetSubgroupOpCode(const kslicer::KernelInfo::ReductionAccess& a_access) const override;
@@ -2112,6 +2117,7 @@ namespace kslicer
   std::vector<const clang::CXXRecordDecl*> ExtractAndSortBaseClasses(const std::vector<const clang::CXXRecordDecl*>& classes, const clang::CXXRecordDecl* derived);
 
   void ExtractBlockSizeFromCall(clang::CXXMemberCallExpr* f, kslicer::KernelInfo& kernel, const clang::CompilerInstance& compiler);
+  bool RewriteBlockExpansionCallsISPC(const clang::CXXMethodDecl* a_controlFunc, kslicer::umap<std::string, KernelInfo>& a_kernels, clang::Rewriter& a_rewriter, const clang::CompilerInstance& a_compiler);
 
   void ProcessFunctionsInQueueBFS(kslicer::MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler, std::queue<kslicer::FuncData>& functionsToProcess, kslicer::umap<uint64_t, kslicer::FuncData>& usedFunctions);
   std::vector<kslicer::FuncData> SortByDepthInUse(const kslicer::umap<uint64_t, kslicer::FuncData>& usedFunctions);

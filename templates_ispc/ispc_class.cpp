@@ -109,6 +109,9 @@ public:
 
   {% for MainFunc in MainFunctions %}
   {{MainFunc.ReturnType}} {{MainFunc.DeclOrig}} override;
+  {% if MainFunc.CallsBlockExpansion %}
+  {{MainFunc.ReturnType}} {{MainFunc.DeclBE}}; // copy of '{{MainFunc.Name}}' that calls block expansion kernels of this class
+  {% endif %}
   {% endfor %}
 
 protected:
@@ -200,7 +203,7 @@ protected:
 
   {% for Kernel in Kernels %}
   {% if not Kernel.IsGraphics %}
-  void {{Kernel.Name}}({% for Arg in Kernel.Args %}{% if not Arg.IsUBO and not Arg.IsMember %}{% if Arg.IsPointer %}{{Arg.Type}}* {{Arg.Name}}{% if loop.index1 != Kernel.LastArgNF %}, {% endif %}{% else %}{{Arg.Type}} {{Arg.Name}}{% if loop.index1 != Kernel.LastArgNF %}, {% endif %} {% endif %}{% endif %} {% endfor %}) {% if not Kernel.InitKPass %} override {% endif %}
+  void {{Kernel.Name}}({% for Arg in Kernel.Args %}{% if not Arg.IsUBO and not Arg.IsMember %}{% if Arg.IsPointer %}{{Arg.Type}}* {{Arg.Name}}{% if loop.index1 != Kernel.LastArgNF %}, {% endif %}{% else %}{{Arg.Type}} {{Arg.Name}}{% if loop.index1 != Kernel.LastArgNF %}, {% endif %} {% endif %}{% endif %} {% endfor %}) {% if not Kernel.InitKPass and not Kernel.EnableBlockExpansion %} override {% endif %}
   { 
     {% for Arg in Kernel.Args %}
     {% if Arg.IsAccelStruct %}
@@ -287,10 +290,19 @@ void {{MainClassName}}_ISPC::ReadPlainMembers()
   {% if HasGraphics %}
   SetDrawBackends(); // pipeline objects could be reassigned after constructor
   {% endif %}
-  {{MainClassName}}::{{MainFunc.Name}}({% for Arg in MainFunc.InOutVars %}{{Arg.Name}}{% if loop.index1 != MainFunc.InOutVarsNum %},{% endif %}{% endfor %});
+  {% if MainFunc.CallsBlockExpansion %}{{MainFunc.Name}}_BE{% else %}{{MainClassName}}::{{MainFunc.Name}}{% endif %}({% for Arg in MainFunc.InOutVars %}{{Arg.Name}}{% if loop.index1 != MainFunc.InOutVarsNum %},{% endif %}{% endfor %});
   ReadPlainMembers();
   m_exTimeISPC["{{MainFunc.Name}}"] = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - before).count()/1000.f;
 }
+{% if MainFunc.CallsBlockExpansion %}
+
+// block expansion kernels are templates of '{{MainClassName}}' and can't be overriden, so this copy of '{{MainFunc.Name}}' calls them in '{{MainClassName}}_ISPC'
+//
+{{MainFunc.ReturnType}} {{MainClassName}}_ISPC::{{MainFunc.DeclBE}}
+{
+  {{MainFunc.MainFuncTextCmd}}
+}
+{% endif %}
 {% endfor %}
 {% if HasGetTimeFunc %}
 

@@ -433,6 +433,15 @@ bool kslicer::ISPCRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
   if(decl->isLocalVarDecl() && WasNotRewrittenYet(decl->getInit()))
     RemoveLiteNamespaceQualifier(decl); // 'const LiteMath::float4x4 m' ==> 'const float4x4 m'
 
+  // block expansion: variables of the block (shared arrays and variables of single thread code) are 'uniform'
+  //
+  if(m_kernelMode && m_pCurrKernel != nullptr && m_pCurrKernel->be.enabled && decl->isLocalVarDecl() && m_pCurrKernel->be.uniformVars.contains(decl))
+  {
+    const unsigned loc = decl->getBeginLoc().getRawEncoding(); // 'int a, b;': both declarations start at 'int'
+    if(m_uniformDeclLocs.insert(loc).second)
+      m_rewriter.InsertTextBefore(decl->getBeginLoc(), "uniform ");
+  }
+
   if(m_kernelMode)
   {
     // ...
@@ -476,11 +485,36 @@ bool kslicer::ISPCRewriter::VisitFloatingLiteral_Impl(clang::FloatingLiteral* ex
   return true;
 }
 
+namespace
+{
+  bool HasSubtraction(const clang::Stmt* a_expr)
+  {
+    if(auto pBin = clang::dyn_cast<clang::BinaryOperator>(a_expr); pBin != nullptr && pBin->getOpcode() == clang::BO_Sub)
+      return true;
+    for(const clang::Stmt* child : a_expr->children())
+      if(child != nullptr && HasSubtraction(child))
+        return true;
+    return false;
+  }
+}
+
 bool kslicer::ISPCRewriter::VisitArraySubscriptExpr_Impl(clang::ArraySubscriptExpr* arrayExpr) 
 { 
-  if(m_kernelMode)
+  // block expansion, local arrays: ISPC evaluates both sides of '?:' (and both branches of 'if') with varying condition under a mask,
+  // but the address of a vector load is computed for masked lanes too, so 'c ? a[i - 1] : 0' with unsigned 'i == 0' crashes;
+  // with a signed index such address is only a bit before the array
+  //
+  if(m_kernelMode && m_pCurrKernel != nullptr && m_pCurrKernel->be.enabled)
   {
-    // ...
+    auto pRef = clang::dyn_cast<clang::DeclRefExpr>(arrayExpr->getBase()->IgnoreParenImpCasts());
+    auto pVar = (pRef == nullptr) ? nullptr : clang::dyn_cast<clang::VarDecl>(pRef->getDecl());
+    const clang::Expr* idx = arrayExpr->getIdx();
+    if(pVar != nullptr && pVar->hasLocalStorage() && pVar->getType()->isArrayType() &&
+       idx->getType()->isUnsignedIntegerType() && HasSubtraction(idx) && WasNotRewrittenYet(idx))
+    {
+      ReplaceText(idx->getSourceRange(), "(int)(" + RecursiveRewrite(idx) + ")");
+      MarkRewritten(idx);
+    }
   }
 
   return true; 
@@ -586,6 +620,65 @@ std::shared_ptr<kslicer::KernelRewriter> kslicer::ISPCCompiler::MakeKernRewriter
 }
 
 
+// block expansion: 'for(T i = a; i < b; i++) [[parallel]] body' ==> 'foreach(i = a ... b) body';
+// other conditions with step 1 ==> 'for(T i = a + programIndex; cond; i += programCount) body'
+//
+std::string kslicer::ISPCCompiler::RewriteBEParallelFor(const clang::ForStmt* forExpr, std::shared_ptr<KernelRewriter> pRewriter, const KernelInfo& a_kernel)
+{
+  const clang::VarDecl* pVar  = nullptr;
+  if(auto pDeclStmt = clang::dyn_cast_or_null<clang::DeclStmt>(forExpr->getInit()))
+    if(pDeclStmt->isSingleDecl())
+      pVar = clang::dyn_cast<clang::VarDecl>(pDeclStmt->getSingleDecl());
+
+  auto IsLoopVar = [pVar](const clang::Expr* a_expr)
+  {
+    auto pRef = clang::dyn_cast_or_null<clang::DeclRefExpr>(a_expr == nullptr ? nullptr : a_expr->IgnoreParenImpCasts());
+    return pRef != nullptr && pRef->getDecl() == pVar;
+  };
+
+  bool stepIsOne = false;
+  const clang::Expr* inc = forExpr->getInc();
+  if(auto pUnary = clang::dyn_cast_or_null<clang::UnaryOperator>(inc))
+    stepIsOne = pUnary->isIncrementOp() && IsLoopVar(pUnary->getSubExpr());
+  else if(auto pAssign = clang::dyn_cast_or_null<clang::CompoundAssignOperator>(inc))
+  {
+    auto pOne = clang::dyn_cast<clang::IntegerLiteral>(pAssign->getRHS()->IgnoreParenImpCasts());
+    stepIsOne = pAssign->getOpcode() == clang::BO_AddAssign && IsLoopVar(pAssign->getLHS()) && pOne != nullptr && pOne->getValue() == 1;
+  }
+
+  const clang::CompilerInstance& compiler = pRewriter->GetCompiler();
+  if(pVar == nullptr || pVar->getInit() == nullptr || forExpr->getCond() == nullptr || !stepIsOne)
+  {
+    kslicer::PrintError("parallel loop of block expansion kernel must have the form 'for(T i = start; cond; i++)'", forExpr->getSourceRange(), compiler.getSourceManager());
+    return pRewriter->RecursiveRewrite(forExpr);
+  }
+
+  std::string typeName = pVar->getType().getUnqualifiedType().getAsString();
+  ReplaceFirst(typeName, "LiteMath::", "");
+  const std::string name  = pVar->getNameAsString();
+  const std::string start = pRewriter->RecursiveRewrite(pVar->getInit());
+  const clang::Stmt* body = forExpr->getBody();
+  std::string bodyText    = pRewriter->RecursiveRewrite(body);
+  const unsigned column   = compiler.getSourceManager().getSpellingColumnNumber(forExpr->getBeginLoc()) - 1;
+  const std::string ind0(column, ' ');                   // indentation of the loop and of its body in the source
+  const std::string ind1(column + 2, ' ');
+  if(!clang::isa<clang::CompoundStmt>(body))             // range of a single statement does not include ';'
+    bodyText = ind1 + bodyText + ";";
+
+  auto pCond = clang::dyn_cast<clang::BinaryOperator>(forExpr->getCond()->IgnoreParenImpCasts());
+  if(pCond != nullptr && pCond->getOpcode() == clang::BO_LT && IsLoopVar(pCond->getLHS()))
+  {
+    const std::string end = pRewriter->RecursiveRewrite(pCond->getRHS());
+    if(typeName == "int")
+      return "foreach(" + name + " = " + start + " ... " + end + ")\n" + bodyText;
+    return "foreach(kgen_" + name + " = " + start + " ... " + end + ")\n" + ind0 + "{\n" + ind1 + "const " + typeName + " " + name + " = (" + typeName + ")kgen_" + name + ";\n" + 
+           (clang::isa<clang::CompoundStmt>(body) ? ind1 : std::string("")) + bodyText + "\n" + ind0 + "}";
+  }
+
+  const std::string cond = pRewriter->RecursiveRewrite(forExpr->getCond());
+  return "for(" + typeName + " " + name + " = " + start + " + programIndex; " + cond + "; " + name + " += programCount)\n" + bodyText;
+}
+
 std::string kslicer::ISPCCompiler::BuildCommand(const std::string& a_inputFile) const
 {
   return std::string("ispc ") + a_inputFile + " --target=" + m_target + " -O2 --pic "; // position independent code: executables are PIE by default
@@ -639,6 +732,12 @@ void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     for(const auto& sampler : kernel["SamplersISPC"])
       samplers.insert(sampler.get<std::string>());
   a_kernelsJson["SamplersISPC"] = std::vector<std::string>(samplers.begin(), samplers.end());
+  for(auto& mainFunc : a_kernelsJson["MainFunctions"]) // 'Test(args)' ==> 'Test_BE(args)', copy of control function with calls of block expansion kernels
+  {
+    const std::string name = mainFunc["Name"];
+    const std::string decl = mainFunc["DeclOrig"];
+    mainFunc["DeclBE"] = name + "_BE" + decl.substr(name.size());
+  }
   kslicer::AddGraphicsToISPCJson(a_kernelsJson, *a_codeInfo); // draws of graphics pipeline (LiteRS), see graphics_pipeline.cpp
   a_kernelsJson["MemberBuffersISPC"] = memberBuffers;
   a_kernelsJson["AccelStructsISPC"]  = accelStructs;
