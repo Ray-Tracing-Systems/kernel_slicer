@@ -1387,7 +1387,7 @@ void kslicer::SlangCompiler::ProcessVectorTypesString(std::string& a_str)
 // block expansion: 'LiteNN::LinearForwardBlock(w, matOffs, biasOffs, in, IN, out, OUT, BATCH)' computes 'out[BATCH x OUT] = in[BATCH x IN] * W^T + bias':
 // (1) by default every thread computes elements of 'out' with a loop over inputs, accumulation in fp32 in the same order as on CPU;
 // (2) with '-coop_matrix 1' every subgroup computes tiles 16x16 of 'out' with cooperative matrices 16x16x16 (W is row-major 'OUT x stride',
-//     so W^T is column-major), then all threads of the group add biases
+//     so W^T is column-major); accumulators start from biases; tiles of A for 16 rows are loaded once for all outputs if IN <= 64
 //
 std::string kslicer::SlangCompiler::RewriteBEBlockFunction(const clang::CallExpr* a_call, std::shared_ptr<KernelRewriter> pRewriter, const KernelInfo& a_kernel)
 {
@@ -1419,33 +1419,59 @@ std::string kslicer::SlangCompiler::RewriteBEBlockFunction(const clang::CallExpr
     return out.str();
   }
   const std::string tilesOut = std::to_string(args.outDim/16);
-  const std::string tilesAll = std::to_string((args.batch/16)*(args.outDim/16));
-  const std::string matA     = "CoopMat<half, CoopMatScope.Subgroup, 16, 16, CoopMatMatrixUse.MatrixA>";
-  const std::string matB     = "CoopMat<half, CoopMatScope.Subgroup, 16, 16, CoopMatMatrixUse.MatrixB>";
+  const std::string tilesK   = std::to_string(args.inDim/16);
   const std::string matC     = "CoopMat<float, CoopMatScope.Subgroup, 16, 16, CoopMatMatrixUse.MatrixAccumulator>";
+  const std::string loadA    = "coopMatLoad<half, CoopMatScope.Subgroup, 16, 16, CoopMatMatrixUse.MatrixA>";
+  const std::string loadB    = "coopMatLoad<half, CoopMatScope.Subgroup, 16, 16, CoopMatMatrixUse.MatrixB>";
+  const std::string loadCh   = "coopMatLoad<half, CoopMatScope.Subgroup, 16, 16, CoopMatMatrixUse.MatrixAccumulator>";
+  const bool        reuseA   = (args.inDim/16 <= 4); // tiles of A for a strip of 16 rows are kept in registers, at most 4 (IN <= 64)
+
+  // accumulator starts from biases: 16 equal rows, row stride 0
+  //
+  auto InitC = [&](const std::string& a_indent, const std::string& a_col)
+  {
+    return a_indent + matC + " kgen_c = " + matC + "(" + loadCh + "(" + args.weights + ", kgen_biasOffs + " + a_col + ", 0, CoopMatMatrixLayout.RowMajor)); // biases\n";
+  };
+  auto MulAdd = [&](const std::string& a_indent, const std::string& a_a, const std::string& a_col, const std::string& a_k)
+  {
+    return a_indent + "kgen_c = coopMatMulAdd(" + a_a + ", " + loadB + "(" + args.weights + ", kgen_matOffs + " + a_col + "*" + STRIDE + " + " + a_k + ", " + STRIDE + ", CoopMatMatrixLayout.ColumnMajor), kgen_c, CoopMatMatrixOperands.None);\n";
+  };
 
   std::stringstream out;
   out << "{ // LiteNN::LinearForwardBlock: " << args.out << "[" << args.batch << " x " << OUT << "] = " << args.in << "[" << args.batch << " x " << IN << "] * W^T + bias, cooperative matrices\n";
   out << "  const uint kgen_matOffs   = " << args.matOffs << ";\n";
+  out << "  const uint kgen_biasOffs  = " << args.biasOffs << ";\n";
   out << "  const uint kgen_subgroup  = " << localId << " / WaveGetLaneCount();\n";
   out << "  const uint kgen_subgroups = " << bsize << " / WaveGetLaneCount();\n";
-  out << "  for(uint kgen_tile = kgen_subgroup; kgen_tile < " << tilesAll << "; kgen_tile += kgen_subgroups)\n";
-  out << "  {\n";
-  out << "    const uint kgen_row = (kgen_tile / " << tilesOut << ")*16; // vectors of the batch\n";
-  out << "    const uint kgen_col = (kgen_tile % " << tilesOut << ")*16; // outputs of the layer\n";
-  out << "    " << matC << " kgen_c = " << matC << "(0.0f);\n";
-  out << "    for(uint kgen_k = 0; kgen_k < " << IN << "; kgen_k += 16)\n";
-  out << "    {\n";
-  out << "      let kgen_a = coopMatLoad<half, CoopMatScope.Subgroup, 16, 16, CoopMatMatrixUse.MatrixA>(" << args.in << ", kgen_row*" << IN << " + kgen_k, " << IN << ", CoopMatMatrixLayout.RowMajor);\n";
-  out << "      let kgen_b = coopMatLoad<half, CoopMatScope.Subgroup, 16, 16, CoopMatMatrixUse.MatrixB>(" << args.weights << ", kgen_matOffs + kgen_col*" << STRIDE << " + kgen_k, " << STRIDE << ", CoopMatMatrixLayout.ColumnMajor);\n";
-  out << "      kgen_c = coopMatMulAdd(kgen_a, kgen_b, kgen_c, CoopMatMatrixOperands.None);\n";
-  out << "    }\n";
-  out << "    kgen_c.store(" << args.out << ", kgen_row*" << OUT << " + kgen_col, " << OUT << ", CoopMatMatrixLayout.RowMajor);\n";
-  out << "  }\n";
+  if(reuseA)                                             // a subgroup takes a strip of 16 rows and loads its tiles of A once for all outputs
+  {
+    out << "  for(uint kgen_row = kgen_subgroup*16; kgen_row < " << args.batch << "; kgen_row += kgen_subgroups*16) // vectors of the batch\n";
+    out << "  {\n";
+    out << "    CoopMat<half, CoopMatScope.Subgroup, 16, 16, CoopMatMatrixUse.MatrixA> kgen_a[" << tilesK << "];\n";
+    out << "    for(uint kgen_k = 0; kgen_k < " << tilesK << "; kgen_k++)\n";
+    out << "      kgen_a[kgen_k] = " << loadA << "(" << args.in << ", kgen_row*" << IN << " + kgen_k*16, " << IN << ", CoopMatMatrixLayout.RowMajor);\n";
+    out << "    for(uint kgen_col = 0; kgen_col < " << OUT << "; kgen_col += 16) // outputs of the layer\n";
+    out << "    {\n";
+    out << InitC("      ", "kgen_col");
+    out << "      for(uint kgen_k = 0; kgen_k < " << tilesK << "; kgen_k++)\n";
+    out << MulAdd("        ", "kgen_a[kgen_k]", "kgen_col", "kgen_k*16");
+    out << "      kgen_c.store(" << args.out << ", kgen_row*" << OUT << " + kgen_col, " << OUT << ", CoopMatMatrixLayout.RowMajor);\n";
+    out << "    }\n";
+    out << "  }\n";
+  }
+  else                                                   // large input: every tile of the result loads its tiles of A
+  {
+    out << "  for(uint kgen_tile = kgen_subgroup; kgen_tile < " << (args.batch/16)*(args.outDim/16) << "; kgen_tile += kgen_subgroups)\n";
+    out << "  {\n";
+    out << "    const uint kgen_row = (kgen_tile / " << tilesOut << ")*16; // vectors of the batch\n";
+    out << "    const uint kgen_col = (kgen_tile % " << tilesOut << ")*16; // outputs of the layer\n";
+    out << InitC("    ", "kgen_col");
+    out << "    for(uint kgen_k = 0; kgen_k < " << IN << "; kgen_k += 16)\n";
+    out << MulAdd("      ", loadA + "(" + args.in + ", kgen_row*" + IN + " + kgen_k, " + IN + ", CoopMatMatrixLayout.RowMajor)", "kgen_col", "kgen_k");
+    out << "    kgen_c.store(" << args.out << ", kgen_row*" << OUT << " + kgen_col, " << OUT << ", CoopMatMatrixLayout.RowMajor);\n";
+    out << "  }\n";
+  }
   out << "}\n";
-  out << BEBarrier() << "\n";
-  out << "for(uint kgen_i = " << localId << "; kgen_i < " << args.batch*args.outDim << "; kgen_i += " << bsize << ") // biases\n";
-  out << "  " << args.out << "[kgen_i] += float(" << args.weights << "[" << args.biasOffs << " + kgen_i % " << OUT << "]);\n";
   return out.str();
 }
 
