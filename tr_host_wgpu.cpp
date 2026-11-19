@@ -456,7 +456,7 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriterWGPU::Extr
 
   for(size_t i=0;i<f->getNumArgs();i++)
   {
-    const Expr* currArgExpr = f->getArgs()[i];
+    const Expr* currArgExpr = kslicer::RemovePointerCasts(f->getArgs()[i]); // '(T*)ptr', 'reinterpret_cast<T*>(vec.data())': the buffer of 'ptr' or 'vec'
     const clang::QualType q = currArgExpr->getType().getCanonicalType();
     std::string text        = GetRangeSourceCode(currArgExpr->getSourceRange(), m_compiler);
 

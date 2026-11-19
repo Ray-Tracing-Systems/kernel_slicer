@@ -171,6 +171,7 @@ and other code) any C++ is allowed.
 | `kernel_locals` | Locals declared before the thread loop, used inside it | ✅ | ❌ | ❔ | ❔ | 062 |
 | `threadlocal_array` | Local arrays, `[[threadlocal]]` for large ones | ✅ | ✅ | ❔ | ❔ | 033 |
 | `vec_data_ptr` | Passing `m_vec.data()` of member vectors to kernels | ✅ | ✅ | ❔ | ❔ | 027 |
+| `ptr_cast_args` | Pointer casts in arguments of kernel calls: `(T*)ptr`, `reinterpret_cast<const T*>(m_vec.data())`, `static_cast`; one buffer may be passed to a kernel several times with different element types (offsets are separate arguments) | ✅ | ✅ | ❔ | ❔ | 091 |
 | `local_global_ptr` | Local pointers to buffers (`const float* p = a_in + off`) | ✅ | ✅ | ❔ | ❔ | 047, 077 |
 | `nested_global_ptr` | Pointers to buffers passed through several function calls | ✅ | ✅ | ❔ | ❔ | 074, 076 |
 | `global_ptr_copies` | Automatic copies of functions called with different buffers | ✅ | ✅ | ❔ | ❔ | 078 |

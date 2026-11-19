@@ -2106,6 +2106,7 @@ namespace kslicer
   kslicer::umap<std::string, std::string> ListGLSLVectorReplacements();
   const clang::Expr* RemoveImplicitCast(const clang::Expr* a_expr);
   clang::Expr* RemoveImplicitCast(clang::Expr* a_expr);
+  const clang::Expr* RemovePointerCasts(const clang::Expr* a_expr); ///< '(T*)ptr' => 'ptr', see kslicer_utils.cpp
 
   std::vector<std::string> GetBaseClassesNames(const clang::CXXRecordDecl* mainClassASTNode);
   std::vector<const clang::CXXRecordDecl*> ExtractAndSortBaseClasses(const std::vector<const clang::CXXRecordDecl*>& classes, const clang::CXXRecordDecl* derived);

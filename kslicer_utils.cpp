@@ -177,6 +177,23 @@ const clang::Expr* kslicer::RemoveImplicitCast(const clang::Expr* nextNode)
   return nextNode;
 }
 
+/// argument of a kernel call with explicit pointer casts: '(T*)ptr', 'reinterpret_cast<const T*>(m_vec.data())', 'static_cast<T*>(...)':
+/// returns the expression of the buffer itself (the type of elements in shaders is taken from the kernel parameter);
+/// other expressions are returned unchanged (with their implicit casts)
+const clang::Expr* kslicer::RemovePointerCasts(const clang::Expr* a_expr)
+{
+  if(a_expr == nullptr)
+    return nullptr;
+  const clang::Expr* node = a_expr->IgnoreParenImpCasts();
+  if(!clang::isa<clang::ExplicitCastExpr>(node))
+    return a_expr;
+  const auto* cast = clang::dyn_cast<clang::ExplicitCastExpr>(node);
+  const clang::Expr* sub = cast->getSubExpr();
+  if(!cast->getType()->isPointerType() || sub == nullptr || !sub->IgnoreParenImpCasts()->getType()->isPointerType())
+    return a_expr;
+  return RemovePointerCasts(sub->IgnoreParenImpCasts());
+}
+
 clang::Expr* kslicer::RemoveImplicitCast(clang::Expr* nextNode)
 {
   if(nextNode == nullptr)
