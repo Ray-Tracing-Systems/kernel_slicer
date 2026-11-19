@@ -35,6 +35,11 @@
   VkPipeline            m_gpIndirectPipeline = VK_NULL_HANDLE;
   virtual void GPUpdateIndirectCmd(VkCommandBuffer a_commandBuffer, uint32_t a_indirectId, uint32_t a_hostCount, uint32_t a_hostInstNum);
   {% endif %}
+  /// consecutive draws to the same targets are recorded in one render pass: a draw begins it if it is not open, GPEndPassCmd ends it;
+  /// generated control functions call GPEndPassCmd before any other command and at their end (call it after direct calls of draw commands)
+  const GPPassObjects* m_gpOpenPass      = nullptr;
+  VkPipeline           m_gpBoundPipeline = VK_NULL_HANDLE;
+  virtual void GPEndPassCmd(VkCommandBuffer a_commandBuffer); ///< ends the open render pass of draws (if any), barrier makes its results visible to next commands
   VkMemoryBarrier m_gpBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_MEMORY_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT };
   virtual void InitGraphics();    ///< creates render passes, framebuffers and graphics pipelines; called by CommitDeviceData()
   virtual void DestroyGraphics();

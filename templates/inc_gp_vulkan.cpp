@@ -530,8 +530,19 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Draw.Name}}Cmd(VkCommandBuffer a_co
   renderingInfo.colorAttachmentCount     = uint32_t(colorAttachments.size());
   renderingInfo.pColorAttachments        = colorAttachments.data();
   renderingInfo.pDepthAttachment         = {% if Draw.HasDepth %}&depthAttachment{% else %}nullptr{% endif %};
-  vkCmdBeginRendering(a_commandBuffer, &renderingInfo);
-  vkCmdBindPipeline(a_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, {{Draw.Name}}Pipeline);
+  if(m_gpOpenPass != &m_gp_{{Draw.Pipeline}})
+  {
+    GPEndPassCmd(a_commandBuffer);
+    vkCmdPipelineBarrier(a_commandBuffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 1, &m_gpBarrier, 0, nullptr, 0, nullptr);
+    vkCmdBeginRendering(a_commandBuffer, &renderingInfo);
+    m_gpOpenPass      = &m_gp_{{Draw.Pipeline}};
+    m_gpBoundPipeline = VK_NULL_HANDLE;
+  }
+  if(m_gpBoundPipeline != {{Draw.Name}}Pipeline)
+  {
+    vkCmdBindPipeline(a_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, {{Draw.Name}}Pipeline);
+    m_gpBoundPipeline = {{Draw.Name}}Pipeline;
+  }
 
   vkCmdSetCullMode       (a_commandBuffer, VkCullModeFlags(uint32_t(state.cullMode))); // LiteRS enums have the same values as Vulkan ones
   vkCmdSetFrontFace      (a_commandBuffer, VkFrontFace(uint32_t(state.frontFace)));
@@ -545,8 +556,19 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Draw.Name}}Cmd(VkCommandBuffer a_co
   beginInfo.framebuffer              = m_gp_{{Draw.Pipeline}}.framebuffer;
   beginInfo.renderArea.extent.width  = m_gp_{{Draw.Pipeline}}.width;
   beginInfo.renderArea.extent.height = m_gp_{{Draw.Pipeline}}.height;
-  vkCmdBeginRenderPass(a_commandBuffer, &beginInfo, VK_SUBPASS_CONTENTS_INLINE);
-  vkCmdBindPipeline(a_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, {{Draw.Name}}Pipeline);
+  if(m_gpOpenPass != &m_gp_{{Draw.Pipeline}})
+  {
+    GPEndPassCmd(a_commandBuffer);
+    vkCmdPipelineBarrier(a_commandBuffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 1, &m_gpBarrier, 0, nullptr, 0, nullptr);
+    vkCmdBeginRenderPass(a_commandBuffer, &beginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    m_gpOpenPass      = &m_gp_{{Draw.Pipeline}};
+    m_gpBoundPipeline = VK_NULL_HANDLE;
+  }
+  if(m_gpBoundPipeline != {{Draw.Name}}Pipeline)
+  {
+    vkCmdBindPipeline(a_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, {{Draw.Name}}Pipeline);
+    m_gpBoundPipeline = {{Draw.Name}}Pipeline;
+  }
   {% endif %}
 
   const VkViewport viewport = { state.viewport.x, state.viewport.y, state.viewport.width, state.viewport.height, state.viewport.minDepth, state.viewport.maxDepth };
@@ -584,10 +606,20 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Draw.Name}}Cmd(VkCommandBuffer a_co
   {% endif %}
   vkCmdDraw(a_commandBuffer, a_count, {% if Draw.Instanced %}a_instNum{% else %}1{% endif %}, 0, 0);
   {% endif %}
+  // the render pass stays open for next draws to the same targets, see GPEndPassCmd
+}
+{% endfor %}
+
+void {{MainClassName}}{{MainClassSuffix}}::GPEndPassCmd(VkCommandBuffer a_commandBuffer)
+{
+  if(m_gpOpenPass == nullptr)
+    return;
   {% if GPDynamicRendering %}
   vkCmdEndRendering(a_commandBuffer);
   {% else %}
   vkCmdEndRenderPass(a_commandBuffer);
   {% endif %}
+  vkCmdPipelineBarrier(a_commandBuffer, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 1, &m_gpBarrier, 0, nullptr, 0, nullptr);
+  m_gpOpenPass      = nullptr;
+  m_gpBoundPipeline = VK_NULL_HANDLE;
 }
-{% endfor %}

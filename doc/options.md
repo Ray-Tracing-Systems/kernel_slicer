@@ -170,7 +170,8 @@ variants, e.g. `apps/tests/042_atomic_add_float/kmake_hw.json` and `kmake_emul.j
 Work group sizes: the defaults (256 for 1D kernels, 32×8 for 2D) are good in most cases. Set
 `wgSize` for named kernels or with `default1D`/`default2D`/`default3D`. The keys `default` and
 `all` apply one size to **every** kernel regardless of its dimension, and they also override
-named entries. A 2D size under `default` breaks 1D reductions, so do not use it.
+named entries, but only by the keys they contain: with `"all": {"nonConstantData": ...}` a named
+`wgSize` is kept. A 2D size under `default` breaks 1D reductions, so do not use it.
 
 ### Appending to member vectors: CommitAppendedData()
 

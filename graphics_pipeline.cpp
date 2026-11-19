@@ -780,7 +780,8 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeGraphicsCommandCmdString(cl
   std::stringstream strOut;
   if(a_cmd.kind == GPCommand::KIND::CLEAR)
   {
-    strOut << "{ vkCmdPipelineBarrier(a_commandBuffer, prevStageBits, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, &m_gpBarrier, 0, nullptr, 0, nullptr);" << std::endl;
+    strOut << "{ GPEndPassCmd(a_commandBuffer);" << std::endl;
+    strOut << "  vkCmdPipelineBarrier(a_commandBuffer, prevStageBits, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, &m_gpBarrier, 0, nullptr, 0, nullptr);" << std::endl;
     strOut << "  Clear_" << a_cmd.pipeline << "Cmd(a_commandBuffer);" << std::endl;
     strOut << "  vkCmdPipelineBarrier(a_commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 1, &m_gpBarrier, 0, nullptr, 0, nullptr);" << std::endl;
     strOut << "  prevStageBits = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT; }";
@@ -823,15 +824,19 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeGraphicsCommandCmdString(cl
       hostCounts[i] = "uint32_t(" + RecursiveRewrite(pCount) + ")";
   }
 
+  // consecutive draws to the same targets are recorded in one render pass without barriers between them: the draw begins the pass
+  // (with a barrier) only if it is not open yet, GPEndPassCmd ends it (with a barrier) before any other command, see inc_gp_vulkan.cpp
+  //
   const size_t dsVS = descriptorSetOf(a_cmd.vsKernel);
   if(indirect)
   {
-    strOut << "{ vkCmdPipelineBarrier(a_commandBuffer, prevStageBits, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 1, &m_gpBarrier, 0, nullptr, 0, nullptr);" << std::endl;
+    strOut << "{ GPEndPassCmd(a_commandBuffer);" << std::endl;
+    strOut << "  vkCmdPipelineBarrier(a_commandBuffer, prevStageBits, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 1, &m_gpBarrier, 0, nullptr, 0, nullptr);" << std::endl;
     strOut << "  GPUpdateIndirectCmd(a_commandBuffer, " << pIndirect->second << ", " << hostCounts[0] << ", " << hostCounts[1] << "); // counts are read from class data on GPU" << std::endl;
     strOut << "  vkCmdPipelineBarrier(a_commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, 0, 1, &m_gpBarrier, 0, nullptr, 0, nullptr);" << std::endl;
   }
   else
-    strOut << "{ vkCmdPipelineBarrier(a_commandBuffer, prevStageBits, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 1, &m_gpBarrier, 0, nullptr, 0, nullptr);" << std::endl;
+    strOut << "{" << std::endl;
   strOut << "  " << GraphicsDrawName(a_cmd) << "Cmd(a_commandBuffer, m_allGeneratedDS[" << dsVS << "], ";
   if(a_cmd.psKernel != "")
     strOut << "m_allGeneratedDS[" << descriptorSetOf(a_cmd.psKernel) << "]";
@@ -845,7 +850,6 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeGraphicsCommandCmdString(cl
   for(size_t i = countsNum; i < a_cmd.countAndArgs.size(); i++) // additional arguments of vertex shader
     strOut << ", " << RecursiveRewrite(static_cast<const clang::Expr*>(a_cmd.countAndArgs[i]));
   strOut << ");" << std::endl;
-  strOut << "  vkCmdPipelineBarrier(a_commandBuffer, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 1, &m_gpBarrier, 0, nullptr, 0, nullptr);" << std::endl;
   strOut << "  prevStageBits = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT; }";
   return strOut.str();
 }

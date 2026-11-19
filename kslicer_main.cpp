@@ -1541,8 +1541,12 @@ int main(int argc, const char **argv)
       continue;
     auto kernelDim = kernel.GetDim();
     auto kernelOptionsLocal = kernelsOptionsAll[kernel.name];
-    if(kernelOptionsLocal != nullptr && pDefaultOpts != kernelsOptionsAll.end())
-      kernelOptionsLocal = (*pDefaultOpts);
+    if(kernelOptionsLocal != nullptr && pDefaultOpts != kernelsOptionsAll.end()) // 'all'/'default' override only the keys they have,
+    {                                                                            // e.g. a named 'wgSize' is kept if 'all' has no 'wgSize'
+      for(auto it = pDefaultOpts->begin(); it != pDefaultOpts->end(); ++it)
+        if(!it.value().is_null())                                                // operator[] above may add null keys to 'all'
+          kernelOptionsLocal[it.key()] = it.value();
+    }
 
     if(kernelOptionsLocal != nullptr && kernelOptionsLocal["wgSize"] != nullptr)
     {

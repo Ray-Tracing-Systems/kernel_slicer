@@ -543,6 +543,9 @@ void {{MainClassName}}{{MainClassSuffix}}::BarriersForSeveralBuffers(VkBuffer* a
   {% endif %}
   {% endif %}
   {{MainFunc.MainFuncTextCmd}}
+  {% if HasGraphics %}
+  GPEndPassCmd(a_commandBuffer); // render pass of the last draws
+  {% endif %}
   {% endif %} {# /* end of else branch */ #}
 }
 

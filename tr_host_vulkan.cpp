@@ -212,14 +212,17 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
 
     auto accesedTextures = kslicer::ListAccessedTextures(args, pKernelInfo->second);
 
+    const bool endPass = m_pCodeInfo->graphics.Used(); // render pass of previous draws must be ended before compute commands, see GPEndPassCmd
     if(pKernel->second.isIndirect)
-      strOut << kernName.c_str() << "_UpdateIndirect();" << std::endl << "  ";
+      strOut << (endPass ? "GPEndPassCmd(a_commandBuffer); " : "") << kernName.c_str() << "_UpdateIndirect();" << std::endl << "  ";
 
     std::string currStageBits    = pKernel->second.enableRTPipeline ? "VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR" : "VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT";
     std::string currBindingPoint = pKernel->second.enableRTPipeline ? "VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR" : "VK_PIPELINE_BIND_POINT_COMPUTE";
     
     int lcOffsetSize = 0;
     strOut << "{";
+    if(endPass)
+      strOut << "GPEndPassCmd(a_commandBuffer); ";
     if(m_pCodeInfo->hasLocalContainers && pKernelInfo->second.pattern != PATTERN_TP::PATTERN_RTV)
     {
       strOut << "uint32_t lcSize[] = {";
@@ -299,6 +302,14 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeKernelCallCmdString(CXXMemb
 }
 
 std::string kslicer::MainFunctionRewriterVulkan::MakeServiceKernelCallCmdString(CallExpr* call, const std::string& a_name)
+{
+  const std::string res = MakeServiceKernelCallCmdStringImpl(call, a_name);
+  if(m_pCodeInfo->graphics.Used() && res != "") // render pass of previous draws must be ended before compute commands, see GPEndPassCmd
+    return "{ GPEndPassCmd(a_commandBuffer); " + res + "; }";
+  return res;
+}
+
+std::string kslicer::MainFunctionRewriterVulkan::MakeServiceKernelCallCmdStringImpl(CallExpr* call, const std::string& a_name)
 {
   std::string kernName = "copyKernelFloat"; // extract from 'call' exact name of service function;
   auto originArgs = ExtractArgumentsOfAKernelCall(call, m_mainFunc);
@@ -514,6 +525,8 @@ bool kslicer::MainFunctionRewriterVulkan::VisitCXXMemberCallExpr(CXXMemberCallEx
     {
       std::stringstream strOut;
       strOut << "{ // " << mapName << ".clear()" << std::endl;
+      if(m_pCodeInfo->graphics.Used()) // render pass of previous draws must be ended before transfer commands, see GPEndPassCmd
+        strOut << "    GPEndPassCmd(a_commandBuffer);" << std::endl;
       strOut << "    VkMemoryBarrier barBefore = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_WRITE_BIT };" << std::endl;
       strOut << "    vkCmdPipelineBarrier(a_commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, &barBefore, 0, nullptr, 0, nullptr);" << std::endl;
       strOut << "    vkCmdFillBuffer(a_commandBuffer, m_vdata." << mapName << "Buffer, 0, VK_WHOLE_SIZE, 0);" << std::endl;

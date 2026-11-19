@@ -154,6 +154,13 @@ GBuf   C::kernelPS_B(const Varyings& a_in) const;                               
      - `vkCmdDraw` или `vkCmdBindIndexBuffer + vkCmdDrawIndexed` (буфер индексов получает usage `INDEX_BUFFER`);
      - `vkCmdEndRenderPass`.
    - Барьеры compute → vertex/fragment и attachment → compute: расширить существующую логику барьеров (`vk_class_init.cpp`, около строки 1550).
+   - Сделано (2026-11-19): подряд идущие отрисовки в одни и те же цели (например, цикл `DrawInstancedTriangles` по группам)
+     записываются в один проход без барьеров между ними. `Draw*Cmd` начинает проход (с барьером `ALL_COMMANDS → ALL_GRAPHICS`)
+     только если он ещё не открыт (`m_gpOpenPass`) и привязывает пайплайн только при его смене (`m_gpBoundPipeline`);
+     `GPEndPassCmd` завершает открытый проход с барьером `ALL_GRAPHICS → ALL_COMMANDS`. Генерированная управляющая функция
+     вызывает `GPEndPassCmd` перед любой другой командой (кернел, служебный вызов, `Clear`, `clear()` хеш-таблицы,
+     обновление непрямой отрисовки) и в конце функции. Пользовательский код, который сам вызывает `Draw*Cmd` или пишет
+     команды между отрисовками, должен вызвать `GPEndPassCmd` (запись timestamps внутри прохода допустима).
 5. **Тайловые Image2D на GPU.** Генерированные копирования (`UpdateTextureMembers`, `vk_class.cpp:246` использует `data()`) и чтение изображений обратно должны линеаризовать тайловые данные (`LiteImage::LinearPixels`). То же — во всех местах бэкендов, где используется `Image2D::data()`.
 6. **Таймстемпы** (`-timestamps 1`): время каждой отрисовки по имени `DrawTriangles_<VS>_<PS>` или по имени PS.
 7. **Проверка.**
