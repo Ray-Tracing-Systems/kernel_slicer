@@ -563,6 +563,8 @@ int main(int argc, const char **argv)
 
   inputCodeInfo.halfFloatTextures    = halfFloatTextures;
   inputCodeInfo.megakernelRTV        = useMegakernel;
+  if(params.find("-coop_matrix") != params.end())
+    inputCodeInfo.coopMatrix         = (atoi(params["-coop_matrix"].c_str()) != 0);
   inputCodeInfo.persistentRTV        = usePersistentThreads;
   inputCodeInfo.mainClassSuffix      = suffix;
   inputCodeInfo.shaderFolderPrefix   = shaderFolderPrefix;

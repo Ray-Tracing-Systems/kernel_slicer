@@ -1,6 +1,7 @@
 {
     "variants": [
         {"name": "slang",    "backend": "slang", "kmake": "kmake.json"},
+        {"name": "slang_cm", "backend": "slang", "kmake": "kmake.json", "options": {"-coop_matrix": 1}},
         {"name": "ispc",     "backend": "ispc",  "kmake": "kmake.json"},
         {"name": "ispc_st",  "backend": "ispc",  "kmake": "kmake.json", "options": {"-ispc_threads": 1}},
         {"name": "ispc_omp", "backend": "ispc",  "kmake": "kmake.json", "options": {"-ispc_threads": 2}}

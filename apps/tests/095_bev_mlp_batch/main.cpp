@@ -5,6 +5,7 @@
 #include <string>
 #include <cmath>
 #include <algorithm>
+#include <chrono>
 
 #include "ArgParser.h"
 #define JSON_LOG_IMPLEMENTATION
@@ -31,7 +32,7 @@ static void Reference(const BatchMLP& a_mlp, const float* a_in, float* a_out)
 }
 
 // Usage: testapp [--gpu | --ispc] [--bench N]
-// Several sizes (block borders) are checked against the reference, then N vectors are timed.
+// Several sizes (block borders) are checked against the reference; with '--bench N' N vectors are timed (C++ code on CPU too).
 //
 int main(int argc, const char** argv)
 {
@@ -44,7 +45,7 @@ int main(int argc, const char** argv)
   ArgParser args(argc, argv);
   const bool onGPU  = args.hasOption("--gpu");
   const bool onISPC = args.hasOption("--ispc");
-  const uint bench  = args.getOptionValue<int>("--bench", 1 << 20);
+  const uint bench  = args.getOptionValue<int>("--bench", 0);
   const uint MAX_SIZE = std::max(bench, 100003u);
 
   std::shared_ptr<BatchMLP> pImpl = nullptr;
@@ -106,18 +107,21 @@ int main(int argc, const char** argv)
   JSONLog::write("check", failed == 0 ? "PASSED!" : "FAILED!");
   JSONLog::saveToFile(onGPU ? "zout_gpu.json" : (onISPC ? "zout_ispc.json" : "zout_cpu.json"));
 
-  if(bench > 0 && (onGPU || onISPC))                      // time only, results are checked above
+  if(bench > 0)                                           // time only, results are checked above
   {
-    float minTime = 1e30f;
-    for(int run = 0; run < 5; run++)
+    float minTime = 1e30f, minWall = 1e30f;               // 'GetExecutionTime' (GPU: execution without copies), wall clock of 'Run'
+    for(int run = 0; run < ((onGPU || onISPC) ? 5 : 2); run++)
     {
+      const auto before = std::chrono::high_resolution_clock::now();
       pImpl->Run(input.data(), output.data(), bench);
-      float timings[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+      const float wall = std::chrono::duration<float, std::milli>(std::chrono::high_resolution_clock::now() - before).count();
+      float timings[4] = {wall, 0.0f, 0.0f, 0.0f};
       pImpl->GetExecutionTime("Run", timings);
       minTime = std::min(minTime, timings[0]);
+      minWall = std::min(minWall, wall);
     }
     const double flops = 2.0*double(NN_INPUT_DIM*NN_HIDDEN_DIM + NN_HIDDEN_DIM*NN_HIDDEN_DIM + NN_HIDDEN_DIM*NN_OUTPUT_DIM)*double(bench);
-    std::cout << "Run " << bench << " vectors: " << minTime << " ms, " << flops/(double(minTime)*1e6) << " GFLOPS" << std::endl;
+    std::cout << "Run " << bench << " vectors: " << minTime << " ms (" << flops/(double(minTime)*1e6) << " GFLOPS), wall clock " << minWall << " ms" << std::endl;
   }
 
   std::cout << (failed == 0 ? "PASSED" : "FAILED") << std::endl;

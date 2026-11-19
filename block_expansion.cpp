@@ -521,10 +521,11 @@ void kslicer::MainClassInfo::ProcessBlockExpansionKernel(KernelInfo& a_kernel, c
   std::cout << "  BlockExpansion: " << a_kernel.name.c_str() << std::endl;
   
   a_kernel.be = ExtractBlocks(kernelBody2, a_compiler);
+  a_kernel.be.coopMatrix = this->coopMatrix;
 
-  if(FindBlockFunction(kernelBody2) != nullptr)            // LiteNN block functions: cooperative matrices, fp16 in shared memory and buffers
+  if(FindBlockFunction(kernelBody2) != nullptr)            // LiteNN block functions: fp16 in shared memory and buffers, cooperative matrices on request
   {
-    globalShaderFeatures.useCoopMat      = true;
+    globalShaderFeatures.useCoopMat      = globalShaderFeatures.useCoopMat || this->coopMatrix;
     globalShaderFeatures.useHalfType     = true;
     globalShaderFeatures.use16BitStorage = true;
   }

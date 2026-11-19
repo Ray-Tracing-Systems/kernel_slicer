@@ -443,7 +443,8 @@ namespace kslicer
       kslicer::uset<const clang::VarDecl*> sharedVars;     ///<! variables of 'sharedDecls'
       kslicer::uset<const clang::VarDecl*> uniformVars;    ///<! variables of the block (not of parallel loops): 'uniform' in ISPC
       kslicer::uset<std::string>           uniformFuncs;   ///<! functions called from the code of the block (not of parallel loops), also indirectly
-      bool enabled = false;
+      bool enabled    = false;
+      bool coopMatrix = false;                             ///<! LiteNN block functions with cooperative matrices ('-coop_matrix 1')
       std::string wgNames[3] = {"unknown", "unknown", "unknown"};
       std::string wgTypes[3] = {"uint", "uint", "uint"};
     };
@@ -1925,6 +1926,7 @@ namespace kslicer
 
     bool halfFloatTextures  = false;
     bool megakernelRTV      = false;
+    bool coopMatrix         = false; ///<! '-coop_matrix 1': LiteNN block functions with cooperative matrices (VK_KHR_cooperative_matrix)
     bool persistentRTV      = false; // current implementation for persistent threads on done only for megakernels in RTV
     bool useComplexNumbers  = false;
     bool genGPUAPI          = false;

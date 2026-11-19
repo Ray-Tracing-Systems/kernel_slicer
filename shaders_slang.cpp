@@ -1384,9 +1384,10 @@ void kslicer::SlangCompiler::ProcessVectorTypesString(std::string& a_str)
   }
 }
 
-// block expansion: 'LiteNN::LinearForwardBlock(w, matOffs, biasOffs, in, IN, out, OUT, BATCH)' with cooperative matrices 16x16x16:
-// every subgroup computes tiles 16x16 of 'out[BATCH x OUT] = in[BATCH x IN] * W^T' (W is row-major 'OUT x stride', so W^T is column-major),
-// then all threads of the group add biases
+// block expansion: 'LiteNN::LinearForwardBlock(w, matOffs, biasOffs, in, IN, out, OUT, BATCH)' computes 'out[BATCH x OUT] = in[BATCH x IN] * W^T + bias':
+// (1) by default every thread computes elements of 'out' with a loop over inputs, accumulation in fp32 in the same order as on CPU;
+// (2) with '-coop_matrix 1' every subgroup computes tiles 16x16 of 'out' with cooperative matrices 16x16x16 (W is row-major 'OUT x stride',
+//     so W^T is column-major), then all threads of the group add biases
 //
 std::string kslicer::SlangCompiler::RewriteBEBlockFunction(const clang::CallExpr* a_call, std::shared_ptr<KernelRewriter> pRewriter, const KernelInfo& a_kernel)
 {
@@ -1400,6 +1401,23 @@ std::string kslicer::SlangCompiler::RewriteBEBlockFunction(const clang::CallExpr
   const std::string IN       = std::to_string(args.inDim);
   const std::string OUT      = std::to_string(args.outDim);
   const std::string STRIDE   = std::to_string(args.stride);
+
+  if(!a_kernel.be.coopMatrix)
+  {
+    std::stringstream out;
+    out << "for(uint kgen_i = " << localId << "; kgen_i < " << args.batch*args.outDim << "; kgen_i += " << bsize << ") // LiteNN::LinearForwardBlock: "
+        << args.out << "[" << args.batch << " x " << OUT << "] = " << args.in << "[" << args.batch << " x " << IN << "] * W^T + bias\n";
+    out << "{\n";
+    out << "  const uint kgen_b = kgen_i / " << OUT << "; // vector of the batch\n";
+    out << "  const uint kgen_j = kgen_i % " << OUT << "; // output of the layer\n";
+    out << "  const uint kgen_w = " << args.matOffs << " + kgen_j*" << STRIDE << ";\n";
+    out << "  float kgen_acc = 0.0f;\n";
+    out << "  for(uint kgen_p = 0; kgen_p < " << IN << "; kgen_p++)\n";
+    out << "    kgen_acc += float(" << args.weights << "[kgen_w + kgen_p])*float(" << args.in << "[kgen_b*" << IN << " + kgen_p]);\n";
+    out << "  " << args.out << "[kgen_i] = kgen_acc + float(" << args.weights << "[" << args.biasOffs << " + kgen_j]);\n";
+    out << "}\n";
+    return out.str();
+  }
   const std::string tilesOut = std::to_string(args.outDim/16);
   const std::string tilesAll = std::to_string((args.batch/16)*(args.outDim/16));
   const std::string matA     = "CoopMat<half, CoopMatScope.Subgroup, 16, 16, CoopMatMatrixUse.MatrixA>";
