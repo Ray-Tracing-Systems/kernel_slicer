@@ -65,7 +65,7 @@
 | T1 | `092_bev_block_reduce` | редукция деревом в shared memory, барьеры внутри цикла | F1 | ✅ Slang, GLSL, ISPC |
 | T2 | `093_bev_block_scan` | scan в блоке + суммы блоков, полный scan миллионов элементов; локальная переменная блока меняется в цикле (`src`) и читается из памяти (`offset`) | F1, F2 | ✅ Slang, GLSL, ISPC |
 | T5 | `094_bev_tiled_gemm` | GEMM с тайлами в shared memory, цикл по K (1D BEV, ручная индексация); вспомогательная функция в коде блока; сравнение с наивным IPV GEMM | F1, F2 | ✅ Slang, GLSL, ISPC |
-| T7 | `bev_mlp_batch` | MLP по батчу: слой = `LiteNN::MatMulBlock` + bias + ReLU | F1, F2, F5 | план |
+| T7 | `095_bev_mlp_batch` | MLP 16→64→64→16 по батчу из 64 векторов на блок: слой = `LiteNN::LinearForwardBlock`, ReLU — параллельный цикл | F1, F2, F5 | C++ готов, согласование |
 | T3 | `bev_local_sort` | bitonic в shared memory | F1 | резерв |
 | T4 | `bev_histogram` | атомики по shared memory | F4 | резерв |
 | T6 | `bev_coopmat_gemm` | GEMM через `LiteNN::MatMulBlock` | F5 | резерв |
@@ -74,7 +74,7 @@
 | A1 | `apps/36_bev_nn_fit` | обучение MLP приближению изображения в одном кернеле | F1, F2, F4, F5 | резерв |
 | A2 | `apps/37_bev_gemm_bench` | время IPV / BEV / BEV coopmat / ISPC | F3, F5 | резерв |
 
-Номера тестов назначаются при создании (следующий свободный — 095).
+Номера тестов назначаются при создании (следующий свободный — 096).
 
 Фичи транслятора:
 - **F1**: `[[parallel]]` внутри обычных циклов и `if` блока (по AST, не по тексту).
@@ -141,7 +141,12 @@
 - [x] `ktest.py -b ispc -s all` OK.
 
 ### Этап 4. `LiteNN::*Block` и кооперативные матрицы (T7)
-- [ ] API `LiteNN::MatMulBlock` и CPU-реализация, T7 на C++ → согласование;
+- [x] API и CPU-реализация: `LiteNN::LinearForwardBlock(weights, matOffs, biasOffs, in, inDim, out, outDim, batch)`
+      в `apps/LiteMathAux/neural.h` (порядок аргументов как у `LinearForward`, плюс размер батча; вход fp16, выход
+      fp32 без округления; размеры кратны `BLOCK_TILE = 16`); T7: `apps/tests/095_bev_mlp_batch`, эталон в `main` —
+      поштучный `LinearForward`;
+- [ ] согласование API и T7;
+- [ ] размеры кооперативных матриц на Radeon 8060S (`vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR`), размер подгруппы;
 - [ ] Slang (`CoopMat`), ISPC;
 - [ ] при необходимости T6.
 

@@ -107,6 +107,44 @@ namespace LiteNN
   }
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////// block level functions (block expansion kernels) /////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //
+  // Functions with suffix 'Block' process a batch of vectors stored in arrays of the block (shared memory).
+  // They are called from the code of a block of a 'kernelBE1D_' kernel, not from '[[parallel]]' loops:
+  // all threads of the work group execute them together. On GPU they use cooperative matrices
+  // (Slang back end, VK_KHR_cooperative_matrix), fp16 inputs and fp32 accumulation.
+  //
+  // Rules:
+  //   1. 'a_inDim', 'a_outDim' and 'a_batch' are compile time constants, multiples of BLOCK_TILE;
+  //   2. weights are passed as 'm_weights.data()' with offsets (layers are packed by 'AppendLayer');
+  //   3. 'a_in' and 'a_out' are different arrays of the block, row-major: row 'b' is vector 'b' of the batch.
+
+  static constexpr uint32_t BLOCK_TILE = 16;
+
+  /**
+  \brief a_out[b] = W*a_in[b] + bias for every vector 'b' of the batch; 'a_in' is 'a_batch x a_inDim' (fp16),
+         'a_out' is 'a_batch x a_outDim' (fp32); the result is not rounded to fp16
+  */
+  static inline void LinearForwardBlock(const half* a_weights, uint32_t a_matOffs, uint32_t a_biasOffs,
+                                        const half* a_in, uint32_t a_inDim, float* a_out, uint32_t a_outDim, uint32_t a_batch)
+  {
+    assert(a_inDim % BLOCK_TILE == 0 && a_outDim % BLOCK_TILE == 0 && a_batch % BLOCK_TILE == 0);
+    const uint32_t stride = RowStride(a_inDim);
+    for(uint32_t b = 0; b < a_batch; b++)
+    {
+      for(uint32_t j = 0; j < a_outDim; j++)
+      {
+        const half* row = a_weights + a_matOffs + j*stride;
+        float acc = 0.0f;
+        for(uint32_t p = 0; p < a_inDim; p++)
+          acc += float(row[p])*float(a_in[b*a_inDim + p]);
+        a_out[b*a_outDim + j] = acc + float(a_weights[a_biasOffs + j]);
+      }
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////// host side helpers /////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
