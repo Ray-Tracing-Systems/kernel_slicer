@@ -2497,6 +2497,13 @@ VkPhysicalDeviceFeatures2 {{MainClassName}}{{MainClassSuffix}}::ListRequiredDevi
   (*ppNext) = &storage16BitFeatures; ppNext = &storage16BitFeatures.pNext;
 
   {% endif %}
+  {% if HasGraphics %}
+  static VkPhysicalDeviceShaderDrawParametersFeatures drawParametersFeatures = {}; // core in Vulkan 1.1: vertex shaders compute
+  drawParametersFeatures.sType                = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES; // SV_InstanceID / SV_VertexID
+  drawParametersFeatures.shaderDrawParameters = VK_TRUE;                                                            // with BaseInstance / BaseVertex
+  (*ppNext) = &drawParametersFeatures; ppNext = &drawParametersFeatures.pNext;
+
+  {% endif %}
   {% if GPDynamicRendering %}
   static VkPhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures = {}; // core in Vulkan 1.3, as extended dynamic state
   dynamicRenderingFeatures.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;

@@ -351,6 +351,8 @@ int main(int argc, const char **argv)
       textGenSettings.usePipelineCache = (atoi(params["-pipelinecache"].c_str()) != 0);
     if(params.find("-gp_dynamic_rendering") != params.end())
       textGenSettings.gpDynamicRendering = (atoi(params["-gp_dynamic_rendering"].c_str()) != 0);
+    if(params.find("-gp_optimal_layouts") != params.end())
+      textGenSettings.gpOptimalLayouts = (atoi(params["-gp_optimal_layouts"].c_str()) != 0);
     textGenSettings.genSeparateGPUAPI = genGPUAPI;
     textGenSettings.interfaceName     = mainClassName;
     if(params.find("-makerInterfaceName") != params.end())
@@ -1567,7 +1569,7 @@ int main(int argc, const char **argv)
       for(auto& arg : kernel.args) 
       {
         if(ncBuffers[arg.name] != nullptr)
-          arg.isConstant = (ncBuffers[arg.name].get<int>() != 0);
+          arg.isConstant = (ncBuffers[arg.name].get<int>() == 0); // "nonConstantData": {"a_out": 1} -- 'a_out' is written, as in template_rendering.cpp
         else
           arg.isConstant = true;
       }

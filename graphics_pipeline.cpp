@@ -649,8 +649,13 @@ void kslicer::AddGraphicsToHostJson(nlohmann::json& a_hostJson, const MainClassI
   a_hostJson["GPIndirectDraws"] = GraphicsIndirectDrawsJson(a_classInfo);
   a_hostJson["HasGPIndirect"]   = !a_classInfo.graphics.indirectDraws.empty();
 
-  // render targets are created with attachment usage, stay in GENERAL layout and are not copied from CPU
+  // render targets are created with attachment usage and are not copied from CPU; they stay in GENERAL layout, or with
+  // '-gp_optimal_layouts 1' are in read-only layouts between commands ('RestLayout': kernels read them as textures) and in
+  // attachment layouts during draws ('AttachLayout'), which allows compression of targets and fast clears on some GPUs;
+  // a color target with storage usage (written by kernels) rests in GENERAL
   //
+  const bool optimalLayouts = a_hostJson.contains("GPOptimalLayouts") && a_hostJson["GPOptimalLayouts"].get<bool>();
+  std::unordered_map<std::string, std::pair<std::string, std::string> > targetLayouts; // name => (RestLayout, AttachLayout)
   for(auto& var : a_hostJson["ClassTextureVars"])
   {
     var["Aspect"] = "VK_IMAGE_ASPECT_COLOR_BIT";
@@ -665,9 +670,17 @@ void kslicer::AddGraphicsToHostJson(nlohmann::json& a_hostJson, const MainClassI
       var["Format"] = "VK_FORMAT_D32_SFLOAT";
       var["Usage"]  = "VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT";
       var["Aspect"] = "VK_IMAGE_ASPECT_DEPTH_BIT";
+      var["RestLayout"]   = optimalLayouts ? "VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL" : "VK_IMAGE_LAYOUT_GENERAL";
+      var["AttachLayout"] = optimalLayouts ? "VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL" : "VK_IMAGE_LAYOUT_GENERAL";
     }
     else
-      var["Usage"]  = var["Usage"].get<std::string>() + " | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT";
+    {
+      const bool storage  = (var["Usage"].get<std::string>().find("VK_IMAGE_USAGE_STORAGE_BIT") != std::string::npos);
+      var["Usage"]        = var["Usage"].get<std::string>() + " | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT";
+      var["RestLayout"]   = (optimalLayouts && !storage) ? "VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL" : "VK_IMAGE_LAYOUT_GENERAL";
+      var["AttachLayout"] = optimalLayouts ? "VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL" : "VK_IMAGE_LAYOUT_GENERAL";
+    }
+    targetLayouts[var["Name"].get<std::string>()] = std::make_pair(var["RestLayout"].get<std::string>(), var["AttachLayout"].get<std::string>());
     a_hostJson["GPRenderTargets"].push_back(var);
   }
 
@@ -681,7 +694,10 @@ void kslicer::AddGraphicsToHostJson(nlohmann::json& a_hostJson, const MainClassI
       for(auto& arg : ds["Args"])
       {
         if(arg["IsTexture"].get<bool>() && IsGraphicsRenderTarget(a_classInfo, arg["NameOriginal"].get<std::string>()))
-          arg["AccessLayout"] = "VK_IMAGE_LAYOUT_GENERAL";
+        {
+          const auto pLayouts = targetLayouts.find(arg["NameOriginal"].get<std::string>());
+          arg["AccessLayout"] = (pLayouts != targetLayouts.end()) ? pLayouts->second.first : std::string("VK_IMAGE_LAYOUT_GENERAL");
+        }
       }
     }
   }
@@ -701,10 +717,14 @@ void kslicer::AddGraphicsToHostJson(nlohmann::json& a_hostJson, const MainClassI
       targetJson["Format"] = TargetFormat(a_classInfo, target.member);
       targetJson["IsRawUint4"] = (targetJson["Format"] == "VK_FORMAT_R32G32B32A32_UINT");
       targetJson["IsUint"] = (targetJson["Format"] == "VK_FORMAT_R32_UINT" || targetJson["IsRawUint4"].get<bool>());
+      targetJson["RestLayout"]   = targetLayouts[target.member].first;
+      targetJson["AttachLayout"] = targetLayouts[target.member].second;
       pipeJson["ColorTargets"].push_back(targetJson);
     }
     pipeJson["HasDepth"]    = (pipe.second.depthTarget != "");
     pipeJson["DepthTarget"] = pipe.second.depthTarget;
+    pipeJson["DepthRestLayout"]   = (pipe.second.depthTarget != "") ? targetLayouts[pipe.second.depthTarget].first  : std::string("VK_IMAGE_LAYOUT_GENERAL");
+    pipeJson["DepthAttachLayout"] = (pipe.second.depthTarget != "") ? targetLayouts[pipe.second.depthTarget].second : std::string("VK_IMAGE_LAYOUT_GENERAL");
     pipeJson["SizeFrom"]    = pipe.second.colorTargets.empty() ? pipe.second.depthTarget : pipe.second.colorTargets[0].member;
     a_hostJson["GPPipelines"].push_back(pipeJson);
   }
@@ -737,9 +757,13 @@ void kslicer::AddGraphicsToHostJson(nlohmann::json& a_hostJson, const MainClassI
       targetJson["Format"] = TargetFormat(a_classInfo, target.member);
       targetJson["IsRawUint4"] = (targetJson["Format"] == "VK_FORMAT_R32G32B32A32_UINT");
       targetJson["IsUint"] = (targetJson["Format"] == "VK_FORMAT_R32_UINT" || targetJson["IsRawUint4"].get<bool>());
+      targetJson["RestLayout"]   = targetLayouts[target.member].first;
+      targetJson["AttachLayout"] = targetLayouts[target.member].second;
       drawJson["PassTargets"].push_back(targetJson);
     }
     drawJson["DepthTarget"] = pPipe->second.depthTarget;
+    drawJson["DepthRestLayout"]   = (pPipe->second.depthTarget != "") ? targetLayouts[pPipe->second.depthTarget].first  : std::string("VK_IMAGE_LAYOUT_GENERAL");
+    drawJson["DepthAttachLayout"] = (pPipe->second.depthTarget != "") ? targetLayouts[pPipe->second.depthTarget].second : std::string("VK_IMAGE_LAYOUT_GENERAL");
 
     drawJson["ColorTargets"] = std::vector<nlohmann::json>();
     if(draw.psKernel != "")

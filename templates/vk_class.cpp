@@ -271,7 +271,7 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateTextureMembers(std::shared_ptr<
   barriers[{{loop.index}}].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   {% else %}
   barriers[{{loop.index}}].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  barriers[{{loop.index}}].newLayout = VK_IMAGE_LAYOUT_GENERAL;
+  barriers[{{loop.index}}].newLayout = {% if existsIn(Var, "RestLayout") %}{{Var.RestLayout}}{% else %}VK_IMAGE_LAYOUT_GENERAL{% endif %}; // render targets: see '-gp_optimal_layouts'
   {% endif %}
   {% endfor %}
 

@@ -1,25 +1,27 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Graphics pipeline (LiteRS). Render targets always stay in VK_IMAGE_LAYOUT_GENERAL, so kernels and draws use them without
-// layout transitions; LiteRS::Clear is a separate command, {% if GPDynamicRendering %}draws load and store attachments.
+// Graphics pipeline (LiteRS). {% if GPOptimalLayouts %}'-gp_optimal_layouts 1': render targets are in read-only layouts between commands
+// (SHADER_READ_ONLY_OPTIMAL / DEPTH_STENCIL_READ_ONLY_OPTIMAL, GENERAL for storage targets), in attachment layouts during draws and in
+// TRANSFER_DST_OPTIMAL during LiteRS::Clear: this allows compression of targets and fast clears;{% else %}Render targets always stay in VK_IMAGE_LAYOUT_GENERAL,
+// so kernels and draws use them without layout transitions;{% endif %} LiteRS::Clear is a separate command, {% if GPDynamicRendering %}draws load and store attachments.
 // Vulkan 1.3: dynamic rendering (no render passes and framebuffers) and extended dynamic state: 'cullMode', 'frontFace',
 // 'depthTest', 'depthWrite' and 'depthCompare' of LiteRS::Pipeline are read at every draw, 'blendMode' is baked into pipelines.{% else %}render passes load and store attachments.
 // Vulkan 1.0: render pass and framebuffer for each LiteRS::Pipeline member, its state is baked into pipelines.{% endif %}
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 {% if GPDynamicRendering %}
-static VkRenderingAttachmentInfo GPMakeRenderingAttachment(VkImageView a_view)
+static VkRenderingAttachmentInfo GPMakeRenderingAttachment(VkImageView a_view, VkImageLayout a_layout)
 {
   VkRenderingAttachmentInfo info = {};
   info.sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
   info.imageView   = a_view;
-  info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+  info.imageLayout = a_layout;
   info.loadOp      = VK_ATTACHMENT_LOAD_OP_LOAD;
   info.storeOp     = VK_ATTACHMENT_STORE_OP_STORE;
   return info;
 }
 {% else %}
-static VkAttachmentDescription GPMakeAttachment(VkFormat a_format)
+static VkAttachmentDescription GPMakeAttachment(VkFormat a_format, VkImageLayout a_restLayout) ///< the pass returns the target to its layout between commands
 {
   VkAttachmentDescription desc = {};
   desc.format         = a_format;
@@ -28,9 +30,26 @@ static VkAttachmentDescription GPMakeAttachment(VkFormat a_format)
   desc.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
   desc.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
   desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-  desc.initialLayout  = VK_IMAGE_LAYOUT_GENERAL;
-  desc.finalLayout    = VK_IMAGE_LAYOUT_GENERAL;
+  desc.initialLayout  = a_restLayout;
+  desc.finalLayout    = a_restLayout;
   return desc;
+}
+{% endif %}
+{% if GPOptimalLayouts %}
+
+static VkImageMemoryBarrier GPMakeLayoutBarrier(VkImage a_image, VkImageAspectFlags a_aspect, VkImageLayout a_old, VkImageLayout a_new)
+{
+  VkImageMemoryBarrier barrier = {};
+  barrier.sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  barrier.srcAccessMask       = VK_ACCESS_MEMORY_WRITE_BIT;
+  barrier.dstAccessMask       = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+  barrier.oldLayout           = a_old;
+  barrier.newLayout           = a_new;
+  barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  barrier.image               = a_image;
+  barrier.subresourceRange    = { a_aspect, 0, 1, 0, 1 };
+  return barrier;
 }
 {% endif %}
 
@@ -120,7 +139,7 @@ void {{MainClassName}}{{MainClassSuffix}}::ResizeGraphicsTargets()
     VkImageMemoryBarrier barrier = {};
     barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+    barrier.newLayout = {{Target.RestLayout}};
     barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
@@ -139,7 +158,7 @@ void {{MainClassName}}{{MainClassSuffix}}::ResizeGraphicsTargets()
   {% for Target in GPRenderTargets %}
   {% if Arg.NameOriginal == Target.Name %}
   {
-    VkDescriptorImageInfo image = { {{Arg.SamplerName}}, m_vdata.{{Target.Name}}View, VK_IMAGE_LAYOUT_GENERAL };
+    VkDescriptorImageInfo image = { {{Arg.SamplerName}}, m_vdata.{{Target.Name}}View, {{Target.RestLayout}} };
     VkWriteDescriptorSet write = {};
     write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     write.dstSet = m_allGeneratedDS[{{DS.Id}}];
@@ -277,13 +296,13 @@ void {{MainClassName}}{{MainClassSuffix}}::InitGraphics()
     std::vector<VkAttachmentReference>   colorRefs;
     std::vector<VkImageView>             views;
     {% for Target in Pipe.ColorTargets %}
-    attachments.push_back(GPMakeAttachment({{Target.Format}}));
-    colorRefs.push_back(VkAttachmentReference{uint32_t(attachments.size() - 1), VK_IMAGE_LAYOUT_GENERAL});
+    attachments.push_back(GPMakeAttachment({{Target.Format}}, {{Target.RestLayout}}));
+    colorRefs.push_back(VkAttachmentReference{uint32_t(attachments.size() - 1), {{Target.AttachLayout}}});
     views.push_back(m_vdata.{{Target.Name}}View);
     {% endfor %}
     {% if Pipe.HasDepth %}
-    attachments.push_back(GPMakeAttachment(VK_FORMAT_D32_SFLOAT));
-    VkAttachmentReference depthRef = {uint32_t(attachments.size() - 1), VK_IMAGE_LAYOUT_GENERAL};
+    attachments.push_back(GPMakeAttachment(VK_FORMAT_D32_SFLOAT, {{Pipe.DepthRestLayout}}));
+    VkAttachmentReference depthRef = {uint32_t(attachments.size() - 1), {{Pipe.DepthAttachLayout}}};
     views.push_back(m_vdata.{{Pipe.DepthTarget}}View);
     {% endif %}
 
@@ -299,6 +318,24 @@ void {{MainClassName}}{{MainClassSuffix}}::InitGraphics()
     renderPassInfo.pAttachments    = attachments.data();
     renderPassInfo.subpassCount    = 1;
     renderPassInfo.pSubpasses      = &subpass;
+    {% if GPOptimalLayouts %}
+    // layout transitions of the pass are ordered with previous and next commands (in addition to barriers of Draw*Cmd and GPEndPassCmd)
+    VkSubpassDependency dependencies[2] = {};
+    dependencies[0].srcSubpass    = VK_SUBPASS_EXTERNAL;
+    dependencies[0].dstSubpass    = 0;
+    dependencies[0].srcStageMask  = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+    dependencies[0].dstStageMask  = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
+    dependencies[0].srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+    dependencies[0].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+    dependencies[1].srcSubpass    = 0;
+    dependencies[1].dstSubpass    = VK_SUBPASS_EXTERNAL;
+    dependencies[1].srcStageMask  = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
+    dependencies[1].dstStageMask  = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+    dependencies[1].srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+    dependencies[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+    renderPassInfo.dependencyCount = 2;
+    renderPassInfo.pDependencies   = dependencies;
+    {% endif %}
     VK_CHECK_RESULT(vkCreateRenderPass(m_device, &renderPassInfo, nullptr, &m_gp_{{Pipe.Name}}.renderPass));
 
     m_gp_{{Pipe.Name}}.width  = {{Pipe.SizeFrom}}.width();
@@ -468,6 +505,21 @@ void {{MainClassName}}{{MainClassSuffix}}::Clear_{{Pipe.Name}}Cmd(VkCommandBuffe
   {% if length(Pipe.ColorTargets) > 0 %}
   VkImageSubresourceRange colorRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
   {% endif %}
+  {% if GPOptimalLayouts %}
+  std::vector<VkImageMemoryBarrier> toTransfer, toRest; // clear in TRANSFER_DST_OPTIMAL (fast clear of compressed targets)
+  {% for Target in Pipe.ColorTargets %}
+  toTransfer.push_back(GPMakeLayoutBarrier(m_vdata.{{Target.Name}}Texture, VK_IMAGE_ASPECT_COLOR_BIT, {{Target.RestLayout}}, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+  toRest.push_back    (GPMakeLayoutBarrier(m_vdata.{{Target.Name}}Texture, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, {{Target.RestLayout}}));
+  {% endfor %}
+  {% if Pipe.HasDepth %}
+  toTransfer.push_back(GPMakeLayoutBarrier(m_vdata.{{Pipe.DepthTarget}}Texture, VK_IMAGE_ASPECT_DEPTH_BIT, {{Pipe.DepthRestLayout}}, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+  toRest.push_back    (GPMakeLayoutBarrier(m_vdata.{{Pipe.DepthTarget}}Texture, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, {{Pipe.DepthRestLayout}}));
+  {% endif %}
+  vkCmdPipelineBarrier(a_commandBuffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, uint32_t(toTransfer.size()), toTransfer.data());
+  const VkImageLayout clearLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+  {% else %}
+  const VkImageLayout clearLayout = VK_IMAGE_LAYOUT_GENERAL;
+  {% endif %}
   {% for Target in Pipe.ColorTargets %}
   {
     VkClearColorValue clearValue = {};
@@ -484,15 +536,18 @@ void {{MainClassName}}{{MainClassSuffix}}::Clear_{{Pipe.Name}}Cmd(VkCommandBuffe
     clearValue.float32[2] = state.clearColor.z;
     clearValue.float32[3] = state.clearColor.w;
     {% endif %}
-    vkCmdClearColorImage(a_commandBuffer, m_vdata.{{Target.Name}}Texture, VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &colorRange);
+    vkCmdClearColorImage(a_commandBuffer, m_vdata.{{Target.Name}}Texture, clearLayout, &clearValue, 1, &colorRange);
   }
   {% endfor %}
   {% if Pipe.HasDepth %}
   {
     VkImageSubresourceRange depthRange = { VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1 };
     VkClearDepthStencilValue clearValue = { state.clearDepth, 0 };
-    vkCmdClearDepthStencilImage(a_commandBuffer, m_vdata.{{Pipe.DepthTarget}}Texture, VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &depthRange);
+    vkCmdClearDepthStencilImage(a_commandBuffer, m_vdata.{{Pipe.DepthTarget}}Texture, clearLayout, &clearValue, 1, &depthRange);
   }
+  {% endif %}
+  {% if GPOptimalLayouts %}
+  vkCmdPipelineBarrier(a_commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 0, nullptr, uint32_t(toRest.size()), toRest.data());
   {% endif %}
 }
 {% endfor %}
@@ -516,10 +571,10 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Draw.Name}}Cmd(VkCommandBuffer a_co
   {% if GPDynamicRendering %}
   std::vector<VkRenderingAttachmentInfo> colorAttachments;
   {% for Target in Draw.PassTargets %}
-  colorAttachments.push_back(GPMakeRenderingAttachment(m_vdata.{{Target.Name}}View));
+  colorAttachments.push_back(GPMakeRenderingAttachment(m_vdata.{{Target.Name}}View, {{Target.AttachLayout}}));
   {% endfor %}
   {% if Draw.HasDepth %}
-  const VkRenderingAttachmentInfo depthAttachment = GPMakeRenderingAttachment(m_vdata.{{Draw.DepthTarget}}View);
+  const VkRenderingAttachmentInfo depthAttachment = GPMakeRenderingAttachment(m_vdata.{{Draw.DepthTarget}}View, {{Draw.DepthAttachLayout}});
   {% endif %}
 
   VkRenderingInfo renderingInfo = {};
@@ -533,7 +588,18 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Draw.Name}}Cmd(VkCommandBuffer a_co
   if(m_gpOpenPass != &m_gp_{{Draw.Pipeline}})
   {
     GPEndPassCmd(a_commandBuffer);
+    {% if GPOptimalLayouts %}
+    std::vector<VkImageMemoryBarrier> toAttachment; // dynamic rendering: targets are moved to attachment layouts here and back in GPEndPassCmd
+    {% for Target in Draw.PassTargets %}
+    toAttachment.push_back(GPMakeLayoutBarrier(m_vdata.{{Target.Name}}Texture, VK_IMAGE_ASPECT_COLOR_BIT, {{Target.RestLayout}}, {{Target.AttachLayout}}));
+    {% endfor %}
+    {% if Draw.HasDepth %}
+    toAttachment.push_back(GPMakeLayoutBarrier(m_vdata.{{Draw.DepthTarget}}Texture, VK_IMAGE_ASPECT_DEPTH_BIT, {{Draw.DepthRestLayout}}, {{Draw.DepthAttachLayout}}));
+    {% endif %}
+    vkCmdPipelineBarrier(a_commandBuffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 1, &m_gpBarrier, 0, nullptr, uint32_t(toAttachment.size()), toAttachment.data());
+    {% else %}
     vkCmdPipelineBarrier(a_commandBuffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 1, &m_gpBarrier, 0, nullptr, 0, nullptr);
+    {% endif %}
     vkCmdBeginRendering(a_commandBuffer, &renderingInfo);
     m_gpOpenPass      = &m_gp_{{Draw.Pipeline}};
     m_gpBoundPipeline = VK_NULL_HANDLE;
@@ -619,7 +685,23 @@ void {{MainClassName}}{{MainClassSuffix}}::GPEndPassCmd(VkCommandBuffer a_comman
   {% else %}
   vkCmdEndRenderPass(a_commandBuffer);
   {% endif %}
+  {% if GPDynamicRendering and GPOptimalLayouts %}
+  std::vector<VkImageMemoryBarrier> toRest; // targets of the open pass return to their layouts between commands
+  {% for Pipe in GPPipelines %}
+  if(m_gpOpenPass == &m_gp_{{Pipe.Name}})
+  {
+    {% for Target in Pipe.ColorTargets %}
+    toRest.push_back(GPMakeLayoutBarrier(m_vdata.{{Target.Name}}Texture, VK_IMAGE_ASPECT_COLOR_BIT, {{Target.AttachLayout}}, {{Target.RestLayout}}));
+    {% endfor %}
+    {% if Pipe.HasDepth %}
+    toRest.push_back(GPMakeLayoutBarrier(m_vdata.{{Pipe.DepthTarget}}Texture, VK_IMAGE_ASPECT_DEPTH_BIT, {{Pipe.DepthAttachLayout}}, {{Pipe.DepthRestLayout}}));
+    {% endif %}
+  }
+  {% endfor %}
+  vkCmdPipelineBarrier(a_commandBuffer, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 1, &m_gpBarrier, 0, nullptr, uint32_t(toRest.size()), toRest.data());
+  {% else %}
   vkCmdPipelineBarrier(a_commandBuffer, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 1, &m_gpBarrier, 0, nullptr, 0, nullptr);
+  {% endif %}
   m_gpOpenPass      = nullptr;
   m_gpBoundPipeline = VK_NULL_HANDLE;
 }

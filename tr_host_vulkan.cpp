@@ -43,6 +43,13 @@ std::string kslicer::GetControlFuncDeclVulkan(const clang::FunctionDecl* fDecl, 
   return text + ")";
 }
 
+/// commands which replace a call statement of a control function are wrapped in 'do { ... } while(0)': the replaced call keeps its ';',
+/// so the result is one statement also in 'if(...) kernel_A(...); else kernel_B(...);' without braces (a plain '{...};' breaks 'else')
+static std::string AsSingleStatement(const std::string& a_commands)
+{
+  return "do { " + a_commands + " } while(0)";
+}
+
 void kslicer::MainFunctionRewriterVulkan::ReplaceText(clang::SourceRange a_range, const std::string& a_text)
 {
   kslicer::ReplaceTextSafe(m_rewriter, a_range, a_text);
@@ -305,7 +312,7 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeServiceKernelCallCmdString(
 {
   const std::string res = MakeServiceKernelCallCmdStringImpl(call, a_name);
   if(m_pCodeInfo->graphics.Used() && res != "") // render pass of previous draws must be ended before compute commands, see GPEndPassCmd
-    return "{ GPEndPassCmd(a_commandBuffer); " + res + "; }";
+    return "GPEndPassCmd(a_commandBuffer); " + res;
   return res;
 }
 
@@ -536,7 +543,7 @@ bool kslicer::MainFunctionRewriterVulkan::VisitCXXMemberCallExpr(CXXMemberCallEx
       strOut << "    VkMemoryBarrier barAfter = { VK_STRUCTURE_TYPE_MEMORY_BARRIER, nullptr, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_UNIFORM_READ_BIT };" << std::endl;
       strOut << "    vkCmdPipelineBarrier(a_commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &barAfter, 0, nullptr, 0, nullptr);" << std::endl;
       strOut << "  }";
-      ReplaceText(f->getSourceRange(), strOut.str());
+      ReplaceText(f->getSourceRange(), AsSingleStatement(strOut.str()));
       MarkRewritten(f);
       return true;
     }
@@ -551,7 +558,7 @@ bool kslicer::MainFunctionRewriterVulkan::VisitCXXMemberCallExpr(CXXMemberCallEx
       if(pKernel->second.be.enabled)
         kslicer::ExtractBlockSizeFromCall(f, pKernel->second, m_compiler);
       std::string callStr = MakeKernelCallCmdString(f);
-      ReplaceText(f->getSourceRange(), callStr); // getExprLoc
+      ReplaceText(f->getSourceRange(), AsSingleStatement(callStr)); // getExprLoc
       MarkRewritten(f);
     }
     else
@@ -582,7 +589,7 @@ bool kslicer::MainFunctionRewriterVulkan::VisitCallExpr(CallExpr* call)
   kslicer::GPCommand gpCommand;
   if(WasNotRewrittenYet(call) && kslicer::ParseGraphicsCommand(call, gpCommand)) // LiteRS::Clear, LiteRS::DrawTriangles, ...
   {
-    ReplaceText(call->getSourceRange(), MakeGraphicsCommandCmdString(call, gpCommand));
+    ReplaceText(call->getSourceRange(), AsSingleStatement(MakeGraphicsCommandCmdString(call, gpCommand)));
     MarkRewritten(call);
     return true;
   }
@@ -591,7 +598,7 @@ bool kslicer::MainFunctionRewriterVulkan::VisitCallExpr(CallExpr* call)
   {
     m_pCodeInfo->usedServiceCalls.insert(fname);
     std::string testStr = MakeServiceKernelCallCmdString(call, fname);
-    ReplaceText(call->getSourceRange(), testStr);
+    ReplaceText(call->getSourceRange(), AsSingleStatement(testStr + ";"));
     MarkRewritten(call);
   }
 

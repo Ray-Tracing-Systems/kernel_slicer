@@ -762,11 +762,17 @@ bool kslicer::FunctionRewriter2::DetectAndRewriteShallowPattern(const clang::Stm
     const clang::Expr* lhs = kslicer::RemoveImplicitCast(binOp->getLHS());  // Указатель на 'a'
     const clang::Expr* rhs = kslicer::RemoveImplicitCast(binOp->getRHS());  // Указатель на 'b'
     std::string opCode = std::string(binOp->getOpcodeStr());
-    std::string leftRes  = kslicer::GetRangeSourceCode(lhs->getSourceRange(), m_compiler);
-    std::string rightRes = kslicer::GetRangeSourceCode(rhs->getSourceRange(), m_compiler);
-    if(DetectAndRewriteShallowPattern(lhs, leftRes) || DetectAndRewriteShallowPattern(rhs, rightRes))
+    std::string leftRes, rightRes;
+    const bool  leftShallow  = DetectAndRewriteShallowPattern(lhs, leftRes);   // both sides are checked: no short-circuit
+    const bool  rightShallow = DetectAndRewriteShallowPattern(rhs, rightRes);
+    if(leftShallow || rightShallow)
     {
-      a_out = leftRes + opCode + rightRes;
+      // the other side may also need rewriting, e.g. '(y + m_member)' in '(y + m_member)*m_pitch': rewrite it fully, not as source text
+      if(!leftShallow)
+        leftRes = RecursiveRewrite(lhs);
+      if(!rightShallow)
+        rightRes = RecursiveRewrite(rhs);
+      a_out = leftRes + " " + opCode + " " + rightRes;
       return true;
     }
   }
@@ -780,10 +786,15 @@ bool kslicer::FunctionRewriter2::DetectAndRewriteShallowPattern(const clang::Stm
     const clang::Expr* lhs = kslicer::RemoveImplicitCast(opCall->getArg(0));
     const clang::Expr* rhs = kslicer::RemoveImplicitCast(opCall->getArg(1));
     std::string opCode = clang::getOperatorSpelling(opCall->getOperator());
-    std::string leftRes  = kslicer::GetRangeSourceCode(lhs->getSourceRange(), m_compiler);
-    std::string rightRes = kslicer::GetRangeSourceCode(rhs->getSourceRange(), m_compiler);
-    if(DetectAndRewriteShallowPattern(lhs, leftRes) || DetectAndRewriteShallowPattern(rhs, rightRes))
+    std::string leftRes, rightRes;
+    const bool  leftShallow  = DetectAndRewriteShallowPattern(lhs, leftRes);   // both sides are checked: no short-circuit
+    const bool  rightShallow = DetectAndRewriteShallowPattern(rhs, rightRes);
+    if(leftShallow || rightShallow)
     {
+      if(!leftShallow)
+        leftRes = RecursiveRewrite(lhs);
+      if(!rightShallow)
+        rightRes = RecursiveRewrite(rhs);
       if(opCode == "[]")
         a_out = leftRes + "[" + rightRes + "]";
       else

@@ -1,0 +1,14 @@
+{
+    "mainClass": "WgSizeAll",
+    "kernels": {
+        "all"            : {"nonConstantData": {"a_out" : 1}},
+        "kernel1D_Scale" : {"wgSize": [64, 1, 1]},
+        "kernel2D_Fill"  : {"wgSize": [8, 4, 1], "nonConstantData": {"a_out" : 1}}
+    },
+    "options": {},
+    "source": ["test_class.cpp"],
+    "includeProcess": [],
+    "includeIgnore": ["../../LiteMath", "../../LiteMathAux"],
+    "defines": {"KERNEL_SLICER": ""},
+    "end": ""
+}

@@ -1523,6 +1523,18 @@ std::shared_ptr<kslicer::KernelRewriter> kslicer::SlangCompiler::MakeKernRewrite
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 std::string toSpirvString(int n);
 
+/// ' -profile spirv_1_X ' for all shaders of a class, including service ones (memcpy, scan, sort, ...): without it slangc
+/// produces its default SPIR-V version, which may be higher than the Vulkan version of the device allows
+static std::string SlangProfileOption(const kslicer::TextGenSettings& a_settings)
+{
+  auto spirv_ver = a_settings.spirv_ver;
+  if(a_settings.vulkan_ver == 11)
+    spirv_ver = 13;
+  if(spirv_ver == 0)
+    return " ";
+  return " -profile " + toSpirvString(spirv_ver) + " ";
+}
+
 void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings)
 {
   const auto& mainClassFileName = a_codeInfo->mainClassFileName;
@@ -1620,15 +1632,7 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
       buildSH << " " << a_settings.auxShaderCCOptions.c_str();
     
     
-    auto spirv_ver = a_settings.spirv_ver;
-    if(a_settings.vulkan_ver == 11)
-      spirv_ver = 13;
-
-    if(spirv_ver != 0)
-    {
-      const std::string ver = toSpirvString(spirv_ver);
-      buildSH << " -profile " << ver.c_str() << " ";
-    }
+    buildSH << SlangProfileOption(a_settings);
     buildSH << std::endl;
   
     if(kernel.value()["IsIndirect"])
@@ -1636,7 +1640,7 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
       outFileName = kernelName + "_UpdateIndirect.slang";
       outFilePath = shaderPath / outFileName;
       kslicer::ApplyJsonToTemplate(templatePathUpdInd.c_str(), outFilePath, currKerneJson);
-      buildSH << "slangc " << outFileName.c_str() << targetString.c_str() << kernelName.c_str() << "_UpdateIndirect" << targetSuffix.c_str() << includePaths.c_str() << "-warnings-disable 39001 ";
+      buildSH << "slangc " << outFileName.c_str() << targetString.c_str() << kernelName.c_str() << "_UpdateIndirect" << targetSuffix.c_str() << includePaths.c_str() << "-warnings-disable 39001 " << (m_wgpuEnabled ? std::string("") : SlangProfileOption(a_settings));
       buildSH << std::endl;
     }
 
@@ -1645,7 +1649,7 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
       outFileName = kernelName + "_Reduction.slang";
       outFilePath = shaderPath / outFileName;
       kslicer::ApplyJsonToTemplate(templatePathRedFin.c_str(), outFilePath, currKerneJson);
-      buildSH << "slangc " << outFileName.c_str() << targetString.c_str() << kernelName.c_str() << "_Reduction" << targetSuffix.c_str() << includePaths.c_str() << "-warnings-disable 39001 ";
+      buildSH << "slangc " << outFileName.c_str() << targetString.c_str() << kernelName.c_str() << "_Reduction" << targetSuffix.c_str() << includePaths.c_str() << "-warnings-disable 39001 " << (m_wgpuEnabled ? std::string("") : SlangProfileOption(a_settings));
       buildSH << std::endl;
     }
   }
@@ -1655,14 +1659,14 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
     nlohmann::json params = copy;
     params["GPIndirectDraws"] = kslicer::GraphicsIndirectDrawsJson(*a_codeInfo);
     kslicer::ApplyJsonToTemplate(templatesFolder / "z_gp_update_indirect.slang", shaderPath / "z_gp_update_indirect.slang", params);
-    buildSH << "slangc z_gp_update_indirect.slang -o z_gp_update_indirect.comp.spv" << includePaths.c_str() << "-warnings-disable 39001" << std::endl;
+    buildSH << "slangc z_gp_update_indirect.slang -o z_gp_update_indirect.comp.spv" << includePaths.c_str() << "-warnings-disable 39001" << SlangProfileOption(a_settings) << std::endl;
   }
 
   if(a_codeInfo->usedServiceCalls.find("memcpy") != a_codeInfo->usedServiceCalls.end())
   {
     nlohmann::json dummy;
     kslicer::ApplyJsonToTemplate(templatesFolder / "z_memcpy.slang", shaderPath / "z_memcpy.slang", dummy); // just file copy actually
-    buildSH << "slangc z_memcpy.slang -o z_memcpy.comp.spv -warnings-disable 39001" << std::endl;
+    buildSH << "slangc z_memcpy.slang -o z_memcpy.comp.spv -warnings-disable 39001" << SlangProfileOption(a_settings) << std::endl;
   }
 
   // scan and sort are implemented for Vulkan host only (not for WebGPU)
@@ -1680,8 +1684,8 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
         const std::string name = "z_scan_" + scanImpl.second.dataTypeName;
         kslicer::ApplyJsonToTemplate(templatesFolder / "z_scan_block.slang",     shaderPath / (name + "_block.slang"),     params);
         kslicer::ApplyJsonToTemplate(templatesFolder / "z_scan_propagate.slang", shaderPath / (name + "_propagate.slang"), params);
-        buildSH << "slangc " << name << "_block.slang     -o " << name << "_block.comp.spv -warnings-disable 39001"     << std::endl;
-        buildSH << "slangc " << name << "_propagate.slang -o " << name << "_propagate.comp.spv -warnings-disable 39001" << std::endl;
+        buildSH << "slangc " << name << "_block.slang     -o " << name << "_block.comp.spv -warnings-disable 39001"     << SlangProfileOption(a_settings) << std::endl;
+        buildSH << "slangc " << name << "_propagate.slang -o " << name << "_propagate.comp.spv -warnings-disable 39001" << SlangProfileOption(a_settings) << std::endl;
       }
     }
   }
@@ -1699,13 +1703,13 @@ void kslicer::SlangCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, cons
 
         const std::string name = "z_bitonic_" + sortImpl.second.dataTypeName;
         kslicer::ApplyJsonToTemplate(templatesFolder / "z_bitonic_pass.slang", shaderPath / (name + "_pass.slang"), params);
-        buildSH << "slangc " << name << "_pass.slang -o " << name << "_pass.comp.spv -warnings-disable 39001" << std::endl;
+        buildSH << "slangc " << name << "_pass.slang -o " << name << "_pass.comp.spv -warnings-disable 39001" << SlangProfileOption(a_settings) << std::endl;
         for(int blockSize : {512, 1024, 2048})
         {
           params["BlockSize"] = blockSize;
           const std::string blockName = name + "_" + std::to_string(blockSize);
           kslicer::ApplyJsonToTemplate(templatesFolder / "z_bitonic_block.slang", shaderPath / (blockName + ".slang"), params);
-          buildSH << "slangc " << blockName << ".slang -o " << blockName << ".comp.spv -warnings-disable 39001" << std::endl;
+          buildSH << "slangc " << blockName << ".slang -o " << blockName << ".comp.spv -warnings-disable 39001" << SlangProfileOption(a_settings) << std::endl;
         }
       }
     }

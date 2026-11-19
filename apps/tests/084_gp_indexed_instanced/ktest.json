@@ -3,8 +3,12 @@
         {"name": "slang",    "backend": "slang", "kmake": "kmake.json"},
         {"name": "slang_mega", "backend": "slang", "kmake": "kmake.json", "options": {"-megakernel": 1, "-vulkan_ver": 11, "-spirv_ver": 13}},
         {"name": "slang_dr", "backend": "slang", "kmake": "kmake.json", "options": {"-gp_dynamic_rendering": 1}},
+        {"name": "slang_ol",    "backend": "slang", "kmake": "kmake.json", "options": {"-gp_optimal_layouts": 1}},
+        {"name": "slang_dr_ol", "backend": "slang", "kmake": "kmake.json", "options": {"-gp_dynamic_rendering": 1, "-gp_optimal_layouts": 1}},
         {"name": "glsl",     "backend": "glsl",  "kmake": "kmake.json"},
         {"name": "glsl_dr",  "backend": "glsl",  "kmake": "kmake.json", "options": {"-gp_dynamic_rendering": 1}},
+        {"name": "glsl_ol",    "backend": "glsl", "kmake": "kmake.json", "options": {"-gp_optimal_layouts": 1}},
+        {"name": "glsl_dr_ol", "backend": "glsl", "kmake": "kmake.json", "options": {"-gp_dynamic_rendering": 1, "-gp_optimal_layouts": 1}},
         {"name": "ispc",     "backend": "ispc",  "kmake": "kmake.json"}
     ]
 }

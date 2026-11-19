@@ -548,6 +548,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
   data["EnableTimeStamps"]   = a_settings.enableTimeStamps;
   data["UsePipelineCache"]   = a_settings.usePipelineCache;
   data["GPDynamicRendering"] = a_settings.gpDynamicRendering && a_classInfo.graphics.Used(); // Vulkan 1.3 is required only if there are draws
+  data["GPOptimalLayouts"]   = a_settings.gpOptimalLayouts   && a_classInfo.graphics.Used(); // see AddGraphicsToHostJson
   if(a_settings.enableTimeStamps)
   {
     // The pool must cover the timestamps of EVERY control function: in megakernel mode RTV functions
