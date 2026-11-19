@@ -1123,7 +1123,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
   {% endfor %}
   {% for Var in ClassTextureVars %}
   {% if not Var.IsRenderTarget %}
-  m_vdata.{{Var.Name}}Texture = CreateTexture2D({{Var.Name}}{{Var.AccessSymb}}width(), {{Var.Name}}{{Var.AccessSymb}}height(), VkFormat({{Var.Format}}), {{Var.Usage}});
+  m_vdata.{{Var.Name}}Texture = CreateTexture2D({{Var.HostName}}{{Var.AccessSymb}}width(), {{Var.HostName}}{{Var.AccessSymb}}height(), VkFormat({{Var.Format}}), {{Var.Usage}});
   {% if Var.NeedSampler %}
   m_vdata.{{Var.Name}}Sampler = CreateSampler({{Var.Name}}->sampler());
   {% endif %}

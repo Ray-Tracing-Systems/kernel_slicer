@@ -182,26 +182,29 @@ float Denoise::NLMWeight(const Image2D<float4>& a_texture, int w, int h, int x, 
 }
 
 
-void Denoise::kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_height, unsigned int* a_outData1ui, const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel)
+void Denoise::kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_rowCount, unsigned int* a_outData1ui,
+                                                const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel,
+                                                const int a_firstRow)
 {     
   m_noiseLevel  = 1.0f / (a_noiseLevel * a_noiseLevel);    
   m_windowArea  = Sqrf(2.0f * (float)(a_windowRadius) + 1.0f);
 
   #pragma omp parallel for
-  for (int y = 0; y < a_height; ++y)
+  for (int row = 0; row < a_rowCount; ++row)
   {
     for (int x = 0; x < a_width; ++x)
     {
+      const int y         = a_firstRow + row;
       const int minX      = Clampi(x - a_windowRadius, 0, a_width - 1);
       const int maxX      = Clampi(x + a_windowRadius, 0, a_width - 1);
-      const int minY      = Clampi(y - a_windowRadius, 0, a_height - 1);
-      const int maxY      = Clampi(y + a_windowRadius, 0, a_height - 1);
+      const int minY      = Clampi(y - a_windowRadius, 0, m_height - 1);
+      const int maxY      = Clampi(y + a_windowRadius, 0, m_height - 1);
 
-      const float2 uv0    = get_uv(x, y, a_width, a_height);
+      const float2 uv0    = get_uv(x, y, a_width, m_height);
       const float4 c0     = m_hdrColor.sample(m_sampler, uv0);
       const float4 n0     = m_normDepth.sample(m_sampler, uv0);
 
-      const float ppSize  = 1.0F * (float)(a_windowRadius) * ProjectedPixelSize(n0.w, m_fov, (float)(a_width), (float)(a_height));
+      const float ppSize  = 1.0F * (float)(a_windowRadius) * ProjectedPixelSize(n0.w, m_fov, (float)(a_width), (float)(m_height));
       int counterPass     = 0;
       float fSum          = 0.0F;
       float4 result       = float4(0.0F, 0.0F, 0.0F, 0.0F);
@@ -212,15 +215,15 @@ void Denoise::kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_
       {
         for (int x1 = minX; x1 <= maxX; ++x1)
         {
-          const float2 uv1  = get_uv(x1, y1, a_width, a_height);
+          const float2 uv1  = get_uv(x1, y1, a_width, m_height);
           const float4 c1   = m_hdrColor.sample(m_sampler, uv1);
           const float4 n1   = m_normDepth.sample(m_sampler, uv1);
           const int i       = x1 - x;
           const int j       = y1 - y;
 
           const float match = SurfaceSimilarity(n0, n1, ppSize);
-          const float w1    = NLMWeight(m_hdrColor, a_width, a_height, x, y, x1, y1, a_blockRadius);
-          const float wt    = NLMWeight(m_texColor, a_width, a_height, x, y, x1, y1, a_blockRadius);
+          const float w1    = NLMWeight(m_hdrColor, a_width, m_height, x, y, x1, y1, a_blockRadius);
+          const float wt    = NLMWeight(m_texColor, a_width, m_height, x, y, x1, y1, a_blockRadius);
 
           const float w2 = exp(-(w1*m_noiseLevel + (i * i + j * j) * m_gaussianSigma));
           const float w3 = exp(-(wt*m_noiseLevel + (i * i + j * j) * m_gaussianSigma));
@@ -254,7 +257,7 @@ void Denoise::kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_
       result = lerp(result, c0, lerpQ);
 
       SimpleCompressColor(&result);
-      a_outData1ui[y * a_width + x] = RealColorToUint32(result, 1.0F / m_gamma);
+      a_outData1ui[row * a_width + x] = RealColorToUint32(result, 1.0F / m_gamma);
     }
 
     #pragma omp critical       
@@ -262,7 +265,7 @@ void Denoise::kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_
       m_linesDone++;
       if(m_linesDone %2 == 0)
       {
-        std::cout << "NLM Denoiser: " << (int)(100.0F * (float)(m_linesDone) / (float)(a_height)) << "% \r";
+        std::cout << "NLM Denoiser: " << (int)(100.0F * (float)(m_linesDone) / (float)(m_height)) << "% \r";
         std::cout.flush();
       }
     }        
@@ -272,7 +275,9 @@ void Denoise::kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Denoise::NLM_denoise(const int a_width, const int a_height, unsigned int* a_outData1ui, const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel)
-{  
-  kernel2D_GuidedTexNormDepthDenoise(a_width, a_height, a_outData1ui, a_windowRadius, a_blockRadius, a_noiseLevel); 
+void Denoise::NLM_denoise(const int a_width, const int a_rowCount, unsigned int* a_outData1ui,
+                         const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel,
+                         const int a_firstRow)
+{
+  kernel2D_GuidedTexNormDepthDenoise(a_width, a_rowCount, a_outData1ui, a_windowRadius, a_blockRadius, a_noiseLevel, a_firstRow);
 }

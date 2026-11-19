@@ -1,0 +1,12 @@
+{
+    "mainClass": "ImageArgs",
+    "requireFeatures": ["ipv_image_args"],
+    "options": {
+        "-reorderLoops": "YX"
+    },
+    "source": ["test_class.cpp"],
+    "includeProcess": [],
+    "includeIgnore": ["../../LiteMath"],
+    "defines": {"KERNEL_SLICER": ""},
+    "end": ""
+}

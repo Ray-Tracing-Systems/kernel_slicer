@@ -384,6 +384,7 @@ static nlohmann::json GetJsonForFullCFImpl(const kslicer::MainFuncInfo& a_func, 
     else if(var.isTexture())
     {
       varData["Format"] = kslicer::InferenceVulkanTextureFormatFromTypeName(a_classInfo.pShaderFuncRewriter->RewriteStdVectorTypeStr(var.containerDataType), false);
+      varData["InputLayout"] = TexturesByKind(a_classInfo) ? "VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL" : "VK_IMAGE_LAYOUT_GENERAL";
       hasImages = true;
     }
 
@@ -876,6 +877,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     {
       json local;
       local["Name"]        = v.name;
+      local["HostName"]    = v.name;
       local["Usage"]       = "VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT";
       local["NeedUpdate"]  = true;
       local["Format"]      = v.name + "->format()";
@@ -905,6 +907,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     {
       json local;
       local["Name"]       = v.name;
+      local["HostName"]   = v.textureArrayElement.empty() ? v.name : v.textureArrayElement;
       local["Format"]     = kslicer::TextureMemberVulkanFormat(v, a_classInfo.pShaderFuncRewriter->RewriteStdVectorTypeStr(v.containerDataType), a_classInfo.halfFloatTextures);
       local["Usage"]      = "VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT";
       local["NeedUpdate"] = false;
@@ -1709,11 +1712,12 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         else if(dsArgs.descriptorSetsInfo[j].isTexture())
         {
           bool isConst = dsArgs.descriptorSetsInfo[j].isConst;
-          auto pMember = a_classInfo.allDataMembers.find(dsArgName);
-          if(pMember != a_classInfo.allDataMembers.end() && pMember->second.IsUsedTexture())
-            isConst = (pMember->second.tmask == TEX_ACCESS::TEX_ACCESS_SAMPLE) ||
-                      (pMember->second.tmask == TEX_ACCESS::TEX_ACCESS_READ)   ||
-                      (pMember->second.tmask == TEX_ACCESS::TEX_ACCESS_NOTHING);
+          if(dsArgs.descriptorSetsInfo[j].argType != KERN_CALL_ARG_TYPE::ARG_REFERENCE_ARG)
+          {
+            auto pMember = a_classInfo.allDataMembers.find(dsArgs.descriptorSetsInfo[j].name);
+            if(pMember != a_classInfo.allDataMembers.end() && pMember->second.IsUsedTexture())
+              isConst = (int(pMember->second.tmask) & int(TEX_ACCESS::TEX_ACCESS_WRITE)) == 0;
+          }
 
           auto texDSInfo = ObtainDSTextureAccessArg(a_classInfo, pFoundKernel->second, j, isConst);
           arg["AccessLayout"] = texDSInfo.accessLayout;

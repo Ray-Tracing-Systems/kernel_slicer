@@ -18,15 +18,19 @@ public:
   Denoise(){ m_sampler.filter = Sampler::Filter::NEAREST;  }
   void PrepareInput(int w, int h, const float4* in_color, const int32_t* a_inTexColor, const int32_t* a_inNormal, const float4* a_inDepth);
 
-  virtual void NLM_denoise(const int a_width, const int a_height, unsigned int* a_outData1ui __attribute__((size("a_width", "a_height"))), const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel);
+  virtual void NLM_denoise(const int a_width, const int a_rowCount,
+                           unsigned int* a_outData1ui __attribute__((size("a_width", "a_rowCount"))),
+                           const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel,
+                           const int a_firstRow = 0);
 
   virtual void CommitDeviceData() {}                                       // will be overriden in generated class
   virtual void GetExecutionTime(const char* a_funcName, float a_out[4]) {} // will be overriden in generated class
 
 protected:
 
-  void kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_height, unsigned int* a_outData1ui, 
-                                          const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel);
+  void kernel2D_GuidedTexNormDepthDenoise(const int a_width, const int a_rowCount, unsigned int* a_outData1ui,
+                                         const int a_windowRadius, const int a_blockRadius, const float a_noiseLevel,
+                                         const int a_firstRow);
 
   float NLMWeight(const Image2D<float4>& a_texture, int w, int h, int x, int y, int x1, int y1, int a_blockRadius);
 

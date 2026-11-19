@@ -243,7 +243,7 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateTextureMembers(std::shared_ptr<
   {% if length(ClassTextureVars) > 0 or length(ClassTexArrayVars) > 0 %}
   {% for Var in ClassTextureVars %}
   {% if Var.NeedUpdate %}
-  a_pCopyEngine->UpdateImage(m_vdata.{{Var.Name}}Texture, {{Var.Name}}{{Var.AccessSymb}}data(), {{Var.Name}}{{Var.AccessSymb}}width(), {{Var.Name}}{{Var.AccessSymb}}height(), {{Var.Name}}{{Var.AccessSymb}}bpp(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+  a_pCopyEngine->UpdateImage(m_vdata.{{Var.Name}}Texture, {{Var.HostName}}{{Var.AccessSymb}}data(), {{Var.HostName}}{{Var.AccessSymb}}width(), {{Var.HostName}}{{Var.AccessSymb}}height(), {{Var.HostName}}{{Var.AccessSymb}}bpp(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   {% endif %}
   {% endfor %}
   {% for Var in ClassTexArrayVars %}
@@ -671,7 +671,7 @@ void {{MainClassName}}{{MainClassSuffix}}::BarriersForSeveralBuffers(VkBuffer* a
   m_exTime{{MainFunc.Name}}.msAPIOverhead += std::chrono::duration_cast<std::chrono::microseconds>(beforeCopy - beforeSetInOut).count()/1000.f;
   {% for var in MainFunc.FullImpl.InputData %}
   {% if var.IsTexture %}
-  pCopyHelper->UpdateImage({{var.Name}}Img.image, {{var.Name}}.data(), {{var.Name}}.width(), {{var.Name}}.height(), {{var.Name}}.bpp(), VK_IMAGE_LAYOUT_GENERAL);
+  pCopyHelper->UpdateImage({{var.Name}}Img.image, {{var.Name}}.data(), {{var.Name}}.width(), {{var.Name}}.height(), {{var.Name}}.bpp(), {{var.InputLayout}});
   {% else %}
   pCopyHelper->UpdateBuffer({{var.Name}}GPU, 0, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}}));
   {# /* pCopyHelper->UpdateBuffer(tempBuffer, {{var.Name}}Offset, {{var.Name}}, {{var.DataSize}}*sizeof({{var.DataType}})); */ #}

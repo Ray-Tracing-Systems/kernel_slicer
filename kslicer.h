@@ -503,6 +503,7 @@ namespace kslicer
     std::string type;
     DATA_KIND   kind = DATA_KIND::KIND_UNKNOWN;
 
+    std::string textureArrayElement;                    ///<! Host expression for a fixed Image2D array element bound separately.
     size_t      sizeInBytes          = 0; ///<! may be not needed due to using sizeof in generated code, but it is useful for sorting members by size and making apropriate aligment
     size_t      alignedSizeInBytes   = 0; ///<! aligned size will be known when data will be placed to a buffer
     size_t      offsetInTargetBuffer = 0; ///<! offset in bytes in terget buffer that stores all data members

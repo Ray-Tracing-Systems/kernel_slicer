@@ -708,6 +708,47 @@ std::vector<kslicer::ArgReferenceOnCall> kslicer::MainFunctionRewriterVulkan::Ex
     }
     else if(kslicer::IsTexture(q))
     {
+      // Constant subscripts let the existing member-image descriptors bind each element independently.
+      if(a_controlFunc.pattern == PATTERN_TP::PATTERN_IPV &&
+         (m_pCodeInfo->pShaderCC->Name() == "Slang" || m_pCodeInfo->pShaderCC->Name() == "GLSL"))
+      {
+        if(const auto* element = clang::dyn_cast<clang::ArraySubscriptExpr>(checkExpr->IgnoreParens()))
+        {
+          const auto* base = clang::dyn_cast<clang::MemberExpr>(element->getBase()->IgnoreParenImpCasts());
+          const auto* arrayType = base == nullptr ? nullptr : m_compiler.getASTContext().getAsConstantArrayType(base->getType());
+          if(arrayType != nullptr && clang::isa<clang::CXXThisExpr>(base->getBase()->IgnoreParenImpCasts()))
+          {
+            const auto index = element->getIdx()->getIntegerConstantExpr(m_compiler.getASTContext());
+            if(!index || index->isNegative() || index->getLimitedValue() >= arrayType->getSize().getLimitedValue())
+              kslicer::PrintError("an image array element passed to an IPV kernel needs an in-bounds constant index",
+                                  element->getSourceRange(), m_sm);
+            else
+            {
+              const auto arrayName = base->getMemberDecl()->getNameAsString();
+              const auto elementIndex = std::to_string(index->getLimitedValue());
+              auto array = m_allClassMembers.find(arrayName);
+              if(array != m_allClassMembers.end())
+              {
+                array->second.isHostOnly = true;
+                const auto hostElement = arrayName + "[" + elementIndex + "]";
+                text = arrayName + "_kslicer_image_" + elementIndex;
+                auto existing = m_allClassMembers.find(text);
+                while(existing != m_allClassMembers.end() && existing->second.textureArrayElement != hostElement)
+                {
+                  text += "_";
+                  existing = m_allClassMembers.find(text);
+                }
+                if(existing == m_allClassMembers.end())
+                {
+                  auto member = ExtractMemberInfo(text, arrayType->getElementType(), m_compiler.getASTContext());
+                  member.textureArrayElement = hostElement;
+                  m_allClassMembers.emplace(text, std::move(member));
+                }
+              }
+            }
+          }
+        }
+      }
       auto pClassVar = m_allClassMembers.find(text);
       if(pClassVar != m_allClassMembers.end()) // if not found, probably this is an argument of control function. Not an error. Process in later.
         pClassVar->second.usedInMainFn = true;

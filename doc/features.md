@@ -94,6 +94,7 @@ follows the test configs and the code.
 | `buffer_reference` | Buffer device address (`-with_buffer_reference`) | ❌ | ✅ | ❔ | ❔ | 039 |
 | `textures` | Textures and samplers (`ITexture2D`, combined image sampler, `Image2D` + `Sampler` members); sampled `Image2D<uint32_t>` is RGBA8_UNORM on GPU; images read without sampler are sampled images (`Texture2D` / `texture2D` + `texelFetch`) | ✅ | ✅ | ❌ | 🟡⁸ | 006, 007, 008, app 14, app 15, app 20, app 31 |
 | `image_storage` | Writable images (`Image2D<T>` written by kernels) | ✅ | ✅ | ❌ | 🟡⁸ | 066, app 33 |
+| `ipv_image_args` | Passing individual `Image2D<T>` objects and elements of fixed class-member image arrays by reference to IPV kernels. Array indices are compile-time constants. | ✅ | ✅ | ❔ | ❌ | 088, 089 |
 | `half_textures` | Textures stored in half precision (`-halfTex 1`) | ❌ | ✅ | ❌ | ❔ | 066, app 14 |
 
 ² 053 and 070 work, 022 (`-forceEnableHalf`) fails to compile.

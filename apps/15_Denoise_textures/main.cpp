@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cassert>
 #include <cmath>
+#include <algorithm>
 
 #include "test_class.h"
 #include "ArgParser.h"
@@ -14,6 +15,7 @@ bool LoadLDRImageFromFile(const char* a_fileName, int* pW, int* pH, std::vector<
 
 #include "vk_context.h"
 std::shared_ptr<Denoise> CreateDenoise_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
+vk_utils::VulkanDeviceFeatures Denoise_Generated_ListRequiredDeviceFeatures();
 
 int main(int argc, const char** argv)
 {
@@ -94,22 +96,12 @@ int main(int argc, const char** argv)
 
   bool onGPU = args.hasOption("--gpu");
 
-#ifdef MEASURE_TIME // to exclude vulkan initialiяation time from sample execution
-  if(onGPU)
-  {
-    #ifndef NDEBUG
-    vk_utils::globalContextInit(std::vector<const char*>(), true);
-    #else
-    vk_utils::globalContextInit(std::vector<const char*>(), false);
-    #endif
-  }
-#endif
-
   std::shared_ptr<Denoise> pImpl = nullptr;
   if(onGPU)
   {
     unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
-    auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
+    auto features = Denoise_Generated_ListRequiredDeviceFeatures();
+    auto ctx = vk_utils::globalContextInit(features, enableValidationLayers, a_preferredDeviceId);
     pImpl = CreateDenoise_Generated(ctx, w*h);
   }
   else
@@ -118,17 +110,29 @@ int main(int argc, const char** argv)
   pImpl->PrepareInput(w, h, (const float4*)hdrData.data(), texColor.data(), normal.data(), (const float4*)depth.data());
   pImpl->CommitDeviceData();
   
-  pImpl->NLM_denoise (w, h, ldrData.data(), windowRadius, blockRadius, noiseLevel);
+  // Keep each GPU submission short enough for the driver's hang timeout.
+  const int rowsPerSubmission = onGPU ? 64 : h;
+  float timings[4] = {};
+  for(int firstRow = 0; firstRow < h; firstRow += rowsPerSubmission)
+  {
+    const int rowCount = std::min(rowsPerSubmission, h - firstRow);
+    pImpl->NLM_denoise(w, rowCount, ldrData.data() + size_t(firstRow)*w, windowRadius, blockRadius, noiseLevel, firstRow);
+    float bandTimings[4] = {};
+    pImpl->GetExecutionTime("NLM_denoise", bandTimings);
+    for(int i = 0; i < 4; ++i)
+      timings[i] += bandTimings[i];
+  }
 
   if(onGPU)
     LiteImage::SaveBMP("zout_gpu.bmp", ldrData.data(), w, h);  
   else
     LiteImage::SaveBMP("zout_cpu.bmp", ldrData.data(), w, h);  
 
-  float timings[4] = {0,0,0,0};
-  pImpl->GetExecutionTime("NLM_denoise", timings);
   std::cout << "NLM_denoise(exec) = " << timings[0]              << " ms " << std::endl;
   std::cout << "NLM_denoise(copy) = " << timings[1] + timings[2] << " ms " << std::endl;
   std::cout << "NLM_denoise(ovrh) = " << timings[3]              << " ms " << std::endl;
+  pImpl.reset();
+  if(onGPU)
+    vk_utils::globalContextDestroy();
   return 0;
 }
