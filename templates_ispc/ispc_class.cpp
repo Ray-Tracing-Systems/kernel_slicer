@@ -220,7 +220,12 @@ protected:
     {% if Kernel.HasInitISPC %}
     ispc::{{Kernel.Name}}_Init_ISPC({% include "inc_host_args.cpp" %});
     {% endif %}
-    {% if Kernel.threadDim == 1 %}
+    {% if Kernel.EnableBlockExpansion %}
+    const int blocks = int({% if Kernel.threadDim == 1 %}{% if Kernel.ThreadId0.Start == "0" %}({{Kernel.ThreadId0.Size}}){% else %}(({{Kernel.ThreadId0.Size}}) - ({{Kernel.ThreadId0.Start}})){% endif %}{% else %}{% if Kernel.ThreadId0.Start == "0" %}({{Kernel.ThreadId0.Size}}){% else %}({% if Kernel.ThreadId0.Start == "0" %}({{Kernel.ThreadId0.Size}}){% else %}(({{Kernel.ThreadId0.Size}}) - ({{Kernel.ThreadId0.Start}})){% endif %}){% endif %}*{% if Kernel.ThreadId1.Start == "0" %}({{Kernel.ThreadId1.Size}}){% else %}({% if Kernel.ThreadId1.Start == "0" %}({{Kernel.ThreadId1.Size}}){% else %}(({{Kernel.ThreadId1.Size}}) - ({{Kernel.ThreadId1.Start}})){% endif %}){% endif %}{% endif %}); // block expansion: blocks are numbered linearly
+    #pragma omp parallel for 
+    for(int block = 0; block < blocks; block += BLOCK_SIZE)
+      ispc::{{Kernel.Name}}_ISPC({% include "inc_host_args.cpp" %},block,std::min(block + BLOCK_SIZE, blocks),0);
+    {% else if Kernel.threadDim == 1 %}
     #pragma omp parallel for 
     for(int {{Kernel.ThreadId0.Name}} = {{Kernel.ThreadId0.Start}}; {{Kernel.ThreadId0.Name}} < {{Kernel.ThreadId0.Size}}; {{Kernel.ThreadId0.Name}} += BLOCK_SIZE) {
       const int end = std::min({{Kernel.ThreadId0.Name}} + BLOCK_SIZE, int({{Kernel.ThreadId0.Size}}));

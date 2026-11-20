@@ -22,6 +22,27 @@ namespace
     return (text.find("[[parallel]]") != std::string::npos);
   }
 
+  // 2D parallel loop: the body of a parallel loop is another parallel loop, 'for(y) [[parallel]] for(x) [[parallel]]' or 'for(y) [[parallel]] { for(x) [[parallel]] }'
+  //
+  const clang::ForStmt* InnerParallelFor(const clang::ForStmt* a_for, const clang::CompilerInstance& a_compiler)
+  {
+    const clang::Stmt* body = a_for->getBody();
+    if(auto pBlock = clang::dyn_cast<clang::CompoundStmt>(body); pBlock != nullptr && pBlock->size() == 1)
+      body = pBlock->body_front();
+    return IsParallelFor(body, a_compiler) ? clang::dyn_cast<clang::ForStmt>(body) : nullptr;
+  }
+
+  bool IsStaticAssert(const clang::Stmt* a_stmt)
+  {
+    auto pDecl = clang::dyn_cast<clang::DeclStmt>(a_stmt);
+    if(pDecl == nullptr)
+      return false;
+    for(const clang::Decl* decl : pDecl->decls())
+      if(!clang::isa<clang::StaticAssertDecl>(decl))
+        return false;
+    return true;
+  }
+
   class ParallelForFinder : public clang::RecursiveASTVisitor<ParallelForFinder>
   {
   public:
@@ -273,11 +294,19 @@ namespace
   class BEBodyGenerator
   {
   public:
-    BEBodyGenerator(kslicer::IShaderCompiler* a_pCC, const kslicer::KernelInfo& a_kernel, std::shared_ptr<kslicer::KernelRewriter> a_pRewriter, const std::string& a_indent) :
+    BEBodyGenerator(kslicer::IShaderCompiler* a_pCC, const kslicer::KernelInfo& a_kernel, std::shared_ptr<kslicer::KernelRewriter> a_pRewriter, const std::string& a_indent,
+                    const uint32_t a_threadsOrder[3]) :
                     m_pCC(a_pCC), m_kernel(a_kernel), m_pRewriter(a_pRewriter), m_compiler(a_pRewriter->GetCompiler()), m_indent(a_indent)
     {
       m_barrier = a_pCC->BEBarrier();
       m_single  = a_pCC->BESingleThreadCond(a_kernel);
+      for(uint32_t dim = 0; dim < 2; dim++)                  // as for 'ThreadIds' of IPV kernels: dimension 'dim' gets the loop of level 'a_threadsOrder[dim]'
+        m_dimOfLevel[std::min<uint32_t>(a_threadsOrder[dim], 1)] = dim;
+      if(m_dimOfLevel[0] == m_dimOfLevel[1])
+      {
+        m_dimOfLevel[0] = 0;
+        m_dimOfLevel[1] = 1;
+      }
     }
 
     void Generate(const clang::CompoundStmt* a_body)
@@ -359,13 +388,20 @@ namespace
       }
       else if(IsParallelFor(a_stmt, m_compiler))
       {
-        auto pFor = clang::dyn_cast<clang::ForStmt>(a_stmt);
-        if(ContainsParallelFor(pFor->getBody(), m_compiler))
-          Error("'[[parallel]]' loop inside a parallel loop is not supported", pFor->getBody());
-        if(auto pCall = FindBlockFunction(pFor->getBody()))
+        auto pFor   = clang::dyn_cast<clang::ForStmt>(a_stmt);
+        auto pInner = InnerParallelFor(pFor, m_compiler);
+        if(pInner != nullptr && m_kernel.GetDim() < 2)
+          Error("2D parallel loop in 1D block expansion kernel, use 'kernelBE2D_'", a_stmt);
+        const clang::Stmt* body = (pInner != nullptr) ? pInner->getBody() : pFor->getBody();
+        if(ContainsParallelFor(body, m_compiler))
+          Error("'[[parallel]]' loop inside a parallel loop is supported only as 2D parallel loop: two perfectly nested '[[parallel]]' loops", body);
+        if(auto pCall = FindBlockFunction(body))
           Error("block level function must be called from the code of the block, not from a parallel loop", pCall);
         Barrier();
-        Lines(m_pCC->RewriteBEParallelFor(pFor, m_pRewriter, m_kernel), a_stmt);
+        if(pInner != nullptr)
+          Lines(m_pCC->RewriteBEParallelFor2D(pFor, pInner, m_pRewriter, m_kernel, m_dimOfLevel), a_stmt);
+        else
+          Lines(m_pCC->RewriteBEParallelFor(pFor, m_pRewriter, m_kernel), a_stmt);
         Barrier();
         return;
       }
@@ -407,6 +443,8 @@ namespace
         return;
       }
 
+      if(IsStaticAssert(a_stmt))                               // checked by C++ compiler
+        return;
       if(auto pCall = BlockFunctionCall(a_stmt))               // block level function: all threads, reads and writes shared memory
       {
         const std::string text = m_pCC->RewriteBEBlockFunction(pCall, m_pRewriter, m_kernel);
@@ -456,6 +494,7 @@ namespace
     std::string                             m_barrier;
     std::string                             m_single;
     std::vector<std::string>                m_lines;
+    uint32_t                                m_dimOfLevel[2] = {0, 1}; ///<! 2D parallel loop: dimension of the group for the outer and the inner loop
   };
 }
 
@@ -588,41 +627,111 @@ std::string kslicer::IShaderCompiler::RewriteBESharedDecl(const clang::DeclStmt*
   return pRewriter->RecursiveRewrite(decl);
 }
 
-// 'for(T i = start; cond; inc) [[parallel]] body' ==> 'for(T i = T(localId) + start; cond; i += bsize) body': 
-// each thread of the group executes iterations 'localId', 'localId + bsize', ...
+namespace
+{
+  struct BEParallelLoop
+  {
+    const clang::VarDecl* var = nullptr;
+    std::string type, name, start, cond;
+  };
+
+  // 'for(T i = start; cond; ...)': loop variable, its type and start, condition
+  //
+  bool ParseParallelFor(const clang::ForStmt* a_for, std::shared_ptr<kslicer::KernelRewriter> pRewriter, BEParallelLoop* a_loop)
+  {
+    if(auto pDeclStmt = clang::dyn_cast_or_null<clang::DeclStmt>(a_for->getInit()))
+      if(pDeclStmt->isSingleDecl())
+        a_loop->var = clang::dyn_cast<clang::VarDecl>(pDeclStmt->getSingleDecl());
+
+    const clang::CompilerInstance& compiler = pRewriter->GetCompiler();
+    if(a_loop->var == nullptr || a_loop->var->getInit() == nullptr || a_for->getCond() == nullptr)
+    {
+      kslicer::PrintError("parallel loop of block expansion kernel must have the form 'for(T i = start; cond; i++)'", a_for->getSourceRange(), compiler.getSourceManager());
+      return false;
+    }
+    a_loop->type = a_loop->var->getType().getUnqualifiedType().getAsString();
+    ReplaceFirst(a_loop->type, "LiteMath::", "");
+    a_loop->name  = a_loop->var->getNameAsString();
+    a_loop->start = pRewriter->RecursiveRewrite(a_loop->var->getInit());
+    a_loop->cond  = pRewriter->RecursiveRewrite(a_for->getCond());
+    return true;
+  }
+
+  // body of a loop for the text of a generated loop: lines after the first one keep their indentation relative to column of the loop
+  //
+  std::string LoopBody(const clang::Stmt* a_body, std::shared_ptr<kslicer::KernelRewriter> pRewriter)
+  {
+    std::string bodyText = pRewriter->RecursiveRewrite(a_body);
+    const unsigned column = pRewriter->GetCompiler().getSourceManager().getSpellingColumnNumber(a_body->getBeginLoc()) - 1;
+    if(!clang::isa<clang::CompoundStmt>(a_body))       // range of a single statement does not include ';'
+      bodyText += ";";
+    return std::string(column, ' ') + bodyText;
+  }
+}
+
+std::string kslicer::IShaderCompiler::BELocalId(uint32_t a_dim, const KernelInfo& a_kernel) const
+{
+  uint32_t wgSize[3] = {a_kernel.wgSize[0], a_kernel.wgSize[1], a_kernel.wgSize[2]};
+  std::string res = LocalIdExpr(1, wgSize);              // 'a_localTID.x', 'gl_LocalInvocationID.x'
+  if(res.size() > 2 && res.compare(res.size() - 2, 2, ".x") == 0)
+    res[res.size() - 1] = char('x' + a_dim);
+  return res;
+}
+
+std::string kslicer::IShaderCompiler::BELinearLocalId(const KernelInfo& a_kernel) const
+{
+  uint32_t wgSize[3] = {a_kernel.wgSize[0], a_kernel.wgSize[1], a_kernel.wgSize[2]};
+  return LocalIdExpr(a_kernel.GetDim(), wgSize);
+}
+
+std::string kslicer::IShaderCompiler::BEGroupSize(const KernelInfo& a_kernel) const
+{
+  std::string res = a_kernel.be.wgNames[0];
+  for(uint32_t dim = 1; dim < a_kernel.GetDim() && dim < 3; dim++)
+    res += "*" + a_kernel.be.wgNames[dim];
+  return res;
+}
+
+// 'for(T i = start; cond; inc) [[parallel]] body' ==> 'for(T i = T(localId) + start; cond; i += groupSize) body':
+// each thread of the group executes iterations 'localId', 'localId + groupSize', ... ('localId' is linear for 2D group)
 //
 std::string kslicer::IShaderCompiler::RewriteBEParallelFor(const clang::ForStmt* forExpr, std::shared_ptr<KernelRewriter> pRewriter, const KernelInfo& a_kernel)
 {
-  const clang::VarDecl* pVar = nullptr;
-  if(auto pDeclStmt = clang::dyn_cast_or_null<clang::DeclStmt>(forExpr->getInit()))
-    if(pDeclStmt->isSingleDecl())
-      pVar = clang::dyn_cast<clang::VarDecl>(pDeclStmt->getSingleDecl());
-
-  const clang::CompilerInstance& compiler = pRewriter->GetCompiler();
-  if(pVar == nullptr || pVar->getInit() == nullptr || forExpr->getCond() == nullptr)
-  {
-    kslicer::PrintError("parallel loop of block expansion kernel must have the form 'for(T i = start; cond; i++)'", forExpr->getSourceRange(), compiler.getSourceManager());
+  BEParallelLoop loop;
+  if(!ParseParallelFor(forExpr, pRewriter, &loop))
     return pRewriter->RecursiveRewrite(forExpr);
-  }
 
-  std::string typeName = pVar->getType().getUnqualifiedType().getAsString();
-  ReplaceFirst(typeName, "LiteMath::", "");
-  uint32_t wgSize[3] = {a_kernel.wgSize[0], a_kernel.wgSize[1], a_kernel.wgSize[2]};
-  const std::string name    = pVar->getNameAsString();
-  const std::string start   = pRewriter->RecursiveRewrite(pVar->getInit());
-  const std::string localId = typeName + "(" + LocalIdExpr(1, wgSize) + ")";
-  const std::string init    = (start == "0") ? localId : localId + " + " + start;
+  const std::string localId = loop.type + "(" + BELinearLocalId(a_kernel) + ")";
+  const std::string init    = (loop.start == "0") ? localId : localId + " + " + loop.start;
+  const std::string size    = BEGroupSize(a_kernel);
+  const std::string step    = (loop.type == a_kernel.be.wgTypes[0]) ? size : loop.type + "(" + size + ")"; // GLSL: no implicit 'uint' ==> 'int'
+  return "for(" + loop.type + " " + loop.name + " = " + init + "; " + loop.cond + "; " + loop.name + " += " + step + ")\n" + LoopBody(forExpr->getBody(), pRewriter);
+}
 
-  const clang::Stmt* body = forExpr->getBody();
-  std::string bodyText = pRewriter->RecursiveRewrite(body);
-  if(!clang::isa<clang::CompoundStmt>(body))             // range of a single statement does not include ';'
+// 2D parallel loop: every loop is distributed over its dimension of the group, as loops of 'kernel2D_' over dimensions of the grid
+//
+std::string kslicer::IShaderCompiler::RewriteBEParallelFor2D(const clang::ForStmt* a_outer, const clang::ForStmt* a_inner, std::shared_ptr<KernelRewriter> pRewriter,
+                                                             const KernelInfo& a_kernel, const uint32_t a_dimOfLevel[2])
+{
+  BEParallelLoop loops[2];
+  if(!ParseParallelFor(a_outer, pRewriter, &loops[0]) || !ParseParallelFor(a_inner, pRewriter, &loops[1]))
+    return pRewriter->RecursiveRewrite(a_outer);
+
+  const unsigned column = pRewriter->GetCompiler().getSourceManager().getSpellingColumnNumber(a_outer->getBeginLoc()) - 1;
+  std::string text;
+  for(int level = 0; level < 2; level++)
   {
-    const unsigned column = compiler.getSourceManager().getSpellingColumnNumber(forExpr->getBeginLoc()) - 1;
-    bodyText = std::string(column + 2, ' ') + bodyText + ";";
+    const auto&       loop    = loops[level];
+    const uint32_t    dim     = a_dimOfLevel[level];
+    const std::string localId = loop.type + "(" + BELocalId(dim, a_kernel) + ")";
+    const std::string init    = (loop.start == "0") ? localId : localId + " + " + loop.start;
+    const std::string size    = a_kernel.be.wgNames[dim];
+    const std::string step    = (loop.type == a_kernel.be.wgTypes[dim]) ? size : loop.type + "(" + size + ")";
+    if(level != 0)
+      text += std::string(column + 2, ' ');
+    text += "for(" + loop.type + " " + loop.name + " = " + init + "; " + loop.cond + "; " + loop.name + " += " + step + ")\n";
   }
-    
-  const std::string step = (typeName == a_kernel.be.wgTypes[0]) ? a_kernel.be.wgNames[0] : typeName + "(" + a_kernel.be.wgNames[0] + ")"; // GLSL: no implicit 'uint' ==> 'int'
-  return "for(" + typeName + " " + name + " = " + init + "; " + pRewriter->RecursiveRewrite(forExpr->getCond()) + "; " + name + " += " + step + ")\n" + bodyText;
+  return text + LoopBody(a_inner->getBody(), pRewriter);
 }
 
 std::string kslicer::IShaderCompiler::RewriteBEStmt(const clang::Stmt* stmt, std::shared_ptr<KernelRewriter> pRewriter)
@@ -635,15 +744,15 @@ std::string kslicer::IShaderCompiler::RewriteBEStmt(const clang::Stmt* stmt, std
 
 std::string kslicer::IShaderCompiler::BESingleThreadCond(const KernelInfo& a_kernel) const
 {
-  uint32_t wgSize[3] = {a_kernel.wgSize[0], a_kernel.wgSize[1], a_kernel.wgSize[2]};
-  return LocalIdExpr(1, wgSize) + " == 0";
+  const std::string localId = BELinearLocalId(a_kernel);
+  return (localId.find(' ') == std::string::npos) ? localId + " == 0" : "(" + localId + ") == 0";
 }
 
-std::string kslicer::IShaderCompiler::RewriteBEBody(const KernelInfo& a_kernel, std::shared_ptr<KernelRewriter> pRewriter)
+std::string kslicer::IShaderCompiler::RewriteBEBody(const KernelInfo& a_kernel, std::shared_ptr<KernelRewriter> pRewriter, const uint32_t a_threadsOrder[3])
 {
   if(a_kernel.be.body == nullptr)
     return "";
-  BEBodyGenerator generator(this, a_kernel, pRewriter, IsISPC() ? "    " : "  ");
+  BEBodyGenerator generator(this, a_kernel, pRewriter, IsISPC() ? "    " : "  ", a_threadsOrder);
   generator.Generate(a_kernel.be.body);
   return generator.Text();
 }

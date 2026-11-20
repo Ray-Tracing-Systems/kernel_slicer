@@ -53,6 +53,7 @@ follows the test configs and the code.
 | `rtv` | RTV kernels `kernel_` (code of one thread, payload between kernels) | ✅ | ✅ | ❔ | ❔ | 051, 067, app 01, app 07 |
 | `bev` | Block Expansion kernels `kernelBE1D_` with shared memory | 🧪 | 🧪 | ❔ | 🧪 | 030, 092, 093, 094 |
 | `bev_nested` | Block Expansion: `[[parallel]]` loops inside ordinary loops and `if` of the block, variables of the block (each GPU thread has its own copy, statements that write memory are executed by one thread) | 🧪 | 🧪 | ❔ | 🧪 | 092, 093, 094 |
+| `bev_2d` | Block Expansion 2D: `kernelBE2D_` with `template<uint bsizeX, uint bsizeY>`, 2D parallel loops (two nested `[[parallel]]`, the order of dimensions as for `kernel2D_` and `-reorderLoops`), 2D arrays of the block | 🧪 | 🧪 | ❔ | 🧪 | 096 |
 | `megakernel` | One shader per control function (`-megakernel 1`) | ✅ | ✅ | ❔ | ❌ | 057, 067, app 07, app 20 |
 | `persistent_rays` | Persistent rays in RTV megakernels (`-persistent 1`) | 🧪 | 🧪 | ❔ | ❔ | — ⁰ |
 | `indirect_dispatch` | Dispatch size computed on GPU (loop bound is a class member) | ✅ | ✅ | ❔ | ❔ | 059, 057 |

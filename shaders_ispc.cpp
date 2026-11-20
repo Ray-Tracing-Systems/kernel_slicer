@@ -751,6 +751,39 @@ std::string kslicer::ISPCCompiler::BEUniformFunction(const clang::FunctionDecl* 
   return text + pRewriter->RecursiveRewrite(a_func->getBody());
 }
 
+// block expansion, 2D parallel loop: the outer loop is a uniform loop of the block, the inner one is 'foreach' over the gang
+//
+std::string kslicer::ISPCCompiler::RewriteBEParallelFor2D(const clang::ForStmt* a_outer, const clang::ForStmt* a_inner, std::shared_ptr<KernelRewriter> pRewriter,
+                                                         const KernelInfo& a_kernel, const uint32_t a_dimOfLevel[2])
+{
+  const clang::VarDecl* pVar = nullptr;
+  if(auto pDeclStmt = clang::dyn_cast_or_null<clang::DeclStmt>(a_outer->getInit()))
+    if(pDeclStmt->isSingleDecl())
+      pVar = clang::dyn_cast<clang::VarDecl>(pDeclStmt->getSingleDecl());
+
+  bool stepIsOne = false;
+  auto pUnary = clang::dyn_cast_or_null<clang::UnaryOperator>(a_outer->getInc());
+  if(pUnary != nullptr && pUnary->isIncrementOp())
+  {
+    auto pRef = clang::dyn_cast<clang::DeclRefExpr>(pUnary->getSubExpr()->IgnoreParenImpCasts());
+    stepIsOne = (pRef != nullptr && pRef->getDecl() == pVar);
+  }
+
+  const clang::CompilerInstance& compiler = pRewriter->GetCompiler();
+  if(pVar == nullptr || pVar->getInit() == nullptr || a_outer->getCond() == nullptr || !stepIsOne)
+  {
+    kslicer::PrintError("parallel loop of block expansion kernel must have the form 'for(T i = start; cond; i++)'", a_outer->getSourceRange(), compiler.getSourceManager());
+    return pRewriter->RecursiveRewrite(a_outer);
+  }
+
+  std::string typeName = pVar->getType().getUnqualifiedType().getAsString();
+  ReplaceFirst(typeName, "LiteMath::", "");
+  const std::string name        = pVar->getNameAsString();
+  const unsigned    innerColumn = compiler.getSourceManager().getSpellingColumnNumber(a_inner->getBeginLoc()) - 1;
+  return "for(uniform " + typeName + " " + name + " = " + pRewriter->RecursiveRewrite(pVar->getInit()) + "; " + pRewriter->RecursiveRewrite(a_outer->getCond()) + "; " + name + "++)\n" +
+         std::string(innerColumn, ' ') + RewriteBEParallelFor(a_inner, pRewriter, a_kernel);
+}
+
 // block expansion: 'LiteNN::LinearForwardBlock(w, matOffs, biasOffs, in, IN, out, OUT, BATCH)' in uniform code of a block:
 // outputs of the layer are computed by the gang ('foreach'), accumulation in fp32 in the same order as on CPU
 //

@@ -1486,7 +1486,12 @@ namespace kslicer
     virtual std::string RewriteBEStmt(const clang::Stmt* stmt, std::shared_ptr<KernelRewriter> pRewriter);
     virtual std::string BEBarrier() const { return "GroupMemoryBarrierWithGroupSync();"; }     ///<! barrier of work group; "" if not needed
     virtual std::string BESingleThreadCond(const KernelInfo& a_kernel) const;                  ///<! condition of thread 0 of work group; "" if not needed
-    std::string         RewriteBEBody(const KernelInfo& a_kernel, std::shared_ptr<KernelRewriter> pRewriter); ///<! code of a block for 'Kernel.SourceBE'
+    std::string         RewriteBEBody(const KernelInfo& a_kernel, std::shared_ptr<KernelRewriter> pRewriter, const uint32_t a_threadsOrder[3]); ///<! code of a block for 'Kernel.SourceBE'
+    virtual std::string RewriteBEParallelFor2D(const clang::ForStmt* a_outer, const clang::ForStmt* a_inner, std::shared_ptr<KernelRewriter> pRewriter,
+                                               const KernelInfo& a_kernel, const uint32_t a_dimOfLevel[2]); ///<! two nested parallel loops of 2D block, dimension of outer and inner loop
+    std::string         BELocalId(uint32_t a_dim, const KernelInfo& a_kernel) const;   ///<! number of thread in the group along dimension 'a_dim'
+    std::string         BELinearLocalId(const KernelInfo& a_kernel) const;             ///<! linear number of thread in the group
+    std::string         BEGroupSize(const KernelInfo& a_kernel) const;                 ///<! number of threads in the group, 'bsizeX*bsizeY'
     virtual std::string BEUniformFunction(const clang::FunctionDecl* a_func, MainClassInfo* a_codeInfo, const clang::CompilerInstance& a_compiler) { return ""; } ///<! ISPC: uniform overload of a function called from the code of a block
     virtual std::string RewriteBEBlockFunction(const clang::CallExpr* a_call, std::shared_ptr<KernelRewriter> pRewriter, const KernelInfo& a_kernel) { return ""; } ///<! 'LiteNN::*Block' executed by the whole group; "" if not supported
     
@@ -1545,6 +1550,8 @@ namespace kslicer
     bool        BuffersAsPointersInShaders() const override { return false; }
     bool        SupportAtomicGlobal(const KernelInfo::ReductionAccess& acc) const override { return true; }
     std::string RewriteBEParallelFor(const clang::ForStmt* forExpr, std::shared_ptr<KernelRewriter> pRewriter, const KernelInfo& a_kernel) override;
+    std::string RewriteBEParallelFor2D(const clang::ForStmt* a_outer, const clang::ForStmt* a_inner, std::shared_ptr<KernelRewriter> pRewriter,
+                                       const KernelInfo& a_kernel, const uint32_t a_dimOfLevel[2]) override;
     std::string BEBarrier() const override { return ""; }                                   // 'foreach' is finished before the next statement
     std::string BESingleThreadCond(const KernelInfo& a_kernel) const override { return ""; } // code of a single thread is uniform
     std::string BEUniformFunction(const clang::FunctionDecl* a_func, MainClassInfo* a_codeInfo, const clang::CompilerInstance& a_compiler) override;

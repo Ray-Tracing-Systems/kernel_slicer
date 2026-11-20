@@ -1196,7 +1196,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 
       for(const auto var : k.be.sharedDecls)
         kernelJson["SharedBE"].push_back(a_classInfo.pShaderCC->RewriteBESharedDecl(var, pRewriter));
-      kernelJson["SourceBE"] = a_classInfo.pShaderCC->RewriteBEBody(k, pRewriter);
+      kernelJson["SourceBE"] = a_classInfo.pShaderCC->RewriteBEBody(k, pRewriter, threadsOrder);
     }
     else             // process the whole code in single pass 
     {

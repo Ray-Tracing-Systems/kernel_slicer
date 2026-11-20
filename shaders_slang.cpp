@@ -1395,9 +1395,8 @@ std::string kslicer::SlangCompiler::RewriteBEBlockFunction(const clang::CallExpr
   if(!ParseLinearForwardBlock(a_call, pRewriter, a_kernel, &args))
     return "// LiteNN::LinearForwardBlock: error";
 
-  uint32_t wgSize[3] = {a_kernel.wgSize[0], a_kernel.wgSize[1], a_kernel.wgSize[2]};
-  const std::string localId  = LocalIdExpr(1, wgSize);
-  const std::string bsize    = a_kernel.be.wgNames[0];
+  const std::string localId  = (a_kernel.GetDim() == 1) ? BELinearLocalId(a_kernel) : "(" + BELinearLocalId(a_kernel) + ")";
+  const std::string bsize    = (a_kernel.GetDim() == 1) ? BEGroupSize(a_kernel)     : "(" + BEGroupSize(a_kernel) + ")";
   const std::string IN       = std::to_string(args.inDim);
   const std::string OUT      = std::to_string(args.outDim);
   const std::string STRIDE   = std::to_string(args.stride);
