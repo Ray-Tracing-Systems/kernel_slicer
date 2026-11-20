@@ -111,7 +111,7 @@ implementation are ordinary C++ classes; the generated GPU class overrides the s
 
 - [Build](doc/build.md): requirements, Linux, Windows, libraries for the samples
 - [Quick start](doc/quick_start.md): translate, build and run a complete sample
-- [Patterns, execution strategies and back ends](doc/concepts.md): IPV, RTV, BEV, ray tracing, megakernel
+- [Patterns, execution strategies and back ends](doc/concepts.md): patterns of control functions (IPV, RTV) and kernels (IPV, BEV, GPV), ray tracing, megakernel
 - [Feature status](doc/features.md): what is supported by each back end, with tests and samples
 - [Writing code for kernel_slicer](doc/writing_code.md): rules for the input code, AI assistants, older tutorials
 - [Translator options and config files](doc/options.md): command line options and `kmake.json`

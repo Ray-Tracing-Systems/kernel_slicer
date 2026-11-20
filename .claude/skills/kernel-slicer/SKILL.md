@@ -1,6 +1,6 @@
 ---
 name: kernel-slicer
-description: Write restricted C++ for kernel_slicer (kslicer), the source-to-source translator that turns an ordinary C++ class into a GPU implementation (Vulkan with Slang shaders by default, legacy GLSL, also CUDA, ISPC, WebGPU). Use whenever the user asks to implement an algorithm "with/on kernel_slicer", to port C++ code to GPU via kslicer, to write kernel1D_/kernel2D_/kernel_ functions or control functions with [[size(...)]] annotations, to choose between the IPV and RTV patterns, or to create main.cpp, CMakeLists.txt or kmake.json for a kernel_slicer sample.
+description: Write restricted C++ for kernel_slicer (kslicer), the source-to-source translator that turns an ordinary C++ class into a GPU implementation (Vulkan with Slang shaders by default, legacy GLSL, also CUDA, ISPC, WebGPU). Use whenever the user asks to implement an algorithm "with/on kernel_slicer", to port C++ code to GPU via kslicer, to write kernel1D_/kernel2D_/kernel_ functions, block expansion kernels kernelBE1D_/kernelBE2D_ (work groups with shared memory) or control functions with [[size(...)]] annotations, to choose between the IPV, RTV and BEV patterns, or to create main.cpp, CMakeLists.txt or kmake.json for a kernel_slicer sample.
 ---
 
 # kernel_slicer programming skill
@@ -15,7 +15,7 @@ produces broken shaders, so follow the rules below literally.
 
 | Role | How it is recognized | Runs on GPU as |
 |------|----------------------|----------------|
-| **Kernel function** | member function whose name starts with `kernel1D_`, `kernel2D_`, `kernel3D_` (IPV) or `kernel_` (RTV) | one compute shader |
+| **Kernel function** | member function whose name starts with `kernel1D_`, `kernel2D_`, `kernel3D_` (IPV), `kernelBE1D_`, `kernelBE2D_` (BEV) or `kernel_` (RTV); `kernelVS_`/`kernelPS_` are vertex/pixel shaders of the graphics pipeline | one compute shader |
 | **Control function** | member function that calls at least one kernel | host code: records a Vulkan command buffer that launches the kernels in order |
 | **Helper function** | any free or member function called from a kernel | copied into shader code |
 | **Data members** | POD members and `std::vector<POD>` members of the main class | uniform buffer / storage buffers |
@@ -27,7 +27,9 @@ Call graph is strictly two-level: host code → control function → kernel → 
 
 ## Step 1. Choose the pattern (IPV is the default)
 
-The pattern is chosen **per kernel by its name prefix**; one class may mix both.
+The pattern is chosen **per kernel by its name prefix**; one class may mix them. There are two patterns of control
+functions: IPV (ordinary sequential code that calls kernels) and RTV (the code of one thread). An IPV control
+function calls IPV kernels and BEV kernels (and graphics pipeline draws).
 
 - **IPV, Image Processing Vectorization** (`kernel1D_`, `kernel2D_`, `kernel3D_`). The kernel body
   contains 1, 2 or 3 perfectly nested `for` loops; these loops *are* the thread grid. This is the
@@ -61,8 +63,14 @@ kernel body (`apps/30_metaballs` renders 1024×1024 with 3 reflections in about 
 Choose RTV only when the per-thread work should be split into separate kernels that pass
 per-thread state between them, for example a long path-tracing loop with early exit.
 
-If unsure, pick IPV. Full rules and a worked example: [references/ipv.md](references/ipv.md),
-[references/rtv.md](references/rtv.md).
+**BEV, Block Expansion Vectorization** (`kernelBE1D_`, `kernelBE2D_`, experimental). Use it when the threads of
+a work group must cooperate through shared memory: block reduction or scan, tiled matrix multiplication, a small
+neural network for a batch of vectors. The kernel is a template on the block size; the outer loop runs over blocks
+(one work group each), arrays of the block are shared memory, `[[parallel]]` loops are distributed over the threads
+of the group. Do not use BEV for ordinary data-parallel work: IPV is simpler and as fast.
+
+If unsure, pick IPV. Full rules and worked examples: [references/ipv.md](references/ipv.md),
+[references/rtv.md](references/rtv.md), [references/bev.md](references/bev.md).
 
 ## Step 2. Class skeleton (both patterns)
 
@@ -375,3 +383,6 @@ Files with `_generated`, `_gpu`, `_ispc` suffixes and `shaders_*` folders are tr
 | Scan and sort service calls | `apps/tests/023_prefix_summ`, `apps/tests/025_sort_v1` |
 | `[[threadlocal]]` arrays | `apps/tests/033_threadlocal_array_v1` |
 | `[[kslicer::setter]]` | `apps/tests/004_setter` |
+| BEV: block reduction and scan of millions of elements | `apps/tests/092_bev_block_reduce`, `apps/tests/093_bev_block_scan` |
+| BEV: tiled GEMM, 1D and 2D blocks (with naive IPV GEMM for comparison) | `apps/tests/094_bev_tiled_gemm`, `apps/tests/096_bev_tiled_gemm_2d` |
+| BEV: MLP for a batch of vectors, `LiteNN::LinearForwardBlock`, `-coop_matrix 1` | `apps/tests/095_bev_mlp_batch` |
