@@ -118,11 +118,13 @@ it is an ordinary loop; with `-coop_matrix 1` the Slang back end uses cooperativ
 - Barriers synchronize shared memory only: data written to a buffer by one thread of the group must not be read by
   other threads of the same group in the same kernel.
 - `static_assert` in the code of the block is checked by the C++ compiler and skipped by the translator.
+- Atomics: `InterlockedAdd` on arrays of the block (shared memory) and on buffers works in parallel loops
+  (`apps/tests/097_bev_histogram`).
 - Back ends: Slang, GLSL (without `LiteNN` functions) and ISPC. In ISPC the code of the block is uniform, parallel
   loops are `foreach`, and functions called from the code of the block get uniform overloads.
 
 Tests: `apps/tests/030_block_expansion_v1`, `092_bev_block_reduce`, `093_bev_block_scan`, `094_bev_tiled_gemm`,
-`095_bev_mlp_batch`, `096_bev_tiled_gemm_2d`.
+`095_bev_mlp_batch`, `096_bev_tiled_gemm_2d`, `097_bev_histogram`.
 
 ## Algorithmic patterns
 

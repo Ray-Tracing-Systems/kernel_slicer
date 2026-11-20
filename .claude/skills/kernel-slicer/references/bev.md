@@ -124,6 +124,26 @@ constants, multiples of 16. Add `"-coop_matrix": 1` to `options` of `kmake.json`
 (`VK_KHR_cooperative_matrix`, Slang); then create the device with `<MainClass>_Generated_ListRequiredDeviceFeatures()`
 and `vk_utils::globalContextInit(features, ...)`. Without the option it is an ordinary loop that works on any GPU.
 
+## Atomics in shared memory (`apps/tests/097_bev_histogram`)
+
+```cpp
+uint hist[NUM_BINS];                                      // histogram of the block, shared memory
+for(uint i = 0; i < NUM_BINS; i++) [[parallel]]
+  hist[i] = 0;
+for(uint i = 0; i < ELEMS_PER_BLOCK; i++) [[parallel]]
+{
+  const uint globalId = blockId*ELEMS_PER_BLOCK + i;
+  if(globalId < a_size)
+    InterlockedAdd(hist[a_in[globalId] % NUM_BINS], 1u); // atomic in shared memory
+}
+for(uint i = 0; i < NUM_BINS; i++) [[parallel]]
+  if(hist[i] != 0)
+    InterlockedAdd(a_hist[i], hist[i]);                  // atomic in global memory: histograms of blocks are added
+```
+
+`LiteMath::InterlockedAdd(mem, value)` and `InterlockedAdd(mem, value, oldValue)` work on arrays of the block and on
+buffers. The buffer is cleared by an IPV kernel called before the BEV kernel in the same control function.
+
 ## Pitfalls
 
 1. **A statement that writes memory and changes a variable of the block** is an error (it runs on one thread, the

@@ -386,3 +386,4 @@ Files with `_generated`, `_gpu`, `_ispc` suffixes and `shaders_*` folders are tr
 | BEV: block reduction and scan of millions of elements | `apps/tests/092_bev_block_reduce`, `apps/tests/093_bev_block_scan` |
 | BEV: tiled GEMM, 1D and 2D blocks (with naive IPV GEMM for comparison) | `apps/tests/094_bev_tiled_gemm`, `apps/tests/096_bev_tiled_gemm_2d` |
 | BEV: MLP for a batch of vectors, `LiteNN::LinearForwardBlock`, `-coop_matrix 1` | `apps/tests/095_bev_mlp_batch` |
+| BEV: histogram, atomics in shared memory and in buffers | `apps/tests/097_bev_histogram` |

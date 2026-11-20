@@ -320,6 +320,27 @@ bool kslicer::ISPCRewriter::VisitCXXFunctionalCastExpr_Impl(clang::CXXFunctional
 
 bool kslicer::ISPCRewriter::VisitCallExpr_Impl(clang::CallExpr* call)                    
 { 
+  // 'InterlockedAdd(mem, value[, res])' ==> '[res = ]atomic_add_global(&(mem), value)'; for arrays of the block of block expansion kernel
+  // 'atomic_add_local': a block is processed by one task, other tasks never access its arrays
+  //
+  const clang::FunctionDecl* pAtomic = call->getDirectCallee();
+  if(pAtomic != nullptr && pAtomic->getNameAsString() == "InterlockedAdd" && (call->getNumArgs() == 2 || call->getNumArgs() == 3) && WasNotRewrittenYet(call))
+  {
+    const clang::Expr* base = call->getArg(0)->IgnoreParenImpCasts();
+    while(auto pSub = clang::dyn_cast<clang::ArraySubscriptExpr>(base))
+      base = pSub->getBase()->IgnoreParenImpCasts();
+    auto pRef = clang::dyn_cast<clang::DeclRefExpr>(base);
+    auto pVar = (pRef == nullptr) ? nullptr : clang::dyn_cast<clang::VarDecl>(pRef->getDecl());
+    const bool local = m_kernelMode && m_pCurrKernel != nullptr && m_pCurrKernel->be.enabled && pVar != nullptr && m_pCurrKernel->be.sharedVars.contains(pVar);
+
+    std::string text = std::string(local ? "atomic_add_local" : "atomic_add_global") + "(&(" + RecursiveRewrite(call->getArg(0)) + "), " + RecursiveRewrite(call->getArg(1)) + ")";
+    if(call->getNumArgs() == 3)
+      text = RecursiveRewrite(call->getArg(2)) + " = " + text;
+    ReplaceText(call->getSourceRange(), text);
+    MarkRewritten(call);
+    return true;
+  }
+
   if(m_kernelMode && WasNotRewrittenYet(call) && !clang::isa<clang::CXXOperatorCallExpr>(call)) // 'a*b' of LiteMath types is an operator call
   {
     clang::FunctionDecl* fDecl = call->getDirectCallee();

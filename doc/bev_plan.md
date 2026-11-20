@@ -69,14 +69,14 @@
 | T5 | `094_bev_tiled_gemm` | GEMM с тайлами в shared memory, цикл по K (1D BEV, ручная индексация); вспомогательная функция в коде блока; сравнение с наивным IPV GEMM | F1, F2 | ✅ Slang, GLSL, ISPC |
 | T7 | `095_bev_mlp_batch` | MLP 16→64→64→16 по батчу из 64 векторов на блок: слой = `LiteNN::LinearForwardBlock`, ReLU — параллельный цикл | F1, F2, F5 | ✅ Slang, ISPC |
 | T3 | `bev_local_sort` | bitonic в shared memory | F1 | резерв |
-| T4 | `bev_histogram` | атомики по shared memory | F4 | резерв |
+| T4 | `097_bev_histogram` | гистограмма: `InterlockedAdd` в shared memory (гистограмма блока) и в глобальной памяти (сложение гистограмм блоков); IPV и BEV в одной управляющей функции; половина значений в одной корзине | F4 | ✅ Slang, GLSL, ISPC |
 | T6 | `bev_coopmat_gemm` | GEMM через `LiteNN::MatMulBlock` | F5 | резерв |
 | T8 | `bev_conv_tile` | 2D-фильтр с тайлом и apron | F3 | резерв |
 | T9 | `096_bev_tiled_gemm_2d` | тот же GEMM, что 094, на `kernelBE2D_` (два отдельных теста: 1D и 2D); двумерные массивы блока, 2D-параллельный цикл | F3 | ✅ Slang, GLSL, ISPC |
 | A1 | `apps/36_bev_nn_fit` | обучение MLP приближению изображения в одном кернеле | F1, F2, F4, F5 | резерв |
 | A2 | `apps/37_bev_gemm_bench` | время IPV / BEV / BEV coopmat / ISPC | F3, F5 | резерв |
 
-Номера тестов назначаются при создании (следующий свободный — 097).
+Номера тестов назначаются при создании (следующий свободный — 098).
 
 Фичи транслятора:
 - **F1**: `[[parallel]]` внутри обычных циклов и `if` блока (по AST, не по тексту).
@@ -214,6 +214,14 @@
       проверка);
 - [x] README: строка о `concepts.md`; features.md: строки `bev`, `bev_nested`, `bev_2d`, `bev_nn_block`;
       options.md: `-coop_matrix`.
+
+### Атомики в shared memory (F4, T4) — выполнено (2026-11-20)
+- [x] T4 на C++: `apps/tests/097_bev_histogram` — гистограмма, `LiteMath::InterlockedAdd` по массиву блока и по буферу;
+- [x] Slang и GLSL работали без изменений транслятора (`InterlockedAdd` / `atomicAdd` по `groupshared`/`shared`);
+- [x] ISPC: `InterlockedAdd(mem, v[, res])` ==> `[res = ]atomic_add_local(&(mem), v)` для массивов блока (блок
+      обрабатывает одна задача), `atomic_add_global` для остального (буферы; также IPV-кернелы и функции);
+- [x] проверка: 158 размеров до 16M на Slang и GLSL (validation layers без ошибок) и на ISPC во всех моделях потоков;
+      половина значений в одной корзине.
 
 ## 7. Оптимизации (после того, как всё работает)
 
