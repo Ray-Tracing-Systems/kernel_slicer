@@ -87,7 +87,8 @@ static inline void ISPCTextureDescs(const Vector& a_textures, std::vector<Desc>&
     desc.layout   = 0;
     switch(pTex->format())
     {
-      case 37: case 43: desc.format = 0; break; // VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_R8G8B8A8_SRGB: Image2D<uint32_t>
+      case 37:          desc.format = 0; break; // VK_FORMAT_R8G8B8A8_UNORM: Image2D<uint32_t>
+      case 43:          desc.format = 4; break; // VK_FORMAT_R8G8B8A8_SRGB: Image2D<uint32_t>, texels are converted to linear values
       case 109:         desc.format = 1; break; // VK_FORMAT_R32G32B32A32_SFLOAT: Image2D<float4>
       case 100:         desc.format = 2; break; // VK_FORMAT_R32_SFLOAT: Image2D<float>
       default:          desc.format = 3; break;

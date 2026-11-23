@@ -128,23 +128,38 @@ static inline int LiteImageNearest(uniform const LiteImageInfo& a_info, uniform 
   return LiteImagePixelOffset(a_info, LiteImageWrapCoord(px, (uniform int)a_info.width, a_sampler.addressU), LiteImageWrapCoord(py, (uniform int)a_info.height, a_sampler.addressV));
 }
 
+static inline float LiteImageSRGBToLinear(float s) // the same as in LiteMath/Image2d.cpp
+{
+  return (s <= 0.0404482362771082f) ? s*0.077399381f : pow((s + 0.055f)*0.947867299f, 2.4f);
+}
+
+/// RGBA8 texel, optionally sRGB (rgb are converted to linear values, as for VK_FORMAT_R8G8B8A8_SRGB)
+static inline float4 LiteImageFetchRGBA8(uniform const uint32 a_data[], int a_offs, uniform bool a_srgb)
+{
+  float4 c = LiteImageUnpackRGBA8(a_data[a_offs]);
+  if(a_srgb)
+    c = make_float4(LiteImageSRGBToLinear(c.x), LiteImageSRGBToLinear(c.y), LiteImageSRGBToLinear(c.z), c.w);
+  return c;
+}
+
 /// Image2D<uint32_t>::sample: RGBA8 texels
-static inline float4 LiteImageSample_uint(uniform const uint32 a_data[], uniform const LiteImageInfo& a_info, uniform const LiteSamplerInfo& a_sampler, float2 a_uv)
+static inline float4 LiteImageSample_uint(uniform const uint32 a_data[], uniform const LiteImageInfo& a_info, uniform const LiteSamplerInfo& a_sampler, float2 a_uv, 
+                                          uniform bool a_srgb = false)
 {
   if(a_sampler.filter == LITE_IMAGE_FILTER_LINEAR)
   {
     int offs[4]; float w[4];
     LiteImageBilinear(a_info, a_sampler, a_uv, offs, w);
-    const float4 f1 = LiteImageUnpackRGBA8(a_data[offs[0]]);
-    const float4 f2 = LiteImageUnpackRGBA8(a_data[offs[1]]);
-    const float4 f3 = LiteImageUnpackRGBA8(a_data[offs[2]]);
-    const float4 f4 = LiteImageUnpackRGBA8(a_data[offs[3]]);
+    const float4 f1 = LiteImageFetchRGBA8(a_data, offs[0], a_srgb);
+    const float4 f2 = LiteImageFetchRGBA8(a_data, offs[1], a_srgb);
+    const float4 f3 = LiteImageFetchRGBA8(a_data, offs[2], a_srgb);
+    const float4 f4 = LiteImageFetchRGBA8(a_data, offs[3], a_srgb);
     return make_float4(f1.x*w[0] + f2.x*w[1] + f3.x*w[2] + f4.x*w[3],
                        f1.y*w[0] + f2.y*w[1] + f3.y*w[2] + f4.y*w[3],
                        f1.z*w[0] + f2.z*w[1] + f3.z*w[2] + f4.z*w[3],
                        f1.w*w[0] + f2.w*w[1] + f3.w*w[2] + f4.w*w[3]);
   }
-  return LiteImageUnpackRGBA8(a_data[LiteImageNearest(a_info, a_sampler, a_uv)]);
+  return LiteImageFetchRGBA8(a_data, LiteImageNearest(a_info, a_sampler, a_uv), a_srgb);
 }
 
 /// Image2D<float4>::sample
@@ -180,10 +195,11 @@ static inline float4 LiteImageSample_float(uniform const float a_data[], uniform
 //   m_textures[id]->sample(uv) ==> LiteTexArraySample(m_textures, id, uv)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define LITE_TEX_FORMAT_RGBA8   0 ///< Image2D<uint32_t>
+#define LITE_TEX_FORMAT_RGBA8   0 ///< Image2D<uint32_t>, VK_FORMAT_R8G8B8A8_UNORM
 #define LITE_TEX_FORMAT_FLOAT4  1 ///< Image2D<float4>
 #define LITE_TEX_FORMAT_FLOAT   2 ///< Image2D<float>
 #define LITE_TEX_FORMAT_UNKNOWN 3 ///< other formats are not supported, sample returns (1,0,1,1)
+#define LITE_TEX_FORMAT_SRGBA8  4 ///< Image2D<uint32_t> with sRGB texels
 
 struct LiteTextureDesc ///< data, size, texel format (LITE_TEX_FORMAT_*) and sampler of ICombinedImageSampler
 {
@@ -214,8 +230,8 @@ static inline float4 LiteTexArraySample(uniform const LiteTextureDesc a_textures
     sampler.filter   = a_textures[id].filter;
     sampler.dummy    = 0;
     const uniform uint32 format = a_textures[id].format;
-    if(format == LITE_TEX_FORMAT_RGBA8)
-      res = LiteImageSample_uint((uniform const uint32 * uniform)a_textures[id].data, info, sampler, a_uv);
+    if(format == LITE_TEX_FORMAT_RGBA8 || format == LITE_TEX_FORMAT_SRGBA8)
+      res = LiteImageSample_uint((uniform const uint32 * uniform)a_textures[id].data, info, sampler, a_uv, format == LITE_TEX_FORMAT_SRGBA8);
     else if(format == LITE_TEX_FORMAT_FLOAT4)
       res = LiteImageSample_float4((uniform const float4 * uniform)a_textures[id].data, info, sampler, a_uv);
     else if(format == LITE_TEX_FORMAT_FLOAT)
