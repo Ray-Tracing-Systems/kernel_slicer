@@ -2,6 +2,7 @@
 #include <fstream>
 #include <vector>
 #include <memory>
+#include <string>
 
 #include "test_class.h"
 #include "Image2d.h"
@@ -14,6 +15,9 @@
 
 #include "vk_context.h"
 std::shared_ptr<TestClass> CreateTestClass_Generated(int a_maxThreads, vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
+#ifdef USE_ISPC
+std::shared_ptr<TestClass> CreateTestClass_ISPC(int a_maxThreads);
+#endif
 
 int main(int argc, const char** argv)
 {
@@ -30,13 +34,19 @@ int main(int argc, const char** argv)
   std::shared_ptr<TestClass> pImpl = nullptr;
   ArgParser args(argc, argv);
 
-  bool onGPU = args.hasOption("--gpu");
+  bool onGPU  = args.hasOption("--gpu");
+  bool onISPC = args.hasOption("--ispc");
+  const std::string backendName = onGPU ? "gpu" : (onISPC ? "ispc" : "cpu");
   if(onGPU)
   {
     unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
     auto ctx = vk_utils::globalContextGet(enableValidationLayers, a_preferredDeviceId);
     pImpl    = CreateTestClass_Generated(WIN_WIDTH*WIN_HEIGHT, ctx, WIN_WIDTH*WIN_HEIGHT);
   }
+  #ifdef USE_ISPC
+  else if(onISPC)
+    pImpl = CreateTestClass_ISPC(WIN_WIDTH*WIN_HEIGHT);
+  #endif
   else
     pImpl = std::make_shared<TestClass>(WIN_WIDTH*WIN_HEIGHT);
 
@@ -51,10 +61,7 @@ int main(int argc, const char** argv)
   //
   pImpl->CastSingleRayBlock(WIN_HEIGHT*WIN_HEIGHT, packedXY.data(), pixelData.data(), 1);
   
-  if(onGPU)
-    LiteImage::SaveBMP("zout_gpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
-  else
-    LiteImage::SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+  LiteImage::SaveBMP(("zout_" + backendName + ".bmp").c_str(), pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
 
   // now test path tracing //
   //
@@ -74,10 +81,7 @@ int main(int argc, const char** argv)
     pixelData[i] = RealColorToUint32(clamp(color, 0.0f, 1.0f));
   }
 
-  if(onGPU)
-    LiteImage::SaveBMP("zout_gpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
-  else
-    LiteImage::SaveBMP("zout_cpu2.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+  LiteImage::SaveBMP(("zout_" + backendName + "2.bmp").c_str(), pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   
   float timings[4] = {0,0,0,0};
   pImpl->GetExecutionTime("NaivePathTraceBlock", timings);

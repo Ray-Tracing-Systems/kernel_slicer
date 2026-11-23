@@ -1,5 +1,5 @@
   {% for Arg in Kernel.Args %}
-  {% if not Arg.IsUBO %} 
+  {% if not Arg.IsUBO and not Arg.SkipISPC %} 
   {% if Arg.IsImage and existsIn(Arg, "ElemISPC") %}
   uniform {{Arg.ElemISPC}} a_{{Arg.Name}}[], uniform const uint32 a_{{Arg.Name}}_info[4],
   {% else if Arg.IsAccelStruct %}

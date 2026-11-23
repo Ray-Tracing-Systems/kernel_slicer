@@ -820,6 +820,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["NeedFmt"]       = commonArg.isImage && (int(commonArg.imageAccess) & int(kslicer::TEX_ACCESS::TEX_ACCESS_WRITE)) != 0; // format only for storage images
       argj["ImFormat"]      = commonArg.imageFormat;
       argj["IsPointer"]     = commonArg.isPointer;
+      argj["IsThreadId"]    = commonArg.isThreadId;
+      argj["IsThreadFlags"] = commonArg.isThreadFlags;
       argj["IsMember"]      = false;
       argj["IsSingle"]      = false;
       argj["IsConst"]       = commonArg.isConstant;
@@ -1133,6 +1135,10 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     {
       const bool isBuffer = !argj["IsUBO"].get<bool>() && !argj["IsImage"].get<bool>() && !argj["IsAccelStruct"].get<bool>();
       argj["NeedUintAlias"] = isBuffer && (a_classInfo.uintAliasBuffers.find(argj["Name"].get<std::string>()) != a_classInfo.uintAliasBuffers.end());
+      if(!argj.contains("IsThreadId"))
+        argj["IsThreadId"] = false;
+      if(!argj.contains("IsThreadFlags"))
+        argj["IsThreadFlags"] = false;
     }
     kernelJson["Args"]         = args;
     kernelJson["UseScalarLayout"] = std::any_of(args.begin(), args.end(), [](const json& a) { return a.contains("ScalarLayout") && a["ScalarLayout"].get<bool>(); });
@@ -1140,6 +1146,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["UserArgs"]     = userArgs;
     kernelJson["OriginalArgs"] = allArgs;
     kernelJson["Name"]         = k.name;
+    kernelJson["IsMega"]       = k.isMega;                                      // RTV control function joined to megakernel
+    kernelJson["IsRTV"]        = (k.pattern == kslicer::PATTERN_TP::PATTERN_RTV);
     kslicer::AddGraphicsToKernelJson(kernelJson, k, a_classInfo);
     kernelJson["SamplersISPC"] = std::vector<std::string>(); // 'Sampler' members used by 'texture.sample(sampler, uv)', ISPC passes their state to kernels
     {

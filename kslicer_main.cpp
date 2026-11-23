@@ -521,9 +521,16 @@ int main(int argc, const char **argv)
     auto pISPC = std::make_shared<kslicer::ISPCCompiler>(useCppInKernels, inputCodeInfo.mainClassSuffix);
     if(params.find("-ispc_target") != params.end())
       pISPC->m_target = params["-ispc_target"];
+    if(params.find("-ispc_wave_chunk") != params.end())
+      pISPC->m_waveChunk = std::max(1, atoi(params["-ispc_wave_chunk"].c_str()));
+    if(params.find("-ispc_mega_chunk") != params.end())
+      pISPC->m_megaChunk = std::max(1, atoi(params["-ispc_mega_chunk"].c_str()));
     inputCodeInfo.pShaderCC = pISPC;
     inputCodeInfo.pHostCC   = std::make_shared<kslicer::ISPCCodeGen>();
-    inputCodeInfo.ignoreFolders.push_back("include/");
+    if(params.find("-ispc_process_include") != params.end() && atoi(params["-ispc_process_include"].c_str()) != 0)
+      inputCodeInfo.processFolders.push_back("include/"); // headers of 'include/' are rewritten as other code (as for Slang)
+    else
+      inputCodeInfo.ignoreFolders.push_back("include/");  // headers of 'include/' are written for ISPC and included to kernels as is
   }
   else
   {
@@ -566,6 +573,11 @@ int main(int argc, const char **argv)
   if(params.find("-coop_matrix") != params.end())
     inputCodeInfo.coopMatrix         = (atoi(params["-coop_matrix"].c_str()) != 0);
   inputCodeInfo.persistentRTV        = usePersistentThreads;
+  if(usePersistentThreads && inputCodeInfo.pShaderCC->IsISPC())
+  {
+    std::cout << "[kslicer]: error, '-persistent 1' is not supported by ISPC back end" << std::endl;
+    return 1;
+  }
   inputCodeInfo.mainClassSuffix      = suffix;
   inputCodeInfo.shaderFolderPrefix   = shaderFolderPrefix;
   inputCodeInfo.globalShaderFeatures = forcedFeatures;

@@ -18,6 +18,11 @@
 #include "{{Incl}}"
 ## endfor
 
+#define KGEN_FLAG_RETURN            1 // thread flags of RTV wavefront, the same values as in host code
+#define KGEN_FLAG_BREAK             2
+#define KGEN_FLAG_DONT_SET_EXIT     4
+#define KGEN_FLAG_SET_EXIT_NEGATIVE 8
+
 /////////////////////////////////////////////////////////////////////
 /////////////////// declarations in class ///////////////////////////
 /////////////////////////////////////////////////////////////////////
@@ -45,6 +50,10 @@ struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data
 {{LocalFunc}}
 
 ## endfor
+{% for Func in GlobalPtrFunctionsISPC %}
+{{Func}}
+
+{% endfor %}
 
 /////////////////////////////////////////////////////////////////////
 /////////////////// class data for member functions /////////////////
@@ -158,10 +167,34 @@ static inline bool    {{AccName}}_RayQuery_AnyHitMotion(float4 posAndNear, float
 {{MembFunc.Text}}
 
 {% endfor %}
+{% if length(SubkernelsISPC) > 0 %}
+/////////////////////////////////////////////////////////////////////
+/////////////////// kernels of megakernels (one thread) /////////////
+/////////////////////////////////////////////////////////////////////
+
+{% for Sub in SubkernelsISPC %}
+static inline {{Sub.Decl}}
+{
+  {{Sub.Source}}
+}
+
+{% endfor %}
+{% endif %}
 /////////////////////////////////////////////////////////////////////
 /////////////////// kernels /////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
 
+{% for MainFunc in MainFunctions %}
+{% if MainFunc.IsWaveISPC %}
+export void {{MainFunc.Name}}_PayloadSizes_ISPC(uniform uint32 a_sizes[]) // sizes of payload elements in ISPC, see '{{MainFunc.Name}}_Payload' in host code
+{
+  {% for Var in MainFunc.PayloadISPC %}
+  a_sizes[{{loop.index}}] = sizeof(uniform {{Var.TypeISPC}}); // '{{Var.Name}}'
+  {% endfor %}
+}
+
+{% endif %}
+{% endfor %}
 ## for Kernel in Kernels
 export void {{Kernel.Name}}_Bind_ISPC( // sets class data for member functions, call it before kernel
 {% include "inc_bind_args.ispc" %}
@@ -191,7 +224,64 @@ export void {{Kernel.Name}}_Bind_ISPC( // sets class data for member functions, 
 
 {% if not Kernel.IsGraphics %}
 
-{% if Kernel.EnableBlockExpansion %}
+{% if Kernel.IsMega %}
+// RTV control function joined to megakernel: threads [kgen_start, kgen_end) (rows for 2D, of kgen_sizeX threads), the host calls it for chunks of threads
+//
+export void {{Kernel.Name}}_ISPC(
+{% include "inc_args.ispc" %}
+  uniform struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo[1], uniform int kgen_start, uniform int kgen_end, uniform int kgen_sizeX)
+{
+  {% if Kernel.threadDim == 2 %}
+  foreach(tidY = kgen_start ... kgen_end, tidX = 0 ... kgen_sizeX)
+  {% else %}
+  foreach({{Kernel.ThreadId0.Name}} = kgen_start ... kgen_end)
+  {% endif %}
+  {
+{{Kernel.Source}}
+  }
+}
+
+{% else if Kernel.IsRTV %}
+// RTV kernel for wavefront ('-megakernel 0'): code of one thread; payload of control function is stored in arrays
+// for the current chunk of threads, the element of the thread is 'a_payload[kgen_i]'
+//
+static inline {% if Kernel.IsBoolean %}bool {% else %}void {% endif %}{{Kernel.Name}}_Thread({% for TID in Kernel.ThreadIds %}const uint {{TID.Name}}, {% endfor %}const int kgen_i,
+{% include "inc_args.ispc" %}
+  uniform struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo[1])
+{
+{{Kernel.Source}}
+}
+
+// threads [kgen_start, kgen_end) of the chunk (rows for 2D, of kgen_sizeX threads); finished threads are skipped by thread flags
+//
+export void {{Kernel.Name}}_ISPC(
+{% include "inc_args.ispc" %}
+  uniform struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo[1], uniform uint32 kgen_threadFlags[], uniform uint32 kgen_tFlagsMask,
+  uniform int kgen_start, uniform int kgen_end, uniform int kgen_sizeX)
+{
+  {% if Kernel.threadDim == 2 %}
+  foreach(tidY = kgen_start ... kgen_end, tidX = 0 ... kgen_sizeX)
+  {
+    const int kgen_i = (tidY - kgen_start)*kgen_sizeX + tidX;
+  {% else %}
+  foreach(kgen_i = 0 ... kgen_end - kgen_start)
+  {
+    const uint {{Kernel.ThreadId0.Name}} = kgen_start + kgen_i;
+  {% endif %}
+    if((kgen_threadFlags[kgen_i] & kgen_tFlagsMask) != 0)
+      continue;
+    {% if Kernel.IsBoolean %}
+    const bool kgenExitCond = {{Kernel.Name}}_Thread({% for TID in Kernel.ThreadIds %}{{TID.Name}}, {% endfor %}kgen_i, {% include "inc_call_args.ispc" %}ubo);
+    const bool exitHappened = ((kgen_tFlagsMask & KGEN_FLAG_SET_EXIT_NEGATIVE) != 0) ? !kgenExitCond : kgenExitCond;
+    if((kgen_tFlagsMask & KGEN_FLAG_DONT_SET_EXIT) == 0 && exitHappened)
+      kgen_threadFlags[kgen_i] = ((kgen_tFlagsMask & KGEN_FLAG_BREAK) != 0) ? KGEN_FLAG_BREAK : KGEN_FLAG_RETURN;
+    {% else %}
+    {{Kernel.Name}}_Thread({% for TID in Kernel.ThreadIds %}{{TID.Name}}, {% endfor %}kgen_i, {% include "inc_call_args.ispc" %}ubo);
+    {% endif %}
+  }
+}
+
+{% else if Kernel.EnableBlockExpansion %}
 {% for TID in Kernel.ThreadSizeBE %}
 #define {{TID.Name}} {{TID.Value}}u // template parameter of '{{Kernel.Name}}'
 {% endfor %}

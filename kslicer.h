@@ -487,6 +487,7 @@ namespace kslicer
     TEX_ACCESS  imageAccess = TEX_ACCESS::TEX_ACCESS_NOTHING;
     bool        isDefinedInClass = false;
     bool        isThreadFlags    = false;
+    bool        isThreadId       = false;
     bool        isImage          = false;
     bool        isSampler        = false;
     bool        isPointer        = false;
@@ -1182,6 +1183,13 @@ namespace kslicer
     std::string RewriteFuncDecl(clang::FunctionDecl* fDecl) override;
 
     std::string VectorTypeContructorReplace(const std::string& fname, const std::string& callText) override;
+
+    // pointer parameters of user functions and of RTV kernels joined to megakernel which do not point to global memory
+    // become ISPC references: 'float4* a_x' ==> 'float4& a_x', '*a_x' ==> 'a_x', 'a_x->y' ==> 'a_x.y', 'f(&local)' ==> 'f(local)'
+    //
+    bool IsReferenceParam(const clang::ValueDecl* a_decl) const;
+    bool IsGlobalPointerParam(const clang::ParmVarDecl* a_param) const; ///<! pointer to buffer in function copy for global memory ('m_shit')
+    bool IsAddressOfLocalForCall(const clang::UnaryOperator* a_expr);   ///<! '&local' passed to a pointer parameter of user function
   private:
     void Init();
     kslicer::umap<std::string, std::string> m_typesReplacement;
@@ -1541,6 +1549,9 @@ namespace kslicer
     std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo[0].") + a_name; };
     std::string Name() const override { return "ISPC"; }
     std::string m_target = "avx2-i32x8"; ///<! ISPC '--target', set by '-ispc_target'
+    uint32_t    m_waveChunk = 4096;         ///<! RTV wavefront: threads in one chunk (payload of a chunk stays in cache), set by '-ispc_wave_chunk'
+    uint32_t    m_megaChunk = 256;          ///<! RTV megakernel: threads in one OpenMP work item, set by '-ispc_mega_chunk'
+    std::string RTVGetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::ArgFinal>& threadIds) override; ///<! 'kgen_i': payload of a chunk
     bool        MemberFunctionsAreSupported() const override { return true; }
     void        GenerateShaders(nlohmann::json& a_kernelsJson, const MainClassInfo* a_codeInfo, const kslicer::TextGenSettings& a_settings) override;
     bool        IsISPC() const override { return true; }
@@ -2147,6 +2158,7 @@ namespace kslicer
   };
   bool ParseLinearForwardBlock(const clang::CallExpr* a_call, std::shared_ptr<KernelRewriter> pRewriter, const KernelInfo& a_kernel, BELinearForwardArgs* a_args);
 
+  bool RewriteRTVCallsISPC(MainFuncInfo& a_mainFunc, MainClassInfo& a_codeInfo, clang::Rewriter& a_rewriter, const clang::CompilerInstance& a_compiler); ///<! ISPC: RTV control function for wavefront, see tr_host_ispc.cpp
   bool RewriteBlockExpansionCallsISPC(const clang::CXXMethodDecl* a_controlFunc, kslicer::umap<std::string, KernelInfo>& a_kernels, clang::Rewriter& a_rewriter, const clang::CompilerInstance& a_compiler);
 
   void ProcessFunctionsInQueueBFS(kslicer::MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler, std::queue<kslicer::FuncData>& functionsToProcess, kslicer::umap<uint64_t, kslicer::FuncData>& usedFunctions);

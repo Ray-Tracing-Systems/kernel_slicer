@@ -192,7 +192,8 @@ void kslicer::MainClassInfo::GetCFSourceCodeCmd(MainFuncInfo& a_mainFunc, clang:
       // block expansion kernels are templates and can't be overriden, so their calls in a copy of control function go to the generated class
       //
       a_mainFunc.callsBlockExpansion = kslicer::RewriteBlockExpansionCallsISPC(a_node, kernels, rewrite2, compiler);
-      if(a_mainFunc.callsBlockExpansion)
+      const bool isWavefrontRTV      = kslicer::RewriteRTVCallsISPC(a_mainFunc, *this, rewrite2, compiler); // kernels are called for chunks of threads
+      if(a_mainFunc.callsBlockExpansion || isWavefrontRTV)
         sourceCode = rewrite2.getRewrittenText(clang::SourceRange(b,e));
     }
     
@@ -463,6 +464,7 @@ std::vector<kslicer::ArgFinal> kslicer::MainClassInfo::GetKernelCommonArgs(const
                                  arg.type.find(std::string("struct ") + mainClassName) != std::string::npos || 
                                  arg.type.find(mainClassName) != std::string::npos);
         arg2.isThreadFlags    = arg.isThreadFlags;
+        arg2.isThreadId       = arg.isThreadID;
         arg2.isPointer        = arg.IsPointer();
         arg2.scalarLayout     = arg.scalarLayout;
         if(pShaderCC->IsISPC())

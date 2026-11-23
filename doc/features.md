@@ -50,12 +50,12 @@ follows the test configs and the code.
 | ID | Feature | Slang | GLSL | CUDA/HIP | ISPC | Tests and samples |
 |----|---------|:-----:|:----:|:--------:|:----:|-------------------|
 | `ipv` | IPV kernels `kernel1D_/2D_/3D_` (parallel `for`) | ✅ | ✅ | ✅ | ✅ | 048, 043, app 05, app 25, app 30 |
-| `rtv` | RTV kernels `kernel_` (code of one thread, payload between kernels) | ✅ | ✅ | ❔ | ❔ | 051, 067, app 01, app 07 |
+| `rtv` | RTV kernels `kernel_` (code of one thread, payload between kernels) | ✅ | ✅ | ❔ | 🧪¹⁰ | 051, 067, app 01, app 07 |
 | `bev` | Block Expansion kernels `kernelBE1D_` with shared memory | 🧪 | 🧪 | ❔ | 🧪 | 030, 092, 093, 094 |
 | `bev_nested` | Block Expansion: `[[parallel]]` loops inside ordinary loops and `if` of the block, variables of the block (each GPU thread has its own copy, statements that write memory are executed by one thread) | 🧪 | 🧪 | ❔ | 🧪 | 092, 093, 094 |
 | `bev_2d` | Block Expansion 2D: `kernelBE2D_` with `template<uint bsizeX, uint bsizeY>`, 2D parallel loops (two nested `[[parallel]]`, the order of dimensions as for `kernel2D_` and `-reorderLoops`), 2D arrays of the block | 🧪 | 🧪 | ❔ | 🧪 | 096 |
 | `bev_atomics_shared` | Block Expansion: `InterlockedAdd` on arrays of the block (shared memory) in parallel loops; ISPC: `atomic_add_local` for arrays of the block, `atomic_add_global` for buffers | 🧪 | 🧪 | ❔ | 🧪 | 097 |
-| `megakernel` | One shader per control function (`-megakernel 1`) | ✅ | ✅ | ❔ | ❌ | 057, 067, app 07, app 20 |
+| `megakernel` | One shader per control function (`-megakernel 1`) | ✅ | ✅ | ❔ | 🧪¹⁰ | 057, 067, app 07, app 20 |
 | `persistent_rays` | Persistent rays in RTV megakernels (`-persistent 1`) | 🧪 | 🧪 | ❔ | ❔ | — ⁰ |
 | `indirect_dispatch` | Dispatch size computed on GPU (loop bound is a class member) | ✅ | ✅ | ❔ | ❔ | 059, 057 |
 | `reorder_loops` | `-reorderLoops YX` for 2D kernels | ✅ | ✅ | ✅ | ❔ | 059, app 05, app 24 |
@@ -67,6 +67,13 @@ follows the test configs and the code.
 | `commit_appended` | `CommitAppendedData()`: upload only appended elements (`appendGroups`) | ✅ | ✅ | ❔ | ❔ | 064, 065 |
 
 ⁰ No test yet. See [concepts.md](concepts.md#execution-strategies-from-one-source).
+
+¹⁰ ISPC, RTV: with `-megakernel 1` the control function is one ISPC function of a thread, OpenMP threads process chunks of
+`-ispc_mega_chunk` threads; with `-megakernel 0` (wavefront) the control function is executed on the host for chunks of
+`-ispc_wave_chunk` threads, every kernel processes all threads of the chunk and payload is stored in arrays of the chunk.
+Persistent rays are not supported. ISPC `float2`, `float3`, `int2`, ... take 16 bytes: member vectors of such elements are
+passed as padded copies, but structures with such fields must not be stored in buffers (use scalars or `float4`).
+Headers of `include/` written in C++ need `-ispc_process_include 1`.
 
 ### Algorithms and service functions
 
@@ -142,7 +149,7 @@ rasterization of 4x4 blocks in ISPC, triangle setup and binning in C++ (`LiteRS:
 | `virtual_func` | Virtual function hierarchies in kernels | ❌ | ✅ | ❔ | ❔ | 069, app 10, app 13 |
 | `callable_shaders` | Virtual functions as callable shaders (`-enable_callable_shaders 1`) | ❌ | ✅ | ❌ | ❌ | app 26, app 27 |
 
-⁵ With Embree on the CPU, IPV kernels only: app 18.
+⁵ With Embree on the CPU: IPV kernels (app 18) and RTV kernels (app 07).
 ⁶ The current interface (046) works; the older `-intersectionShader` configs (035–038) fail to compile.
 ⁷ app 16 works, app 17 needs `rt_pipeline`.
 
@@ -170,7 +177,7 @@ and other code) any C++ is allowed.
 | `complex` | `complex` numbers from LiteMath | ✅ | ✅ | ❔ | ❔ | 028 |
 | `std_math` | `std::min`, `std::max`, `std::abs`, `std::sqrt`, ... (as declared in `TINYSTL/`) | ✅ | ✅ | ✅ | ✅ | 061, 046 |
 | `loop_bounds` | Arbitrary start and end expressions of the thread loops | ✅ | ✅ | ❔ | ❔ | 001, 002 |
-| `loop_break` | `break` out of a loop over kernels in an RTV control function | ✅ | ✅ | ❔ | ❔ | 067, app 03 |
+| `loop_break` | `break` out of a loop over kernels in an RTV control function | ✅ | ✅ | ❔ | 🧪 | 067, app 03 |
 | `multi_loop` | Several consecutive thread loops in one IPV kernel | ✅ | ❌ | ❔ | ❔ | 063 |
 | `kernel_locals` | Locals declared before the thread loop, used inside it | ✅ | ❌ | ❔ | ❔ | 062 |
 | `threadlocal_array` | Local arrays, `[[threadlocal]]` for large ones | ✅ | ✅ | ❔ | ❔ | 033 |

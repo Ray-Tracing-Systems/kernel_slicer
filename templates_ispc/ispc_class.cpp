@@ -7,6 +7,8 @@
 #include <chrono>
 #include <cstring>
 #include <iostream>
+#include <algorithm>
+#include <omp.h>
 
 #include "{{MainInclude}}"
 #if defined(__GNUC__) && !defined(__clang__) && !defined(__aarch64__) && !defined(__fp16)
@@ -46,6 +48,28 @@ static inline std::vector< std::array<float,4> > ISPCPadded16(const std::vector<
   }
   return res;
 }
+static constexpr uint32_t KGEN_FLAG_RETURN            = 1; // thread flags of RTV wavefront
+static constexpr uint32_t KGEN_FLAG_BREAK             = 2;
+static constexpr uint32_t KGEN_FLAG_DONT_SET_EXIT     = 4;
+static constexpr uint32_t KGEN_FLAG_SET_EXIT_NEGATIVE = 8;
+
+/// elements of 4 bytes, from vector of 'float2', 'uint3', ... to padded vector with elements of 16 bytes and back
+template<typename T>
+static inline void ISPCPadTo16(const std::vector<T>& a_data, std::vector< std::array<uint32_t,4> >& a_padded)
+{
+  constexpr size_t N = sizeof(T)/sizeof(uint32_t);
+  a_padded.resize(a_data.size());
+  for(size_t i = 0; i < a_data.size(); i++)
+    std::memcpy(a_padded[i].data(), &a_data[i], N*sizeof(uint32_t));
+}
+template<typename T>
+static inline void ISPCUnpadFrom16(const std::vector< std::array<uint32_t,4> >& a_padded, std::vector<T>& a_data)
+{
+  constexpr size_t N = sizeof(T)/sizeof(uint32_t);
+  for(size_t i = 0; i < a_data.size() && i < a_padded.size(); i++)
+    std::memcpy(&a_data[i], a_padded[i].data(), N*sizeof(uint32_t));
+}
+
 template<typename S>
 static inline std::array<uint32_t,4> ISPCSamplerInfo(const S& a_sampler) { return { uint32_t(a_sampler.addressU), uint32_t(a_sampler.addressV), uint32_t(a_sampler.filter), 0u }; }
 {% if UseAccelStruct %}
@@ -205,8 +229,33 @@ protected:
   {% endif %}
 
   {% for Kernel in Kernels %}
-  {% if not Kernel.IsGraphics %}
-  void {{Kernel.Name}}({% for Arg in Kernel.Args %}{% if not Arg.IsUBO and not Arg.IsMember %}{% if Arg.IsPointer %}{{Arg.Type}}* {{Arg.Name}}{% if loop.index1 != Kernel.LastArgNF %}, {% endif %}{% else %}{{Arg.Type}} {{Arg.Name}}{% if loop.index1 != Kernel.LastArgNF %}, {% endif %} {% endif %}{% endif %} {% endfor %}) {% if not Kernel.InitKPass and not Kernel.EnableBlockExpansion %} override {% endif %}
+  {% if Kernel.IsRTV and not Kernel.IsMega %}
+  // RTV kernel for wavefront: all threads of chunk [kgen_start, kgen_end) (rows for 2D), payload arrays of the chunk
+  //
+  void {{Kernel.Name}}_Wave(int kgen_start, int kgen_end, int kgen_sizeX, uint32_t* kgen_threadFlags, uint32_t kgen_tFlagsMask{% for Arg in Kernel.Args %}{% if not Arg.IsUBO and not Arg.IsMember and not Arg.SkipISPC %}, {% if Arg.IsPointer %}ISPCPtr {% else %}{{Arg.Type}} {% endif %}{{Arg.Name}}{% endif %}{% endfor %})
+  {
+    {% for Arg in Kernel.Args %}
+    {% if Arg.IsAccelStruct %}
+    auto {{Arg.Name}}_impl = GetEmbreeImpl({{Arg.Name}}.get(), "{{Arg.Name}}");
+    {% endif %}
+    {% endfor %}
+    ispc::{{Kernel.Name}}_ISPC({% include "inc_host_args.cpp" %}, kgen_threadFlags, kgen_tFlagsMask, kgen_start, kgen_end, kgen_sizeX);
+  }
+
+  void {{Kernel.Name}}_Bind() // class data for member functions, the same for all chunks
+  {
+    {% for Arg in Kernel.Args %}
+    {% if Arg.IsAccelStruct %}
+    auto {{Arg.Name}}_impl = GetEmbreeImpl({{Arg.Name}}.get(), "{{Arg.Name}}");
+    {% else if not Arg.IsUBO and not Arg.IsMember and not Arg.SkipISPC %}
+    [[maybe_unused]] {% if Arg.IsPointer %}ISPCPtr {{Arg.Name}}(nullptr){% else %}{{Arg.Type}} {{Arg.Name}}{}{% endif %};
+    {% endif %}
+    {% endfor %}
+    ispc::{{Kernel.Name}}_Bind_ISPC({% include "inc_host_bind_args.cpp" %});
+  }
+
+  {% else if not Kernel.IsGraphics %}
+  void {{Kernel.Name}}({% for Arg in Kernel.Args %}{% if not Arg.IsUBO and not Arg.IsMember %}{% if Arg.IsPointer %}{{Arg.Type}}* {{Arg.Name}}{% if loop.index1 != Kernel.LastArgNF %}, {% endif %}{% else %}{{Arg.Type}} {{Arg.Name}}{% if loop.index1 != Kernel.LastArgNF %}, {% endif %} {% endif %}{% endif %} {% endfor %}) {% if not Kernel.InitKPass and not Kernel.EnableBlockExpansion and not Kernel.IsMega %} override {% endif %}
   { 
     {% for Arg in Kernel.Args %}
     {% if Arg.IsAccelStruct %}
@@ -214,7 +263,14 @@ protected:
     {% endif %}
     {% endfor %}
     ispc::{{Kernel.Name}}_Bind_ISPC({% include "inc_host_bind_args.cpp" %});
-    {% if Kernel.OpenMPAndISPC %}
+    {% if Kernel.IsMega %}
+    const int kgen_sizeX = {% if Kernel.threadDim == 2 %}int(tidX){% else %}1{% endif %};
+    const int kgen_rows  = int({% if Kernel.threadDim == 2 %}tidY{% else %}{{Kernel.ThreadId0.Name}}{% endif %});
+    const int kgen_rowsPerChunk = std::max(1, {{MegaChunkISPC}}/kgen_sizeX); // '-ispc_mega_chunk'
+    #pragma omp parallel for schedule(dynamic, 1)
+    for(int kgen_c = 0; kgen_c < (kgen_rows + kgen_rowsPerChunk - 1)/kgen_rowsPerChunk; kgen_c++)
+      ispc::{{Kernel.Name}}_ISPC({% include "inc_host_args.cpp" %}, kgen_c*kgen_rowsPerChunk, std::min((kgen_c + 1)*kgen_rowsPerChunk, kgen_rows), kgen_sizeX);
+    {% else if Kernel.OpenMPAndISPC %}
     constexpr int BLOCK_SIZE = 64;
     [[maybe_unused]] auto* ubo = &m_uboData; // loop bounds may refer to class members as 'ubo[0].m_member'
     {% if Kernel.HasInitISPC %}
@@ -253,6 +309,33 @@ protected:
   {% endif %} {# /* not Kernel.IsGraphics */ #}
   {% endfor %}
 
+  {% for MainFunc in MainFunctions %}
+  {% if MainFunc.IsWaveISPC %}
+  struct {{MainFunc.Name}}_Payload // local variables of '{{MainFunc.Name}}' for a chunk of threads, elements have the size of ISPC types
+  {
+    {% for Var in MainFunc.PayloadISPC %}
+    std::vector<uint8_t>  {{Var.Name}};
+    {% endfor %}
+    std::vector<uint32_t> threadFlags;
+    void Resize(size_t a_size)
+    {
+      if(threadFlags.size() == a_size)
+        return;
+      uint32_t sizes[{{length(MainFunc.PayloadISPC)}} + 1] = {};
+      ispc::{{MainFunc.Name}}_PayloadSizes_ISPC(sizes);
+      {% for Var in MainFunc.PayloadISPC %}
+      {{Var.Name}}.resize(a_size*sizes[{{loop.index}}]);
+      {% endfor %}
+      threadFlags.resize(a_size);
+    }
+  };
+  std::vector<{{MainFunc.Name}}_Payload> m_{{MainFunc.Name}}Payload; // for each OpenMP thread
+
+  {% endif %}
+  {% endfor %}
+  {% for Buff in PaddedBuffersISPC %}
+  std::vector< std::array<uint32_t,4> > m_padded_{{Buff}}; // copy of '{{Buff}}' with elements of 16 bytes, as ISPC 2- and 3-component vectors
+  {% endfor %}
   ispc::{{MainClassName}}{{MainClassSuffix}}_UBO_Data m_uboData;
   std::unordered_map<std::string, float> m_exTimeISPC;
 };
@@ -260,6 +343,9 @@ protected:
 void {{MainClassName}}_ISPC::UpdatePlainMembers()
 {
   const size_t maxAllowedSize = std::numeric_limits<uint32_t>::max();
+  {% for Buff in PaddedBuffersISPC %}
+  ISPCPadTo16({{Buff}}, m_padded_{{Buff}});
+  {% endfor %}
 ## for Var in ClassVars
   {% if Var.IsArray %}
   memcpy(m_uboData.{{Var.Name}},{{Var.Name}},sizeof({{Var.Name}}));
@@ -276,6 +362,9 @@ void {{MainClassName}}_ISPC::UpdatePlainMembers()
 
 void {{MainClassName}}_ISPC::ReadPlainMembers()
 {
+  {% for Buff in PaddedBuffersISPC %}
+  ISPCUnpadFrom16(m_padded_{{Buff}}, {{Buff}});
+  {% endfor %}
   {% for Var in ClassVars %}
   {% if not Var.IsConst %}
   {% if Var.IsArray %}
@@ -298,7 +387,45 @@ void {{MainClassName}}_ISPC::ReadPlainMembers()
   {% if HasGraphics %}
   SetDrawBackends(); // pipeline objects could be reassigned after constructor
   {% endif %}
+  {% if MainFunc.IsMega %}
+  for(uint32_t pass = 0; pass < a_numPasses; pass++) // RTV control function joined to megakernel
+    {{MainFunc.Name}}Mega({% for Arg in MainFunc.InOutVars %}{{Arg.Name}}{% if loop.index1 != MainFunc.InOutVarsNum %}, {% endif %}{% endfor %});
+  {% else if MainFunc.IsWaveISPC %}
+  // RTV wavefront: control function is executed for chunks of threads, kernels process all threads of a chunk one by one;
+  // payload of a chunk is small enough to stay in cache ('-ispc_wave_chunk')
+  //
+  {% for Kernel in Kernels %}
+  {% if Kernel.IsRTV and not Kernel.IsMega %}
+  {{Kernel.Name}}_Bind();
+  {% endif %}
+  {% endfor %}
+  const int kgen_sizeX = {% if length(MainFunc.ThreadIdsISPC) == 2 %}int(tidX){% else %}1{% endif %};
+  const int kgen_rows  = int({% if length(MainFunc.ThreadIdsISPC) == 2 %}tidY{% else %}{{MainFunc.ThreadIdsISPC.0}}{% endif %});
+  const int kgen_rowsPerChunk = std::max(1, {{WaveChunkISPC}}/kgen_sizeX);
+  const int kgen_chunks = (kgen_rows + kgen_rowsPerChunk - 1)/kgen_rowsPerChunk;
+  m_{{MainFunc.Name}}Payload.resize(omp_get_max_threads());
+  for(uint32_t pass = 0; pass < a_numPasses; pass++)
+  {
+    #pragma omp parallel for schedule(dynamic, 1)
+    for(int kgen_c = 0; kgen_c < kgen_chunks; kgen_c++)
+    {
+      const int kgen_start = kgen_c*kgen_rowsPerChunk;
+      const int kgen_end   = std::min(kgen_start + kgen_rowsPerChunk, kgen_rows);
+      auto& kgen_payload   = m_{{MainFunc.Name}}Payload[omp_get_thread_num()];
+      kgen_payload.Resize(size_t(kgen_rowsPerChunk)*size_t(kgen_sizeX));
+      std::fill(kgen_payload.threadFlags.begin(), kgen_payload.threadFlags.end(), 0u); // all threads of the chunk are active
+      [[maybe_unused]] const uint32_t outOfForFlags  = KGEN_FLAG_RETURN;
+      [[maybe_unused]] const uint32_t inForFlags     = KGEN_FLAG_RETURN | KGEN_FLAG_BREAK;
+      [[maybe_unused]] const uint32_t outOfForFlagsN = KGEN_FLAG_RETURN | KGEN_FLAG_SET_EXIT_NEGATIVE;
+      [[maybe_unused]] const uint32_t inForFlagsN    = KGEN_FLAG_RETURN | KGEN_FLAG_BREAK | KGEN_FLAG_SET_EXIT_NEGATIVE;
+      [[maybe_unused]] const uint32_t outOfForFlagsD = KGEN_FLAG_RETURN | KGEN_FLAG_DONT_SET_EXIT;
+      [[maybe_unused]] const uint32_t inForFlagsD    = KGEN_FLAG_RETURN | KGEN_FLAG_BREAK | KGEN_FLAG_DONT_SET_EXIT;
+      {{MainFunc.MainFuncTextCmd}}
+    }
+  }
+  {% else %}
   {% if MainFunc.CallsBlockExpansion %}{{MainFunc.Name}}_BE{% else %}{{MainClassName}}::{{MainFunc.Name}}{% endif %}({% for Arg in MainFunc.InOutVars %}{{Arg.Name}}{% if loop.index1 != MainFunc.InOutVarsNum %},{% endif %}{% endfor %});
+  {% endif %}
   ReadPlainMembers();
   m_exTimeISPC["{{MainFunc.Name}}"] = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - before).count()/1000.f;
 }

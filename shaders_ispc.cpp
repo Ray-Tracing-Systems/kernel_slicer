@@ -24,6 +24,8 @@ std::string kslicer::ISPCRewriter::RewriteStdVectorTypeStr(const std::string& a_
   ReplaceFirst(typeStr, "const ",    "");
   ReplaceFirst(typeStr, m_codeInfo->mainClassName + "::", "");
   ReplaceFirst(typeStr, "struct float4x4", "float4x4");       // small inconvinience in math library
+  if(typeStr == "_Bool")
+    typeStr = "bool";
   if(isConst)
     typeStr = std::string("const ") + typeStr;
   return typeStr;
@@ -64,17 +66,95 @@ std::string kslicer::ISPCRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
     const clang::ParmVarDecl* pParam  = fDecl->getParamDecl(i);
     const clang::QualType typeOfParam =	pParam->getType();
     std::string typeStr = typeOfParam.getAsString();
-    if(typeOfParam->isPointerType() && typeOfParam->getPointeeType()->isRecordType()) // 'Varyings* a_out' ==> 'Varyings& a_out': ISPC references are used as structures
-      typeStr = typeOfParam->getPointeeType().getAsString() + "&";
-    else if(typeOfParam->isPointerType())
-      typeStr += "*";
-    
-    result += RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
+    if(clang::isa<clang::DecayedType>(typeOfParam))                               // 'float a_data[3]' is kept as is
+    {
+      std::string text = kslicer::GetRangeSourceCode(pParam->getSourceRange(), m_compiler);
+      while(ReplaceFirst(text, "LiteMath::", ""));
+      result += text;
+    }
+    else if(typeOfParam->isPointerType() && IsGlobalPointerParam(pParam))        // 'const float* a_data' ==> 'uniform const float a_data[]', pointer to buffer
+    {
+      std::string elemType = RewriteStdVectorTypeStr(typeOfParam->getPointeeType().getAsString());
+      result += "uniform " + elemType + " " + pParam->getNameAsString() + "[]";
+    }
+    else if(typeOfParam->isPointerType() && (IsReferenceParam(pParam) || typeOfParam->getPointeeType()->isRecordType())) // 'Varyings* a_out' ==> 'Varyings& a_out'
+      result += RewriteStdVectorTypeStr(typeOfParam->getPointeeType().getAsString()) + "& " + pParam->getNameAsString();
+    else
+      result += RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
     if(i!=fDecl->getNumParams()-1)
       result += ", ";
   }
 
   return result + ") ";
+}
+
+bool kslicer::ISPCRewriter::IsGlobalPointerParam(const clang::ParmVarDecl* a_param) const
+{
+  auto pFunc = clang::dyn_cast<clang::FunctionDecl>(a_param->getDeclContext());
+  if(pFunc == nullptr || pFunc->getNameAsString() != m_shit.originalName)
+    return false;
+  for(const auto& p : m_shit.pointers)
+    if(p.formal == a_param->getNameAsString())
+      return true;
+  return false;
+}
+
+bool kslicer::ISPCRewriter::IsReferenceParam(const clang::ValueDecl* a_decl) const
+{
+  auto pParam = clang::dyn_cast_or_null<clang::ParmVarDecl>(a_decl);
+  if(pParam == nullptr || !pParam->getType()->isPointerType() || clang::isa<clang::DecayedType>(pParam->getType()))
+    return false;
+  auto pFunc = clang::dyn_cast<clang::FunctionDecl>(pParam->getDeclContext());
+  if(pFunc == nullptr || IsGlobalPointerParam(pParam))
+    return false;
+  auto pKernel = m_codeInfo->kernels.find(pFunc->getNameAsString()); // kernels get buffers, RTV kernels of megakernel get payload by reference
+  if(pKernel != m_codeInfo->kernels.end())
+    return m_codeInfo->megakernelRTV && pKernel->second.pattern == kslicer::PATTERN_TP::PATTERN_RTV;
+  const std::string fileName = std::string(m_compiler.getSourceManager().getFilename(pFunc->getSourceRange().getBegin()));
+  return !m_codeInfo->IsInExcludedFolder(fileName);
+}
+
+bool kslicer::ISPCRewriter::IsAddressOfLocalForCall(const clang::UnaryOperator* a_expr)
+{
+  if(a_expr->getOpcode() != clang::UO_AddrOf)
+    return false;
+
+  // '&x', '&x.y', '&a[i]' of local variable or parameter passed by value or by reference
+  //
+  const clang::Expr* pBase = a_expr->getSubExpr()->IgnoreParenImpCasts();
+  while(true)
+  {
+    if(auto pMember = clang::dyn_cast<clang::MemberExpr>(pBase); pMember != nullptr && !pMember->isArrow())
+      pBase = pMember->getBase()->IgnoreParenImpCasts();
+    else if(auto pSubscr = clang::dyn_cast<clang::ArraySubscriptExpr>(pBase); pSubscr != nullptr && pSubscr->getBase()->IgnoreParenImpCasts()->getType()->isArrayType())
+      pBase = pSubscr->getBase()->IgnoreParenImpCasts();
+    else
+      break;
+  }
+  auto pRef = clang::dyn_cast<clang::DeclRefExpr>(pBase);
+  if(pRef == nullptr)
+    return false;
+  auto pVar = clang::dyn_cast<clang::VarDecl>(pRef->getDecl());
+  if(pVar == nullptr || !pVar->hasLocalStorage() || (pVar->getType()->isPointerType() && !IsReferenceParam(pVar)))
+    return false;
+
+  // it must be argument of user function or RTV kernel of megakernel
+  //
+  auto parents = m_compiler.getASTContext().getParents(*a_expr);
+  while(parents.size() != 0 && (parents[0].get<clang::ImplicitCastExpr>() != nullptr || parents[0].get<clang::ParenExpr>() != nullptr))
+    parents = m_compiler.getASTContext().getParents(parents[0]);
+  if(parents.size() == 0)
+    return false;
+  auto pCall = parents[0].get<clang::CallExpr>();
+  if(pCall == nullptr || pCall->getDirectCallee() == nullptr)
+    return false;
+  const clang::FunctionDecl* pCallee = pCall->getDirectCallee();
+  for(unsigned i = 0; i < pCall->getNumArgs() && i < pCallee->getNumParams(); i++)
+  {
+    if(pCall->getArg(i)->IgnoreParenImpCasts() == a_expr)
+      return IsReferenceParam(pCallee->getParamDecl(i));
+  }
+  return false;
 }
 
 bool kslicer::ISPCRewriter::NeedsVectorTypeRewrite(const std::string& a_str) // TODO: make this implementation more smart, bad implementation actually!
@@ -94,10 +174,7 @@ bool kslicer::ISPCRewriter::VisitFunctionDecl_Impl(clang::FunctionDecl* fDecl)
   if(fDecl->hasBody() && WasNotRewrittenYet(fDecl->getBody()))  // bodies of local functions are rewritten: 'float(x)' ==> '(float)(x)', 'std::pow' ==> 'pow', ...
   {
     RewrittenFunction done = RewriteFunction(fDecl);
-    done.funDecl = kslicer::GetRangeSourceCode(fDecl->getSourceRange(), m_compiler); // declaration is kept as is: ISPC understands C pointers of parameters
-    const auto posBrace = done.funDecl.find("{");
-    if(posBrace != std::string::npos)
-      done.funDecl = done.funDecl.substr(0, posBrace);
+    done.funDecl = "static inline " + done.funDecl; // pointers to local variables are references, see IsReferenceParam
     while(ReplaceFirst(done.funDecl, "LiteMath::", "")); // ISPC has no namespaces
     const auto hash = GetHashOfSourceRange(fDecl->getBody()->getSourceRange());
     if(m_codeInfo->m_functionsDone.find(hash) == m_codeInfo->m_functionsDone.end())
@@ -125,6 +202,21 @@ bool kslicer::ISPCRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
     }
   }
 
+  // 'a_x->y' ==> 'a_x.y' for reference parameter (see IsReferenceParam)
+  //
+  if(expr->isArrow() && WasNotRewrittenYet(expr))
+  {
+    auto pRef = clang::dyn_cast<clang::DeclRefExpr>(expr->getBase()->IgnoreParenImpCasts());
+    if(pRef != nullptr && IsReferenceParam(pRef->getDecl()))
+    {
+      const std::string text = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler); // member of anonymous struct of LiteMath vector has no name
+      const auto posArrow    = text.find("->");
+      if(posArrow != std::string::npos)
+        ReplaceText(expr->getSourceRange(), RecursiveRewrite(expr->getBase()) + "." + text.substr(posArrow + 2));
+      MarkRewritten(expr);
+    }
+  }
+
   return true; 
 }
 
@@ -139,8 +231,8 @@ static std::string ImageMemberName(const clang::Expr* a_expr)
   return "";
 }
 
-bool kslicer::ISPCRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f)  
-{ 
+bool kslicer::ISPCRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f)
+{
   // 'm_img.sample(m_sampler, uv)' ==> 'LiteImageSample_<T>(m_img, m_img_info, m_sampler, uv)', see LiteMathAux/LiteImageISPC.h
   //
   if(f->getMethodDecl() != nullptr && f->getMethodDecl()->getNameAsString() == "sample" && f->getNumArgs() == 2 && WasNotRewrittenYet(f))
@@ -347,6 +439,23 @@ bool kslicer::ISPCRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
     if(fDecl == nullptr)
       return true;
 
+    // buffers passed to functions: such pointer parameters stay pointers (see IsGlobalPointerParam), the others become references
+    //
+    {
+      std::vector<kslicer::ArgMatch> usedArgMatches = kslicer::MatchCallArgsForKernel(call, (*m_pCurrKernel), m_compiler);
+      std::vector<kslicer::ArgMatch> globalPointers;
+      for(const auto& x : usedArgMatches)
+        if(x.isPointer && !NameNeedsFakeOffset(x.actual))
+          globalPointers.push_back(x);
+      if(globalPointers.size() > 0)
+      {
+        kslicer::ShittyFunction func;
+        func.pointers     = globalPointers;
+        func.originalName = fDecl->getNameInfo().getName().getAsString();
+        m_pCurrKernel->shittyFunctions.push_back(func);
+      }
+    }
+
     // 'Base::Func(...)' of composition; namespaces 'std::', 'LiteMath::' are removed in VisitDeclRefExpr_Impl
     //
     auto pCallee = clang::dyn_cast<clang::DeclRefExpr>(call->getCallee()->IgnoreParenImpCasts());
@@ -435,8 +544,22 @@ bool kslicer::ISPCRewriter::VisitUnaryOperator_Impl(clang::UnaryOperator* expr)
       MarkRewritten(expr);
     }
   }
-  
-  return true; 
+
+  // '*a_x' ==> 'a_x' for reference parameter, 'f(&local)' ==> 'f(local)' (see IsReferenceParam)
+  //
+  if(WasNotRewrittenYet(expr))
+  {
+    const clang::Expr* subExpr = expr->getSubExpr()->IgnoreParenImpCasts();
+    auto pRef = clang::dyn_cast<clang::DeclRefExpr>(subExpr);
+    const bool derefOfRef = (expr->getOpcode() == clang::UO_Deref) && pRef != nullptr && IsReferenceParam(pRef->getDecl());
+    if(derefOfRef || IsAddressOfLocalForCall(expr))
+    {
+      ReplaceText(expr->getSourceRange(), RecursiveRewrite(expr->getSubExpr()));
+      MarkRewritten(expr);
+    }
+  }
+
+  return true;
 }
 
 bool kslicer::ISPCRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr) 
@@ -609,6 +732,18 @@ bool kslicer::ISPCRewriter::VisitBinaryOperator_Impl(clang::BinaryOperator* expr
 bool  kslicer::ISPCRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr) 
 {
   RemoveLiteNamespaceQualifier(expr); // ISPC has no namespaces: 'std::pow' and 'LiteMath::dot' are 'pow' and 'dot'
+
+  // C math functions: 'fabs(x)' ==> 'abs(x)', 'sqrtf(x)' ==> 'sqrt(x)', ...
+  //
+  static const kslicer::umap<std::string, std::string> cMathFunctions = { {"fabs", "abs"}, {"fabsf", "abs"}, {"fmin", "min"}, {"fminf", "min"},
+    {"fmax", "max"}, {"fmaxf", "max"}, {"sqrtf", "sqrt"}, {"powf", "pow"}, {"expf", "exp"}, {"logf", "log"}, {"sinf", "sin"}, {"cosf", "cos"},
+    {"tanf", "tan"}, {"asinf", "asin"}, {"acosf", "acos"}, {"atanf", "atan"}, {"atan2f", "atan2"}, {"floorf", "floor"}, {"ceilf", "ceil"} };
+  if(auto pFunc = clang::dyn_cast<clang::FunctionDecl>(expr->getDecl()); pFunc != nullptr && !clang::isa<clang::CXXMethodDecl>(pFunc))
+  {
+    auto pReplace = cMathFunctions.find(pFunc->getNameAsString());
+    if(pReplace != cMathFunctions.end() && !IsUserFunction(pFunc))
+      m_rewriter.ReplaceText(clang::SourceRange(expr->getLocation(), expr->getLocation()), pReplace->second);
+  }
   if(m_kernelMode)
   { 
 
@@ -836,6 +971,15 @@ std::string kslicer::ISPCCompiler::RewriteBEBlockFunction(const clang::CallExpr*
   return out.str();
 }
 
+// RTV wavefront: payload of control function is stored for a chunk of threads, 'kgen_i' is index of thread in its chunk
+//
+std::string kslicer::ISPCCompiler::RTVGetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::ArgFinal>& threadIds)
+{
+  if(a_funcInfo.pattern == kslicer::PATTERN_TP::PATTERN_RTV)
+    return "kgen_i";
+  return ClspvCompiler::RTVGetFakeOffsetExpression(a_funcInfo, threadIds);
+}
+
 std::string kslicer::ISPCCompiler::BuildCommand(const std::string& a_inputFile) const
 {
   return std::string("ispc ") + a_inputFile + " --target=" + m_target + " -O2 --pic "; // position independent code: executables are PIE by default
@@ -852,8 +996,28 @@ void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
 
   // LiteMath::half is 'class half_float::half' in canonical types of arguments, in ISPC it is 'half' (typedef of 'float16')
   //
+  std::set<std::string> paddedBuffers;
   for(auto& kernel : a_kernelsJson["Kernels"])
   {
+    // RTV wavefront: thread id is computed by kernel for its chunk of threads, thread flags are passed separately
+    //
+    const bool isWaveRTV = kernel["IsRTV"].get<bool>() && !kernel["IsMega"].get<bool>();
+    for(auto& arg : kernel["Args"])
+      arg["SkipISPC"] = arg["IsThreadFlags"].get<bool>() || (isWaveRTV && arg["IsThreadId"].get<bool>());
+
+    // member buffers of 'float2', 'uint3', ...: ISPC 2- and 3-component vectors take 16 bytes, the host passes padded copies
+    //
+    static const std::set<std::string> shortVectors = {"float2", "float3", "int2", "int3", "uint2", "uint3"};
+    for(auto& arg : kernel["Args"])
+    {
+      std::string type = arg.contains("Type") && arg["Type"].is_string() ? arg["Type"].get<std::string>() : std::string("");
+      ReplaceFirst(type, "const ", "");
+      const bool padded = arg["IsMember"].get<bool>() && arg["IsPointer"].get<bool>() && !kernel["IsGraphics"].get<bool>() && shortVectors.count(type) != 0;
+      arg["PaddedISPC"] = padded;
+      if(padded)
+        paddedBuffers.insert(arg["Name"].get<std::string>());
+    }
+
     for(auto& arg : kernel["Args"])
     {
       if(!arg.contains("Type") || !arg["Type"].is_string())
@@ -909,7 +1073,78 @@ void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     const std::string name = mainFunc["Name"];
     const std::string decl = mainFunc["DeclOrig"];
     mainFunc["DeclBE"] = name + "_BE" + decl.substr(name.size());
+
+    // RTV wavefront: payload (local variables of control function) is stored in arrays for a chunk of threads
+    //
+    mainFunc["IsWaveISPC"]    = false;
+    mainFunc["PayloadISPC"]   = std::vector<nlohmann::json>();
+    mainFunc["ThreadIdsISPC"] = std::vector<std::string>();
+    for(const auto& cf : a_codeInfo->mainFunc)
+    {
+      if(cf.Name != name || cf.pattern != kslicer::PATTERN_TP::PATTERN_RTV)
+        continue;
+      for(const auto& var : cf.InOuts)
+        if(var.isThreadId)
+          mainFunc["ThreadIdsISPC"].push_back(var.name);
+      if(a_codeInfo->megakernelRTV)
+        break;
+      mainFunc["IsWaveISPC"] = true;
+      for(const auto& var : cf.Locals)
+      {
+        if(var.second.name == "threadFlags")
+          continue;
+        nlohmann::json local;
+        local["Name"]     = var.second.name;
+        local["TypeISPC"] = a_codeInfo->pShaderFuncRewriter->RewriteStdVectorTypeStr(kslicer::CleanTypeName(var.second.type));
+        mainFunc["PayloadISPC"].push_back(local);
+      }
+    }
   }
+  a_kernelsJson["PaddedBuffersISPC"] = std::vector<std::string>(paddedBuffers.begin(), paddedBuffers.end());
+  a_kernelsJson["WaveChunkISPC"] = m_waveChunk;
+  a_kernelsJson["MegaChunkISPC"] = m_megaChunk;
+  // RTV megakernels ('-megakernel 1'): kernels called by control functions become ISPC functions of one thread;
+  // they are placed in the single ISPC file, so a kernel used by several control functions is written once
+  //
+  std::set<std::string> subkernelDecls;
+  nlohmann::json subkernels = std::vector<nlohmann::json>();
+  for(const auto& kernel : a_kernelsJson["Kernels"])
+  {
+    if(!kernel.contains("Subkernels"))
+      continue;
+    for(const auto& sub : kernel["Subkernels"])
+    {
+      const std::string decl = sub["Decl"];
+      if(subkernelDecls.find(decl) != subkernelDecls.end())
+        continue;
+      subkernelDecls.insert(decl);
+      subkernels.push_back(sub);
+    }
+  }
+  a_kernelsJson["SubkernelsISPC"] = subkernels;
+
+  // copies of functions which get buffers ('ShityFunctions' of kernels): declarations first, then definitions
+  //
+  std::set<std::string> globalPtrFuncsDone;
+  std::vector<std::string> globalPtrFuncDecls, globalPtrFuncs;
+  for(const auto& kernel : a_kernelsJson["Kernels"])
+  {
+    if(!kernel.contains("ShityFunctions"))
+      continue;
+    for(const auto& func : kernel["ShityFunctions"])
+    {
+      const std::string text = func;
+      if(globalPtrFuncsDone.find(text) != globalPtrFuncsDone.end())
+        continue;
+      globalPtrFuncsDone.insert(text);
+      if(text.find("{") == std::string::npos)
+        globalPtrFuncDecls.push_back("static inline " + text);
+      else
+        globalPtrFuncs.push_back("static inline " + text);
+    }
+  }
+  globalPtrFuncDecls.insert(globalPtrFuncDecls.end(), globalPtrFuncs.begin(), globalPtrFuncs.end());
+  a_kernelsJson["GlobalPtrFunctionsISPC"] = globalPtrFuncDecls;
   kslicer::AddGraphicsToISPCJson(a_kernelsJson, *a_codeInfo); // draws of graphics pipeline (LiteRS), see graphics_pipeline.cpp
   a_kernelsJson["MemberBuffersISPC"] = memberBuffers;
   a_kernelsJson["AccelStructsISPC"]  = accelStructs;
@@ -953,6 +1188,9 @@ void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
         build += " -I" + folder.u8string();
     build += " $EMBREE4_FLAGS";
   }
+  const std::filesystem::path liteMathAux = std::filesystem::absolute("apps/LiteMathAux"); // ISPC headers of LiteMath for the generated code (current folder is kslicer root)
+  if(std::filesystem::exists(liteMathAux / "LiteMathISPC.h"))
+    build += " -I" + liteMathAux.u8string();
   buildSH << build.c_str() << " ";
   for(auto folder : ignoreFolders)
     buildSH << "-I" << folder.c_str() << " ";

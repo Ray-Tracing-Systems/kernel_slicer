@@ -13,11 +13,11 @@ public:
                      const float* a_cdata  [[size("a_dataSize")]],
                            float* a_result [[size("a_dataSize")]], unsigned int a_dataSize);
 
-  void kernel1D_Mult(float* a_res, 
+  virtual void kernel1D_Mult(float* a_res, 
                      const float* a_input1, 
                      const float* a_input2, size_t a_dataSize);
 
-  void kernel1D_Add(float* a_res, 
+  virtual void kernel1D_Add(float* a_res, 
                     const float* a_input1, 
                     const float* a_input2, size_t a_dataSize);
 

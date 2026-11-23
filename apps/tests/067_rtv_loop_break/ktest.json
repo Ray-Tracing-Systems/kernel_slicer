@@ -1,6 +1,8 @@
 {
     "variants": [
         {"name": "slang", "backend": "slang", "kmake": "kmake.json", "megakernel": true},
-        {"name": "glsl",  "backend": "glsl",  "kmake": "kmake.json", "megakernel": true}
+        {"name": "glsl",  "backend": "glsl",  "kmake": "kmake.json", "megakernel": true},
+        {"name": "ispc",  "backend": "ispc",  "kmake": "kmake.json", "megakernel": true},
+        {"name": "ispc_small_chunks", "backend": "ispc", "kmake": "kmake.json", "megakernel": true, "options": {"-ispc_wave_chunk": 64, "-ispc_mega_chunk": 7}}
     ]
 }

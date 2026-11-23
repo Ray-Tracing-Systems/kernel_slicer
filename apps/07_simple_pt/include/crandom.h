@@ -6,9 +6,11 @@ using namespace LiteMath;
 #endif
 
 
+struct RandomState { uint x; uint y; }; // not 'uint2': 'RandomGen' is stored in buffer, ISPC 'uint2' takes 16 bytes
+
 typedef struct RandomGenT
 {
-  uint2 state;
+  RandomState state;
 
 } RandomGen;
 

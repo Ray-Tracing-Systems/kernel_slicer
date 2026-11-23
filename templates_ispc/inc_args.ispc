@@ -1,5 +1,5 @@
   {% for Arg in Kernel.Args %}
-  {% if not Arg.IsUBO %} 
+  {% if not Arg.IsUBO and not Arg.SkipISPC %} 
   {% if Arg.IsImage and existsIn(Arg, "ElemISPC") %}
   uniform {{Arg.ElemISPC}} {{Arg.Name}}[],
   {% else if Arg.IsAccelStruct %}
