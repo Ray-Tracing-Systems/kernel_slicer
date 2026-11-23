@@ -24,6 +24,7 @@ std::string kslicer::ISPCRewriter::RewriteStdVectorTypeStr(const std::string& a_
   ReplaceFirst(typeStr, "const ",    "");
   ReplaceFirst(typeStr, m_codeInfo->mainClassName + "::", "");
   ReplaceFirst(typeStr, "struct float4x4", "float4x4");       // small inconvinience in math library
+  ReplaceFirst(typeStr, "class ", "");                        // 'class EyeRayData': ISPC has only structures
   if(typeStr == "_Bool")
     typeStr = "bool";
   if(isConst)
@@ -107,9 +108,18 @@ bool kslicer::ISPCRewriter::IsReferenceParam(const clang::ValueDecl* a_decl) con
   auto pFunc = clang::dyn_cast<clang::FunctionDecl>(pParam->getDeclContext());
   if(pFunc == nullptr || IsGlobalPointerParam(pParam))
     return false;
-  auto pKernel = m_codeInfo->kernels.find(pFunc->getNameAsString()); // kernels get buffers, RTV kernels of megakernel get payload by reference
+  auto pKernel = m_codeInfo->kernels.find(pFunc->getNameAsString()); // kernels get buffers, RTV kernels get payload by reference
   if(pKernel != m_codeInfo->kernels.end())
-    return m_codeInfo->megakernelRTV && pKernel->second.pattern == kslicer::PATTERN_TP::PATTERN_RTV;
+  {
+    if(pKernel->second.pattern != kslicer::PATTERN_TP::PATTERN_RTV)
+      return false;
+    if(m_codeInfo->megakernelRTV)
+      return true;
+    for(const auto& arg : pKernel->second.args) // wavefront: payload, other pointers are buffers
+      if(arg.name == pParam->getNameAsString())
+        return arg.needFakeOffset;
+    return false;
+  }
   const std::string fileName = std::string(m_compiler.getSourceManager().getFilename(pFunc->getSourceRange().getBegin()));
   return !m_codeInfo->IsInExcludedFolder(fileName);
 }
@@ -191,17 +201,6 @@ bool kslicer::ISPCRewriter::VisitCXXMethodDecl_Impl(clang::CXXMethodDecl* fDecl)
 
 bool kslicer::ISPCRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)             
 {
-  if(m_kernelMode)
-  {
-    std::string originalText = kslicer::GetRangeSourceCode(expr->getSourceRange(), m_compiler);
-    std::string rewrittenText;
-    if(NeedToRewriteMemberExpr(expr, rewrittenText))
-    {
-      ReplaceText(expr->getSourceRange(), rewrittenText);
-      MarkRewritten(expr);
-    }
-  }
-
   // 'a_x->y' ==> 'a_x.y' for reference parameter (see IsReferenceParam)
   //
   if(expr->isArrow() && WasNotRewrittenYet(expr))
@@ -213,6 +212,17 @@ bool kslicer::ISPCRewriter::VisitMemberExpr_Impl(clang::MemberExpr* expr)
       const auto posArrow    = text.find("->");
       if(posArrow != std::string::npos)
         ReplaceText(expr->getSourceRange(), RecursiveRewrite(expr->getBase()) + "." + text.substr(posArrow + 2));
+      MarkRewritten(expr);
+      return true;
+    }
+  }
+
+  if(m_kernelMode)
+  {
+    std::string rewrittenText;
+    if(NeedToRewriteMemberExpr(expr, rewrittenText))
+    {
+      ReplaceText(expr->getSourceRange(), rewrittenText);
       MarkRewritten(expr);
     }
   }
@@ -388,11 +398,11 @@ bool kslicer::ISPCRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* 
     return true;
 
   const std::string typeName = ctorDecl->getNameInfo().getName().getAsString();
-  static const kslicer::uset<std::string> vecTypes = {"float2", "float3", "float4", "int2", "int3", "int4", "uint2", "uint3", "uint4"};
+  static const kslicer::uset<std::string> vecTypes = {"float2", "float3", "float4", "int2", "int3", "int4", "uint2", "uint3", "uint4", "complex"};
   if(vecTypes.find(typeName) == vecTypes.end())
     return true;
 
-  const uint32_t vecSize = uint32_t(typeName[typeName.size()-1] - '0');
+  const uint32_t vecSize = (typeName == "complex") ? call->getNumArgs() : uint32_t(typeName[typeName.size()-1] - '0'); // 'complex(re)', 'complex(re, im)'
   std::string text;
   if(call->getNumArgs() == vecSize)
   {
@@ -409,6 +419,16 @@ bool kslicer::ISPCRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* 
     text = "(" + typeName + ")(" + RecursiveRewrite(call->getArg(0)) + ")";
   else
     return true;
+
+  // 'float3 v(a, b, c)' ==> 'float3 v = make_float3(a, b, c)': the range of constructor call starts at the name of variable
+  //
+  auto parents = m_compiler.getASTContext().getParents(*call);
+  if(parents.size() != 0)
+  {
+    auto pVar = parents[0].get<clang::VarDecl>();
+    if(pVar != nullptr && pVar->getInit() != nullptr && pVar->getInit()->IgnoreImplicit() == call && call->getBeginLoc() == pVar->getLocation())
+      text = pVar->getNameAsString() + " = " + text;
+  }
 
   ReplaceText(call->getSourceRange(), text);
   MarkRewritten(call);
@@ -635,6 +655,20 @@ bool kslicer::ISPCRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
     const unsigned loc = decl->getBeginLoc().getRawEncoding(); // 'int a, b;': both declarations start at 'int'
     if(m_uniformDeclLocs->insert(loc).second)
       m_rewriter.InsertTextBefore(decl->getBeginLoc(), "uniform ");
+  }
+
+  // 'auto x = f();' ==> 'MatIdWeightPair x = f();': ISPC has no 'auto'
+  //
+  if(decl->isLocalVarDecl() && decl->getTypeSourceInfo() != nullptr && decl->getType()->getContainedAutoType() != nullptr)
+  {
+    const clang::AutoType* pAuto = decl->getType()->getContainedAutoType();
+    auto autoLoc = decl->getTypeSourceInfo()->getTypeLoc().getContainedAutoTypeLoc();
+    if(pAuto->isDeduced() && !autoLoc.isNull())
+    {
+      const unsigned loc = autoLoc.getBeginLoc().getRawEncoding(); // 'auto a = x, b = y;': both declarations have the same 'auto'
+      if(m_uniformDeclLocs->insert(loc).second)
+        m_rewriter.ReplaceText(autoLoc.getSourceRange(), RewriteStdVectorTypeStr(kslicer::CleanTypeName(pAuto->getDeducedType().getAsString())));
+    }
   }
 
   // ISPC needs a literal for array size, 'float a[TILE*TILE]' ==> 'float a[256]'; size depending on template parameter is a macro, see templates
@@ -1004,12 +1038,13 @@ std::string kslicer::ISPCCompiler::RewriteBEBlockFunction(const clang::CallExpr*
   return out.str();
 }
 
-// RTV wavefront: payload of control function is stored for a chunk of threads, 'kgen_i' is index of thread in its chunk
+// RTV: payload is passed to the code of a thread by reference in both modes, for wavefront the kernel loads and stores
+// elements of payload arrays of its chunk (see 'generated.ispc'), so payload is never accessed with an offset
 //
 std::string kslicer::ISPCCompiler::RTVGetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::ArgFinal>& threadIds)
 {
   if(a_funcInfo.pattern == kslicer::PATTERN_TP::PATTERN_RTV)
-    return "kgen_i";
+    return "";
   return ClspvCompiler::RTVGetFakeOffsetExpression(a_funcInfo, threadIds);
 }
 
@@ -1036,7 +1071,15 @@ void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     //
     const bool isWaveRTV = kernel["IsRTV"].get<bool>() && !kernel["IsMega"].get<bool>();
     for(auto& arg : kernel["Args"])
-      arg["SkipISPC"] = arg["IsThreadFlags"].get<bool>() || (isWaveRTV && arg["IsThreadId"].get<bool>());
+    {
+      arg["SkipISPC"]       = arg["IsThreadFlags"].get<bool>() || (isWaveRTV && arg["IsThreadId"].get<bool>());
+      arg["IsPayloadISPC"]  = isWaveRTV && arg["IsPayload"].get<bool>(); // loaded and stored by kernel, passed to code of a thread by reference
+      std::string type = (arg.contains("Type") && arg["Type"].is_string()) ? arg["Type"].get<std::string>() : std::string("");
+      ReplaceFirst(type, "const ", "");
+      arg["TypeNoConstISPC"] = type;
+      const std::string fullType = (arg.contains("Type") && arg["Type"].is_string()) ? arg["Type"].get<std::string>() : std::string("");
+      arg["HostTypeISPC"]    = arg["IsPointer"].get<bool>() ? std::string("ISPCPtr") : fullType; // parameter of '<Kernel>_Wave' in host code
+    }
 
     // arrays of textures ('std::vector<std::shared_ptr<ICombinedImageSampler>>'): array of LiteTextureDesc, see LiteMathAux/LiteImageISPC.h
     //
@@ -1307,7 +1350,8 @@ std::string kslicer::ISPCCompiler::PrintHeaderDecl(const DeclInClass& a_decl, co
     break;
     case kslicer::DECL_IN_CLASS::DECL_TYPEDEF:
     ReplaceFirst(typeInCL, "LiteMath::", "");
-    result = "typedef " + typeInCL + " " + a_decl.name + ";";
+    if(typeInCL != a_decl.name) // 'typedef LiteMath::float4 float4;' is not needed
+      result = "typedef " + typeInCL + " " + a_decl.name + ";";
     break;
     default:
     break;

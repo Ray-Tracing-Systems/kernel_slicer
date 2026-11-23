@@ -257,6 +257,28 @@ static inline float3 mul3x3x3(float3x3 m, const float3 v)
   return res;
 }
 
+static inline float3 operator*(float3x3 m, float3 v) { return mul3x3x3(m, v); }
+
+static inline float determinant(float3x3 m)
+{
+  return m.row[0].x*(m.row[1].y*m.row[2].z - m.row[1].z*m.row[2].y) - m.row[0].y*(m.row[1].x*m.row[2].z - m.row[1].z*m.row[2].x) + 
+         m.row[0].z*(m.row[1].x*m.row[2].y - m.row[1].y*m.row[2].x);
+}
+
+/// the same formulas as LiteMath::inverse3x3 (element (r,c) is m.row[r].c)
+static inline float3x3 inverse3x3(float3x3 m)
+{
+  const float invDet = 1.0f/determinant(m);
+  const float a = m.row[0].x, b = m.row[0].y, c = m.row[0].z;
+  const float d = m.row[1].x, e = m.row[1].y, f = m.row[1].z;
+  const float g = m.row[2].x, h = m.row[2].y, i = m.row[2].z;
+  float3x3 inv;
+  inv.row[0] = make_float3((e*i - f*h)*invDet, (c*h - b*i)*invDet, (b*f - c*e)*invDet);
+  inv.row[1] = make_float3((f*g - d*i)*invDet, (a*i - c*g)*invDet, (c*d - a*f)*invDet);
+  inv.row[2] = make_float3((d*h - e*g)*invDet, (b*g - a*h)*invDet, (a*e - b*d)*invDet);
+  return inv;
+}
+
 #define constexpr const static
 
 static inline float dot (float4 a, float4 b)  { return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w; }
@@ -318,6 +340,99 @@ static inline uniform float3 reduce_add(float3 v)
   res.y = reduce_add(v.y);
   res.z = reduce_add(v.z);
   return res;
+}
+
+/////////////////////////////////////////////////////////////////////
+/////////////////// component-wise functions of LiteMath ////////////
+/////////////////////////////////////////////////////////////////////
+
+static inline float2 min(float2 a, float2 b) { return make_float2(min(a.x, b.x), min(a.y, b.y)); }
+static inline float3 min(float3 a, float3 b) { return make_float3(min(a.x, b.x), min(a.y, b.y), min(a.z, b.z)); }
+static inline float4 min(float4 a, float4 b) { return make_float4(min(a.x, b.x), min(a.y, b.y), min(a.z, b.z), min(a.w, b.w)); }
+static inline float2 max(float2 a, float2 b) { return make_float2(max(a.x, b.x), max(a.y, b.y)); }
+static inline float3 max(float3 a, float3 b) { return make_float3(max(a.x, b.x), max(a.y, b.y), max(a.z, b.z)); }
+static inline float4 max(float4 a, float4 b) { return make_float4(max(a.x, b.x), max(a.y, b.y), max(a.z, b.z), max(a.w, b.w)); }
+static inline float2 abs(float2 a) { return make_float2(abs(a.x), abs(a.y)); }
+static inline float3 abs(float3 a) { return make_float3(abs(a.x), abs(a.y), abs(a.z)); }
+static inline float4 abs(float4 a) { return make_float4(abs(a.x), abs(a.y), abs(a.z), abs(a.w)); }
+static inline float2 floor(float2 a) { return make_float2(floor(a.x), floor(a.y)); }
+static inline float3 floor(float3 a) { return make_float3(floor(a.x), floor(a.y), floor(a.z)); }
+static inline float4 floor(float4 a) { return make_float4(floor(a.x), floor(a.y), floor(a.z), floor(a.w)); }
+static inline float2 sqrt(float2 a) { return make_float2(sqrt(a.x), sqrt(a.y)); }
+static inline float3 sqrt(float3 a) { return make_float3(sqrt(a.x), sqrt(a.y), sqrt(a.z)); }
+static inline float4 sqrt(float4 a) { return make_float4(sqrt(a.x), sqrt(a.y), sqrt(a.z), sqrt(a.w)); }
+static inline float4 exp(float4 a) { return make_float4(exp(a.x), exp(a.y), exp(a.z), exp(a.w)); }
+static inline float3 exp(float3 a) { return make_float3(exp(a.x), exp(a.y), exp(a.z)); }
+static inline float4 pow(float4 a, float b) { return make_float4(pow(a.x, b), pow(a.y, b), pow(a.z, b), pow(a.w, b)); }
+static inline float3 pow(float3 a, float b) { return make_float3(pow(a.x, b), pow(a.y, b), pow(a.z, b)); }
+static inline float2 clamp(float2 u, float a, float b) { return make_float2(clamp(u.x, a, b), clamp(u.y, a, b)); }
+static inline float3 clamp(float3 u, float a, float b) { return make_float3(clamp(u.x, a, b), clamp(u.y, a, b), clamp(u.z, a, b)); }
+static inline float2 clamp(float2 u, float2 a, float2 b) { return make_float2(clamp(u.x, a.x, b.x), clamp(u.y, a.y, b.y)); }
+static inline float3 clamp(float3 u, float3 a, float3 b) { return make_float3(clamp(u.x, a.x, b.x), clamp(u.y, a.y, b.y), clamp(u.z, a.z, b.z)); }
+static inline float2 lerp(float2 a, float2 b, float t) { return a + t*(b - a); }
+static inline float3 lerp(float3 a, float3 b, float t) { return a + t*(b - a); }
+static inline float  mix(float a, float b, float t)    { return a + t*(b - a); }
+static inline float3 mix(float3 a, float3 b, float t)  { return a + t*(b - a); }
+static inline float4 mix(float4 a, float4 b, float t)  { return a + t*(b - a); }
+static inline float  sign(float x) { return (x > 0.0f) ? 1.0f : ((x < 0.0f) ? -1.0f : 0.0f); }
+static inline float  smoothstep(float edge0, float edge1, float x) { const float t = clamp((x - edge0)/(edge1 - edge0), 0.0f, 1.0f); return t*t*(3.0f - 2.0f*t); }
+static inline float  hmax(float3 a) { return max(a.x, max(a.y, a.z)); }
+static inline float  hmin(float3 a) { return min(a.x, min(a.y, a.z)); }
+static inline float  hmax(float4 a) { return max(max(a.x, a.y), max(a.z, a.w)); }
+static inline float  hmin(float4 a) { return min(min(a.x, a.y), min(a.z, a.w)); }
+static inline float  hmax3(float4 a) { return max(a.x, max(a.y, a.z)); }
+static inline float  hmin3(float4 a) { return min(a.x, min(a.y, a.z)); }
+static inline float3 reflect(float3 dir, float3 normal) { return normal * dot(dir, normal) * (-2.0f) + dir; }
+static inline float4 reflect(float4 dir, float4 normal) { return normal * dot(dir, normal) * (-2.0f) + dir; }
+static inline float3 mul3x3(float4x4 m, float3 v) { return to_float3(m*to_float4(v, 0.0f)); }
+static inline float3 mul4x3(float4x4 m, float3 v) { return to_float3(m*to_float4(v, 1.0f)); }
+static inline float3 operator*(float4x4 m, float3 v) { return mul4x3(m, v); } // as LiteMath::operator*(float4x4, float3)
+static inline float2 to_float2(float4 v) { return make_float2(v.x, v.y); }
+static inline float2 to_float2(float3 v) { return make_float2(v.x, v.y); }
+static inline uint   as_uint(float x)  { return intbits(x); }
+static inline int    as_int(float x)   { return (int)intbits(x); }
+
+/////////////////////////////////////////////////////////////////////
+/////////////////// LiteMath::complex ///////////////////////////////
+/////////////////////////////////////////////////////////////////////
+
+struct complex { float re; float im; };
+
+static inline complex make_complex(float re, float im) { complex res; res.re = re; res.im = im; return res; }
+static inline complex make_complex(float re)           { return make_complex(re, 0.0f); }
+
+static inline complex operator-(complex a)            { return make_complex(-a.re, -a.im); }
+static inline complex operator+(complex a, complex b) { return make_complex(a.re + b.re, a.im + b.im); }
+static inline complex operator-(complex a, complex b) { return make_complex(a.re - b.re, a.im - b.im); }
+static inline complex operator*(complex a, complex b) { return make_complex(a.re*b.re - a.im*b.im, a.re*b.im + a.im*b.re); }
+static inline complex operator/(complex a, complex b)
+{
+  const float scale = 1.0f/(b.re*b.re + b.im*b.im);
+  return make_complex(scale*(a.re*b.re + a.im*b.im), scale*(a.im*b.re - a.re*b.im));
+}
+static inline complex operator+(float a, complex b) { return make_complex(a) + b; } // implicit conversion of C++ 'complex(float)'
+static inline complex operator-(float a, complex b) { return make_complex(a) - b; }
+static inline complex operator*(float a, complex b) { return make_complex(a) * b; }
+static inline complex operator/(float a, complex b) { return make_complex(a) / b; }
+static inline complex operator+(complex a, float b) { return a + make_complex(b); }
+static inline complex operator-(complex a, float b) { return a - make_complex(b); }
+static inline complex operator*(complex a, float b) { return a * make_complex(b); }
+static inline complex operator/(complex a, float b) { return a / make_complex(b); }
+
+static inline float   real(complex z)         { return z.re; }
+static inline float   imag(complex z)         { return z.im; }
+static inline float   complex_norm(complex z) { return z.re*z.re + z.im*z.im; }
+static inline float   complex_abs (complex z) { return sqrt(complex_norm(z)); }
+static inline complex complex_sqrt(complex z)
+{
+  const float n  = complex_abs(z);
+  const float t1 = sqrt(0.5f*(n + abs(z.re)));
+  const float t2 = 0.5f*z.im/t1;
+  if(n == 0.0f)
+    return make_complex(0.0f, 0.0f);
+  if(z.re >= 0.0f)
+    return make_complex(t1, t2);
+  return make_complex(abs(t2), (z.im < 0.0f) ? -t1 : t1); // copysign(t1, z.im)
 }
 
 #endif

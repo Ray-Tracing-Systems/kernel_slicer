@@ -1883,6 +1883,9 @@ int main(int argc, const char **argv)
     json["MainFunctions"]       = jsonCPP["MainFunctions"];
     json["MainInclude"]         = jsonCPP["MainInclude"];
     json["MainRawName"]         = rawname; // 'mainClassFileName' may point to merged '*_temp.cpp' file
+    json["DefinesISPC"]         = std::vector<std::string>(); // 'defines' of config: code of functions is copied with its '#if' blocks
+    for(const auto& def : defines)
+      json["DefinesISPC"].push_back("#define " + def.first + " " + def.second);
   }
   else if(inputCodeInfo.pShaderCC->IsCUDA()) {
     jsonCPP["KernelList"]         = json["Kernels"];

@@ -822,6 +822,8 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       argj["IsPointer"]     = commonArg.isPointer;
       argj["IsThreadId"]    = commonArg.isThreadId;
       argj["IsThreadFlags"] = commonArg.isThreadFlags;
+      argj["IsPayload"]     = commonArg.isPayload;
+      argj["IsPayloadConst"]= commonArg.isPayloadConst;
       argj["IsMember"]      = false;
       argj["IsSingle"]      = false;
       argj["IsConst"]       = commonArg.isConstant;
@@ -1139,6 +1141,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
         argj["IsThreadId"] = false;
       if(!argj.contains("IsThreadFlags"))
         argj["IsThreadFlags"] = false;
+      if(!argj.contains("IsPayload"))
+      {
+        argj["IsPayload"]      = false;
+        argj["IsPayloadConst"] = false;
+      }
     }
     kernelJson["Args"]         = args;
     kernelJson["UseScalarLayout"] = std::any_of(args.begin(), args.end(), [](const json& a) { return a.contains("ScalarLayout") && a["ScalarLayout"].get<bool>(); });

@@ -26,6 +26,7 @@ public:
 protected:
 
   virtual void kernel2D_Run(const int a_width, const int a_height, unsigned int* outData1ui);
+  LiteMath::float4 ReadTexture(int a_id, LiteMath::float2 a_uv) const { return m_textures[a_id]->sample(a_uv); } // array of textures in member function
   
   std::vector< std::shared_ptr<ICombinedImageSampler> > m_textures;
   std::vector< const ICombinedImageSampler* >           m_textures2;

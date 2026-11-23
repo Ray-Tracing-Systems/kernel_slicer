@@ -1,6 +1,9 @@
 /////////////////////////////////////////////////////////////////////
 /////////////////// include files ///////////////////////////////////
 /////////////////////////////////////////////////////////////////////
+{% for Def in DefinesISPC %}
+{{Def}}
+{% endfor %}
 #include "LiteMathISPC.h"
 #include "LiteImageISPC.h"
 {% if HasGraphics %}
@@ -73,7 +76,7 @@ static uniform LiteImageInfo {{Buff.Name}}_info;
 static uniform LiteSamplerInfo {{Sampler}};
 {% endfor %}
 {% for TexArray in TexArraysISPC %}
-static uniform const LiteTextureDesc * uniform {{TexArray}}; // array of textures
+static uniform LiteTextureDesc * uniform {{TexArray}}; // array of textures; no "const" here: ISPC makes the global variable itself constant
 {% endfor %}
 {% for AccName in AccelStructsISPC %}
 static RTCScene {{AccName}}_scene;
@@ -206,7 +209,7 @@ export void {{Kernel.Name}}_Bind_ISPC( // sets class data for member functions, 
   ubo = a_ubo;
   {% for Arg in Kernel.Args %}
   {% if Arg.IsMember and Arg.IsTexArrayISPC %}
-  {{Arg.Name}} = a_{{Arg.Name}};
+  {{Arg.Name}} = (uniform LiteTextureDesc * uniform)a_{{Arg.Name}};
   {% else if Arg.IsMember and Arg.IsImage and existsIn(Arg, "ElemISPC") %}
   {{Arg.Name}} = a_{{Arg.Name}};
   {{Arg.Name}}_info.width  = a_{{Arg.Name}}_info[0];
@@ -247,17 +250,33 @@ export void {{Kernel.Name}}_ISPC(
 }
 
 {% else if Kernel.IsRTV %}
-// RTV kernel for wavefront ('-megakernel 0'): code of one thread; payload of control function is stored in arrays
-// for the current chunk of threads, the element of the thread is 'a_payload[kgen_i]'
+// RTV kernel for wavefront ('-megakernel 0'): code of one thread, payload of control function is passed by reference
 //
-static inline {% if Kernel.IsBoolean %}bool {% else %}void {% endif %}{{Kernel.Name}}_Thread({% for TID in Kernel.ThreadIds %}const uint {{TID.Name}}, {% endfor %}const int kgen_i,
-{% include "inc_args.ispc" %}
+static inline {% if Kernel.IsBoolean %}bool {% else %}void {% endif %}{{Kernel.Name}}_Thread({% for TID in Kernel.ThreadIds %}const uint {{TID.Name}}, {% endfor %}
+  {% for Arg in Kernel.Args %}
+  {% if Arg.IsPayloadISPC %}
+  {{Arg.Type}}& {{Arg.Name}},
+  {% else if not Arg.IsUBO and not Arg.SkipISPC %}
+  {% if Arg.IsTexArrayISPC %}
+  uniform const LiteTextureDesc {{Arg.Name}}[],
+  {% else if Arg.IsImage and existsIn(Arg, "ElemISPC") %}
+  uniform {{Arg.ElemISPC}} {{Arg.Name}}[],
+  {% else if Arg.IsAccelStruct %}
+  void* uniform {{Arg.Name}}_scene, uniform const uint {{Arg.Name}}_geomIdByInst[],
+  {% else if Arg.IsPointer %}
+  uniform {{Arg.Type}} {{Arg.Name}}[],
+  {% else %}
+  uniform {{Arg.Type}} {{Arg.Name}},
+  {% endif %}
+  {% endif %}
+  {% endfor %}
   uniform struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data ubo[1])
 {
 {{Kernel.Source}}
 }
 
-// threads [kgen_start, kgen_end) of the chunk (rows for 2D, of kgen_sizeX threads); finished threads are skipped by thread flags
+// threads [kgen_start, kgen_end) of the chunk (rows for 2D, of kgen_sizeX threads); payload arrays are of the chunk ('kgen_i'),
+// finished threads are skipped by thread flags
 //
 export void {{Kernel.Name}}_ISPC(
 {% include "inc_args.ispc" %}
@@ -275,13 +294,21 @@ export void {{Kernel.Name}}_ISPC(
   {% endif %}
     if((kgen_threadFlags[kgen_i] & kgen_tFlagsMask) != 0)
       continue;
+    {% for Arg in Kernel.Args %}
+    {% if Arg.IsPayloadISPC %}
+    {{Arg.TypeNoConstISPC}} kgen_{{Arg.Name}} = {{Arg.Name}}[kgen_i];
+    {% endif %}
+    {% endfor %}
+    {% if Kernel.IsBoolean %}const bool kgenExitCond = {% endif %}{{Kernel.Name}}_Thread({% for TID in Kernel.ThreadIds %}{{TID.Name}}, {% endfor %}{% for Arg in Kernel.Args %}{% if Arg.IsPayloadISPC %}kgen_{{Arg.Name}}, {% else if not Arg.IsUBO and not Arg.SkipISPC %}{% if Arg.IsAccelStruct %}{{Arg.Name}}_scene, {{Arg.Name}}_geomIdByInst, {% else %}{{Arg.Name}}, {% endif %}{% endif %}{% endfor %}ubo);
+    {% for Arg in Kernel.Args %}
+    {% if Arg.IsPayloadISPC and not Arg.IsPayloadConst %}
+    {{Arg.Name}}[kgen_i] = kgen_{{Arg.Name}};
+    {% endif %}
+    {% endfor %}
     {% if Kernel.IsBoolean %}
-    const bool kgenExitCond = {{Kernel.Name}}_Thread({% for TID in Kernel.ThreadIds %}{{TID.Name}}, {% endfor %}kgen_i, {% include "inc_call_args.ispc" %}ubo);
     const bool exitHappened = ((kgen_tFlagsMask & KGEN_FLAG_SET_EXIT_NEGATIVE) != 0) ? !kgenExitCond : kgenExitCond;
     if((kgen_tFlagsMask & KGEN_FLAG_DONT_SET_EXIT) == 0 && exitHappened)
       kgen_threadFlags[kgen_i] = ((kgen_tFlagsMask & KGEN_FLAG_BREAK) != 0) ? KGEN_FLAG_BREAK : KGEN_FLAG_RETURN;
-    {% else %}
-    {{Kernel.Name}}_Thread({% for TID in Kernel.ThreadIds %}{{TID.Name}}, {% endfor %}kgen_i, {% include "inc_call_args.ispc" %}ubo);
     {% endif %}
   }
 }

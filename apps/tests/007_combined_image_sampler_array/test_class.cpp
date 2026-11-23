@@ -102,7 +102,9 @@ void TestCombinedImage::kernel2D_Run(const int a_width, const int a_height, unsi
       }
       
       float4 color;
-      if(uv.x < 0.75f)
+      if(uv.x < 0.75f && uv.y < 0.5f)
+        color = ReadTexture(n%4, uv);
+      else if(uv.x < 0.75f)
         color = m_textures[n%4]->sample(uv); 
       else
         color = m_textures2[n%4]->sample(uv);

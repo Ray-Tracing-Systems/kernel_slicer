@@ -261,7 +261,7 @@ protected:
   {% if Kernel.IsRTV and not Kernel.IsMega %}
   // RTV kernel for wavefront: all threads of chunk [kgen_start, kgen_end) (rows for 2D), payload arrays of the chunk
   //
-  void {{Kernel.Name}}_Wave(int kgen_start, int kgen_end, int kgen_sizeX, uint32_t* kgen_threadFlags, uint32_t kgen_tFlagsMask{% for Arg in Kernel.Args %}{% if not Arg.IsUBO and not Arg.IsMember and not Arg.SkipISPC %}, {% if Arg.IsPointer %}ISPCPtr {% else %}{{Arg.Type}} {% endif %}{{Arg.Name}}{% endif %}{% endfor %})
+  void {{Kernel.Name}}_Wave(int kgen_start, int kgen_end, int kgen_sizeX, uint32_t* kgen_threadFlags, uint32_t kgen_tFlagsMask{% for Arg in Kernel.Args %}{% if not Arg.IsUBO and not Arg.IsMember and not Arg.SkipISPC %}, {{Arg.HostTypeISPC}} {{Arg.Name}}{% endif %}{% endfor %})
   {
     {% for Arg in Kernel.Args %}
     {% if Arg.IsAccelStruct %}

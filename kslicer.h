@@ -488,6 +488,8 @@ namespace kslicer
     bool        isDefinedInClass = false;
     bool        isThreadFlags    = false;
     bool        isThreadId       = false;
+    bool        isPayload        = false; ///<! RTV: local variable of control function passed by pointer to kernel
+    bool        isPayloadConst   = false;
     bool        isImage          = false;
     bool        isSampler        = false;
     bool        isPointer        = false;
