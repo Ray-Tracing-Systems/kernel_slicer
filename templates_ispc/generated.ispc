@@ -72,6 +72,9 @@ static uniform LiteImageInfo {{Buff.Name}}_info;
 {% for Sampler in SamplersISPC %}
 static uniform LiteSamplerInfo {{Sampler}};
 {% endfor %}
+{% for TexArray in TexArraysISPC %}
+static uniform const LiteTextureDesc * uniform {{TexArray}}; // array of textures
+{% endfor %}
 {% for AccName in AccelStructsISPC %}
 static RTCScene {{AccName}}_scene;
 static uniform uint * uniform {{AccName}}_geomIdByInst; // no "const" here: ISPC makes the global variable itself constant
@@ -202,7 +205,9 @@ export void {{Kernel.Name}}_Bind_ISPC( // sets class data for member functions, 
 {
   ubo = a_ubo;
   {% for Arg in Kernel.Args %}
-  {% if Arg.IsMember and Arg.IsImage and existsIn(Arg, "ElemISPC") %}
+  {% if Arg.IsMember and Arg.IsTexArrayISPC %}
+  {{Arg.Name}} = a_{{Arg.Name}};
+  {% else if Arg.IsMember and Arg.IsImage and existsIn(Arg, "ElemISPC") %}
   {{Arg.Name}} = a_{{Arg.Name}};
   {{Arg.Name}}_info.width  = a_{{Arg.Name}}_info[0];
   {{Arg.Name}}_info.height = a_{{Arg.Name}}_info[1];

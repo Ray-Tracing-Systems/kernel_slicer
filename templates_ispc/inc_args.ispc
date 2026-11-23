@@ -1,6 +1,8 @@
   {% for Arg in Kernel.Args %}
   {% if not Arg.IsUBO and not Arg.SkipISPC %} 
-  {% if Arg.IsImage and existsIn(Arg, "ElemISPC") %}
+  {% if Arg.IsTexArrayISPC %}
+  uniform const LiteTextureDesc {{Arg.Name}}[],
+  {% else if Arg.IsImage and existsIn(Arg, "ElemISPC") %}
   uniform {{Arg.ElemISPC}} {{Arg.Name}}[],
   {% else if Arg.IsAccelStruct %}
   void* uniform {{Arg.Name}}_scene, uniform const uint {{Arg.Name}}_geomIdByInst[],

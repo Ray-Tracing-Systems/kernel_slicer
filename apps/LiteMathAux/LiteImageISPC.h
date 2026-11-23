@@ -158,3 +158,70 @@ static inline float4 LiteImageSample_float4(uniform const float4 a_data[], unifo
   }
   return a_data[LiteImageNearest(a_info, a_sampler, a_uv)];
 }
+
+/// Image2D<float>::sample: one channel is returned in all four
+static inline float4 LiteImageSample_float(uniform const float a_data[], uniform const LiteImageInfo& a_info, uniform const LiteSamplerInfo& a_sampler, float2 a_uv)
+{
+  float res;
+  if(a_sampler.filter == LITE_IMAGE_FILTER_LINEAR)
+  {
+    int offs[4]; float w[4];
+    LiteImageBilinear(a_info, a_sampler, a_uv, offs, w);
+    res = a_data[offs[0]]*w[0] + a_data[offs[1]]*w[1] + a_data[offs[2]]*w[2] + a_data[offs[3]]*w[3];
+  }
+  else
+    res = a_data[LiteImageNearest(a_info, a_sampler, a_uv)];
+  return make_float4(res, res, res, res);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Array of textures 'std::vector<std::shared_ptr<ICombinedImageSampler>> m_textures' (or of 'const ICombinedImageSampler*'):
+// the host passes a description of every texture (LiteTextureDesc), 
+//   m_textures[id]->sample(uv) ==> LiteTexArraySample(m_textures, id, uv)
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#define LITE_TEX_FORMAT_RGBA8   0 ///< Image2D<uint32_t>
+#define LITE_TEX_FORMAT_FLOAT4  1 ///< Image2D<float4>
+#define LITE_TEX_FORMAT_FLOAT   2 ///< Image2D<float>
+#define LITE_TEX_FORMAT_UNKNOWN 3 ///< other formats are not supported, sample returns (1,0,1,1)
+
+struct LiteTextureDesc ///< data, size, texel format (LITE_TEX_FORMAT_*) and sampler of ICombinedImageSampler
+{
+  void*  data;
+  uint32 width;
+  uint32 height;
+  uint32 pitch;
+  uint32 layout;
+  uint32 format;
+  uint32 addressU;
+  uint32 addressV;
+  uint32 filter;
+};
+
+static inline float4 LiteTexArraySample(uniform const LiteTextureDesc a_textures[], int a_id, float2 a_uv)
+{
+  float4 res = make_float4(1.0f, 0.0f, 1.0f, 1.0f);
+  foreach_unique(id in a_id) // lanes with the same texture are processed together
+  {
+    uniform LiteImageInfo info;
+    info.width  = a_textures[id].width;
+    info.height = a_textures[id].height;
+    info.pitch  = a_textures[id].pitch;
+    info.layout = a_textures[id].layout;
+    uniform LiteSamplerInfo sampler;
+    sampler.addressU = a_textures[id].addressU;
+    sampler.addressV = a_textures[id].addressV;
+    sampler.filter   = a_textures[id].filter;
+    sampler.dummy    = 0;
+    const uniform uint32 format = a_textures[id].format;
+    if(format == LITE_TEX_FORMAT_RGBA8)
+      res = LiteImageSample_uint((uniform const uint32 * uniform)a_textures[id].data, info, sampler, a_uv);
+    else if(format == LITE_TEX_FORMAT_FLOAT4)
+      res = LiteImageSample_float4((uniform const float4 * uniform)a_textures[id].data, info, sampler, a_uv);
+    else if(format == LITE_TEX_FORMAT_FLOAT)
+      res = LiteImageSample_float((uniform const float * uniform)a_textures[id].data, info, sampler, a_uv);
+  }
+  return res;
+}
+
+static inline float4 LiteTexArraySample(uniform const LiteTextureDesc a_textures[], uint a_id, float2 a_uv) { return LiteTexArraySample(a_textures, (int)a_id, a_uv); }

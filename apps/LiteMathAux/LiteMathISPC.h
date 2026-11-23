@@ -264,6 +264,9 @@ static inline float dot3(float4 a, float4 b)  { return a.x*b.x + a.y*b.y + a.z*b
 static inline float dot4(float4 a, float4 b)  { return dot(a,b); } 
 static inline float dot (float3 a, float3 b)  { return a.x*b.x + a.y*b.y + a.z*b.z; }
 
+static inline float dot (float2 a, float2 b)  { return a.x*b.x + a.y*b.y; }
+static inline float  length(float2 a) { return sqrt(dot(a,a)); }
+static inline float2 normalize(float2 a) { float lenInv = 1.0f/length(a); return a*lenInv; }
 static inline float  length(float3 a) { return sqrt(dot(a,a)); }
 static inline float3 normalize(float3 a) { float lenInv = 1.0f/length(a); return a*lenInv; }
 static inline float  length(float4 a) { return sqrt(dot(a,a)); }

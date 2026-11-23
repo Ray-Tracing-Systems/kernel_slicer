@@ -111,7 +111,9 @@ Headers of `include/` written in C++ need `-ispc_process_include 1`.
 ³ 022 and 070 work, 053 (`as_half`/`bit_cast`) fails to compile.
 ⁸ ISPC: `Image2D` members of the class (`m_img[int2]` read and write, `sample` of `Image2D<uint32_t>` and
 `Image2D<float4>` with a `Sampler` member, LINEAR, TILED4x4 and TILED4x4_BINS layouts, `apps/LiteMathAux/LiteImageISPC.h`): app 31,
-app 33. Images as kernel arguments and `ITexture2D` are not supported.
+app 33. Arrays of textures `std::vector<std::shared_ptr<ICombinedImageSampler>>` (and of `const ICombinedImageSampler*`):
+`m_textures[id]->sample(uv)` for `Image2D<uint32_t>`, `Image2D<float4>`, `Image2D<float>` of LINEAR layout: 007. Images as
+kernel arguments and `ITexture2D` are not supported.
 
 ### Graphics pipeline
 

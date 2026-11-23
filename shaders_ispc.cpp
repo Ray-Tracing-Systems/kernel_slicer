@@ -231,8 +231,41 @@ static std::string ImageMemberName(const clang::Expr* a_expr)
   return "";
 }
 
+/// 'm_textures[id]' of 'm_textures[id]->sample(uv)' for vector of 'std::shared_ptr<ICombinedImageSampler>' or 'const ICombinedImageSampler*',
+/// returns name of member ('m_textures') and index expression
+static std::string TextureArrayElement(const clang::Expr* a_object, const clang::Expr** a_pIndex)
+{
+  const clang::Expr* expr = a_object->IgnoreParenImpCasts();
+  if(auto pArrow = clang::dyn_cast<clang::CXXOperatorCallExpr>(expr); pArrow != nullptr && pArrow->getOperator() == clang::OO_Arrow) // 'shared_ptr::operator->'
+    expr = pArrow->getArg(0)->IgnoreParenImpCasts();
+  auto pSubscr = clang::dyn_cast<clang::CXXOperatorCallExpr>(expr);
+  if(pSubscr == nullptr || pSubscr->getOperator() != clang::OO_Subscript)
+    return "";
+  auto pMember = clang::dyn_cast<clang::MemberExpr>(pSubscr->getArg(0)->IgnoreParenImpCasts());
+  if(pMember == nullptr)
+    return "";
+  (*a_pIndex) = pSubscr->getArg(1);
+  return pMember->getMemberDecl()->getNameAsString();
+}
+
 bool kslicer::ISPCRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr* f)
 {
+  // 'm_textures[id]->sample(uv)' ==> 'LiteTexArraySample(m_textures, id, uv)', see LiteMathAux/LiteImageISPC.h
+  //
+  if(f->getMethodDecl() != nullptr && f->getMethodDecl()->getNameAsString() == "sample" && f->getNumArgs() == 1 && WasNotRewrittenYet(f) &&
+     f->getMethodDecl()->getParent()->getNameAsString() == "ICombinedImageSampler")
+  {
+    const clang::Expr* pIndex = nullptr;
+    const std::string arrayName = TextureArrayElement(f->getImplicitObjectArgument(), &pIndex);
+    auto pMember = m_codeInfo->allDataMembers.find(arrayName);
+    if(arrayName != "" && pMember != m_codeInfo->allDataMembers.end())
+    {
+      ReplaceText(f->getSourceRange(), "LiteTexArraySample(" + arrayName + ", " + RecursiveRewrite(pIndex) + ", " + RecursiveRewrite(f->getArg(0)) + ")");
+      MarkRewritten(f);
+      return true;
+    }
+  }
+
   // 'm_img.sample(m_sampler, uv)' ==> 'LiteImageSample_<T>(m_img, m_img_info, m_sampler, uv)', see LiteMathAux/LiteImageISPC.h
   //
   if(f->getMethodDecl() != nullptr && f->getMethodDecl()->getNameAsString() == "sample" && f->getNumArgs() == 2 && WasNotRewrittenYet(f))
@@ -996,7 +1029,7 @@ void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
 
   // LiteMath::half is 'class half_float::half' in canonical types of arguments, in ISPC it is 'half' (typedef of 'float16')
   //
-  std::set<std::string> paddedBuffers;
+  std::set<std::string> paddedBuffers, texArrays;
   for(auto& kernel : a_kernelsJson["Kernels"])
   {
     // RTV wavefront: thread id is computed by kernel for its chunk of threads, thread flags are passed separately
@@ -1004,6 +1037,21 @@ void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     const bool isWaveRTV = kernel["IsRTV"].get<bool>() && !kernel["IsMega"].get<bool>();
     for(auto& arg : kernel["Args"])
       arg["SkipISPC"] = arg["IsThreadFlags"].get<bool>() || (isWaveRTV && arg["IsThreadId"].get<bool>());
+
+    // arrays of textures ('std::vector<std::shared_ptr<ICombinedImageSampler>>'): array of LiteTextureDesc, see LiteMathAux/LiteImageISPC.h
+    //
+    for(auto& arg : kernel["Args"])
+    {
+      const bool texArray = arg.contains("IsImageArray") && arg["IsImageArray"].get<bool>() && arg["IsMember"].get<bool>();
+      arg["IsTexArrayISPC"] = texArray;
+      if(texArray)
+      {
+        std::string name = arg["Name"];
+        ReplaceFirst(name, "[]", "");
+        arg["Name"] = name;
+        texArrays.insert(name);
+      }
+    }
 
     // member buffers of 'float2', 'uint3', ...: ISPC 2- and 3-component vectors take 16 bytes, the host passes padded copies
     //
@@ -1101,6 +1149,7 @@ void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     }
   }
   a_kernelsJson["PaddedBuffersISPC"] = std::vector<std::string>(paddedBuffers.begin(), paddedBuffers.end());
+  a_kernelsJson["TexArraysISPC"]     = std::vector<std::string>(texArrays.begin(), texArrays.end());
   a_kernelsJson["WaveChunkISPC"] = m_waveChunk;
   a_kernelsJson["MegaChunkISPC"] = m_megaChunk;
   // RTV megakernels ('-megakernel 1'): kernels called by control functions become ISPC functions of one thread;

@@ -70,6 +70,35 @@ static inline void ISPCUnpadFrom16(const std::vector< std::array<uint32_t,4> >& 
     std::memcpy(&a_data[i], a_padded[i].data(), N*sizeof(uint32_t));
 }
 
+/// descriptions of textures of 'std::vector<std::shared_ptr<ICombinedImageSampler>>' or 'std::vector<const ICombinedImageSampler*>' for ISPC
+template<typename Vector, typename Desc>
+static inline void ISPCTextureDescs(const Vector& a_textures, std::vector<Desc>& a_descs) // 'Desc' is 'ispc::LiteTextureDesc'
+{
+  a_descs.resize(a_textures.size());
+  for(size_t i = 0; i < a_textures.size(); i++)
+  {
+    const auto* pTex = &(*a_textures[i]); // ICombinedImageSampler
+    const auto sampler = pTex->sampler();
+    Desc desc = {};
+    desc.data     = const_cast<void*>(pTex->data());
+    desc.width    = pTex->width();
+    desc.height   = pTex->height();
+    desc.pitch    = pTex->width(); // LINEAR layout
+    desc.layout   = 0;
+    switch(pTex->format())
+    {
+      case 37: case 43: desc.format = 0; break; // VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_R8G8B8A8_SRGB: Image2D<uint32_t>
+      case 109:         desc.format = 1; break; // VK_FORMAT_R32G32B32A32_SFLOAT: Image2D<float4>
+      case 100:         desc.format = 2; break; // VK_FORMAT_R32_SFLOAT: Image2D<float>
+      default:          desc.format = 3; break;
+    };
+    desc.addressU = uint32_t(sampler.addressU);
+    desc.addressV = uint32_t(sampler.addressV);
+    desc.filter   = uint32_t(sampler.filter);
+    a_descs[i]    = desc;
+  }
+}
+
 template<typename S>
 static inline std::array<uint32_t,4> ISPCSamplerInfo(const S& a_sampler) { return { uint32_t(a_sampler.addressU), uint32_t(a_sampler.addressV), uint32_t(a_sampler.filter), 0u }; }
 {% if UseAccelStruct %}
@@ -333,6 +362,9 @@ protected:
 
   {% endif %}
   {% endfor %}
+  {% for TexArray in TexArraysISPC %}
+  std::vector<ispc::LiteTextureDesc> m_texDesc_{{TexArray}}; // textures of '{{TexArray}}' for ISPC
+  {% endfor %}
   {% for Buff in PaddedBuffersISPC %}
   std::vector< std::array<uint32_t,4> > m_padded_{{Buff}}; // copy of '{{Buff}}' with elements of 16 bytes, as ISPC 2- and 3-component vectors
   {% endfor %}
@@ -345,6 +377,9 @@ void {{MainClassName}}_ISPC::UpdatePlainMembers()
   const size_t maxAllowedSize = std::numeric_limits<uint32_t>::max();
   {% for Buff in PaddedBuffersISPC %}
   ISPCPadTo16({{Buff}}, m_padded_{{Buff}});
+  {% endfor %}
+  {% for TexArray in TexArraysISPC %}
+  ISPCTextureDescs({{TexArray}}, m_texDesc_{{TexArray}});
   {% endfor %}
 ## for Var in ClassVars
   {% if Var.IsArray %}

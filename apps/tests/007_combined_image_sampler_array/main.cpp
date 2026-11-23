@@ -10,6 +10,9 @@
 #include "vk_context.h"
 std::shared_ptr<TestCombinedImage> CreateTestCombinedImage_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
 vk_utils::VulkanDeviceFeatures TestCombinedImage_Generated_ListRequiredDeviceFeatures();
+#ifdef USE_ISPC
+std::shared_ptr<TestCombinedImage> CreateTestCombinedImage_ISPC();
+#endif
 
 int main(int argc, const char** argv)
 {
@@ -24,7 +27,8 @@ int main(int argc, const char** argv)
   std::vector<uint32_t> color(width*height);
  
   ArgParser args(argc, argv);
-  bool onGPU = args.hasOption("--gpu");
+  bool onGPU  = args.hasOption("--gpu");
+  bool onISPC = args.hasOption("--ispc");
 
   std::shared_ptr<TestCombinedImage> pImpl = nullptr;
   if(onGPU)
@@ -34,6 +38,10 @@ int main(int argc, const char** argv)
     auto ctx            = vk_utils::globalContextInit(deviceFeatures, enableValidationLayers, a_preferredDeviceId);
     pImpl = CreateTestCombinedImage_Generated(ctx, width*height);
   }
+  #ifdef USE_ISPC
+  else if(onISPC)
+    pImpl = CreateTestCombinedImage_ISPC();
+  #endif
   else
     pImpl = std::make_shared<TestCombinedImage>();
 
@@ -43,6 +51,8 @@ int main(int argc, const char** argv)
 
   if(onGPU)
     LiteImage::SaveBMP("zout_gpu.bmp", color.data(), width, height);  
+  else if(onISPC)
+    LiteImage::SaveBMP("zout_ispc.bmp", color.data(), width, height);  
   else
     LiteImage::SaveBMP("zout_cpu.bmp", color.data(), width, height);  
   
