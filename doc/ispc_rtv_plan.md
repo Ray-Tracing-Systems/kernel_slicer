@@ -51,7 +51,9 @@ HydraCore3 (`b6b16ec` on `occupancy_test`):
 
 ## Next steps
 
-1. Check that all 8 references are rendered (the log has `rc=0` for every scene and integrator).
+1. Check that the 4 PT references are rendered (`rc=0` in the log). RTAO references failed on GPU: 4096 spp is too
+   many for the Sobol AO tile ("Sobol AO tile did not contain the requested samples for every pixel"); render them
+   with fewer spp (for example 256 or 1024, AO converges fast) by changing the script for `rtao`.
 2. Tune chunk sizes on one or two scenes: `-ispc_wave_chunk` 1024 / 4096 / 16384, `-ispc_mega_chunk` 64 / 256 / 1024
    (set in `kmake_*_ispc.json` or on kslicer command line), keep the best for each mode and write them to the report.
 3. Measurement script in Hydra (for example `testing/run_ispc_bench.py`): 4 scenes x {mispt, rtao} x {mega, wave},
