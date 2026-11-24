@@ -71,6 +71,7 @@ namespace kslicer
     bool                     indexed   = false;
     bool                     instanced = false;
     std::string              indexBuffer;
+    const void*              indexOffset = nullptr; ///<! clang::Expr* of offset in index buffer: 'm_indices.data() + offset', '&m_indices[offset]'
     std::vector<const void*> countAndArgs;  ///<! clang::Expr* of vertex/index count, [instance count,] additional vertex shader arguments
   };
 
@@ -116,8 +117,8 @@ namespace kslicer
   /// finds render targets of all LiteRS::Pipeline members in all functions of the main class
   void        ProcessGraphicsPipelines(MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler);
 
-  /// finds LiteRS commands in control function, marks used shaders and registers draws
-  void        ProcessGraphicsCommands(MainFuncInfo& a_mainFunc, MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler);
+  /// finds LiteRS commands in control function, marks used shaders and registers draws; returns false if some command is invalid
+  bool        ProcessGraphicsCommands(MainFuncInfo& a_mainFunc, MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler);
 
   /// removes arguments of shaders which are not passed by host (vertex id, varyings) after arguments are processed
   void        PrepareGraphicsKernel(KernelInfo& a_kernel);

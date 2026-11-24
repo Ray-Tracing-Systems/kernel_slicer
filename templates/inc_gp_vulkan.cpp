@@ -564,7 +564,7 @@ void {{MainClassName}}{{MainClassSuffix}}::GPUpdateIndirectCmd(VkCommandBuffer a
 {% endif %}
 {% for Draw in GPDraws %}
 
-void {{MainClassName}}{{MainClassSuffix}}::{{Draw.Name}}Cmd(VkCommandBuffer a_commandBuffer, VkDescriptorSet a_dsVS, VkDescriptorSet a_dsPS, {% if Draw.Indexed %}VkBuffer a_indexBuffer, {% endif %}uint32_t a_count{% if Draw.Instanced %}, uint32_t a_instNum{% endif %}, uint32_t a_indirectId{% for Arg in Draw.UserArgs %}, {{Arg.Type}} {{Arg.Name}}{% endfor %})
+void {{MainClassName}}{{MainClassSuffix}}::{{Draw.Name}}Cmd(VkCommandBuffer a_commandBuffer, VkDescriptorSet a_dsVS, VkDescriptorSet a_dsPS, {% if Draw.Indexed %}VkBuffer a_indexBuffer, VkDeviceSize a_indexOffset, {% endif %}uint32_t a_count{% if Draw.Instanced %}, uint32_t a_instNum{% endif %}, uint32_t a_indirectId{% for Arg in Draw.UserArgs %}, {{Arg.Type}} {{Arg.Name}}{% endfor %})
 {
   const LiteRS::Pipeline& state = {{Draw.Pipeline}};
 
@@ -657,7 +657,7 @@ void {{MainClassName}}{{MainClassSuffix}}::{{Draw.Name}}Cmd(VkCommandBuffer a_co
   vkCmdPushConstants(a_commandBuffer, {{Draw.Name}}Layout, VK_SHADER_STAGE_VERTEX_BIT, 0, uint32_t(sizeof(pcData)), &pcData);
 
   {% if Draw.Indexed %}
-  vkCmdBindIndexBuffer(a_commandBuffer, a_indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+  vkCmdBindIndexBuffer(a_commandBuffer, a_indexBuffer, a_indexOffset, VK_INDEX_TYPE_UINT32);
   {% if HasGPIndirect %}
   if(a_indirectId != GP_DIRECT_DRAW) // counts were written to m_gpIndirectBuffer by GPUpdateIndirectCmd
     vkCmdDrawIndexedIndirect(a_commandBuffer, m_gpIndirectBuffer, VkDeviceSize(a_indirectId)*8*sizeof(uint32_t), 1, 0);

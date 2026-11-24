@@ -21,7 +21,7 @@
   };
   VkPipelineLayout {{Draw.Name}}Layout   = VK_NULL_HANDLE;
   VkPipeline       {{Draw.Name}}Pipeline = VK_NULL_HANDLE;
-  virtual void {{Draw.Name}}Cmd(VkCommandBuffer a_commandBuffer, VkDescriptorSet a_dsVS, VkDescriptorSet a_dsPS, {% if Draw.Indexed %}VkBuffer a_indexBuffer, {% endif %}uint32_t a_count{% if Draw.Instanced %}, uint32_t a_instNum{% endif %}, uint32_t a_indirectId{% for Arg in Draw.UserArgs %}, {{Arg.Type}} {{Arg.Name}}{% endfor %});
+  virtual void {{Draw.Name}}Cmd(VkCommandBuffer a_commandBuffer, VkDescriptorSet a_dsVS, VkDescriptorSet a_dsPS, {% if Draw.Indexed %}VkBuffer a_indexBuffer, VkDeviceSize a_indexOffset, {% endif %}uint32_t a_count{% if Draw.Instanced %}, uint32_t a_instNum{% endif %}, uint32_t a_indirectId{% for Arg in Draw.UserArgs %}, {{Arg.Type}} {{Arg.Name}}{% endfor %});
   {% endfor %}
   static constexpr uint32_t GP_DIRECT_DRAW = 0xFFFFFFFF; ///< 'a_indirectId' of draws with counts known on host
   {% if HasGPIndirect %}

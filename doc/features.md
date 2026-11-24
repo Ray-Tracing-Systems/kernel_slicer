@@ -124,11 +124,12 @@ rasterization of 4x4 blocks in ISPC, triangle setup and binning in C++ (`LiteRS:
 | ID | Feature | Slang | GLSL | CUDA/HIP | ISPC | Tests and samples |
 |----|---------|:-----:|:----:|:--------:|:----:|-------------------|
 | `gp_draw` | `LiteRS::DrawTriangles` with VS and PS, render targets, depth test, `LiteRS::Clear` | ✅ | ✅ | ❌ | ✅ | 080, 081, app 32, app 34 |
-| `gp_indexed` | `LiteRS::DrawIndexedTriangles` (index buffer is a member vector; calls of one shader pair may use different index buffers) | ✅ | ✅ | ❌ | ✅ | 081, 084, app 31, app 32, app 34, app 35 |
-| `gp_instanced` | `LiteRS::DrawInstancedTriangles`, `LiteRS::DrawIndexedInstancedTriangles` (instance id is the second argument of VS), also depth only; instances are processed in batches of bounded memory | ✅ | ✅ | ❌ | ✅ | 083, 084, app 35 |
+| `gp_indexed` | `LiteRS::DrawIndexedTriangles` (index buffer is a member vector or its part from an offset: `m_vec.data() + off`, `&m_vec[off]`; calls of one shader pair may use different index buffers) | ✅ | ✅ | ❌ | ✅ | 081, 084, app 31, app 32, app 34, app 35, app 36 |
+| `gp_instanced` | `LiteRS::DrawInstancedTriangles`, `LiteRS::DrawIndexedInstancedTriangles` (instance id is the second argument of VS), also depth only; instances are processed in batches of bounded memory | ✅ | ✅ | ❌ | ✅ | 083, 084, app 35, app 36 |
 | `gp_indirect` | Indirect draws: counts of `LiteRS::Draw*` which read data of the class (POD members, elements of member arrays, `m_vec.size()`, expressions of them and constants) are computed on GPU right before the draw (`vkCmdDraw[Indexed]Indirect`); counts from local variables and arguments of the control function give ordinary draws | ✅ | ✅ | ❌ | ✅ | 085, 086, 087, app 31, app 35 |
 | `gp_depth_only` | Depth only pass (VS without PS), shadow map read in PS | ✅ | ✅ | ❌ | ✅ | app 32 |
-| `gp_mrt` | Several color targets (PS returns a struct of `float4`) | ✅ | ✅ | ❌ | ✅ | app 33 |
+| `gp_mrt` | Several color targets (PS returns a struct of `float4`) | ✅ | ✅ | ❌ | ✅ | app 33, app 36 |
+| `gp_hybrid_rt` | Draw calls and ray queries in one class (G-buffer pass, then ray traced shading); control functions with draw calls only | ✅ | ✅ | ❌ | ✅ | app 36 |
 | `gp_textures_in_ps` | Texture with sampler in pixel shader | ✅ | ✅ | ❌ | ✅ | app 31 |
 | `gp_dynamic_rendering` | Vulkan 1.3 dynamic rendering and extended dynamic state (`-gp_dynamic_rendering 1`) | ✅ | ✅ | ❌ | ❌ | 080, 081, 083, 084, app 31, app 32, app 33, app 35 |
 | `gp_namespaces` | `LiteRS` and `LiteMath` names with and without namespace (`using`, namespace alias, argument dependent lookup) | ✅ | ✅ | ❌ | ✅ | 081 |
@@ -139,18 +140,18 @@ rasterization of 4x4 blocks in ISPC, triangle setup and binning in C++ (`LiteRS:
 
 | ID | Feature | Slang | GLSL | CUDA/HIP | ISPC | Tests and samples |
 |----|---------|:-----:|:----:|:--------:|:----:|-------------------|
-| `rt_query_hw` | `ISceneObject::RayQuery_*` with hardware ray queries | ✅ | ✅ | ❌ | 🧪⁵ | 019, 065, app 16, app 18 |
+| `rt_query_hw` | `ISceneObject::RayQuery_*` with hardware ray queries | ✅ | ✅ | ❌ | 🧪⁵ | 019, 065, app 16, app 18, app 36 |
 | `rt_bvh_sw` | Software BVH traversal compiled from C++ | ✅ | ✅ | ❌ | ❔ | 046, 065 |
 | `rt_pipeline` | Vulkan ray tracing pipeline (`-enable_ray_tracing_pipeline 1`) | ❌ | ✅ | ❌ | ❌ | 035, 036, 037, app 17 |
 | `rt_custom_prim` | Custom primitives with a C++ intersection function | 🟡⁶ | ✅ | ❌ | ❔ | 046, 035–038 |
-| `rt_instances` | Instanced scenes | 🟡⁷ | ✅ | ❌ | ❔ | app 16, app 17 |
+| `rt_instances` | Instanced scenes | 🟡⁷ | ✅ | ❌ | ✅ | app 16, app 17, app 36 |
 | `rt_scene_append` | Adding meshes and instances to a scene on the fly | ✅ | ✅ | ❌ | ❔ | 065 |
 | `virtual_func` | Virtual function hierarchies in kernels | ❌ | ✅ | ❔ | ❔ | 069, app 10, app 13 |
 | `callable_shaders` | Virtual functions as callable shaders (`-enable_callable_shaders 1`) | ❌ | ✅ | ❌ | ❌ | app 26, app 27 |
 
-⁵ With Embree on the CPU: IPV kernels (app 18) and RTV kernels (app 07).
+⁵ With Embree on the CPU: IPV kernels (app 18, app 36) and RTV kernels (app 07).
 ⁶ The current interface (046) works; the older `-intersectionShader` configs (035–038) fail to compile.
-⁷ app 16 works, app 17 needs `rt_pipeline`.
+⁷ app 16 and app 36 work, app 17 needs `rt_pipeline`.
 
 ## 2. C++ language features
 

@@ -1,0 +1,12 @@
+{
+    "mainClass"     : "PuddleRender",
+    "options" : {
+        "-shaderCC"    : "slang",
+        "-reorderLoops": "YX"
+    },
+    "source" : ["puddles.cpp"],
+    "includeProcess" : ["../RayTracing"],
+    "includeIgnore"  : ["../LiteMath", "../LiteMathAux", "../LiteScene", "../utils", "../../TINYSTL"],
+    "defines" : {"KERNEL_SLICER": ""},
+    "end" : ""
+}

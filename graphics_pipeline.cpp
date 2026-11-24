@@ -201,7 +201,26 @@ bool kslicer::ParseGraphicsCommand(const clang::CallExpr* a_call, GPCommand& a_c
   uint32_t argId = (a_cmd.psKernel != "") ? 4 : 3;
   if(a_cmd.indexed && argId < a_call->getNumArgs())
   {
-    a_cmd.indexBuffer = MemberNameOf(a_call->getArg(argId));
+    // 'm_indices.data()', 'm_indices.data() + offset' or '&m_indices[offset]': draw of a part of index buffer
+    //
+    const clang::Expr* indexArg = a_call->getArg(argId)->IgnoreParenImpCasts();
+    if(auto pAdd = clang::dyn_cast<clang::BinaryOperator>(indexArg); pAdd != nullptr && pAdd->getOpcode() == clang::BO_Add)
+    {
+      a_cmd.indexBuffer = MemberNameOf(pAdd->getLHS());
+      a_cmd.indexOffset = pAdd->getRHS();
+    }
+    else if(auto pAddr = clang::dyn_cast<clang::UnaryOperator>(indexArg); pAddr != nullptr && pAddr->getOpcode() == clang::UO_AddrOf &&
+            clang::isa<clang::CXXOperatorCallExpr>(pAddr->getSubExpr()->IgnoreParenImpCasts()))
+    {
+      auto pSubscr = clang::dyn_cast<clang::CXXOperatorCallExpr>(pAddr->getSubExpr()->IgnoreParenImpCasts());
+      if(pSubscr->getOperator() == clang::OO_Subscript && pSubscr->getNumArgs() == 2)
+      {
+        a_cmd.indexBuffer = MemberNameOf(pSubscr->getArg(0));
+        a_cmd.indexOffset = pSubscr->getArg(1);
+      }
+    }
+    else
+      a_cmd.indexBuffer = MemberNameOf(indexArg);
     argId++;
   }
   for(; argId < a_call->getNumArgs(); argId++)
@@ -320,17 +339,18 @@ void kslicer::ProcessGraphicsPipelines(MainClassInfo& a_codeInfo, const clang::C
   }
 }
 
-void kslicer::ProcessGraphicsCommands(MainFuncInfo& a_mainFunc, MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler)
+bool kslicer::ProcessGraphicsCommands(MainFuncInfo& a_mainFunc, MainClassInfo& a_codeInfo, const clang::CompilerInstance& a_compiler)
 {
   const clang::FunctionDecl* pDef = nullptr;
   if(a_mainFunc.Node == nullptr || !a_mainFunc.Node->hasBody(pDef))
-    return;
+    return true;
 
   std::vector<std::pair<GPCommand, const clang::CallExpr*> > commands;
   CommandsVisitor visitor(commands, a_compiler.getSourceManager());
   visitor.TraverseStmt(const_cast<clang::Stmt*>(pDef->getBody()));
 
-  const auto& sm = a_compiler.getSourceManager();
+  const auto& sm      = a_compiler.getSourceManager();
+  const auto  errors0 = kslicer::GetErrorCount();
   for(const auto& cmdAndCall : commands)
   {
     const GPCommand&       cmd   = cmdAndCall.first;
@@ -463,6 +483,7 @@ void kslicer::ProcessGraphicsCommands(MainFuncInfo& a_mainFunc, MainClassInfo& a
     }
     a_codeInfo.graphics.draws[draw.name] = draw;
   }
+  return kslicer::GetErrorCount() == errors0;
 }
 
 void kslicer::PrepareGraphicsKernel(KernelInfo& a_kernel)
@@ -867,7 +888,13 @@ std::string kslicer::MainFunctionRewriterVulkan::MakeGraphicsCommandCmdString(cl
   else
     strOut << "VK_NULL_HANDLE";
   if(a_cmd.indexed)
+  {
     strOut << ", m_vdata." << a_cmd.indexBuffer << "Buffer";
+    if(a_cmd.indexOffset != nullptr) // a part of index buffer: offset of binding
+      strOut << ", VkDeviceSize(" << RecursiveRewrite(static_cast<const clang::Expr*>(a_cmd.indexOffset)) << ")*sizeof(uint32_t)";
+    else
+      strOut << ", VkDeviceSize(0)";
+  }
   for(size_t i = 0; i < countsNum; i++)
     strOut << ", " << (indirect ? std::string("0u") : hostCounts[i]);
   strOut << ", " << (indirect ? std::to_string(pIndirect->second) : std::string("GP_DIRECT_DRAW"));

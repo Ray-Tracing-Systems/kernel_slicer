@@ -28,6 +28,7 @@ namespace kslicer
   clang::ast_matchers::StatementMatcher MakeMatch_LocalVarOfMethod(std::string const& funcName); 
   clang::ast_matchers::StatementMatcher MakeMatch_MethodCallFromMethod(std::string const& funcName); // from method with name 'funcName'
   clang::ast_matchers::StatementMatcher MakeMatch_MethodCallFromMethod();                            // from any method
+  clang::ast_matchers::StatementMatcher MakeMatch_ShaderRefInDrawCall();                            // '&Class::kernelVS_X' in 'LiteRS::Draw*(...)' from any method
 
   clang::ast_matchers::StatementMatcher MakeMatch_MemberVarOfMethod(std::string const& funcName);     
   clang::ast_matchers::StatementMatcher MakeMatch_FunctionCallFromFunction(std::string const& funcName);

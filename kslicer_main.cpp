@@ -1029,7 +1029,8 @@ int main(int argc, const char **argv)
   std::cout << "(2) Process control functions; extract local variables, known calls like memcpy, sort, std::fill and other " << std::endl;
   std::cout << "{" << std::endl;
 
-  size_t mainFuncId = 0;
+  size_t mainFuncId     = 0;
+  bool   graphicsErrors = false;
   for(const auto f : cfList)
   {
     // init control function struct
@@ -1051,7 +1052,8 @@ int main(int argc, const char **argv)
       std::cout << "  process control function: " << mainFuncRef.Name.c_str() << "(...)" << std::endl;
       auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());
       std::cout << "  process control function: " << mainFuncRef.Name.c_str() << "(...) --> " << GetClangToolingErrorCodeMessage(res) << std::endl;
-      kslicer::ProcessGraphicsCommands(mainFuncRef, inputCodeInfo, compiler); // LiteRS commands mark vertex and pixel shaders as used kernels
+      if(!kslicer::ProcessGraphicsCommands(mainFuncRef, inputCodeInfo, compiler)) // LiteRS commands mark vertex and pixel shaders as used kernels
+        graphicsErrors = true;
 
       // filter out unused kernels
       //
@@ -1088,6 +1090,12 @@ int main(int argc, const char **argv)
 
   std::cout << "}" << std::endl;
   std::cout << std::endl;
+
+  if(graphicsErrors) // invalid LiteRS commands can't be rewritten
+  {
+    std::cout << "[main]: ERROR, invalid graphics commands, " << kslicer::GetErrorCount() << " error(s)" << std::endl;
+    return 1;
+  }
 
   std::cout << "(3) Mark data members, methods and functions which are actually used in kernels." << std::endl;
   std::cout << "{" << std::endl;

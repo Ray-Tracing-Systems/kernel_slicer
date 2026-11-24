@@ -44,6 +44,18 @@ clang::ast_matchers::StatementMatcher kslicer::MakeMatch_MethodCallFromMethod()
   ).bind("functionCall");
 }
 
+clang::ast_matchers::StatementMatcher kslicer::MakeMatch_ShaderRefInDrawCall()
+{
+  using namespace clang::ast_matchers;
+  return
+  declRefExpr(
+    allOf(to(cxxMethodDecl().bind("fdecl")),
+          hasAncestor( callExpr(callee(functionDecl(matchesName("^::LiteRS::Draw")))) ),
+          hasAncestor( cxxMethodDecl().bind("targetFunction") )
+         )
+  ).bind("shaderRef");
+}
+
 clang::ast_matchers::StatementMatcher kslicer::MakeMatch_FunctionCallFromFunction(std::string const& a_funcName)
 {
   using namespace clang::ast_matchers;
@@ -192,8 +204,9 @@ public:
     const clang::CXXMemberCallExpr * kern_call   = result.Nodes.getNodeAs<const clang::CXXMemberCallExpr>("functionCall");
     const clang::CXXMethodDecl     * kern        = result.Nodes.getNodeAs<const clang::CXXMethodDecl>    ("fdecl");
     const clang::CXXMethodDecl     * kern_block  = result.Nodes.getNodeAs<const clang::CXXMethodDecl>    ("kernelBlockFunction");
+    const clang::DeclRefExpr       * shader_ref  = result.Nodes.getNodeAs<const clang::DeclRefExpr>      ("shaderRef"); // '&Class::kernelVS_X' in 'LiteRS::Draw*(...)'
 
-    if(func_decl && kern_call && kern) 
+    if(func_decl && (kern_call || shader_ref) && kern) // a control function may contain only draw calls
     {
       const auto pClass = func_decl->getParent();
       std::string kName = kern->getNameAsString();
@@ -274,6 +287,7 @@ kslicer::umap<std::string, kslicer::CFNameInfo> kslicer::ListAllMainRTFunctions(
 
   clang::ast_matchers::MatchFinder finder;
   finder.addMatcher(kernelCallMatcher, &printer);
+  finder.addMatcher(kslicer::MakeMatch_ShaderRefInDrawCall(), &printer);
   //finder.addMatcher(kernelBlockMatcher,  &printer);
 
   auto res = Tool.run(clang::tooling::newFrontendActionFactory(&finder).get());

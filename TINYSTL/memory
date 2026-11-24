@@ -10,11 +10,9 @@ namespace std
     shared_ptr(const T* a_data) : data(nullptr) {}
     template<class D> shared_ptr(const T* a_data, D deleter) : data(nullptr) {}
 
-    T* get() { return data; }
-    const T* get() const { return data; }
+    T* get() const { return data; }
 
-    T* operator->() { return data; }
-    const T* operator->() const { return data; }
+    T* operator->() const { return data; } // as in the standard: constness of a pointer does not apply to the object
 
     bool operator==(shared_ptr<T> rhs) { return false; }
     bool operator==(void* rhs) { return false; }
@@ -35,11 +33,9 @@ namespace std
     unique_ptr(const T* a_data) : data(nullptr) {}
     template<class D> unique_ptr(const T* a_data, D deleter) : data(nullptr) {}
 
-    T* operator->() { return data; }
-    const T* operator->() const { return data; }
+    T* operator->() const { return data; } // as in the standard: constness of a pointer does not apply to the object
 
-    T* get() { return data; }
-    const T* get() const { return data; }
+    T* get() const { return data; }
 
     bool operator==(unique_ptr<T> rhs) { return false; }
     bool operator==(void* rhs) { return false; }
@@ -63,11 +59,9 @@ namespace std
     weak_ptr& operator=(const shared_ptr<T> a_ptr) { return *this; }
     weak_ptr& operator=(const weak_ptr<T> a_ptr) { return *this; }
 
-    T* get() { return data; }
-    const T* get() const { return data; }
+    T* get() const { return data; }
 
-    T* operator->() { return data; }
-    const T* operator->() const { return data; }
+    T* operator->() const { return data; } // as in the standard: constness of a pointer does not apply to the object
 
     bool operator==(shared_ptr<T> rhs) { return false; }
     bool operator==(weak_ptr<T> rhs) { return false; }
