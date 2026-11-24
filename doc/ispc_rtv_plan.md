@@ -64,6 +64,9 @@ HydraCore3 (`b6b16ec` on `occupancy_test`):
 
 ## Next steps
 
+The next stage (stability of the ISPC back end on the regular tests, then the new HydraCore3) is planned in
+[ispc_stability_plan.md](ispc_stability_plan.md).
+
 1. New HydraCore3 (`/home/frol/PROG/gml_private/HydraCore3`, root `kmake_mega.json` / `kmake_wave.json`): the same
    steps; expect more control functions and IPV/BE kernels.
 2. Possible ISPC performance work: SoA payload in wavefront, fewer gathers of AoS scene data.
