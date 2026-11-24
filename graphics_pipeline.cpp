@@ -922,8 +922,6 @@ void kslicer::AddGraphicsToISPCJson(nlohmann::json& a_kernelsJson, const MainCla
     const auto pVS   = a_classInfo.kernels.find(draw.vsKernel);
     if(pPipe == a_classInfo.graphics.pipelines.end() || pVS == a_classInfo.kernels.end() || pVS->second.astNode == nullptr)
       continue;
-    if(draw.instanced) // LiteRS::DrawBackend does not support instancing yet, LiteRS executes such draws by C++ code
-      continue;
     const clang::CXXMethodDecl* pVSDecl = pVS->second.astNode;
     const bool hasPS = (draw.psKernel != "");
 
@@ -934,6 +932,7 @@ void kslicer::AddGraphicsToISPCJson(nlohmann::json& a_kernelsJson, const MainCla
     drawJson["PSOriginal"]  = draw.psKernel;
     drawJson["HasPS"]       = hasPS;
     drawJson["Indexed"]     = draw.indexed;
+    drawJson["Instanced"]   = draw.instanced; // instance id is the second argument of vertex shader
     drawJson["HasDepth"]    = (pPipe->second.depthTarget != "");
 
     // additional arguments of vertex shader: between vertex id and varyings
@@ -941,7 +940,7 @@ void kslicer::AddGraphicsToISPCJson(nlohmann::json& a_kernelsJson, const MainCla
     const unsigned numParams = pVSDecl->getNumParams();
     const unsigned lastArg   = hasPS ? numParams - 1 : numParams;
     drawJson["UserArgs"] = std::vector<nlohmann::json>();
-    for(unsigned i = 1; i < lastArg; i++)
+    for(unsigned i = (draw.instanced ? 2 : 1); i < lastArg; i++)
     {
       const clang::ParmVarDecl* pParam = pVSDecl->getParamDecl(i);
       nlohmann::json argJson;

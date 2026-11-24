@@ -125,7 +125,7 @@ rasterization of 4x4 blocks in ISPC, triangle setup and binning in C++ (`LiteRS:
 |----|---------|:-----:|:----:|:--------:|:----:|-------------------|
 | `gp_draw` | `LiteRS::DrawTriangles` with VS and PS, render targets, depth test, `LiteRS::Clear` | ✅ | ✅ | ❌ | ✅ | 080, 081, app 32, app 34 |
 | `gp_indexed` | `LiteRS::DrawIndexedTriangles` (index buffer is a member vector; calls of one shader pair may use different index buffers) | ✅ | ✅ | ❌ | ✅ | 081, 084, app 31, app 32, app 34, app 35 |
-| `gp_instanced` | `LiteRS::DrawInstancedTriangles`, `LiteRS::DrawIndexedInstancedTriangles` (instance id is the second argument of VS), also depth only | ✅ | ✅ | ❌ | 🟡⁹ | 083, 084, app 35 |
+| `gp_instanced` | `LiteRS::DrawInstancedTriangles`, `LiteRS::DrawIndexedInstancedTriangles` (instance id is the second argument of VS), also depth only; instances are processed in batches of bounded memory | ✅ | ✅ | ❌ | ✅ | 083, 084, app 35 |
 | `gp_indirect` | Indirect draws: counts of `LiteRS::Draw*` which read data of the class (POD members, elements of member arrays, `m_vec.size()`, expressions of them and constants) are computed on GPU right before the draw (`vkCmdDraw[Indexed]Indirect`); counts from local variables and arguments of the control function give ordinary draws | ✅ | ✅ | ❌ | ✅ | 085, 086, 087, app 31, app 35 |
 | `gp_depth_only` | Depth only pass (VS without PS), shadow map read in PS | ✅ | ✅ | ❌ | ✅ | app 32 |
 | `gp_mrt` | Several color targets (PS returns a struct of `float4`) | ✅ | ✅ | ❌ | ✅ | app 33 |
@@ -134,9 +134,6 @@ rasterization of 4x4 blocks in ISPC, triangle setup and binning in C++ (`LiteRS:
 | `gp_namespaces` | `LiteRS` and `LiteMath` names with and without namespace (`using`, namespace alias, argument dependent lookup) | ✅ | ✅ | ❌ | ✅ | 081 |
 | `gp_resize` | `ResizeGraphicsTargets()` after host image resize, before recording commands; preserves scene buffers and updates target descriptors | ✅ | ✅ | ❌ | ❔ | 080 |
 | `gp_raw_uint4` | Raw `Image2D<uint4>` attachments (`RGBA32_UINT`), `uint4` pixel outputs, mixed float/uint MRT and `clearUintColor`; integer attachments ignore blending | ✅ | ✅ | ❌ | ❌ | 082 |
-
-⁹ ISPC: instanced draws give correct results, but they are executed by the C++ implementation of LiteRS
-(`LiteRS::DrawBackend` does not support instancing yet).
 
 ### Ray tracing and virtual functions
 

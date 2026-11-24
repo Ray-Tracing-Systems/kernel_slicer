@@ -534,19 +534,32 @@ struct {{Draw.Name}}_Tri
 
 // vertex shader for vertices [a_first, a_first + a_count): writes LiteRS::Vertex<detail::FloatArray<{{Draw.NumFloats}}>> with stride a_stride floats
 //
+{% if Draw.Instanced %}
+// instanced draw: a_count vertices from a_start of the batch, vertex 'j' of the batch is vertex a_first + j % a_range of instance a_instFirst + j / a_range
+//
+export void {{Draw.Name}}_VS_ISPC(uniform uint32 a_first, uniform uint32 a_range, uniform uint32 a_instFirst, uniform uint32 a_start, uniform uint32 a_count,{% for Arg in Draw.UserArgs %} const void * uniform a_arg{{loop.index}},{% endfor %}
+                                  uniform float a_out[], uniform uint32 a_stride)
+{% else %}
 export void {{Draw.Name}}_VS_ISPC(uniform uint32 a_first, uniform uint32 a_count,{% for Arg in Draw.UserArgs %} const void * uniform a_arg{{loop.index}},{% endfor %}
                                   uniform float a_out[], uniform uint32 a_stride)
+{% endif %}
 {
   {% for Arg in Draw.UserArgs %}
   const uniform {{Arg.TypeISPC}} {{Arg.Name}} = *((uniform const {{Arg.TypeISPC}} * uniform)a_arg{{loop.index}});
   {% endfor %}
   foreach(i = 0 ... a_count)
   {
+    {% if Draw.Instanced %}
+    const uint32 vertId = a_first + (a_start + i) % a_range;
+    const uint32 instId = a_instFirst + (a_start + i) / a_range;
+    {% else %}
+    const uint32 vertId = a_first + i;
+    {% endif %}
     {% if Draw.HasPS %}
     {{Draw.Varyings}} varyings;
-    const float4 pos = {{Draw.VSOriginal}}(a_first + i{% for Arg in Draw.UserArgs %}, {{Arg.Name}}{% endfor %}, varyings);
+    const float4 pos = {{Draw.VSOriginal}}(vertId{% if Draw.Instanced %}, instId{% endif %}{% for Arg in Draw.UserArgs %}, {{Arg.Name}}{% endfor %}, varyings);
     {% else %}
-    const float4 pos = {{Draw.VSOriginal}}(a_first + i{% for Arg in Draw.UserArgs %}, {{Arg.Name}}{% endfor %});
+    const float4 pos = {{Draw.VSOriginal}}(vertId{% if Draw.Instanced %}, instId{% endif %}{% for Arg in Draw.UserArgs %}, {{Arg.Name}}{% endfor %});
     {% endif %}
     const int base = i*a_stride;
     a_out[base + 0] = pos.x;

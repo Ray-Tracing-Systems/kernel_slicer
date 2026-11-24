@@ -189,18 +189,36 @@ protected:
   bool Draw(LiteRS::Pipeline& a_pipe, const LiteRS::ShaderKey& a_vs, const LiteRS::ShaderKey& a_ps, const uint32_t* a_indices, uint32_t a_num, const void* a_args) override
   {
     {% for Draw in GPDrawsISPC %}
+    {% if not Draw.Instanced %}
     if(&a_pipe == &{{Draw.Pipeline}} && (a_indices != nullptr) == {{Draw.Indexed}} && a_vs == LiteRS::MakeShaderKey(&{{MainClassName}}_ISPC::{{Draw.VSOriginal}}) &&
        a_ps == {% if Draw.HasPS %}LiteRS::MakeShaderKey(&{{MainClassName}}_ISPC::{{Draw.PSOriginal}}){% else %}LiteRS::ShaderKey(){% endif %})
     {
-      {{Draw.Name}}_ISPC(a_pipe, a_indices, a_num, *static_cast<const std::tuple<{% for Arg in Draw.UserArgs %}{{Arg.Type}}{% if not loop.is_last %}, {% endif %}{% endfor %}>*>(a_args));
+      {{Draw.Name}}_ISPC(a_pipe, a_indices, a_num, 1, *static_cast<const std::tuple<{% for Arg in Draw.UserArgs %}{{Arg.Type}}{% if not loop.is_last %}, {% endif %}{% endfor %}>*>(a_args));
       return true;
     }
+    {% endif %}
+    {% endfor %}
+    return false; // unknown shaders: C++ implementation of LiteRS
+  }
+
+  bool DrawInstanced(LiteRS::Pipeline& a_pipe, const LiteRS::ShaderKey& a_vs, const LiteRS::ShaderKey& a_ps, const uint32_t* a_indices, uint32_t a_num, uint32_t a_instNum,
+                     const void* a_args) override
+  {
+    {% for Draw in GPDrawsISPC %}
+    {% if Draw.Instanced %}
+    if(&a_pipe == &{{Draw.Pipeline}} && (a_indices != nullptr) == {{Draw.Indexed}} && a_vs == LiteRS::MakeShaderKey(&{{MainClassName}}_ISPC::{{Draw.VSOriginal}}) &&
+       a_ps == {% if Draw.HasPS %}LiteRS::MakeShaderKey(&{{MainClassName}}_ISPC::{{Draw.PSOriginal}}){% else %}LiteRS::ShaderKey(){% endif %})
+    {
+      {{Draw.Name}}_ISPC(a_pipe, a_indices, a_num, a_instNum, *static_cast<const std::tuple<{% for Arg in Draw.UserArgs %}{{Arg.Type}}{% if not loop.is_last %}, {% endif %}{% endfor %}>*>(a_args));
+      return true;
+    }
+    {% endif %}
     {% endfor %}
     return false; // unknown shaders: C++ implementation of LiteRS
   }
   {% for Draw in GPDrawsISPC %}
 
-  void {{Draw.Name}}_ISPC(LiteRS::Pipeline& a_pipe, const uint32_t* a_indices, uint32_t a_num, const std::tuple<{% for Arg in Draw.UserArgs %}{{Arg.Type}}{% if not loop.is_last %}, {% endif %}{% endfor %}>& a_args)
+  void {{Draw.Name}}_ISPC(LiteRS::Pipeline& a_pipe, const uint32_t* a_indices, uint32_t a_num, uint32_t a_instNum, const std::tuple<{% for Arg in Draw.UserArgs %}{{Arg.Type}}{% if not loop.is_last %}, {% endif %}{% endfor %}>& a_args)
   {
     using V = LiteRS::detail::FloatArray<{{Draw.NumFloats}}>;
     static_assert(sizeof(ispc::{{Draw.Name}}_Tri) == sizeof(LiteRS::detail::Triangle<V>), "different layout of triangle in C++ and ISPC");
@@ -219,41 +237,69 @@ protected:
     {% endif %}
     {% endfor %}
 
-    // vertex shader: vertex 'i' is stored in verts[i - first]
+    // vertex shader: vertex 'i' of instance 'k' of the batch is stored in verts[k*range + i - first]
     //
-    uint32_t first = 0, vertNum = a_num;
+    {% if Draw.Instanced %}
+    const uint32_t num = a_num - a_num % 3; // as in Vulkan, an incomplete last triangle is ignored
+    if(num == 0 || a_instNum == 0)
+      return;
+    uint32_t first = 0, last = num - 1;
+    {% else %}
+    const uint32_t num = a_num;
+    if(num == 0)
+      return;
+    uint32_t first = 0, last = num - 1;
+    {% endif %}
     if(a_indices != nullptr)
-    {
-      if(a_num == 0)
-        return;
-      uint32_t last = 0;
-      LiteRS::detail::IndexRange(a_indices, a_num, first, last);
-      vertNum = last - first + 1;
-    }
-    LiteRS::detail::StageTimer vsTimer(a_pipe.cpu.collectStats);
-    std::vector< LiteRS::Vertex<V> > verts(vertNum);
+      LiteRS::detail::IndexRange(a_indices, num, first, last);
+    const uint32_t range  = last - first + 1;
     const uint32_t stride = uint32_t(sizeof(LiteRS::Vertex<V>)/sizeof(float));
-    constexpr uint32_t CHUNK = 4096;
-    #pragma omp parallel for if(a_pipe.cpu.multithreaded && vertNum >= 16*CHUNK) // waking threads up costs about a millisecond
-    for(int chunk = 0; chunk < int((vertNum + CHUNK - 1)/CHUNK); chunk++)
-    {
-      const uint32_t start = uint32_t(chunk)*CHUNK;
-      ispc::{{Draw.Name}}_VS_ISPC(first + start, std::min(CHUNK, vertNum - start),{% for Arg in Draw.UserArgs %} &std::get<{{loop.index}}>(args),{% endfor %} reinterpret_cast<float*>(verts.data() + start), stride);
-    }
-
-    a_pipe.stats.vertexMs += vsTimer.Ms();
-
-    // primitive assembly and setup in C++, rasterization of bins in ISPC
-    //
     const LiteRS::detail::Target tgt = LiteRS::detail::MakeTarget(a_pipe);
     const int32_t state[12] = { int32_t(tgt.layout), int32_t(tgt.pitch), tgt.depthTest ? 1 : 0, tgt.depthWrite ? 1 : 0, int32_t(tgt.depthCompare), int32_t(tgt.blendMode),
                                 int32_t(a_pipe.cpu.algo), a_pipe.cpu.smallTriArea, int32_t(tgt.binShift), 0, 0, 0 }; // see RS_STATE_* in raster_ispc.h
-    LiteRS::detail::DrawVertexStreamByBins(a_pipe, verts.data(), a_indices, a_num, first,
-      [&](const LiteRS::detail::Triangle<V>* a_tris, const uint32_t* a_ids, uint32_t a_triNum, const LiteRS::detail::Rect& a_bin)
+    const uint32_t batch = {% if Draw.Instanced %}LiteRS::detail::InstancesPerBatch(range){% else %}1{% endif %}; // instances processed together
+    std::vector< LiteRS::Vertex<V> > verts;
+    std::vector<uint32_t> batchIndices;
+    for(uint32_t instFirst = 0; instFirst < a_instNum; instFirst += batch)
     {
-      const int32_t bin[4] = { a_bin.x0, a_bin.y0, a_bin.x1, a_bin.y1 };
-      ispc::{{Draw.Name}}_Raster_ISPC(reinterpret_cast<const ispc::{{Draw.Name}}_Tri*>(a_tris), a_ids, a_triNum, bin, state, tgt.depth{% for Out in Draw.Outputs %}, ISPCPtr(tgt.{% if Out.IsUint %}colorU{% else %}colorF{% endif %}[{{loop.index}}]){% endfor %});
-    });
+      const uint32_t instNum = std::min(batch, a_instNum - instFirst);
+      const uint32_t vertNum = range*instNum;
+      LiteRS::detail::StageTimer vsTimer(a_pipe.cpu.collectStats);
+      verts.resize(vertNum);
+      constexpr uint32_t CHUNK = 4096;
+      #pragma omp parallel for if(a_pipe.cpu.multithreaded && vertNum >= 16*CHUNK) // waking threads up costs about a millisecond
+      for(int chunk = 0; chunk < int((vertNum + CHUNK - 1)/CHUNK); chunk++)
+      {
+        const uint32_t start = uint32_t(chunk)*CHUNK;
+        {% if Draw.Instanced %}
+        ispc::{{Draw.Name}}_VS_ISPC(first, range, instFirst, start, std::min(CHUNK, vertNum - start),{% for Arg in Draw.UserArgs %} &std::get<{{loop.index}}>(args),{% endfor %} reinterpret_cast<float*>(verts.data() + start), stride);
+        {% else %}
+        ispc::{{Draw.Name}}_VS_ISPC(first + start, std::min(CHUNK, vertNum - start),{% for Arg in Draw.UserArgs %} &std::get<{{loop.index}}>(args),{% endfor %} reinterpret_cast<float*>(verts.data() + start), stride);
+        {% endif %}
+      }
+      a_pipe.stats.vertexMs += vsTimer.Ms();
+
+      // primitive assembly and setup in C++, rasterization of bins in ISPC
+      //
+      const uint32_t* indices   = a_indices;
+      uint32_t        indexNum  = num;
+      uint32_t        indexBase = first;
+      {% if Draw.Instanced %}
+      indexNum  = num*instNum;
+      indexBase = 0;
+      if(a_indices != nullptr)
+      {
+        LiteRS::detail::InstancedIndices(a_indices, num, first, range, instNum, a_pipe.cpu.multithreaded, batchIndices);
+        indices = batchIndices.data();
+      }
+      {% endif %}
+      LiteRS::detail::DrawVertexStreamByBins(a_pipe, verts.data(), indices, indexNum, indexBase,
+        [&](const LiteRS::detail::Triangle<V>* a_tris, const uint32_t* a_ids, uint32_t a_triNum, const LiteRS::detail::Rect& a_bin)
+      {
+        const int32_t bin[4] = { a_bin.x0, a_bin.y0, a_bin.x1, a_bin.y1 };
+        ispc::{{Draw.Name}}_Raster_ISPC(reinterpret_cast<const ispc::{{Draw.Name}}_Tri*>(a_tris), a_ids, a_triNum, bin, state, tgt.depth{% for Out in Draw.Outputs %}, ISPCPtr(tgt.{% if Out.IsUint %}colorU{% else %}colorF{% endif %}[{{loop.index}}]){% endfor %});
+      });
+    }
   }
   {% endfor %}
   {% endif %}
