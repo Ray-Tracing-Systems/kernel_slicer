@@ -60,6 +60,9 @@ int main(int argc, const char** argv)
   // the first run is a warm up when several runs are requested; time is the wall clock time of a control function call,
   // for GPU it includes submit and wait (and copying of the image back for 'ShadeAndReflect')
   //
+  const bool stats = args.hasOption("--stats"); // time of stages of rasterization on CPU (C++ and ISPC)
+  pImpl->SetCollectStats(stats);
+
   std::vector<uint32_t> pixels(WIDTH*HEIGHT);
   float timeRaster = 0.0f, timeRT = 0.0f, gpuRaster = 0.0f, gpuRT = 0.0f;
   const int warmUp = (RUNS > 1) ? 1 : 0;
@@ -71,7 +74,10 @@ int main(int argc, const char** argv)
     pImpl->ShadeAndReflect(WIDTH, HEIGHT, pixels.data());
     auto t2 = std::chrono::high_resolution_clock::now();
     if(run < warmUp)
+    {
+      pImpl->GetRasterStats(true);
       continue;
+    }
     float timings[4] = {0.0f, 0.0f, 0.0f, 0.0f};
     pImpl->GetExecutionTime("RenderGBuffer", timings);
     gpuRaster += timings[0];
@@ -84,6 +90,14 @@ int main(int argc, const char** argv)
   std::cout << "resolution      = " << WIDTH << "x" << HEIGHT << ", runs = " << RUNS << std::endl;
   std::cout << "RenderGBuffer   = " << timeRaster/float(RUNS) << " ms (GetExecutionTime: " << gpuRaster/float(RUNS) << " ms)" << std::endl;
   std::cout << "ShadeAndReflect = " << timeRT/float(RUNS)     << " ms (GetExecutionTime: " << gpuRT/float(RUNS)     << " ms)" << std::endl;
+  if(stats)
+  {
+    const LiteRS::CPUStats st = pImpl->GetRasterStats(true);
+    std::cout << "  vertex shader = " << st.vertexMs/double(RUNS) << " ms" << std::endl;
+    std::cout << "  setup, binning= " << st.setupMs /double(RUNS) << " ms" << std::endl;
+    std::cout << "  raster and PS = " << st.rasterMs/double(RUNS) << " ms" << std::endl;
+    std::cout << "  triangles     = " << st.triangles/uint64_t(RUNS) << " after setup" << std::endl;
+  }
 
   LiteImage::Image2D<uint32_t> image(WIDTH, HEIGHT, pixels.data());
   LiteImage::SaveImage(onGPU ? "zout_gpu.bmp" : (onISPC ? "zout_ispc.bmp" : "zout_cpu.bmp"), image);

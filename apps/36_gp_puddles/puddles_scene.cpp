@@ -154,3 +154,17 @@ bool PuddleRender::LoadScene(const char* a_scenePath)
   m_sunDir    = normalize(m_sunDir);
   return true;
 }
+
+void PuddleRender::SetCollectStats(bool a_enable)
+{
+  m_gbufferPass.cpu.collectStats = a_enable;
+  m_gbufferPass.stats            = LiteRS::CPUStats();
+}
+
+LiteRS::CPUStats PuddleRender::GetRasterStats(bool a_reset)
+{
+  const LiteRS::CPUStats res = m_gbufferPass.stats;
+  if(a_reset)
+    m_gbufferPass.stats = LiteRS::CPUStats();
+  return res;
+}

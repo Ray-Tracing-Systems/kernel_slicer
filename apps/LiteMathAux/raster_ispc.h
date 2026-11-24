@@ -70,6 +70,15 @@ static inline uniform int RS_PixelOffset(uniform int a_layout, uniform int a_pit
 
 static inline uniform int RS_FloorDiv(uniform int a, uniform int b) { return (a >= 0) ? a / b : -((-a + b - 1) / b); }
 
+/// (float)a for |a| < 2^53 with the same rounding: AVX2 has no vector conversion of int64, but int64 -> double is exact here
+/// and is made of two int32 -> double conversions, then there is a single rounding to float
+static inline float RS_Int64ToFloat(int64 a)
+{
+  const int32 hi = (int32)(((uint64)a) >> 32);
+  const int32 lo = ((int32)(((uint64)a) & 0xFFFFFFFF)) ^ 0x80000000; // low 32 bits minus 2^31 as a signed number
+  return (float)((double)hi*4294967296.0d + ((double)lo + 2147483648.0d));
+}
+
 /// detail::Compare, op is LiteRS::CompareOp
 static inline bool RS_Compare(uniform int op, float a, float b)
 {

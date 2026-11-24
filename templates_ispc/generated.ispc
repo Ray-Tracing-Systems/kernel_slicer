@@ -581,9 +581,9 @@ static inline void {{Draw.Name}}_Shade(uniform const {{Draw.Name}}_Tri& t, const
 {
   if(((e0 + t.bias[0]) | (e1 + t.bias[1]) | (e2 + t.bias[2])) < 0)
     return;
-  const float b0 = (float)e0*t.invArea;
-  const float b1 = (float)e1*t.invArea;
-  const float b2 = (float)e2*t.invArea;
+  const float b0 = RS_Int64ToFloat(e0)*t.invArea;
+  const float b1 = RS_Int64ToFloat(e1)*t.invArea;
+  const float b2 = RS_Int64ToFloat(e2)*t.invArea;
   const float z  = b0*t.z[0] + b1*t.z[1] + b2*t.z[2];
   if(a_state[RS_STATE_DEPTH_TEST] != 0)
   {
@@ -611,6 +611,58 @@ static inline void {{Draw.Name}}_Shade(uniform const {{Draw.Name}}_Tri& t, const
     a_color{{loop.index}}[offs] = RS_PackRGBA8((blendMode == 0) ? c : RS_Blend(blendMode, c, RS_UnpackRGBA8(a_color{{loop.index}}[offs])));
     {% else %}
     a_color{{loop.index}}[offs] = (blendMode == 0) ? c : RS_Blend(blendMode, c, a_color{{loop.index}}[offs]);
+    {% endif %}
+  }
+  {% endfor %}
+  {% endif %}
+}
+
+// the same as {{Draw.Name}}_Shade for pixels base + programIndex: a part of a 4x4 block inside the bounding box of the
+// triangle in TILED4x4 layout, without blending. Pixels are subsequent, so vector loads and stores are used instead of
+// gathers and scatters (AVX2 has no scatter); colors of all lanes are written, the lanes which did not pass keep old values
+//
+static inline void {{Draw.Name}}_ShadeLinear(uniform const {{Draw.Name}}_Tri& t, const int64 e0, const int64 e1, const int64 e2, uniform int base,
+                                             uniform const int32 a_state[RS_STATE_SIZE], uniform float a_depth[]{% for Out in Draw.Outputs %},
+                                             uniform {% if Out.IsUint %}uint32 {% else %}float4 {% endif %}a_color{{loop.index}}[]{% endfor %})
+{
+  bool pass = ((e0 + t.bias[0]) | (e1 + t.bias[1]) | (e2 + t.bias[2])) >= 0;
+  const float b0 = RS_Int64ToFloat(e0)*t.invArea;
+  const float b1 = RS_Int64ToFloat(e1)*t.invArea;
+  const float b2 = RS_Int64ToFloat(e2)*t.invArea;
+  const float z  = b0*t.z[0] + b1*t.z[1] + b2*t.z[2];
+  if(a_state[RS_STATE_DEPTH_TEST] != 0)
+  {
+    pass = pass && RS_Compare(a_state[RS_STATE_DEPTH_COMPARE], z, a_depth[base + programIndex]);
+    if(a_state[RS_STATE_DEPTH_WRITE] != 0 && pass)
+      a_depth[base + programIndex] = z;
+  }
+  {% if Draw.HasPS %}
+  if(!any(pass))
+    return;
+  const float q0 = b0*t.invW[0];
+  const float q1 = b1*t.invW[1];
+  const float q2 = b2*t.invW[2];
+  const float s  = 1.0f/(q0 + q1 + q2);
+  const float p0 = q0*s, p1 = q1*s, p2 = q2*s;
+  {{Draw.Varyings}} varyings;
+  {% for Comp in Draw.VaryingComps %}
+  varyings.{{Comp.Access}} = p0*t.attr[{{Comp.Offset}}] + p1*t.attr[{{Comp.Offset1}}] + p2*t.attr[{{Comp.Offset2}}];
+  {% endfor %}
+  const {{Draw.OutputType}} psOut = {{Draw.PSOriginal}}(varyings);
+  {% for Out in Draw.Outputs %}
+  {
+    const float4 c = psOut{% if Draw.OutputIsStruct %}.{{Out.Field}}{% endif %};
+    {% if Out.IsUint %}
+    if(pass)
+      a_color{{loop.index}}[base + programIndex] = RS_PackRGBA8(c);
+    {% else %}
+    uniform float* uniform ptr = (uniform float* uniform)(a_color{{loop.index}} + base);
+    unmasked
+    {
+      float x, y, z, w;
+      aos_to_soa4(ptr, &x, &y, &z, &w);
+      soa_to_aos4(select(pass, c.x, x), select(pass, c.y, y), select(pass, c.z, z), select(pass, c.w, w), ptr);
+    }
     {% endif %}
   }
   {% endfor %}
@@ -673,6 +725,7 @@ export void {{Draw.Name}}_Raster_ISPC(uniform const {{Draw.Name}}_Tri a_tris[], 
   const uniform int smallTriArea = a_state[RS_STATE_SMALL_TRI_AREA];
   const uniform int binShift     = a_state[RS_STATE_BIN_SHIFT];
   const uniform int tinyTriArea  = RS_TINY_TRI_AREA;
+  const uniform bool linear      = (layout != 0) && (a_state[RS_STATE_BLEND_MODE] == 0); // 4x4 blocks are 16 subsequent pixels, see {{Draw.Name}}_ShadeLinear
   {% if Draw.HasPS %}
   const uniform int  blendMode   = a_state[RS_STATE_BLEND_MODE];
   const uniform bool useQueue    = (a_bin[2] - a_bin[0] <= RS_MAX_BIN) && (a_bin[3] - a_bin[1] <= RS_MAX_BIN);
@@ -859,6 +912,12 @@ export void {{Draw.Name}}_Raster_ISPC(uniform const {{Draw.Name}}_Tri a_tris[], 
         const uniform int  base   = RS_PixelOffset(layout, pitch, binShift, bx, by);
         for(uniform int part = 0; part*programCount < 16; part++)
         {
+          if(inside && linear && (part + 1)*programCount <= 16)
+          {
+            {{Draw.Name}}_ShadeLinear(t, e[0] + blockOffs[0][part], e[1] + blockOffs[1][part], e[2] + blockOffs[2][part], base + part*programCount,
+                                      a_state, a_depth{% for Out in Draw.Outputs %}, a_color{{loop.index}}{% endfor %});
+            continue;
+          }
           const int i = part*programCount + programIndex;
           if(i >= 16)
             continue;

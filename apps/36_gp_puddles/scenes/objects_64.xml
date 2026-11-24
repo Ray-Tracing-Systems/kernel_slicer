@@ -1,0 +1,203 @@
+<?xml version="1.0"?>
+<textures_lib total_chunks="6">
+  <texture id="0" name="Map#0" loc="../../resources/msu-graphics-group/scenes/01_simple_scenes/data/chunk_00000.image4ub" offset="8" bytesize="16" width="2" height="2" dl="0" />
+</textures_lib>
+<materials_lib>
+  <material id="0" name="mysimplemat" type="hydra_material">
+    <diffuse brdf_type="lambert">
+      <color val="0.5 0.5 0.5" />
+    </diffuse>
+  </material>
+  <material id="1" name="red" type="hydra_material">
+    <diffuse brdf_type="lambert">
+      <color val="0.5 0.0 0.0" />
+    </diffuse>
+  </material>
+  <material id="2" name="green" type="hydra_material">
+    <diffuse brdf_type="lambert">
+      <color val="0.0 0.5 0.0" />
+    </diffuse>
+  </material>
+  <material id="3" name="white" type="hydra_material">
+    <diffuse brdf_type="lambert">
+      <color val="0.5 0.5 0.5" />
+    </diffuse>
+  </material>
+  <material id="4" name="gold" type="hydra_material">
+    <diffuse brdf_type="lambert">
+      <color val="0.2 0.2 0.1" />
+    </diffuse>
+    <reflectivity brdf_type="torranse_sparrow">
+      <color val="0.6 0.6 0.1" />
+      <glossiness val="0.850000024" />
+    </reflectivity>
+  </material>
+  <material id="5" name="glass" type="hydra_material">
+    <reflectivity brdf_type="phong">
+      <color val="1.0 1.0 1.0" />
+      <glossiness val="1" />
+      <extrusion val="maxcolor" />
+      <fresnel val="1" />
+      <fresnel_ior val="2.41000009" />
+    </reflectivity>
+    <transparency brdf_type="phong">
+      <color val="1.0 1.0 1.0" />
+      <glossiness val="1" />
+      <thin_walled val="0" />
+      <fog_color val="1.0 1.0 1.0" />
+      <fog_multiplier val="0" />
+      <ior val="2.41000009" />
+    </transparency>
+  </material>
+  <material id="6" name="my_area_light_material" type="hydra_material" light_id="0" visible="1">
+    <emission>
+      <color val="8 8 8" />
+    </emission>
+  </material>
+  <material id="7" name="sky_material" type="hydra_material" light_id="1" visible="1">
+    <emission>
+      <color val="1 1 1" />
+    </emission>
+  </material>
+</materials_lib>
+<geometry_lib total_chunks="6">
+  <mesh id="0" name="bunny" type="vsgf" bytesize="7897984" loc="../../resources/msu-graphics-group/scenes/01_simple_scenes/data/bunny.vsgf" offset="0" vertNum="99879" triNum="144046" dl="0" path="" bbox="-0.9559 0.6579 0.021 1.6418 -0.543 0.6895">
+    <positions type="array4f" bytesize="1598064" offset="24" apply="vertex" />
+    <normals type="array4f" bytesize="1598064" offset="1598088" apply="vertex" />
+    <tangents type="array4f" bytesize="1598064" offset="3196152" apply="vertex" />
+    <texcoords type="array2f" bytesize="799032" offset="4794216" apply="vertex" />
+    <indices type="array1i" bytesize="1728552" offset="5593248" apply="tlist" />
+    <matindices type="array1i" bytesize="576184" offset="7321800" apply="primitive" />
+  </mesh>
+  <mesh id="1" name="teapot" type="vsgf" bytesize="1224088" loc="../../resources/msu-graphics-group/scenes/01_simple_scenes/data/teapot.vsgf" offset="0" vertNum="14544" triNum="25600" dl="0" path="" bbox="-0.952394 1.09017 -0.405052 0.595073 -0.634929 0.634929">
+    <positions type="array4f" bytesize="232704" offset="24" apply="vertex" />
+    <normals type="array4f" bytesize="232704" offset="232728" apply="vertex" />
+    <tangents type="array4f" bytesize="232704" offset="465432" apply="vertex" />
+    <texcoords type="array2f" bytesize="116352" offset="698136" apply="vertex" />
+    <indices type="array1i" bytesize="307200" offset="814488" apply="tlist" />
+    <matindices type="array1i" bytesize="102400" offset="1121688" apply="primitive" />
+  </mesh>
+  <mesh id="2" name="my_plane" type="vsgf" bytesize="280" loc="../../resources/msu-graphics-group/scenes/01_simple_scenes/data/large_plane.vsgf" offset="0" vertNum="4" triNum="2" dl="0" path="" bbox="  -100 100 0 0 -100 100">
+    <positions type="array4f" bytesize="64" offset="24" apply="vertex" />
+    <normals type="array4f" bytesize="64" offset="88" apply="vertex" />
+    <tangents type="array4f" bytesize="64" offset="152" apply="vertex" />
+    <texcoords type="array2f" bytesize="32" offset="216" apply="vertex" />
+    <indices type="array1i" bytesize="24" offset="248" apply="tlist" />
+    <matindices type="array1i" bytesize="8" offset="272" apply="primitive" />
+  </mesh>
+</geometry_lib>
+<lights_lib>
+  <light id="0" name="sky" type="sky" shape="point" visible="1" mat_id="7">
+    <intensity>
+      <color val="0.5 0.5 1" />
+      <multiplier val="1.0" />
+    </intensity>
+  </light>
+</lights_lib>
+<cam_lib>
+  <camera id="0" name="my camera" type="uvn">
+    <fov>45</fov>
+    <nearClipPlane>0.01</nearClipPlane>
+    <farClipPlane>100.0</farClipPlane>
+    <up>0 1 0</up>
+    <position>0 12 22</position>
+    <look_at>0 -4 -2</look_at>
+  </camera>
+</cam_lib>
+<render_lib>
+  <render_settings type="HydraModern" id="0">
+    <width>1024</width>
+    <height>1024</height>
+    <method_primary>PT</method_primary>
+    <method_secondary>PT</method_secondary>
+    <method_tertiary>PT</method_tertiary>
+    <method_caustic>PT</method_caustic>
+    <qmc_variant>7</qmc_variant>
+    <trace_depth>8</trace_depth>
+    <diff_trace_depth>3</diff_trace_depth>
+    <maxRaysPerPixel>1024</maxRaysPerPixel>
+  </render_settings>
+</render_lib>
+<scenes>
+  <scene id="0" name="my scene" discard="1" bbox="  -100 100 -4.31742 4.26557 -100 100">
+    <remap_lists>
+      <remap_list id="0" size="6" val="0 5 1 5 2 5 " />
+      <remap_list id="1" size="6" val="0 4 1 4 2 4 " />
+      <remap_list id="2" size="6" val="0 3 1 3 2 3 " />
+      <remap_list id="3" size="6" val="0 2 1 2 2 2 " />
+      <remap_list id="4" size="6" val="0 0 1 0 2 0 " />
+      <remap_list id="5" size="6" val="0 1 1 1 2 1 " />
+      <remap_list id="6" size="2" val="0 0 " />
+      <remap_list id="7" size="2" val="0 2 " />
+      <remap_list id="8" size="2" val="0 5 " />
+      <remap_list id="9" size="2" val="0 3 " />
+      <remap_list id="10" size="2" val="0 4 " />
+      <remap_list id="11" size="2" val="0 1 " />
+    </remap_lists>
+    <instance id="0" mesh_id="0" rmap_id="6" scn_id="0" scn_sid="0" matrix="0.182299 0 1.23664 -11.3936 0 1.25 0 -4.02625 -1.23664 0 0.182299 6.75 0 0 0 1 " />
+    <instance id="1" mesh_id="1" rmap_id="2" scn_id="0" scn_sid="0" matrix="0.953008 0 -0.230096 -8.13827 0 0.980392 0 -3.60294 0.230096 0 0.953008 6.75 0 0 0 1 " />
+    <instance id="2" mesh_id="0" rmap_id="9" scn_id="0" scn_sid="0" matrix="0.876461 0 0.891244 -4.88296 0 1.25 0 -4.02625 -0.891244 0 0.876461 6.75 0 0 0 1 " />
+    <instance id="3" mesh_id="1" rmap_id="4" scn_id="0" scn_sid="0" matrix="-0.274603 0 -0.941149 -1.62765 0 0.980392 0 -3.60294 0.941149 0 -0.274603 6.75 0 0 0 1 " />
+    <instance id="4" mesh_id="0" rmap_id="11" scn_id="0" scn_sid="0" matrix="1.07519 0 0.637554 1.62765 0 1.25 0 -4.02625 -0.637554 0 1.07519 6.75 0 0 0 1 " />
+    <instance id="5" mesh_id="1" rmap_id="1" scn_id="0" scn_sid="0" matrix="0.0157628 0 0.980265 4.88296 0 0.980392 0 -3.60294 -0.980265 0 0.0157628 6.75 0 0 0 1 " />
+    <instance id="6" mesh_id="0" rmap_id="7" scn_id="0" scn_sid="0" matrix="1.24998 0 -0.0068444 8.13827 0 1.25 0 -4.02625 0.0068444 0 1.24998 6.75 0 0 0 1 " />
+    <instance id="7" mesh_id="1" rmap_id="3" scn_id="0" scn_sid="0" matrix="0.247406 0 0.948662 11.3936 0 0.980392 0 -3.60294 -0.948662 0 0.247406 6.75 0 0 0 1 " />
+    <instance id="8" mesh_id="1" rmap_id="4" scn_id="0" scn_sid="0" matrix="-0.616014 0 -0.762689 -12.318 0 0.980392 0 -3.60294 0.762689 0 -0.616014 4.25 0 0 0 1 " />
+    <instance id="9" mesh_id="0" rmap_id="11" scn_id="0" scn_sid="0" matrix="-1.20902 0 0.317447 -8.7986 0 1.25 0 -4.02625 -0.317447 0 -1.20902 4.25 0 0 0 1 " />
+    <instance id="10" mesh_id="1" rmap_id="1" scn_id="0" scn_sid="0" matrix="-0.93819 0 0.284549 -5.27916 0 0.980392 0 -3.60294 -0.284549 0 -0.93819 4.25 0 0 0 1 " />
+    <instance id="11" mesh_id="0" rmap_id="7" scn_id="0" scn_sid="0" matrix="-1.24938 0 0.0393993 -1.75972 0 1.25 0 -4.02625 -0.0393993 0 -1.24938 4.25 0 0 0 1 " />
+    <instance id="12" mesh_id="1" rmap_id="3" scn_id="0" scn_sid="0" matrix="0.348094 0 0.916515 1.75972 0 0.980392 0 -3.60294 -0.916515 0 0.348094 4.25 0 0 0 1 " />
+    <instance id="13" mesh_id="0" rmap_id="10" scn_id="0" scn_sid="0" matrix="0.605777 0 -1.09341 5.27916 0 1.25 0 -4.02625 1.09341 0 0.605777 4.25 0 0 0 1 " />
+    <instance id="14" mesh_id="1" rmap_id="5" scn_id="0" scn_sid="0" matrix="0.829203 0 0.523059 8.7986 0 0.980392 0 -3.60294 -0.523059 0 0.829203 4.25 0 0 0 1 " />
+    <instance id="15" mesh_id="0" rmap_id="6" scn_id="0" scn_sid="0" matrix="0.124022 0 1.24383 12.318 0 1.25 0 -4.02625 -1.24383 0 0.124022 4.25 0 0 0 1 " />
+    <instance id="16" mesh_id="0" rmap_id="7" scn_id="0" scn_sid="0" matrix="1.24015 0 0.156599 -13.3032 0 1.25 0 -4.02625 -0.156599 0 1.24015 1.75 0 0 0 1 " />
+    <instance id="17" mesh_id="1" rmap_id="3" scn_id="0" scn_sid="0" matrix="-0.103096 0 0.974956 -9.50231 0 0.980392 0 -3.60294 -0.974956 0 -0.103096 1.75 0 0 0 1 " />
+    <instance id="18" mesh_id="0" rmap_id="10" scn_id="0" scn_sid="0" matrix="-1.04547 0 0.685202 -5.70139 0 1.25 0 -4.02625 -0.685202 0 -1.04547 1.75 0 0 0 1 " />
+    <instance id="19" mesh_id="1" rmap_id="5" scn_id="0" scn_sid="0" matrix="0.800561 0 -0.565924 -1.90046 0 0.980392 0 -3.60294 0.565924 0 0.800561 1.75 0 0 0 1 " />
+    <instance id="20" mesh_id="0" rmap_id="6" scn_id="0" scn_sid="0" matrix="-0.906225 0 0.860963 1.90046 0 1.25 0 -4.02625 -0.860963 0 -0.906225 1.75 0 0 0 1 " />
+    <instance id="21" mesh_id="1" rmap_id="2" scn_id="0" scn_sid="0" matrix="0.740549 0 0.64246 5.70139 0 0.980392 0 -3.60294 -0.64246 0 0.740549 1.75 0 0 0 1 " />
+    <instance id="22" mesh_id="0" rmap_id="9" scn_id="0" scn_sid="0" matrix="-0.0656033 0 1.24828 9.50231 0 1.25 0 -4.02625 -1.24828 0 -0.0656033 1.75 0 0 0 1 " />
+    <instance id="23" mesh_id="1" rmap_id="4" scn_id="0" scn_sid="0" matrix="0.979028 0 -0.0517051 13.3032 0 0.980392 0 -3.60294 0.0517051 0 0.979028 1.75 0 0 0 1 " />
+    <instance id="24" mesh_id="1" rmap_id="5" scn_id="0" scn_sid="0" matrix="0.90437 0 0.378527 -14.3366 0 0.980392 0 -3.60294 -0.378527 0 0.90437 -0.75 0 0 0 1 " />
+    <instance id="25" mesh_id="0" rmap_id="6" scn_id="0" scn_sid="0" matrix="-0.910307 0 -0.856645 -10.2405 0 1.25 0 -4.02625 0.856645 0 -0.910307 -0.75 0 0 0 1 " />
+    <instance id="26" mesh_id="1" rmap_id="2" scn_id="0" scn_sid="0" matrix="-0.70278 0 0.683571 -6.14428 0 0.980392 0 -3.60294 -0.683571 0 -0.70278 -0.75 0 0 0 1 " />
+    <instance id="27" mesh_id="0" rmap_id="9" scn_id="0" scn_sid="0" matrix="-0.664183 0 -1.05894 -2.04809 0 1.25 0 -4.02625 1.05894 0 -0.664183 -0.75 0 0 0 1 " />
+    <instance id="28" mesh_id="1" rmap_id="4" scn_id="0" scn_sid="0" matrix="-0.517174 0 0.832886 2.04809 0 0.980392 0 -3.60294 -0.832886 0 -0.517174 -0.75 0 0 0 1 " />
+    <instance id="29" mesh_id="0" rmap_id="11" scn_id="0" scn_sid="0" matrix="-0.450643 0 -1.16594 6.14428 0 1.25 0 -4.02625 1.16594 0 -0.450643 -0.75 0 0 0 1 " />
+    <instance id="30" mesh_id="1" rmap_id="1" scn_id="0" scn_sid="0" matrix="-0.980279 0 0.0149033 10.2405 0 0.980392 0 -3.60294 -0.0149033 0 -0.980279 -0.75 0 0 0 1 " />
+    <instance id="31" mesh_id="0" rmap_id="7" scn_id="0" scn_sid="0" matrix="-0.736501 0 -1.00998 14.3366 0 1.25 0 -4.02625 1.00998 0 -0.736501 -0.75 0 0 0 1 " />
+    <instance id="32" mesh_id="0" rmap_id="9" scn_id="0" scn_sid="0" matrix="1.01758 0 -0.725968 -15.4086 0 1.25 0 -4.02625 0.725968 0 1.01758 -3.25 0 0 0 1 " />
+    <instance id="33" mesh_id="1" rmap_id="4" scn_id="0" scn_sid="0" matrix="-0.854524 0 -0.48058 -11.0061 0 0.980392 0 -3.60294 0.48058 0 -0.854524 -3.25 0 0 0 1 " />
+    <instance id="34" mesh_id="0" rmap_id="11" scn_id="0" scn_sid="0" matrix="0.78377 0 0.973758 -6.60367 0 1.25 0 -4.02625 -0.973758 0 0.78377 -3.25 0 0 0 1 " />
+    <instance id="35" mesh_id="1" rmap_id="1" scn_id="0" scn_sid="0" matrix="0.901285 0 0.385816 -2.20122 0 0.980392 0 -3.60294 -0.385816 0 0.901285 -3.25 0 0 0 1 " />
+    <instance id="36" mesh_id="0" rmap_id="7" scn_id="0" scn_sid="0" matrix="1.17887 0 -0.415643 2.20122 0 1.25 0 -4.02625 0.415643 0 1.17887 -3.25 0 0 0 1 " />
+    <instance id="37" mesh_id="1" rmap_id="3" scn_id="0" scn_sid="0" matrix="-0.977908 0 0.0697532 6.60367 0 0.980392 0 -3.60294 -0.0697532 0 -0.977908 -3.25 0 0 0 1 " />
+    <instance id="38" mesh_id="0" rmap_id="10" scn_id="0" scn_sid="0" matrix="0.43188 0 1.17302 11.0061 0 1.25 0 -4.02625 -1.17302 0 0.43188 -3.25 0 0 0 1 " />
+    <instance id="39" mesh_id="1" rmap_id="5" scn_id="0" scn_sid="0" matrix="0.924591 0 -0.326036 15.4086 0 0.980392 0 -3.60294 0.326036 0 0.924591 -3.25 0 0 0 1 " />
+    <instance id="40" mesh_id="1" rmap_id="1" scn_id="0" scn_sid="0" matrix="-0.862187 0 -0.466693 -16.5115 0 0.980392 0 -3.60294 0.466693 0 -0.862187 -5.75 0 0 0 1 " />
+    <instance id="41" mesh_id="0" rmap_id="7" scn_id="0" scn_sid="0" matrix="-0.164911 0 -1.23907 -11.7939 0 1.25 0 -4.02625 1.23907 0 -0.164911 -5.75 0 0 0 1 " />
+    <instance id="42" mesh_id="1" rmap_id="3" scn_id="0" scn_sid="0" matrix="0.718709 0 -0.666803 -7.07636 0 0.980392 0 -3.60294 0.666803 0 0.718709 -5.75 0 0 0 1 " />
+    <instance id="43" mesh_id="0" rmap_id="10" scn_id="0" scn_sid="0" matrix="-0.277684 0 1.21877 -2.35879 0 1.25 0 -4.02625 -1.21877 0 -0.277684 -5.75 0 0 0 1 " />
+    <instance id="44" mesh_id="1" rmap_id="5" scn_id="0" scn_sid="0" matrix="-0.609114 0 0.768212 2.35879 0 0.980392 0 -3.60294 -0.768212 0 -0.609114 -5.75 0 0 0 1 " />
+    <instance id="45" mesh_id="0" rmap_id="6" scn_id="0" scn_sid="0" matrix="0.900803 0 -0.866634 7.07636 0 1.25 0 -4.02625 0.866634 0 0.900803 -5.75 0 0 0 1 " />
+    <instance id="46" mesh_id="1" rmap_id="2" scn_id="0" scn_sid="0" matrix="0.648457 0 0.735304 11.7939 0 0.980392 0 -3.60294 -0.735304 0 0.648457 -5.75 0 0 0 1 " />
+    <instance id="47" mesh_id="0" rmap_id="9" scn_id="0" scn_sid="0" matrix="0.112124 0 -1.24496 16.5115 0 1.25 0 -4.02625 1.24496 0 0.112124 -5.75 0 0 0 1 " />
+    <instance id="48" mesh_id="0" rmap_id="10" scn_id="0" scn_sid="0" matrix="1.02216 0 0.719505 -17.6396 0 1.25 0 -4.02625 -0.719505 0 1.02216 -8.25 0 0 0 1 " />
+    <instance id="49" mesh_id="1" rmap_id="5" scn_id="0" scn_sid="0" matrix="-0.359868 0 -0.911956 -12.5997 0 0.980392 0 -3.60294 0.911956 0 -0.359868 -8.25 0 0 0 1 " />
+    <instance id="50" mesh_id="0" rmap_id="6" scn_id="0" scn_sid="0" matrix="-0.370211 0 -1.19392 -7.55985 0 1.25 0 -4.02625 1.19392 0 -0.370211 -8.25 0 0 0 1 " />
+    <instance id="51" mesh_id="1" rmap_id="2" scn_id="0" scn_sid="0" matrix="0.932408 0 -0.302959 -2.51995 0 0.980392 0 -3.60294 0.302959 0 0.932408 -8.25 0 0 0 1 " />
+    <instance id="52" mesh_id="0" rmap_id="9" scn_id="0" scn_sid="0" matrix="0.692783 0 -1.04046 2.51995 0 1.25 0 -4.02625 1.04046 0 0.692783 -8.25 0 0 0 1 " />
+    <instance id="53" mesh_id="1" rmap_id="4" scn_id="0" scn_sid="0" matrix="-0.980138 0 -0.0223059 7.55985 0 0.980392 0 -3.60294 0.0223059 0 -0.980138 -8.25 0 0 0 1 " />
+    <instance id="54" mesh_id="0" rmap_id="11" scn_id="0" scn_sid="0" matrix="0.403796 0 1.18298 12.5997 0 1.25 0 -4.02625 -1.18298 0 0.403796 -8.25 0 0 0 1 " />
+    <instance id="55" mesh_id="1" rmap_id="1" scn_id="0" scn_sid="0" matrix="0.575463 0 0.793732 17.6396 0 0.980392 0 -3.60294 -0.793732 0 0.575463 -8.25 0 0 0 1 " />
+    <instance id="56" mesh_id="1" rmap_id="2" scn_id="0" scn_sid="0" matrix="-0.964473 0 -0.175957 -18.7884 0 0.980392 0 -3.60294 0.175957 0 -0.964473 -10.75 0 0 0 1 " />
+    <instance id="57" mesh_id="0" rmap_id="9" scn_id="0" scn_sid="0" matrix="-1.24764 0 -0.0768484 -13.4203 0 1.25 0 -4.02625 0.0768484 0 -1.24764 -10.75 0 0 0 1 " />
+    <instance id="58" mesh_id="1" rmap_id="4" scn_id="0" scn_sid="0" matrix="0.883323 0 0.425333 -8.05219 0 0.980392 0 -3.60294 -0.425333 0 0.883323 -10.75 0 0 0 1 " />
+    <instance id="59" mesh_id="0" rmap_id="11" scn_id="0" scn_sid="0" matrix="1.02593 0 -0.714119 -2.68406 0 1.25 0 -4.02625 0.714119 0 1.02593 -10.75 0 0 0 1 " />
+    <instance id="60" mesh_id="1" rmap_id="1" scn_id="0" scn_sid="0" matrix="-0.979328 0 -0.0456735 2.68406 0 0.980392 0 -3.60294 0.0456735 0 -0.979328 -10.75 0 0 0 1 " />
+    <instance id="61" mesh_id="0" rmap_id="7" scn_id="0" scn_sid="0" matrix="-0.376587 0 -1.19192 8.05219 0 1.25 0 -4.02625 1.19192 0 -0.376587 -10.75 0 0 0 1 " />
+    <instance id="62" mesh_id="1" rmap_id="3" scn_id="0" scn_sid="0" matrix="0.183979 0 0.962975 13.4203 0 0.980392 0 -3.60294 -0.962975 0 0.183979 -10.75 0 0 0 1 " />
+    <instance id="63" mesh_id="0" rmap_id="10" scn_id="0" scn_sid="0" matrix="0.0480052 0 1.24908 18.7884 0 1.25 0 -4.02625 -1.24908 0 0.0480052 -10.75 0 0 0 1 " />
+    <instance id="64" mesh_id="2" rmap_id="-1" scn_id="0" scn_sid="0" matrix="1 0 0 0 0 1 0 -4 0 0 1 0 0 0 0 1 " />
+      </scene>
+</scenes>
