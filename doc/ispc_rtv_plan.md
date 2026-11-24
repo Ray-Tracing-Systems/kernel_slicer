@@ -49,23 +49,24 @@ HydraCore3 (`b6b16ec` on `occupancy_test`):
   `profiling_results/ispc/make_references.sh` renders 1024x1024, 4096 spp, mispt and rtao into
   `profiling_results/ispc/references/` (log: `profiling_results/ispc/make_references.log`).
 
+## Measurements (old HydraCore3), done 2026-11-24
+
+- GPU references: `profiling_results/ispc/make_references.sh` (PT 4096 spp, RTAO 1024 spp: more samples do not fit the
+  Sobol AO tile; also 64 spp images for comparison with the same random numbers).
+- Chunk sizes (`profiling_results/ispc/tune/results.txt`): wavefront 512 (16384 is 26-36% slower for PT), megakernel 256
+  (almost no difference); written to `kmake_wave_ispc.json` / `kmake_mega_ispc.json`. Default of `-ispc_wave_chunk` is 1024.
+- `testing/run_ispc_bench.py run` (CPU binaries `hydra_cpu` from `build_cpu` with `HYDRA_EXE_NAME=hydra_cpu`,
+  `hydra_ispc_wave`, `hydra_ispc_mega`), 1024x1024, 64 spp, 3 runs; `report` writes `profiling/reports/ispc-mega-wave.tex`.
+  The same file is `tables/ispc_mega_wave_cpu.tex` in the paper folder, section `cpumegawave` of `supplementary.tex`.
+- Results, 256 spp (x4): megakernel is faster than wavefront by 10-16% (AO) and 8-35% (PT); ISPC is 1.9-2.1 (AO) and
+  1.4-2.0 (PT) times faster than the input C++ code. PSNR against references 22.5-36 dB (kitchen PT 22.5 dB is Monte Carlo
+  noise: GPU at 64 spp gives the same), against GPU with the same 64 spp 42-61 dB.
+
 ## Next steps
 
-1. Check that the 4 PT references are rendered (`rc=0` in the log). RTAO references failed on GPU: 4096 spp is too
-   many for the Sobol AO tile ("Sobol AO tile did not contain the requested samples for every pixel"); render them
-   with fewer spp (for example 256 or 1024, AO converges fast) by changing the script for `rtao`.
-2. Tune chunk sizes on one or two scenes: `-ispc_wave_chunk` 1024 / 4096 / 16384, `-ispc_mega_chunk` 64 / 256 / 1024
-   (set in `kmake_*_ispc.json` or on kslicer command line), keep the best for each mode and write them to the report.
-3. Measurement script in Hydra (for example `testing/run_ispc_bench.py`): 4 scenes x {mispt, rtao} x {mega, wave},
-   1024x1024, 64 spp, 3 runs, median of `PathTraceBlock(exec)` / `AmbientOcclusionBlock(exec)`; PSNR of every image
-   against the reference (expected 25-30 dB and more). Optionally C++ OpenMP column: its `GetExecutionTime` looks
-   wrong (always ~250 ms for PT at 256x256), measure wall time instead.
-4. LaTeX table in `profiling/reports/ispc-mega-wave.tex` (like Table 5: AO and PT, wave/mega, CPU i9-10940X,
-   14 cores, AVX2), commit to `occupancy_test` (without images and binaries).
-5. Documentation in kernel_slicer: `doc/concepts.md` / features about RTV on ISPC (chunks, references, payload
-   load/store), maybe test 067 variant with `-ispc_threads`; commit.
-6. New HydraCore3 (`/home/frol/PROG/gml_private/HydraCore3`, root `kmake_mega.json` / `kmake_wave.json`): the same
+1. New HydraCore3 (`/home/frol/PROG/gml_private/HydraCore3`, root `kmake_mega.json` / `kmake_wave.json`): the same
    steps; expect more control functions and IPV/BE kernels.
+2. Possible ISPC performance work: SoA payload in wavefront, fewer gathers of AoS scene data.
 
 ## Pitfalls found
 

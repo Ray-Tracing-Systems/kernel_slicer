@@ -176,6 +176,14 @@ Without the option `RTVPersistent_IsFirst()` returns `true` and `RTVPersistent_R
 `RTVPersistent_Iters()` times fewer. Do not confuse this with the general *persistent threads*
 technique.
 
+**On the CPU (ISPC back end)** both strategies are available too, persistent rays are not. With
+`-megakernel 1` the control function becomes one ISPC function of a thread; payload (local variables
+of the control function passed to kernels by pointer) are ISPC references, and OpenMP threads process
+chunks of `-ispc_mega_chunk` threads. With `-megakernel 0` the control function runs on the host for
+chunks of `-ispc_wave_chunk` threads: each kernel processes all threads of the chunk before the next
+one, payload is stored in arrays of the chunk (one set of arrays for each OpenMP thread, small enough
+to stay in cache), finished threads are skipped by thread flags as on the GPU.
+
 ## Back ends
 
 The back end is selected with `-shaderCC`:

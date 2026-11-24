@@ -1551,7 +1551,7 @@ namespace kslicer
     std::string UBOAccess(const std::string& a_name) const override { return std::string("ubo[0].") + a_name; };
     std::string Name() const override { return "ISPC"; }
     std::string m_target = "avx2-i32x8"; ///<! ISPC '--target', set by '-ispc_target'
-    uint32_t    m_waveChunk = 4096;         ///<! RTV wavefront: threads in one chunk (payload of a chunk stays in cache), set by '-ispc_wave_chunk'
+    uint32_t    m_waveChunk = 1024;         ///<! RTV wavefront: threads in one chunk (payload of a chunk stays in cache), set by '-ispc_wave_chunk'
     uint32_t    m_megaChunk = 256;          ///<! RTV megakernel: threads in one OpenMP work item, set by '-ispc_mega_chunk'
     std::string RTVGetFakeOffsetExpression(const kslicer::KernelInfo& a_funcInfo, const std::vector<kslicer::ArgFinal>& threadIds) override; ///<! 'kgen_i': payload of a chunk
     bool        MemberFunctionsAreSupported() const override { return true; }

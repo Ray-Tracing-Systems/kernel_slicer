@@ -113,7 +113,7 @@ Complete command lines for every sample and test are in `.vscode/launch_slang.js
 | `-ispc_threads <0\|1\|2>` | `0` | ISPC threading model: `0` ISPC tasks (`launch`, needs `ispc_tasksys.cpp`), `1` single thread, `2` OpenMP loop over blocks, each block is an ISPC call |
 | `-ispc_target <target>` | `avx2-i32x8` | ISPC `--target` written to `z_build_ispc.sh`, e.g. `avx512skx-x16` |
 | `-ispc_explicit_id 1` | `0` | ISPC: explicit thread indices |
-| `-ispc_wave_chunk <N>` | `4096` | ISPC, RTV with `-megakernel 0`: control function is executed for chunks of N threads (rows of 2D threads) by OpenMP threads, payload arrays of a chunk stay in cache |
+| `-ispc_wave_chunk <N>` | `1024` | ISPC, RTV with `-megakernel 0`: control function is executed for chunks of N threads (rows of 2D threads) by OpenMP threads, payload arrays of a chunk stay in cache |
 | `-ispc_mega_chunk <N>` | `256` | ISPC, RTV with `-megakernel 1`: threads in one OpenMP work item of a megakernel |
 | `-ispc_process_include 1` | `0` | ISPC: headers of `include/` are rewritten as other code (as for Slang); by default they are written for ISPC and included to kernels as is |
 | `-wgpu_ver <n>` | `30` | WebGPU: API version of the generated code |
