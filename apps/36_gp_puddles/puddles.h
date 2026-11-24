@@ -53,11 +53,8 @@ public:
 
   bool LoadScene(const char* a_scenePath);     ///< host only: meshes, instances, materials, camera, acceleration structure
   void SetViewport(int a_width, int a_height); ///< host only: images, camera matrices and pipeline state
-  void SetCollectStats(bool a_enable);         ///< host only: measure time of stages of draws on CPU (C++ and ISPC)
-  LiteRS::CPUStats GetRasterStats(bool a_reset); ///< host only: time of stages accumulated since the last reset
 
-  virtual void RenderGBuffer(int a_width, int a_height);                                                   ///< rasterization
-  virtual void ShadeAndReflect(int a_width, int a_height, uint32_t* a_out [[size("a_width*a_height")]]); ///< ray tracing
+  virtual void Render(int a_width, int a_height, uint32_t* a_out [[size("a_width*a_height")]]); ///< rasterization, then ray tracing
 
   virtual void CommitDeviceData() {}
   virtual void GetExecutionTime(const char* a_funcName, float a_out[4]);
@@ -115,6 +112,5 @@ protected:
 
   std::shared_ptr<ISceneObject> m_pAccelStruct = nullptr;
 
-  float                 m_timeGBuffer = 0.0f;
-  float                 m_timeShade   = 0.0f;
+  float                 m_timeRender = 0.0f;
 };

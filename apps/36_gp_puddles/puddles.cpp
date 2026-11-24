@@ -29,12 +29,14 @@ void PuddleRender::SetViewport(int a_width, int a_height)
 /////////////////////////////////////////////////// control functions ////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void PuddleRender::RenderGBuffer(int a_width, int a_height)
+void PuddleRender::Render(int a_width, int a_height, uint32_t* a_out)
 {
   auto start = std::chrono::high_resolution_clock::now();
 
+  // (1) rasterization: G-buffer, all instances of a mesh are drawn by one command
+  //
   LiteRS::Clear(m_gbufferPass);
-  for(uint32_t mesh = 0; mesh < m_meshNum; mesh++) // all instances of a mesh are drawn by one command
+  for(uint32_t mesh = 0; mesh < m_meshNum; mesh++)
   {
     const uint32_t firstIndex = m_meshFirstIndex[mesh];
     const uint32_t indexNum   = m_meshIndexNum[mesh];
@@ -43,14 +45,11 @@ void PuddleRender::RenderGBuffer(int a_width, int a_height)
                                           m_indices.data() + firstIndex, indexNum, instNum, m_meshVertOffset[mesh], m_meshFirstInst[mesh]);
   }
 
-  m_timeGBuffer = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start).count()/1000.f;
-}
-
-void PuddleRender::ShadeAndReflect(int a_width, int a_height, uint32_t* a_out)
-{
-  auto start = std::chrono::high_resolution_clock::now();
+  // (2) ray tracing: shadows and reflections in puddles for pixels of the G-buffer
+  //
   kernel2D_Shade(a_width, a_height, a_out);
-  m_timeShade = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start).count()/1000.f;
+
+  m_timeRender = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start).count()/1000.f;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -197,8 +196,6 @@ void PuddleRender::kernel2D_Shade(int a_width, int a_height, uint32_t* a_out)
 void PuddleRender::GetExecutionTime(const char* a_funcName, float a_out[4])
 {
   a_out[0] = a_out[1] = a_out[2] = a_out[3] = 0.0f;
-  if(std::string(a_funcName) == "RenderGBuffer")
-    a_out[0] = m_timeGBuffer;
-  else if(std::string(a_funcName) == "ShadeAndReflect")
-    a_out[0] = m_timeShade;
+  if(std::string(a_funcName) == "Render")
+    a_out[0] = m_timeRender;
 }
