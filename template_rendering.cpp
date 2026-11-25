@@ -12,6 +12,7 @@
 #pragma GCC diagnostic pop
 
 #include <algorithm>
+#include <set>
 
 #ifdef _WIN32
 typedef unsigned int uint;
@@ -519,6 +520,70 @@ static void PutSlangTextureToJson(json& argj, kslicer::SHADER_TEX a_kind, const 
   argj["SlangImFormat"] = format;
 }
 
+/// ISPC: 2- and 3-component vectors take 16 bytes, so structs with them (directly, in nested structs or arrays) have
+/// different layout in C++ and ISPC and are converted field by field when they are copied to ISPC
+static bool HasShortVectorsISPC(clang::QualType a_type, int a_depth = 0)
+{
+  if(a_depth > 16)
+    return false;
+  const clang::QualType qt = a_type.getCanonicalType();
+  if(const auto* pArray = llvm::dyn_cast<clang::ConstantArrayType>(qt.getTypePtr()))
+    return HasShortVectorsISPC(pArray->getElementType(), a_depth + 1);
+  const clang::RecordDecl* pRecord = qt->getAsRecordDecl();
+  if(pRecord == nullptr)
+    return false;
+  static const std::set<std::string> shortVectors = {"float2", "float3", "int2", "int3", "uint2", "uint3"};
+  if(shortVectors.count(pRecord->getNameAsString()) != 0)
+    return true;
+  const clang::RecordDecl* pDef = pRecord->getDefinition();
+  if(pDef == nullptr)
+    return false;
+  for(const auto* field : pDef->fields())
+    if(HasShortVectorsISPC(field->getType(), a_depth + 1))
+      return true;
+  return false;
+}
+
+static bool RecordHasShortVectorsISPC(const clang::RecordDecl* a_record)
+{
+  const clang::RecordDecl* pDef = a_record->getDefinition();
+  if(pDef == nullptr)
+    return false;
+  for(const auto* field : pDef->fields())
+    if(HasShortVectorsISPC(field->getType()))
+      return true;
+  return false;
+}
+
+/// fields of a struct for conversion to ISPC layout: name, size of array (0 if it is not an array), conversion of a nested struct
+static nlohmann::json FieldsForISPC(const clang::RecordDecl* a_record)
+{
+  static const std::set<std::string> shortVectors = {"float2", "float3", "int2", "int3", "uint2", "uint3"};
+  nlohmann::json fields = std::vector<nlohmann::json>();
+  const clang::RecordDecl* pDef = a_record->getDefinition();
+  if(pDef == nullptr)
+    return fields;
+  for(const auto* field : pDef->fields())
+  {
+    clang::QualType qt = field->getType().getCanonicalType();
+    uint64_t arraySize = 0;
+    if(const auto* pArray = llvm::dyn_cast<clang::ConstantArrayType>(qt.getTypePtr()))
+    {
+      arraySize = pArray->getSize().getZExtValue();
+      qt        = pArray->getElementType().getCanonicalType();
+    }
+    const clang::RecordDecl* pRecord = qt->getAsRecordDecl();
+    nlohmann::json local;
+    local["Name"]      = field->getNameAsString();
+    local["ArraySize"] = arraySize;
+    local["Convert"]   = (pRecord != nullptr && shortVectors.count(pRecord->getNameAsString()) == 0 && HasShortVectorsISPC(qt));
+    local["TypeName"]  = (pRecord != nullptr) ? pRecord->getNameAsString() : std::string("");
+    fields.push_back(local);
+  }
+  return fields;
+}
+
+
 json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
                                     const std::vector<kslicer::FuncData>& usedFunctions,
                                     const std::vector<kslicer::DeclInClass>& usedDecl,
@@ -715,6 +780,16 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     c_decl["IsType"]  = (decl.kind == DECL_IN_CLASS::DECL_STRUCT); // || (decl.kind == DECL_IN_CLASS::DECL_TYPEDEF);
     c_decl["IsTdef"]  = (decl.kind == DECL_IN_CLASS::DECL_TYPEDEF); // || (decl.kind == DECL_IN_CLASS::DECL_TYPEDEF);
     c_decl["Type"]    = kslicer::CleanTypeName(decl.type);
+    c_decl["ConvertISPC"] = false;
+    if(decl.kind == DECL_IN_CLASS::DECL_STRUCT && decl.astNode != nullptr)
+    {
+      const auto* pRecord = llvm::dyn_cast<clang::RecordDecl>(decl.astNode);
+      if(pRecord != nullptr && RecordHasShortVectorsISPC(pRecord))
+      {
+        c_decl["ConvertISPC"] = true;
+        c_decl["FieldsISPC"]  = FieldsForISPC(pRecord);
+      }
+    }
     data["ClassDecls"].push_back(c_decl);
 
     if(decl.kind == DECL_IN_CLASS::DECL_STRUCT && decl.astNode != nullptr && kslicer::GetTypeForDecl(decl.astNode) != nullptr)
@@ -1155,6 +1230,7 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     kernelJson["Name"]         = k.name;
     kernelJson["IsMega"]       = k.isMega;                                      // RTV control function joined to megakernel
     kernelJson["IsRTV"]        = (k.pattern == kslicer::PATTERN_TP::PATTERN_RTV);
+    kernelJson["IsVirtual"]    = (k.astNode != nullptr && k.astNode->isVirtual()); // ISPC: only virtual kernels are overridden
     kslicer::AddGraphicsToKernelJson(kernelJson, k, a_classInfo);
     kernelJson["SamplersISPC"] = std::vector<std::string>(); // 'Sampler' members used by 'texture.sample(sampler, uv)', ISPC passes their state to kernels
     {

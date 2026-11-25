@@ -864,8 +864,14 @@ namespace
       if(pMethod == nullptr)
         return true;
       auto pKernel = m_kernels.find(pMethod->getNameAsString());
-      if(pKernel == m_kernels.end() || !pKernel->second.be.enabled)
+      if(pKernel == m_kernels.end())
         return true;
+      if(!pKernel->second.be.enabled) // a kernel which is not virtual can't be overriden either: the copy calls the kernel of the generated class
+      {
+        if(!pMethod->isVirtual() && pKernel->second.pattern == kslicer::PATTERN_TP::PATTERN_IPV)
+          found = true;
+        return true;
+      }
 
       kslicer::ExtractBlockSizeFromCall(f, pKernel->second, m_compiler);
 

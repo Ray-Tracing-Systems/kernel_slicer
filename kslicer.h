@@ -683,7 +683,7 @@ namespace kslicer
     std::string CodeGenerated;
     std::string OriginalDecl;
     std::string MegaKernelCall;
-    bool        callsBlockExpansion = false; ///<! ISPC: control function calls block expansion kernels, 'CodeGenerated' is its copy
+    bool        callsBlockExpansion = false; ///<! ISPC: control function calls kernels which can't be overriden (block expansion or not virtual), 'CodeGenerated' is its copy
 
     size_t startDSNumber = 0;
     size_t endDSNumber   = 0;
@@ -2051,6 +2051,7 @@ namespace kslicer
 
   void PrintError(const std::string& a_msg, const clang::SourceRange& a_range, const clang::SourceManager& a_sm);
   void PrintWarning(const std::string& a_msg, const clang::SourceRange& a_range, const clang::SourceManager& a_sm);
+  void PrintError(const std::string& a_msg); ///<! error without a location in source code (found when generating code)
   uint32_t GetErrorCount(); ///<! number of errors printed via PrintError; kslicer returns non zero exit code if it is not 0
   bool IsInsideLoopOrSwitch(const clang::Stmt* a_stmt, clang::ASTContext& a_context); ///<! is there a loop or switch between statement and its function
   void ExtractTypeAndVarNameFromConstructor(clang::CXXConstructExpr* constructExpr, clang::ASTContext* astContext, std::string& varName, std::string& typeName);

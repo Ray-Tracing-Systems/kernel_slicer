@@ -1065,6 +1065,14 @@ void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   // LiteMath::half is 'class half_float::half' in canonical types of arguments, in ISPC it is 'half' (typedef of 'float16')
   //
   std::set<std::string> paddedBuffers, texArrays;
+
+  // structs with 2- and 3-component vectors have another layout in ISPC: member vectors of them are converted (see 'ISPCConvert')
+  //
+  std::set<std::string> convertedTypes, reportedArgs;
+  std::map<std::string, std::string> convertedBuffers;
+  for(const auto& decl : a_kernelsJson["ClassDecls"])
+    if(decl.contains("ConvertISPC") && decl["ConvertISPC"].get<bool>())
+      convertedTypes.insert(decl["Type"].get<std::string>());
   for(auto& kernel : a_kernelsJson["Kernels"])
   {
     // RTV wavefront: thread id is computed by kernel for its chunk of threads, thread flags are passed separately
@@ -1103,10 +1111,25 @@ void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     {
       std::string type = arg.contains("Type") && arg["Type"].is_string() ? arg["Type"].get<std::string>() : std::string("");
       ReplaceFirst(type, "const ", "");
-      const bool padded = arg["IsMember"].get<bool>() && arg["IsPointer"].get<bool>() && !kernel["IsGraphics"].get<bool>() && shortVectors.count(type) != 0;
-      arg["PaddedISPC"] = padded;
+      ReplaceFirst(type, "struct ", "");
+      while(!type.empty() && type.back() == ' ')
+        type.pop_back();
+      const bool isMemberBuff = arg["IsMember"].get<bool>() && arg["IsPointer"].get<bool>() && !kernel["IsGraphics"].get<bool>();
+      const bool padded       = isMemberBuff && shortVectors.count(type) != 0;
+      const bool converted    = isMemberBuff && convertedTypes.count(type) != 0;
+      arg["PaddedISPC"]    = padded;
+      arg["ConvertedISPC"] = converted;
       if(padded)
         paddedBuffers.insert(arg["Name"].get<std::string>());
+      if(converted)
+        convertedBuffers[arg["Name"].get<std::string>()] = type;
+      const bool userBuffer = arg["IsPointer"].get<bool>() && !arg["IsMember"].get<bool>() && !kernel["IsGraphics"].get<bool>() && !kernel["IsRTV"].get<bool>(); // RTV: payload of generated code
+      if(userBuffer && shortVectors.count(type) != 0 && reportedArgs.insert(type).second)
+        kslicer::PrintError("ISPC: '" + type + "' takes 16 bytes in ISPC; buffers of it are padded only for members of the class (std::vector), "
+                            "but a pointer is passed to kernel '" + kernel["Name"].get<std::string>() + "' (argument '" + arg["Name"].get<std::string>() + "'), use float4/uint4 or a member vector");
+      if(userBuffer && convertedTypes.count(type) != 0 && reportedArgs.insert(type).second)
+        kslicer::PrintError("ISPC: '" + type + "' has 2- or 3-component vectors which take 16 bytes in ISPC; buffers of it are converted only for members of the class (std::vector), "
+                            "but a pointer is passed to kernel '" + kernel["Name"].get<std::string>() + "' (argument '" + arg["Name"].get<std::string>() + "')");
     }
 
     for(auto& arg : kernel["Args"])
@@ -1192,6 +1215,32 @@ void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
     }
   }
   a_kernelsJson["PaddedBuffersISPC"] = std::vector<std::string>(paddedBuffers.begin(), paddedBuffers.end());
+  a_kernelsJson["ConvertedBuffersISPC"] = std::vector<nlohmann::json>();
+  for(const auto& buff : convertedBuffers)
+    a_kernelsJson["ConvertedBuffersISPC"].push_back(nlohmann::json{{"Name", buff.first}, {"Type", buff.second}});
+  std::set<std::string> usedConverted; // converters are written only for structs which are converted: ISPC header declares only structs of 'export' functions
+  for(const auto& buff : convertedBuffers)
+    usedConverted.insert(buff.second);
+  for(auto& var : a_kernelsJson["ClassVars"]) // POD members of such structs in UBO
+  {
+    var["ConvertedISPC"] = var.contains("Type") && convertedTypes.count(var["Type"].get<std::string>()) != 0 && !var["IsArray"].get<bool>();
+    if(var["ConvertedISPC"].get<bool>())
+      usedConverted.insert(var["Type"].get<std::string>());
+  }
+  for(bool changed = true; changed; ) // nested structs of converted ones
+  {
+    changed = false;
+    for(const auto& decl : a_kernelsJson["ClassDecls"])
+    {
+      if(!decl["ConvertISPC"].get<bool>() || usedConverted.count(decl["Type"].get<std::string>()) == 0)
+        continue;
+      for(const auto& field : decl["FieldsISPC"])
+        if(field["Convert"].get<bool>() && usedConverted.insert(field["TypeName"].get<std::string>()).second)
+          changed = true;
+    }
+  }
+  for(auto& decl : a_kernelsJson["ClassDecls"])
+    decl["ConvertISPC"] = decl["ConvertISPC"].get<bool>() && usedConverted.count(decl["Type"].get<std::string>()) != 0;
   a_kernelsJson["TexArraysISPC"]     = std::vector<std::string>(texArrays.begin(), texArrays.end());
   a_kernelsJson["WaveChunkISPC"] = m_waveChunk;
   a_kernelsJson["MegaChunkISPC"] = m_megaChunk;

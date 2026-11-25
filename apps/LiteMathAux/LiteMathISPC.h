@@ -327,6 +327,24 @@ static inline float4 cross (float4 a, float4 b) { return cross3(a, b); }
 //  return value;
 //}
 
+// functions of <cmath> with C names used in kernels; the ISPC standard library has 'min', 'max', 'abs'
+// (unlike 'fmax'/'fmin' of C, they do not prefer the number to NaN)
+//
+static inline float          fmax (float a, float b)                 { return max(a, b); }
+static inline uniform float  fmax (uniform float a, uniform float b) { return max(a, b); }
+static inline float          fmin (float a, float b)                 { return min(a, b); }
+static inline uniform float  fmin (uniform float a, uniform float b) { return min(a, b); }
+static inline float          fabs (float a)                          { return abs(a); }
+static inline uniform float  fabs (uniform float a)                  { return abs(a); }
+static inline float          fmaxf(float a, float b)                 { return max(a, b); }
+static inline uniform float  fmaxf(uniform float a, uniform float b) { return max(a, b); }
+static inline float          fminf(float a, float b)                 { return min(a, b); }
+static inline uniform float  fminf(uniform float a, uniform float b) { return min(a, b); }
+static inline float          fabsf(float a)                          { return abs(a); }
+static inline uniform float  fabsf(uniform float a)                  { return abs(a); }
+static inline float          copysign(float a, float b)                 { return floatbits((intbits(a) & 0x7FFFFFFFu) | (intbits(b) & 0x80000000u)); }
+static inline uniform float  copysign(uniform float a, uniform float b) { return floatbits((intbits(a) & 0x7FFFFFFFu) | (intbits(b) & 0x80000000u)); }
+
 static inline float as_float(int x)    { return floatbits(x); }
 static inline float as_float(uint32 x) { return floatbits(x); }
 

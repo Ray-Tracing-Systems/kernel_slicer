@@ -22,6 +22,54 @@ using {{Decl.Type}} = {{MainClassName}}::{{Decl.Type}}; // for passing this data
 ## endfor
 #include "LiteMath.h"
 
+// structs with 2- and 3-component vectors: these vectors take 16 bytes in ISPC (12 or 8 in C++), so such structs have
+// another layout in ISPC and member vectors of them are copied to ISPC field by field
+//
+template<typename A, typename B>
+static inline void ISPCConvertField(const A& a_src, B& a_dst) { std::memcpy(&a_dst, &a_src, std::min(sizeof(A), sizeof(B))); }
+## for Decl in ClassDecls
+{% if Decl.ConvertISPC %}
+static inline void ISPCConvert(const {{Decl.Type}}& a_src, ispc::{{Decl.Type}}& a_dst);
+static inline void ISPCConvert(const ispc::{{Decl.Type}}& a_src, {{Decl.Type}}& a_dst);
+{% endif %}
+## endfor
+## for Decl in ClassDecls
+{% if Decl.ConvertISPC %}
+
+static inline void ISPCConvert(const {{Decl.Type}}& a_src, ispc::{{Decl.Type}}& a_dst)
+{
+  {% for Field in Decl.FieldsISPC %}
+  {% if Field.ArraySize > 0 %}
+  for(size_t i = 0; i < {{Field.ArraySize}}; i++)
+    {% if Field.Convert %}ISPCConvert{% else %}ISPCConvertField{% endif %}(a_src.{{Field.Name}}[i], a_dst.{{Field.Name}}[i]);
+  {% else %}
+  {% if Field.Convert %}ISPCConvert{% else %}ISPCConvertField{% endif %}(a_src.{{Field.Name}}, a_dst.{{Field.Name}});
+  {% endif %}
+  {% endfor %}
+}
+
+static inline void ISPCConvert(const ispc::{{Decl.Type}}& a_src, {{Decl.Type}}& a_dst)
+{
+  {% for Field in Decl.FieldsISPC %}
+  {% if Field.ArraySize > 0 %}
+  for(size_t i = 0; i < {{Field.ArraySize}}; i++)
+    {% if Field.Convert %}ISPCConvert{% else %}ISPCConvertField{% endif %}(a_src.{{Field.Name}}[i], a_dst.{{Field.Name}}[i]);
+  {% else %}
+  {% if Field.Convert %}ISPCConvert{% else %}ISPCConvertField{% endif %}(a_src.{{Field.Name}}, a_dst.{{Field.Name}});
+  {% endif %}
+  {% endfor %}
+}
+{% endif %}
+## endfor
+
+template<typename A, typename B>
+static inline void ISPCConvertVector(const std::vector<A>& a_src, std::vector<B>& a_dst)
+{
+  a_dst.resize(a_src.size());
+  for(size_t i = 0; i < a_src.size(); i++)
+    ISPCConvert(a_src[i], a_dst[i]);
+}
+
 // ISPC header declares its own types for vectors and structures (with the same layout), so buffers are passed to ISPC functions via untyped pointer
 //
 struct ISPCPtr 
@@ -167,7 +215,7 @@ public:
   {% for MainFunc in MainFunctions %}
   {{MainFunc.ReturnType}} {{MainFunc.DeclOrig}} override;
   {% if MainFunc.CallsBlockExpansion %}
-  {{MainFunc.ReturnType}} {{MainFunc.DeclBE}}; // copy of '{{MainFunc.Name}}' that calls block expansion kernels of this class
+  {{MainFunc.ReturnType}} {{MainFunc.DeclBE}}; // copy of '{{MainFunc.Name}}' that calls kernels of this class (block expansion, not virtual)
   {% endif %}
   {% endfor %}
 
@@ -331,7 +379,7 @@ protected:
   }
 
   {% else if not Kernel.IsGraphics %}
-  void {{Kernel.Name}}({% for Arg in Kernel.Args %}{% if not Arg.IsUBO and not Arg.IsMember %}{% if Arg.IsPointer %}{{Arg.Type}}* {{Arg.Name}}{% if loop.index1 != Kernel.LastArgNF %}, {% endif %}{% else %}{{Arg.Type}} {{Arg.Name}}{% if loop.index1 != Kernel.LastArgNF %}, {% endif %} {% endif %}{% endif %} {% endfor %}) {% if not Kernel.InitKPass and not Kernel.EnableBlockExpansion and not Kernel.IsMega %} override {% endif %}
+  void {{Kernel.Name}}({% for Arg in Kernel.Args %}{% if not Arg.IsUBO and not Arg.IsMember %}{% if Arg.IsPointer %}{{Arg.Type}}* {{Arg.Name}}{% if loop.index1 != Kernel.LastArgNF %}, {% endif %}{% else %}{{Arg.Type}} {{Arg.Name}}{% if loop.index1 != Kernel.LastArgNF %}, {% endif %} {% endif %}{% endif %} {% endfor %}) {% if not Kernel.InitKPass and not Kernel.EnableBlockExpansion and not Kernel.IsMega and Kernel.IsVirtual %} override {% endif %}
   { 
     {% for Arg in Kernel.Args %}
     {% if Arg.IsAccelStruct %}
@@ -415,6 +463,9 @@ protected:
   {% for Buff in PaddedBuffersISPC %}
   std::vector< std::array<uint32_t,4> > m_padded_{{Buff}}; // copy of '{{Buff}}' with elements of 16 bytes, as ISPC 2- and 3-component vectors
   {% endfor %}
+  {% for Buff in ConvertedBuffersISPC %}
+  std::vector<ispc::{{Buff.Type}}> m_conv_{{Buff.Name}}; // copy of '{{Buff.Name}}' in ISPC layout
+  {% endfor %}
   ispc::{{MainClassName}}{{MainClassSuffix}}_UBO_Data m_uboData;
   std::unordered_map<std::string, float> m_exTimeISPC;
 };
@@ -425,12 +476,17 @@ void {{MainClassName}}_ISPC::UpdatePlainMembers()
   {% for Buff in PaddedBuffersISPC %}
   ISPCPadTo16({{Buff}}, m_padded_{{Buff}});
   {% endfor %}
+  {% for Buff in ConvertedBuffersISPC %}
+  ISPCConvertVector({{Buff.Name}}, m_conv_{{Buff.Name}});
+  {% endfor %}
   {% for TexArray in TexArraysISPC %}
   ISPCTextureDescs({{TexArray}}, m_texDesc_{{TexArray}});
   {% endfor %}
 ## for Var in ClassVars
   {% if Var.IsArray %}
   memcpy(m_uboData.{{Var.Name}},{{Var.Name}},sizeof({{Var.Name}}));
+  {% else if Var.ConvertedISPC %}
+  ISPCConvert({{Var.Name}}, m_uboData.{{Var.Name}});
   {% else %}
   static_assert(sizeof(m_uboData.{{Var.Name}}) >= sizeof({{Var.Name}}), "'{{Var.Name}}' has different layout in ISPC");
   memcpy(&m_uboData.{{Var.Name}}, &{{Var.Name}}, sizeof({{Var.Name}})); // LiteMath and ISPC types are different, ISPC float3 is 16 bytes
@@ -447,10 +503,15 @@ void {{MainClassName}}_ISPC::ReadPlainMembers()
   {% for Buff in PaddedBuffersISPC %}
   ISPCUnpadFrom16(m_padded_{{Buff}}, {{Buff}});
   {% endfor %}
+  {% for Buff in ConvertedBuffersISPC %}
+  ISPCConvertVector(m_conv_{{Buff.Name}}, {{Buff.Name}});
+  {% endfor %}
   {% for Var in ClassVars %}
   {% if not Var.IsConst %}
   {% if Var.IsArray %}
   memcpy({{Var.Name}}, m_uboData.{{Var.Name}}, sizeof({{Var.Name}}));
+  {% else if Var.ConvertedISPC %}
+  ISPCConvert(m_uboData.{{Var.Name}}, {{Var.Name}});
   {% else %}
   memcpy(&{{Var.Name}}, &m_uboData.{{Var.Name}}, sizeof({{Var.Name}}));
   {% endif %}
@@ -513,7 +574,7 @@ void {{MainClassName}}_ISPC::ReadPlainMembers()
 }
 {% if MainFunc.CallsBlockExpansion %}
 
-// block expansion kernels are templates of '{{MainClassName}}' and can't be overriden, so this copy of '{{MainFunc.Name}}' calls them in '{{MainClassName}}_ISPC'
+// block expansion kernels (templates) and kernels which are not virtual can't be overriden, so this copy of '{{MainFunc.Name}}' calls them in '{{MainClassName}}_ISPC'
 //
 {{MainFunc.ReturnType}} {{MainClassName}}_ISPC::{{MainFunc.DeclBE}}
 {

@@ -112,6 +112,12 @@ bool kslicer::IsInsideLoopOrSwitch(const clang::Stmt* a_stmt, clang::ASTContext&
 static uint32_t g_errorCount = 0;
 uint32_t kslicer::GetErrorCount() { return g_errorCount; }
 
+void kslicer::PrintError(const std::string& a_msg)
+{
+  g_errorCount++;
+  std::cout << "error: " << a_msg << std::endl;
+}
+
 void kslicer::PrintError(const std::string& a_msg, const clang::SourceRange& a_range, const clang::SourceManager& a_sm)
 {
   g_errorCount++;

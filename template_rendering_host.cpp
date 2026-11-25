@@ -825,6 +825,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     local["IsArray"]    = v.isArray;
     local["ArraySize"]  = v.arraySize;
     local["IsConst"]    = v.isConst;
+    local["Type"]       = kslicer::CleanTypeName(v.type);
     local["HasPrefix"]  = v.hasPrefix;
     local["PrefixName"] = v.prefixName;
     if(v.hasPrefix)
