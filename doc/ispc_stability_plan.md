@@ -46,6 +46,14 @@ without an ISPC variant, run `python3 ktest.py -b ispc -s all --variant ispc_tri
   expansion kernels). Structs with 2-/3-component vectors in member vectors and POD members are converted to ISPC layout
   (021); such buffers passed by pointer from control functions are reported as an error (025 is skipped). ISPC variants:
   001 skipped (reduction, C4); 002 not converted yet (one run computes CPU and GPU, reduction).
+- 2026-11-25: new HydraCore3 (step 5) works with ISPC in both modes without changes of the renderer: branch
+  `ispc_hydra` of `/home/frol/PROG/gml_private` (commit 83ed463a9) adds `kmake_{mega,wave}_ispc.json`, `ispc_build.sh`,
+  `USE_ISPC` in CMake and `--ispc` in `main.cpp`. Translator fixes it needed (kslicer 29440b76): layout conversion found
+  from clang types of members (also through typedefs, `RandomGen`), split of `float a = x, b = a*y;`, `int4(float4)`
+  casts, renaming of locals named as ISPC keywords (`half`), forward declarations of copies of functions with buffers,
+  `memcpy` with `void*` (GCC `-Werror=class-memaccess`). Benchmark scenes (coffee, spaceship, staircase, kitchen),
+  512x512, 16 spp, MIS-PT: ISPC images match C++ with 46-63 dB (megakernel and wavefront are identical), megakernel is
+  1.2-1.5 times faster than the C++ code, wavefront 1.0-1.4 times (not tuned; old HydraCore3 gave 1.4-2.0 for PT).
 
 
 1. **Host part of tests** (mechanical, no translator changes): for the 27 tests above add `USE_ISPC` to
