@@ -13,6 +13,9 @@
 std::shared_ptr<PlainUpdate> CreatePlainUpdate_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
 vk_utils::VulkanDeviceFeatures PlainUpdate_Generated_ListRequiredDeviceFeatures();
 #endif
+#ifdef USE_ISPC
+std::shared_ptr<PlainUpdate> CreatePlainUpdate_ISPC();
+#endif
 
 int main(int argc, const char** argv)
 {
@@ -33,6 +36,7 @@ int main(int argc, const char** argv)
   ArgParser args(argc, argv);
 
   bool onGPU = args.hasOption("--gpu");
+  bool onISPC = args.hasOption("--ispc");
   if(args.hasOption("--validation"))
     enableValidationLayers = true;
   #ifdef USE_VULKAN
@@ -45,9 +49,14 @@ int main(int argc, const char** argv)
   }
   else
   #endif
+  #ifdef USE_ISPC
+  if(onISPC)
+    pImpl = CreatePlainUpdate_ISPC();
+  else
+  #endif
     pImpl = std::make_shared<PlainUpdate>();
 
-  std::string backendName = onGPU ? "gpu" : "cpu";
+  std::string backendName = onGPU ? "gpu" : (onISPC ? "ispc" : "cpu");
 
   pImpl->SetTable(table);
   pImpl->SetParameters(1.0f, 0.0f, 0);

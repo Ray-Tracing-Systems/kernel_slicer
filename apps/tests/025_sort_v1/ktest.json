@@ -1,6 +1,8 @@
 {
     "variants": [
         {"name": "glsl", "backend": "glsl", "kmake": "kmake.json"},
-        {"name": "slang", "backend": "slang", "kmake": "kmake.json"}
+        {"name": "slang", "backend": "slang", "kmake": "kmake.json"},
+        {"name": "ispc", "backend": "ispc", "kmake": "kmake.json",
+         "skip": "ISPC: uint2 arrays passed by pointer from control function arguments have another layout (16 bytes per element), kslicer reports an error"}
     ]
 }

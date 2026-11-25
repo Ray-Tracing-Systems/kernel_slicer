@@ -57,13 +57,13 @@ follows the test configs and the code.
 | `bev_atomics_shared` | Block Expansion: `InterlockedAdd` on arrays of the block (shared memory) in parallel loops; ISPC: `atomic_add_local` for arrays of the block, `atomic_add_global` for buffers | 🧪 | 🧪 | ❔ | 🧪 | 097 |
 | `megakernel` | One shader per control function (`-megakernel 1`) | ✅ | ✅ | ❔ | 🧪¹⁰ | 057, 067, app 07, app 20 |
 | `persistent_rays` | Persistent rays in RTV megakernels (`-persistent 1`) | 🧪 | 🧪 | ❔ | ❔ | — ⁰ |
-| `indirect_dispatch` | Dispatch size computed on GPU (loop bound is a class member) | ✅ | ✅ | ❔ | ❔ | 059, 057 |
-| `reorder_loops` | `-reorderLoops YX` for 2D kernels | ✅ | ✅ | ✅ | ❔ | 059, app 05, app 24 |
+| `indirect_dispatch` | Dispatch size computed on GPU (loop bound is a class member) | ✅ | ✅ | ❔ | ✅ | 059, 057 |
+| `reorder_loops` | `-reorderLoops YX` for 2D kernels | ✅ | ✅ | ✅ | ✅ | 059, app 05, app 24 |
 | `subgroups` | Subgroup operations in reductions (`-enableSubgroup`) | ✅ | ✅ | ✅ | ❔ | app 04, 055 |
 | `timestamps` | GPU time of kernels, `GetExecutionTime` (`-timestamps 1`) | ✅ | ✅ | ❔ | ❔ | app 05, app 28 |
 | `setters` | Setter functions that pass GPU objects to the class | ✅ | ✅ | ❔ | ❔ | 004, 005 |
 | `composition` | Main class with composed classes (`composClasses`) | ✅ | ✅ | ❔ | ❔ | 018, 019 |
-| `update_plain_data` | `UpdateMembersPlainData()`: upload only POD members | ✅ | ✅ | ❔ | ❔ | 068 |
+| `update_plain_data` | `UpdateMembersPlainData()`: upload only POD members | ✅ | ✅ | ❔ | ✅ | 068 |
 | `commit_appended` | `CommitAppendedData()`: upload only appended elements (`appendGroups`) | ✅ | ✅ | ❔ | ❔ | 064, 065 |
 
 ⁰ No test yet. See [concepts.md](concepts.md#execution-strategies-from-one-source).
@@ -71,8 +71,10 @@ follows the test configs and the code.
 ¹⁰ ISPC, RTV: with `-megakernel 1` the control function is one ISPC function of a thread, OpenMP threads process chunks of
 `-ispc_mega_chunk` threads; with `-megakernel 0` (wavefront) the control function is executed on the host for chunks of
 `-ispc_wave_chunk` threads, every kernel processes all threads of the chunk and payload is stored in arrays of the chunk.
-Persistent rays are not supported. ISPC `float2`, `float3`, `int2`, ... take 16 bytes: member vectors of such elements are
-passed as padded copies, but structures with such fields must not be stored in buffers (use scalars or `float4`).
+Persistent rays are not supported. ISPC `float2`, `float3`, `int2`, ... take 16 bytes: member vectors of such elements and
+of structures with such fields (also nested) are passed as copies in ISPC layout, POD members of such structures are converted
+too (021); buffers of them passed by pointer from arguments of control functions are reported as an error (025): use scalars
+or `float4`.
 Headers of `include/` written in C++ need `-ispc_process_include 1`.
 
 ### Algorithms and service functions
@@ -81,27 +83,30 @@ Headers of `include/` written in C++ need `-ispc_process_include 1`.
 |----|---------|:-----:|:----:|:--------:|:----:|-------------------|
 | `reduction` | Reduction to a class member (`+=`, `min`, `max`), also over arrays | ✅ | ✅ | ✅ | ✅ | 003, app 04 |
 | `reduce_add` | `LiteMath::ReduceAdd` into a buffer | ✅ | ❌ | ✅ | ❔ | 045 |
-| `scan` | `std::exclusive_scan`, `std::inclusive_scan` | ✅ | ✅ | ❌ | ❔ | 023, 024 |
-| `sort` | `std::sort` with a lambda comparator | ✅ | ✅ | ❌ | ❔ | 025, 026 |
-| `memcpy` | `memcpy` between buffers in control functions | ✅ | ✅ | ❔ | ❔ | 057 |
+| `scan` | `std::exclusive_scan`, `std::inclusive_scan` | ✅ | ✅ | ❌ | ✅ | 023, 024 |
+| `sort` | `std::sort` with a lambda comparator | ✅ | ✅ | ❌ | 🟡¹² | 025, 026 |
+| `memcpy` | `memcpy` between buffers in control functions | ✅ | ✅ | ❔ | ✅ | 057 |
 | `append` | `m_vec.push_back(x)` inside kernels | ✅ | ✅ | ✅ | ❌ | app 08, 085, 086 |
-| `atomics_int` | `InterlockedAdd` on `int`/`uint` | ✅ | ✅ | ❔ | ❔ | 041 |
-| `atomics_float` | Float atomics (hardware `shaderBufferFloat32AtomicAdd`) | ✅ | ✅ | ✅ | ❔ | 042, 054, 045 |
+| `atomics_int` | `InterlockedAdd` on `int`/`uint` | ✅ | ✅ | ❔ | ✅ | 041 |
+| `atomics_float` | Float atomics (hardware `shaderBufferFloat32AtomicAdd`) | ✅ | ✅ | ✅ | 🟡¹³ | 042, 054, 045 |
 | `atomics_float_emul` | Float atomics emulated with CAS (`-atomicf_emul 1`) | ✅ | ✅ | ❔ | ❔ | 042, 054, 056 |
 | `hash_map` | `std::unordered_map` members; `clear()` in control functions (zero fill on GPU) | ✅ | ❌ | ❔ | ❔ | 055, 056 |
 | `nn_coop_vec` | Small neural networks with cooperative vectors (`LiteNN`) | 🧪¹ | ❌ | ❌ | ❌ | 071, 072, 073 |
 | `bev_nn_block` | `LiteNN::LinearForwardBlock` in block expansion kernels: a layer for a batch of vectors in shared memory; with `-coop_matrix 1` cooperative matrices 16x16x16 fp16/fp32 (`VK_KHR_cooperative_matrix`), without it an ordinary loop | 🧪 | ❌ | ❔ | 🧪 | 095 |
 
 ¹ Needs `VK_NV_cooperative_vector` (NVIDIA). Not available on the GPU of the last check.
+¹² ISPC: 026 works; 025 sorts `uint2` given by pointer from arguments of the control function, which has another layout in
+ISPC (see ¹⁰).
+¹³ ISPC: 042 works; 054 (`InterlockedAdd3f` is not declared for ISPC) and 045 (`ReduceAdd`) fail to compile.
 
 ### Data, memory and textures
 
 | ID | Feature | Slang | GLSL | CUDA/HIP | ISPC | Tests and samples |
 |----|---------|:-----:|:----:|:--------:|:----:|-------------------|
-| `ubo_layout` | POD members of any types and order in the UBO (padding) | ✅ | ✅ | ❔ | ❔ | 009–015, 021 |
-| `fp64` | `double` | ✅ | ✅ | ❔ | ❔ | 016, 017 |
+| `ubo_layout` | POD members of any types and order in the UBO (padding) | ✅ | ✅ | ❔ | 🟡¹⁴ | 009–015, 021 |
+| `fp64` | `double` | ✅ | ✅ | ❔ | ✅ | 016, 017 |
 | `fp16` | `half` arithmetic and conversions | 🟡² | 🟡³ | ❔ | ❔ | 022, 053, 070 |
-| `storage_8_16bit` | 8/16-bit types in buffers and UBO | ✅ | ✅ | ❔ | ❔ | 060, 053 |
+| `storage_8_16bit` | 8/16-bit types in buffers and UBO | ✅ | ✅ | ❔ | 🟡¹⁴ | 060, 053 |
 | `buffer_reference` | Buffer device address (`-with_buffer_reference`) | ❌ | ✅ | ❔ | ❔ | 039 |
 | `textures` | Textures and samplers (`ITexture2D`, combined image sampler, `Image2D` + `Sampler` members); sampled `Image2D<uint32_t>` is RGBA8_UNORM on GPU; images read without sampler are sampled images (`Texture2D` / `texture2D` + `texelFetch`) | ✅ | ✅ | ❌ | 🟡⁸ | 006, 007, 008, app 14, app 15, app 20, app 31 |
 | `image_storage` | Writable images (`Image2D<T>` written by kernels) | ✅ | ✅ | ❌ | 🟡⁸ | 066, app 33 |
@@ -109,6 +114,7 @@ Headers of `include/` written in C++ need `-ispc_process_include 1`.
 
 ² 053 and 070 work, 022 (`-forceEnableHalf`) fails to compile.
 ³ 022 and 070 work, 053 (`as_half`/`bit_cast`) fails to compile.
+¹⁴ ISPC: 009–012, 015, 021 and 060 work; 013, 014 (`float4x4` indexing `m[i][j]`) and 053 (half) fail to compile.
 ⁸ ISPC: `Image2D` members of the class (`m_img[int2]` read and write, `sample` of `Image2D<uint32_t>` and
 `Image2D<float4>` with a `Sampler` member, LINEAR, TILED4x4 and TILED4x4_BINS layouts, `apps/LiteMathAux/LiteImageISPC.h`): app 31,
 app 33. Arrays of textures `std::vector<std::shared_ptr<ICombinedImageSampler>>` (and of `const ICombinedImageSampler*`):
@@ -160,13 +166,13 @@ and other code) any C++ is allowed.
 
 | ID | Feature | Slang | GLSL | CUDA/HIP | ISPC | Tests and samples |
 |----|---------|:-----:|:----:|:--------:|:----:|-------------------|
-| `member_func` | Calling non-kernel member functions of the main class | ✅ | ✅ | ✅ | 🧪 | 044, app 18 |
+| `member_func` | Calling non-kernel member functions of the main class | ✅ | ✅ | ✅ | ✅ | 044, app 18 |
 | `free_func` | Free `static`/`inline` functions, forward declarations | ✅ | ✅ | ❔ | ❔ | 058 |
 | `struct_pod` | Structs of POD fields, aggregate initialization | ✅ | ✅ | ❔ | ❔ | 020 |
 | `struct_member_func` | Member functions of user structs (`const`, modifying, `static`) | ✅ | ❌ | ❔ | ❔ | 061 |
 | `constructors` | Constructors of user structs, initializer lists | ✅ | ❌ | ❔ | ❔ | 040 |
 | `default_member_init` | Default member initializers of structs | ✅ | ✅ | ❔ | ❔ | 075 |
-| `inheritance` | The main class derived from base classes (`baseClasses`) | ✅ | ✅ | ❔ | ❔ | 034, 052 |
+| `inheritance` | The main class derived from base classes (`baseClasses`) | ✅ | ✅ | ❔ | ✅ | 034, 052 |
 | `bool_members` | `bool` members of the class and implicit conversions to `bool` | ✅ | ✅ | ❔ | ❔ | 079 |
 | `cpp_constants` | `constexpr`, `static constexpr` locals, `INFINITY`, `std::nextafter`, C-style casts in constants | ✅ | ✅ | ❔ | ❔ | 079 |
 | `default_args` | Default arguments of functions | ✅ | ✅ | ❔ | ❔ | 079 |
@@ -181,9 +187,9 @@ and other code) any C++ is allowed.
 | `multi_loop` | Several consecutive thread loops in one IPV kernel | ✅ | ❌ | ❔ | ❔ | 063 |
 | `kernel_locals` | Locals declared before the thread loop, used inside it | ✅ | ❌ | ❔ | ❔ | 062 |
 | `threadlocal_array` | Local arrays, `[[threadlocal]]` for large ones | ✅ | ✅ | ❔ | ❔ | 033 |
-| `vec_data_ptr` | Passing `m_vec.data()` of member vectors to kernels | ✅ | ✅ | ❔ | ❔ | 027 |
-| `ptr_cast_args` | Pointer casts in arguments of kernel calls: `(T*)ptr`, `reinterpret_cast<const T*>(m_vec.data())`, `static_cast`; one buffer may be passed to a kernel several times with different element types (offsets are separate arguments) | ✅ | ✅ | ❔ | ❔ | 091 |
-| `local_global_ptr` | Local pointers to buffers (`const float* p = a_in + off`) | ✅ | ✅ | ❔ | ❔ | 047, 077 |
+| `vec_data_ptr` | Passing `m_vec.data()` of member vectors to kernels | ✅ | ✅ | ❔ | ✅ | 027 |
+| `ptr_cast_args` | Pointer casts in arguments of kernel calls: `(T*)ptr`, `reinterpret_cast<const T*>(m_vec.data())`, `static_cast`; one buffer may be passed to a kernel several times with different element types (offsets are separate arguments) | ✅ | ✅ | ❔ | ✅ | 091 |
+| `local_global_ptr` | Local pointers to buffers (`const float* p = a_in + off`) | ✅ | ✅ | ❔ | 🟡 | 047, 077 |
 | `nested_global_ptr` | Pointers to buffers passed through several function calls | ✅ | ✅ | ❔ | ❔ | 074, 076 |
 | `global_ptr_copies` | Automatic copies of functions called with different buffers | ✅ | ✅ | ❔ | ❔ | 078 |
 

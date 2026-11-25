@@ -15,6 +15,9 @@
 std::shared_ptr<Convolution2D> CreateConvolution2D_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
 vk_utils::VulkanDeviceFeatures Convolution2D_Generated_ListRequiredDeviceFeatures();
 #endif
+#ifdef USE_ISPC
+std::shared_ptr<Convolution2D> CreateConvolution2D_ISPC();
+#endif
 
 bool LoadHDRImageFromFile(const char* a_fileName, int* pW, int* pH, std::vector<float>& a_data); // imageutils.cpp
 
@@ -92,10 +95,18 @@ static RunResult ApplyFilter(std::shared_ptr<Convolution2D> pImpl, const Filter&
   return res;
 }
 
-static std::shared_ptr<Convolution2D> MakeImpl(bool onGPU, int w, int h, bool enableValidationLayers, int deviceId)
+static std::shared_ptr<Convolution2D> MakeImpl(bool onGPU, bool onISPC, int w, int h, bool enableValidationLayers, int deviceId)
 {
   std::shared_ptr<Convolution2D> pImpl = nullptr;
-  if(onGPU)
+  if(onISPC)
+  {
+    #ifdef USE_ISPC
+    pImpl = CreateConvolution2D_ISPC();
+    #else
+    std::cout << "[main]: built without ISPC, --ispc is not available" << std::endl;
+    #endif
+  }
+  else if(onGPU)
   {
     #ifdef USE_VULKAN
     auto features = Convolution2D_Generated_ListRequiredDeviceFeatures();
@@ -126,8 +137,10 @@ int main(int argc, const char** argv)
 
   ArgParser args(argc, argv);
   const bool compare  = args.hasOption("--compare");
-  const bool onGPU    = args.hasOption("--gpu") || compare;
-  const bool onCPU    = !args.hasOption("--gpu") || compare;
+  const bool onISPC   = args.hasOption("--ispc");                      // instead of GPU, '--compare' compares ISPC with CPU
+  const bool onGPU    = args.hasOption("--gpu") || compare || onISPC;  // 'pGPU' is the generated implementation: Vulkan or ISPC
+  const bool onCPU    = !(args.hasOption("--gpu") || onISPC) || compare;
+  const std::string genName = onISPC ? "ispc" : "gpu";
   const int  deviceId = args.getOptionValue<int>("--gpu_id", 0);
   const std::string inputPath = args.hasOption("--input") ? args.getOptionValue<std::string>("--input") : std::string("../images/nancy_church_2.hdr");
 
@@ -143,8 +156,8 @@ int main(int argc, const char** argv)
     image[i] = float4(hdrData[4*i+0], hdrData[4*i+1], hdrData[4*i+2], hdrData[4*i+3]);
   std::cout << "[main]: image " << w << "x" << h << std::endl;
 
-  auto pCPU = onCPU ? MakeImpl(false, w, h, enableValidationLayers, deviceId) : nullptr;
-  auto pGPU = onGPU ? MakeImpl(true,  w, h, enableValidationLayers, deviceId) : nullptr;
+  auto pCPU = onCPU ? MakeImpl(false, false,  w, h, enableValidationLayers, deviceId) : nullptr;
+  auto pGPU = onGPU ? MakeImpl(true,  onISPC, w, h, enableValidationLayers, deviceId) : nullptr;
   if(onGPU && pGPU == nullptr)
     return -1;
 
@@ -156,7 +169,7 @@ int main(int argc, const char** argv)
   {
     RunResult rc, rg;
     if(pCPU) { rc = ApplyFilter(pCPU, f, w, h, image); LiteImage::SaveBMP(("zout_cpu_" + f.name + ".bmp").c_str(), rc.ldr.data(), w, h); }
-    if(pGPU) { rg = ApplyFilter(pGPU, f, w, h, image); LiteImage::SaveBMP(("zout_gpu_" + f.name + ".bmp").c_str(), rg.ldr.data(), w, h); }
+    if(pGPU) { rg = ApplyFilter(pGPU, f, w, h, image); LiteImage::SaveBMP(("zout_" + genName + "_" + f.name + ".bmp").c_str(), rg.ldr.data(), w, h); }
 
     std::cout << std::left << std::setw(14) << f.name
               << std::setw(12) << (pCPU ? std::to_string(rc.timeMs) : "-")
@@ -184,7 +197,7 @@ int main(int argc, const char** argv)
   pCPU = nullptr;
   pGPU = nullptr;
   #ifdef USE_VULKAN
-  if(onGPU)
+  if(onGPU && !onISPC)
     vk_utils::globalContextDestroy();
   #endif
   if(compare)

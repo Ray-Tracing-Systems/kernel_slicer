@@ -8,6 +8,9 @@ option(USE_ISPC   "Enable ISPC implementation" OFF)
 option(USE_CUDA   "Enable CUDA implementation" OFF)
 option(USE_HIP    "Enable HIP implementation" OFF)
 option(USE_VULKAN "Enable Vulkan implementation" ON)
+if(USE_ISPC)
+  set(USE_VULKAN OFF) # ISPC instead of Vulkan
+endif()
 option(USE_WEBGPU "Enable WGPU code" OFF)
 
 include_directories(".")

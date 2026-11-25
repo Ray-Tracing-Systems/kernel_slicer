@@ -14,11 +14,23 @@
 std::shared_ptr<Metaballs> CreateMetaballs_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
 vk_utils::VulkanDeviceFeatures Metaballs_Generated_ListRequiredDeviceFeatures();
 #endif
+#ifdef USE_ISPC
+std::shared_ptr<Metaballs> CreateMetaballs_ISPC();
+#endif
 
-static std::shared_ptr<Metaballs> MakeImpl(bool onGPU, int w, int h, bool enableValidationLayers, int deviceId)
+static std::shared_ptr<Metaballs> MakeImpl(bool onGPU, bool onISPC, int w, int h, bool enableValidationLayers, int deviceId)
 {
   std::shared_ptr<Metaballs> pImpl = nullptr;
-  if(onGPU)
+  if(onISPC)
+  {
+    #ifdef USE_ISPC
+    pImpl = CreateMetaballs_ISPC();
+    #else
+    std::cout << "[main]: built without ISPC, --ispc is not available" << std::endl;
+    return nullptr;
+    #endif
+  }
+  else if(onGPU)
   {
     #ifdef USE_VULKAN
     auto features = Metaballs_Generated_ListRequiredDeviceFeatures();
@@ -65,8 +77,9 @@ int main(int argc, const char** argv)
 
   ArgParser args(argc, argv);
   const bool compare  = args.hasOption("--compare");
-  const bool onGPU    = args.hasOption("--gpu") || compare;
-  const bool onCPU    = !args.hasOption("--gpu") || compare;
+  const bool onISPC   = args.hasOption("--ispc");                      // instead of GPU, '--compare' compares ISPC with CPU
+  const bool onGPU    = (args.hasOption("--gpu") || compare) && !onISPC;
+  const bool onCPU    = !(args.hasOption("--gpu") || onISPC) || compare;
   const int  deviceId = args.getOptionValue<int>("--gpu_id", 0);
   const int  spp      = args.getOptionValue<int>("--spp",    2);   // spp x spp samples per pixel
   const int  WIDTH    = 1024;
@@ -75,12 +88,19 @@ int main(int argc, const char** argv)
   std::vector<uint32_t> cpuImage, gpuImage;
   if(onCPU)
   {
-    auto pImpl = MakeImpl(false, WIDTH, HEIGHT, enableValidationLayers, deviceId);
+    auto pImpl = MakeImpl(false, false, WIDTH, HEIGHT, enableValidationLayers, deviceId);
     cpuImage   = RenderAndReport(pImpl, "cpu", WIDTH, HEIGHT, spp);
+  }
+  if(onISPC)
+  {
+    auto pImpl = MakeImpl(false, true, WIDTH, HEIGHT, enableValidationLayers, deviceId);
+    if(pImpl == nullptr)
+      return -1;
+    gpuImage = RenderAndReport(pImpl, "ispc", WIDTH, HEIGHT, spp);
   }
   if(onGPU)
   {
-    auto pImpl = MakeImpl(true, WIDTH, HEIGHT, enableValidationLayers, deviceId);
+    auto pImpl = MakeImpl(true, false, WIDTH, HEIGHT, enableValidationLayers, deviceId);
     if(pImpl == nullptr)
       return -1;
     gpuImage = RenderAndReport(pImpl, "gpu", WIDTH, HEIGHT, spp);

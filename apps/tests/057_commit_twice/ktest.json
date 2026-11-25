@@ -1,6 +1,7 @@
 {
     "variants": [
         {"name": "slang", "backend": "slang", "kmake": "kmake.json", "megakernel": true},
-        {"name": "glsl", "backend": "glsl", "kmake": "kmake.json", "megakernel": true}
+        {"name": "glsl", "backend": "glsl", "kmake": "kmake.json", "megakernel": true},
+        {"name": "ispc", "backend": "ispc", "kmake": "kmake.json"}
     ]
 }

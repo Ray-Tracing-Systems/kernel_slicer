@@ -8,6 +8,9 @@ option(USE_ISPC   "Enable ISPC implementation" OFF)
 option(USE_CUDA   "Enable CUDA implementation" OFF)
 option(USE_HIP    "Enable HIP implementation" OFF)
 option(USE_VULKAN "Enable Vulkan implementation" ON)
+if(USE_ISPC)
+  set(USE_VULKAN OFF) # ISPC instead of Vulkan
+endif()
 
 include_directories(".")
 if(WIN32)
@@ -47,6 +50,7 @@ if(USE_VULKAN)
 endif()
 if(USE_ISPC)
   add_compile_definitions(USE_ISPC)
+  include_directories("../../LiteMathAux")
 endif()
 
 #uncomment this to detect broken memory problems via gcc sanitizers
@@ -80,9 +84,9 @@ elseif(USE_HIP)
   list(APPEND LIBS hip::device)
 endif()
 
-#if(USE_ISPC)
-#  list(APPEND SOURCE ${ISPC_SOURCE})
-#endif()
+if(USE_ISPC)
+  list(APPEND SOURCE test_class_ispc.cpp test_class_kernels.o ../../LiteMathAux/ispc_tasksys.cpp)
+endif()
 
 if(USE_VULKAN)
   list(APPEND SOURCE ${VKGEN_SOURCE} ${VKUTILS_SOURCE} )

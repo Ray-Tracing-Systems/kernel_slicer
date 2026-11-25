@@ -10,8 +10,13 @@
 #define JSON_LOG_IMPLEMENTATION
 #include "JSONLog.hpp"
 
+#ifdef USE_VULKAN
 #include "vk_context.h"
 std::shared_ptr<Base> CreateDerived_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
+#endif
+#ifdef USE_ISPC
+std::shared_ptr<Derived> CreateDerived_ISPC();
+#endif
 
 int main(int argc, const char** argv)
 {
@@ -23,11 +28,13 @@ int main(int argc, const char** argv)
 
   ArgParser args(argc, argv);
   bool onGPU = args.hasOption("--gpu");
+  bool onISPC = args.hasOption("--ispc");
 
   std::vector<float> array(256);
 
   std::shared_ptr<Base> pImpl = nullptr;
   
+  #ifdef USE_VULKAN
   if(onGPU)
   {
     unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
@@ -35,9 +42,15 @@ int main(int argc, const char** argv)
     pImpl = CreateDerived_Generated(ctx, array.size());
   }
   else
+  #endif
+  #ifdef USE_ISPC
+  if(onISPC)
+    pImpl = CreateDerived_ISPC();
+  else
+  #endif
     pImpl = std::make_shared<Derived>();
 
-  std::string backendName = onGPU ? "gpu" : "cpu";
+  std::string backendName = onGPU ? "gpu" : (onISPC ? "ispc" : "cpu");
   
   pImpl->Init(array.size());
   pImpl->CommitDeviceData();
@@ -47,6 +60,8 @@ int main(int argc, const char** argv)
   JSONLog::saveToFile("zout_"+backendName+".json");
   
   pImpl = nullptr;
+  #ifdef USE_VULKAN
   vk_utils::globalContextDestroy();  
+  #endif
   return 0;
 }

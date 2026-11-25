@@ -25,6 +25,9 @@ static bool Has16BitStorageRequest(const vk_utils::VulkanDeviceFeatures& a_featu
   return false;
 }
 #endif
+#ifdef USE_ISPC
+std::shared_ptr<Storage16> CreateStorage16_ISPC();
+#endif
 
 int main(int argc, const char** argv)
 {
@@ -49,6 +52,7 @@ int main(int argc, const char** argv)
   ArgParser args(argc, argv);
 
   bool onGPU = args.hasOption("--gpu");
+  bool onISPC = args.hasOption("--ispc");
   if(args.hasOption("--validation"))
     enableValidationLayers = true;
   #ifdef USE_VULKAN
@@ -66,9 +70,14 @@ int main(int argc, const char** argv)
   }
   else
   #endif
+  #ifdef USE_ISPC
+  if(onISPC)
+    pImpl = CreateStorage16_ISPC();
+  else
+  #endif
     pImpl = std::make_shared<Storage16>();
 
-  std::string backendName = onGPU ? "gpu" : "cpu";
+  std::string backendName = onGPU ? "gpu" : (onISPC ? "ispc" : "cpu");
 
   pImpl->SetData(verts);
   pImpl->CommitDeviceData();

@@ -1,6 +1,8 @@
 {
     "variants": [
         {"name": "glsl", "backend": "glsl", "kmake": "kmake.json"},
-        {"name": "slang", "backend": "slang", "kmake": "kmake.json"}
+        {"name": "slang", "backend": "slang", "kmake": "kmake.json"},
+        {"name": "ispc", "backend": "ispc", "kmake": "kmake.json",
+         "skip": "ISPC: reductions in IPV kernels (m_summ += x) are not supported yet, see doc/ispc_stability_plan.md (C4)"}
     ]
 }

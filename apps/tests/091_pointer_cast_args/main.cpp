@@ -13,6 +13,9 @@
 std::shared_ptr<PtrCast> CreatePtrCast_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
 vk_utils::VulkanDeviceFeatures PtrCast_Generated_ListRequiredDeviceFeatures();
 #endif
+#ifdef USE_ISPC
+std::shared_ptr<PtrCast> CreatePtrCast_ISPC();
+#endif
 
 int main(int argc, const char** argv)
 {
@@ -31,6 +34,7 @@ int main(int argc, const char** argv)
   ArgParser args(argc, argv);
 
   bool onGPU = args.hasOption("--gpu");
+  bool onISPC = args.hasOption("--ispc");
   if(args.hasOption("--validation"))
     enableValidationLayers = true;
   #ifdef USE_VULKAN
@@ -43,9 +47,14 @@ int main(int argc, const char** argv)
   }
   else
   #endif
+  #ifdef USE_ISPC
+  if(onISPC)
+    pImpl = CreatePtrCast_ISPC();
+  else
+  #endif
     pImpl = std::make_shared<PtrCast>();
 
-  std::string backendName = onGPU ? "gpu" : "cpu";
+  std::string backendName = onGPU ? "gpu" : (onISPC ? "ispc" : "cpu");
 
   pImpl->m_scratch.resize(SIZE*4);
   pImpl->CommitDeviceData();

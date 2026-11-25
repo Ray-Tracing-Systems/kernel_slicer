@@ -15,6 +15,9 @@
 #include "vk_context.h"
 std::shared_ptr<SimpleTest> CreateSimpleTest_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
 #endif
+#ifdef USE_ISPC
+std::shared_ptr<SimpleTest> CreateSimpleTest_ISPC();
+#endif
 #if defined(USE_CUDA) or defined(USE_HIP)
 std::shared_ptr<SimpleTest> CreateSimpleTest_Generated();
 #endif
@@ -35,6 +38,8 @@ int main(int argc, const char** argv)
   ArgParser args(argc, argv);
 
   bool onGPU = args.hasOption("--gpu");
+  bool onISPC = args.hasOption("--ispc");
+  #if defined(USE_VULKAN) or defined(USE_CUDA) or defined(USE_HIP)
   if(onGPU)
   {
     #if defined(USE_CUDA) or defined(USE_HIP)
@@ -48,9 +53,15 @@ int main(int argc, const char** argv)
     #endif
   }
   else
+  #endif
+  #ifdef USE_ISPC
+  if(onISPC)
+    pImpl = CreateSimpleTest_ISPC();
+  else
+  #endif
     pImpl = std::make_shared<SimpleTest>();
 
-  std::string backendName = onGPU ? "gpu" : "cpu";
+  std::string backendName = onGPU ? "gpu" : (onISPC ? "ispc" : "cpu");
 
   pImpl->CommitDeviceData();
   pImpl->CalcAndAccum(outputArray.size(), outputArray.data());

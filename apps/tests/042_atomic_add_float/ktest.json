@@ -5,6 +5,7 @@
         {"name": "slang_sw2", "backend": "slang", "kmake": "kmake_emul2.json"},
         {"name": "glsl", "backend": "glsl", "kmake": "kmake.json"},
         {"name": "glsl_sw", "backend": "glsl", "kmake": "kmake_emul.json"},
-        {"name": "glsl_sw2", "backend": "glsl", "kmake": "kmake_emul2.json"}
+        {"name": "glsl_sw2", "backend": "glsl", "kmake": "kmake_emul2.json"},
+        {"name": "ispc", "backend": "ispc", "kmake": "kmake.json"}
     ]
 }

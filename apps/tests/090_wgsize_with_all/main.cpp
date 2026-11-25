@@ -15,6 +15,9 @@
 std::shared_ptr<WgSizeAll> CreateWgSizeAll_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
 vk_utils::VulkanDeviceFeatures WgSizeAll_Generated_ListRequiredDeviceFeatures();
 #endif
+#ifdef USE_ISPC
+std::shared_ptr<WgSizeAll> CreateWgSizeAll_ISPC();
+#endif
 
 /// 1 if the generated shader (Slang or GLSL) of a kernel has the work group size of kmake.json
 static float ShaderHasWorkGroupSize(const std::string& a_kernel, int x, int y)
@@ -53,6 +56,7 @@ int main(int argc, const char** argv)
   ArgParser args(argc, argv);
 
   bool onGPU = args.hasOption("--gpu");
+  bool onISPC = args.hasOption("--ispc");
   if(args.hasOption("--validation"))
     enableValidationLayers = true;
   #ifdef USE_VULKAN
@@ -65,9 +69,14 @@ int main(int argc, const char** argv)
   }
   else
   #endif
+  #ifdef USE_ISPC
+  if(onISPC)
+    pImpl = CreateWgSizeAll_ISPC();
+  else
+  #endif
     pImpl = std::make_shared<WgSizeAll>();
 
-  std::string backendName = onGPU ? "gpu" : "cpu";
+  std::string backendName = onGPU ? "gpu" : (onISPC ? "ispc" : "cpu");
 
   pImpl->CommitDeviceData();
   pImpl->Run(in.data(), out.data(), SIZE);

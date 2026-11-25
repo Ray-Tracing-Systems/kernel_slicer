@@ -15,8 +15,13 @@
 #include "LiteMath.h"
 using LiteMath::uint2;
 
+#ifdef USE_VULKAN
 #include "vk_context.h"
 std::shared_ptr<Sorter> CreateSorter_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
+#endif
+#ifdef USE_ISPC
+std::shared_ptr<Sorter> CreateSorter_ISPC();
+#endif
 
 int main(int argc, const char** argv)
 {
@@ -37,6 +42,8 @@ int main(int argc, const char** argv)
   ArgParser args(argc, argv);
 
   bool onGPU = args.hasOption("--gpu");
+  bool onISPC = args.hasOption("--ispc");
+  #ifdef USE_VULKAN
   if(onGPU)
   {
     unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
@@ -44,8 +51,14 @@ int main(int argc, const char** argv)
     pImpl = CreateSorter_Generated(ctx, array.size());
   }
   else
+  #endif
+  #ifdef USE_ISPC
+  if(onISPC)
+    pImpl = CreateSorter_ISPC();
+  else
+  #endif
     pImpl = std::make_shared<Sorter>();
-  std::string backendName = onGPU ? "gpu" : "cpu";
+  std::string backendName = onGPU ? "gpu" : (onISPC ? "ispc" : "cpu");
   
   pImpl->CommitDeviceData();
   pImpl->Sort(array.data(), array.size(), outArray.data());
@@ -85,6 +98,8 @@ int main(int argc, const char** argv)
   JSONLog::saveToFile("zout_" + backendName + ".json");
 
   pImpl = nullptr;           // Vulkan objects of the class first, then the context
+  #ifdef USE_VULKAN
   vk_utils::globalContextDestroy();
+  #endif
   return 0;
 }

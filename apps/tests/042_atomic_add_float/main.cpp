@@ -11,10 +11,15 @@
 #define JSON_LOG_IMPLEMENTATION
 #include "JSONLog.hpp"
 
+#ifdef USE_VULKAN
 #include "vk_context.h"
 //#include "test_class_generated.h"
 std::shared_ptr<SimpleTest> CreateSimpleTest_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
 vk_utils::VulkanDeviceFeatures SimpleTest_Generated_ListRequiredDeviceFeatures();
+#endif
+#ifdef USE_ISPC
+std::shared_ptr<SimpleTest> CreateSimpleTest_ISPC();
+#endif
 
 int main(int argc, const char** argv)
 {
@@ -32,6 +37,8 @@ int main(int argc, const char** argv)
   ArgParser args(argc, argv);
 
   bool onGPU = args.hasOption("--gpu");
+  bool onISPC = args.hasOption("--ispc");
+  #ifdef USE_VULKAN
   if(onGPU)
   {
     unsigned int a_preferredDeviceId = args.getOptionValue<int>("--gpu_id", 0);
@@ -40,9 +47,15 @@ int main(int argc, const char** argv)
     pImpl    = CreateSimpleTest_Generated(ctx, 512*512);
   }
   else
+  #endif
+  #ifdef USE_ISPC
+  if(onISPC)
+    pImpl = CreateSimpleTest_ISPC();
+  else
+  #endif
     pImpl = std::make_shared<SimpleTest>();
 
-  std::string backendName = onGPU ? "gpu" : "cpu";
+  std::string backendName = onGPU ? "gpu" : (onISPC ? "ispc" : "cpu");
 
   pImpl->CommitDeviceData();
   pImpl->CalcAndAccum(512*512, outputArray.data(), unsigned(outputArray.size()));
@@ -57,6 +70,8 @@ int main(int argc, const char** argv)
   JSONLog::saveToFile("zout_"+backendName+".json");
   
   pImpl = nullptr;
+  #ifdef USE_VULKAN
   vk_utils::globalContextDestroy();
+  #endif
   return 0;
 }

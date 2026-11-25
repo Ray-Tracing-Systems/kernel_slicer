@@ -14,6 +14,9 @@
 std::shared_ptr<Numbers> CreateNumbers_Generated(vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated);
 vk_utils::VulkanDeviceFeatures Numbers_Generated_ListRequiredDeviceFeatures();
 #endif
+#ifdef USE_ISPC
+std::shared_ptr<Numbers> CreateNumbers_ISPC();
+#endif
 
 int main(int argc, const char** argv)
 {
@@ -36,6 +39,7 @@ int main(int argc, const char** argv)
   ArgParser args(argc, argv);
 
   bool onGPU = args.hasOption("--gpu");
+  bool onISPC = args.hasOption("--ispc");
   #ifdef USE_VULKAN
   if(onGPU)
   {
@@ -46,9 +50,14 @@ int main(int argc, const char** argv)
   }
   else
   #endif
+  #ifdef USE_ISPC
+  if(onISPC)
+    pImpl = CreateNumbers_ISPC();
+  else
+  #endif
     pImpl = std::make_shared<Numbers>();
 
-  std::string backendName = onGPU ? "gpu" : "cpu";
+  std::string backendName = onGPU ? "gpu" : (onISPC ? "ispc" : "cpu");
 
   pImpl->CommitDeviceData();
   pImpl->SAXPY(A.data(), B.data(), C.data(), D.data(), unsigned(A.size()));

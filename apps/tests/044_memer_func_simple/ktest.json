@@ -2,6 +2,7 @@
     "variants": [
         {"name": "slang", "backend": "slang", "kmake": "kmake.json"},
         {"name": "cuda", "backend": "cuda", "kmake": "kmake.json"},
-        {"name": "glsl", "backend": "glsl", "kmake": "kmake.json"}
+        {"name": "glsl", "backend": "glsl", "kmake": "kmake.json"},
+        {"name": "ispc", "backend": "ispc", "kmake": "kmake.json"}
     ]
 }

@@ -38,7 +38,15 @@ To repeat the triage: add `{"name": "ispc_triage", "backend": "ispc", "kmake": <
 without an ISPC variant, run `python3 ktest.py -b ispc -s all --variant ispc_triage --stage build --no-skip`, read
 `ktest_logs/<date>/summary.txt` and the logs (ISPC errors are lines `Error: ...`), then `git checkout` the `ktest.json`.
 
-## Steps
+## Progress
+
+- 2026-11-25: step 1 done for 26 of the 27 tests (app 19 is left: it renders CPU and GPU in one run with hand-written GPU
+  code) and for the 9 tests with the `override` problem. The `override` problem is fixed: only `virtual` kernels are
+  overridden, a control function which calls a kernel that is not virtual is copied to the ISPC class (as for block
+  expansion kernels). Structs with 2-/3-component vectors in member vectors and POD members are converted to ISPC layout
+  (021); such buffers passed by pointer from control functions are reported as an error (025 is skipped). ISPC variants:
+  001 skipped (reduction, C4); 002 not converted yet (one run computes CPU and GPU, reduction).
+
 
 1. **Host part of tests** (mechanical, no translator changes): for the 27 tests above add `USE_ISPC` to
    `CMakeLists.txt` (`*_ispc.cpp`, `*_kernels.o`, `../../LiteMathAux/ispc_tasksys.cpp`), `--ispc` to `main.cpp`
