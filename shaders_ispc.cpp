@@ -1,5 +1,6 @@
 #include "kslicer.h"
 #include "template_rendering.h"
+#include "clang/Lex/Lexer.h"
 
 #ifdef _WIN32
   #include <sys/types.h>
@@ -47,6 +48,24 @@ std::string kslicer::ISPCRewriter::RewriteStdVectorTypeStr(const std::string& a_
   return RewriteStdVectorTypeStr(typeNameR);
 }
 
+namespace
+{
+  /// names which are keywords or types in ISPC but not in C++: local variables and parameters with them get '_' at the end
+  std::string ISPCSafeName(const std::string& a_name)
+  {
+    static const std::set<std::string> keywords = {"uniform", "varying", "foreach", "foreach_tiled", "foreach_active", "foreach_unique",
+      "task", "launch", "sync", "export", "cif", "cdo", "cfor", "cwhile", "soa", "unmasked", "int8", "int16", "int32", "int64",
+      "uint8", "uint16", "uint32", "uint64", "float16", "half"};
+    return (keywords.find(a_name) != keywords.end()) ? a_name + "_" : a_name;
+  }
+
+  bool IsLocalOrParam(const clang::ValueDecl* a_decl)
+  {
+    auto pVar = clang::dyn_cast_or_null<clang::VarDecl>(a_decl);
+    return pVar != nullptr && (pVar->isLocalVarDecl() || clang::isa<clang::ParmVarDecl>(pVar));
+  }
+}
+
 std::string kslicer::ISPCRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
 {
   std::string retT   = RewriteStdVectorTypeStr(fDecl->getReturnType().getAsString());
@@ -76,12 +95,12 @@ std::string kslicer::ISPCRewriter::RewriteFuncDecl(clang::FunctionDecl* fDecl)
     else if(typeOfParam->isPointerType() && IsGlobalPointerParam(pParam))        // 'const float* a_data' ==> 'uniform const float a_data[]', pointer to buffer
     {
       std::string elemType = RewriteStdVectorTypeStr(typeOfParam->getPointeeType().getAsString());
-      result += "uniform " + elemType + " " + pParam->getNameAsString() + "[]";
+      result += "uniform " + elemType + " " + ISPCSafeName(pParam->getNameAsString()) + "[]";
     }
     else if(typeOfParam->isPointerType() && (IsReferenceParam(pParam) || typeOfParam->getPointeeType()->isRecordType())) // 'Varyings* a_out' ==> 'Varyings& a_out'
-      result += RewriteStdVectorTypeStr(typeOfParam->getPointeeType().getAsString()) + "& " + pParam->getNameAsString();
+      result += RewriteStdVectorTypeStr(typeOfParam->getPointeeType().getAsString()) + "& " + ISPCSafeName(pParam->getNameAsString());
     else
-      result += RewriteStdVectorTypeStr(typeStr) + " " + pParam->getNameAsString();
+      result += RewriteStdVectorTypeStr(typeStr) + " " + ISPCSafeName(pParam->getNameAsString());
     if(i!=fDecl->getNumParams()-1)
       result += ", ";
   }
@@ -391,6 +410,19 @@ std::string kslicer::ISPCRewriter::VectorTypeContructorReplace(const std::string
 
 // 'float3(a,b,c)' ==> 'make_float3(a,b,c)', 'float3(a)' ==> '(float3)(a)'; ISPC has no constructors for short vectors
 //
+namespace
+{
+  /// 'float4', 'int4', 'uint4' for a_size == '4' (LiteMath vector of the same number of components, another type of elements)
+  bool IsVectorOfSize(clang::QualType a_type, char a_size)
+  {
+    const clang::RecordDecl* pRecord = a_type.getNonReferenceType().getCanonicalType()->getAsRecordDecl();
+    if(pRecord == nullptr)
+      return false;
+    const std::string name = pRecord->getNameAsString();
+    return (name == std::string("float") + a_size || name == std::string("int") + a_size || name == std::string("uint") + a_size);
+  }
+}
+
 bool kslicer::ISPCRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* call) 
 { 
   const clang::CXXConstructorDecl* ctorDecl = call->getConstructor();
@@ -416,6 +448,8 @@ bool kslicer::ISPCRewriter::VisitCXXConstructExpr_Impl(clang::CXXConstructExpr* 
     text += ")";
   }
   else if(call->getNumArgs() == 1 && call->getArg(0)->getType()->isBuiltinType())
+    text = "(" + typeName + ")(" + RecursiveRewrite(call->getArg(0)) + ")";
+  else if(call->getNumArgs() == 1 && IsVectorOfSize(call->getArg(0)->getType(), typeName.back())) // 'int4(float4)' ==> '(int4)(...)', element by element
     text = "(" + typeName + ")(" + RecursiveRewrite(call->getArg(0)) + ")";
   else
     return true;
@@ -643,6 +677,8 @@ bool kslicer::ISPCRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
 { 
   if(clang::isa<clang::ParmVarDecl>(decl)) // process else-where (VisitFunctionDecl_Impl)
     return true;
+  if(decl->isLocalVarDecl() && ISPCSafeName(decl->getNameAsString()) != decl->getNameAsString()) // 'int half = n/2' ==> 'int half_ = n/2'
+    m_rewriter.ReplaceText(decl->getLocation(), decl->getNameAsString().size(), ISPCSafeName(decl->getNameAsString()));
   if(decl->isLocalVarDecl() && WasNotRewrittenYet(decl->getInit()))
     RemoveLiteNamespaceQualifier(decl); // 'const LiteMath::float4x4 m' ==> 'const float4x4 m'
 
@@ -713,14 +749,56 @@ bool kslicer::ISPCRewriter::VisitImplicitCastExpr_Impl(clang::ImplicitCastExpr* 
   return true; 
 }
 
-bool kslicer::ISPCRewriter::VisitDeclStmt_Impl(clang::DeclStmt* decl)             
-{ 
-  if(m_kernelMode)
+namespace
+{
+  bool ReferencesDecl(const clang::Stmt* a_stmt, const clang::ValueDecl* a_decl)
   {
-    // ...
+    if(auto pRef = clang::dyn_cast<clang::DeclRefExpr>(a_stmt); pRef != nullptr && pRef->getDecl() == a_decl)
+      return true;
+    for(const clang::Stmt* child : a_stmt->children())
+      if(child != nullptr && ReferencesDecl(child, a_decl))
+        return true;
+    return false;
   }
+}
 
-  return true; 
+bool kslicer::ISPCRewriter::VisitDeclStmt_Impl(clang::DeclStmt* decl)
+{
+  // 'float a = x, b = a*y;': in ISPC 'a' is not visible in the initializer of 'b' of the same declaration,
+  // so it is split to 'float a = x; float b = a*y;' (not in 'for(int i = 0, j = i; ...)')
+  //
+  if(decl->isSingleDecl())
+    return true;
+  for(const auto& parent : m_compiler.getASTContext().getParents(*decl))
+    if(parent.get<clang::ForStmt>() != nullptr)
+      return true;
+
+  std::vector<const clang::VarDecl*> vars;
+  for(const clang::Decl* d : decl->decls())
+  {
+    auto pVar = clang::dyn_cast<clang::VarDecl>(d);
+    if(pVar == nullptr)
+      return true;
+    vars.push_back(pVar);
+  }
+  bool usesPrevious = false;
+  for(size_t i = 1; i < vars.size() && !usesPrevious; i++)
+    for(size_t j = 0; j < i && !usesPrevious && vars[i]->getInit() != nullptr; j++)
+      usesPrevious = ReferencesDecl(vars[i]->getInit(), vars[j]);
+  if(!usesPrevious)
+    return true;
+
+  const auto& sm = m_compiler.getSourceManager();
+  const auto& lo = m_compiler.getLangOpts();
+  const std::string typeText = kslicer::GetRangeSourceCode(clang::SourceRange(decl->getBeginLoc(), vars[0]->getTypeSpecEndLoc()), m_compiler);
+  for(size_t i = 1; i < vars.size(); i++)
+  {
+    auto comma = clang::Lexer::findNextToken(vars[i-1]->getEndLoc(), sm, lo);
+    if(!comma || comma->isNot(clang::tok::comma))
+      return true;
+    m_rewriter.ReplaceText(comma->getLocation(), 1, "; " + typeText + " ");
+  }
+  return true;
 }
 
 bool kslicer::ISPCRewriter::VisitFloatingLiteral_Impl(clang::FloatingLiteral* expr) 
@@ -799,6 +877,13 @@ bool kslicer::ISPCRewriter::VisitBinaryOperator_Impl(clang::BinaryOperator* expr
 bool  kslicer::ISPCRewriter::VisitDeclRefExpr_Impl(clang::DeclRefExpr* expr) 
 {
   RemoveLiteNamespaceQualifier(expr); // ISPC has no namespaces: 'std::pow' and 'LiteMath::dot' are 'pow' and 'dot'
+
+  if(IsLocalOrParam(expr->getDecl()) && WasNotRewrittenYet(expr))
+  {
+    const std::string name = expr->getDecl()->getNameAsString();
+    if(ISPCSafeName(name) != name)
+      m_rewriter.ReplaceText(expr->getLocation(), name.size(), ISPCSafeName(name));
+  }
 
   // C math functions: 'fabs(x)' ==> 'abs(x)', 'sqrtf(x)' ==> 'sqrt(x)', ...
   //
@@ -1066,13 +1151,25 @@ void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   //
   std::set<std::string> paddedBuffers, texArrays;
 
-  // structs with 2- and 3-component vectors have another layout in ISPC: member vectors of them are converted (see 'ISPCConvert')
+  // structs with 2- and 3-component vectors have another layout in ISPC: member vectors and POD members of them are converted
+  // field by field (see 'ISPCConvert' in templates_ispc/ispc_class.cpp); pointers to buffers of them are found by type name
   //
   std::set<std::string> convertedTypes, reportedArgs;
-  std::map<std::string, std::string> convertedBuffers;
+  std::map<std::string, std::string> convertedBuffers;   // member ==> struct
+  std::map<std::string, std::string> typedefsOfConverted; // 'RandomGen' ==> 'RandomGenT'
+  std::vector<kslicer::ISPCRecordInfo> convertedRecords; // structs for which converters are written, nested ones first
+  auto useRecordsOf = [&](const kslicer::DataMemberInfo& a_member)
+  {
+    for(const auto& rec : a_member.ispcRecords)
+      if(std::none_of(convertedRecords.begin(), convertedRecords.end(), [&](const auto& r) { return r.name == rec.name; }))
+        convertedRecords.push_back(rec);
+  };
+  for(const auto& member : a_codeInfo->allDataMembers)
+    for(const auto& rec : member.second.ispcRecords)
+      convertedTypes.insert(rec.name);
   for(const auto& decl : a_kernelsJson["ClassDecls"])
-    if(decl.contains("ConvertISPC") && decl["ConvertISPC"].get<bool>())
-      convertedTypes.insert(decl["Type"].get<std::string>());
+    if(decl.contains("TypedefOfISPC"))
+      typedefsOfConverted[decl["Type"].get<std::string>()] = decl["TypedefOfISPC"].get<std::string>();
   for(auto& kernel : a_kernelsJson["Kernels"])
   {
     // RTV wavefront: thread id is computed by kernel for its chunk of threads, thread flags are passed separately
@@ -1114,15 +1211,21 @@ void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
       ReplaceFirst(type, "struct ", "");
       while(!type.empty() && type.back() == ' ')
         type.pop_back();
+      if(typedefsOfConverted.count(type) != 0)
+        type = typedefsOfConverted[type];
       const bool isMemberBuff = arg["IsMember"].get<bool>() && arg["IsPointer"].get<bool>() && !kernel["IsGraphics"].get<bool>();
       const bool padded       = isMemberBuff && shortVectors.count(type) != 0;
-      const bool converted    = isMemberBuff && convertedTypes.count(type) != 0;
+      auto pMember            = a_codeInfo->allDataMembers.find(arg["Name"].get<std::string>());
+      const bool converted    = isMemberBuff && pMember != a_codeInfo->allDataMembers.end() && !pMember->second.ispcConvType.empty();
       arg["PaddedISPC"]    = padded;
       arg["ConvertedISPC"] = converted;
       if(padded)
         paddedBuffers.insert(arg["Name"].get<std::string>());
       if(converted)
-        convertedBuffers[arg["Name"].get<std::string>()] = type;
+      {
+        convertedBuffers[arg["Name"].get<std::string>()] = pMember->second.ispcConvType;
+        useRecordsOf(pMember->second);
+      }
       const bool userBuffer = arg["IsPointer"].get<bool>() && !arg["IsMember"].get<bool>() && !kernel["IsGraphics"].get<bool>() && !kernel["IsRTV"].get<bool>(); // RTV: payload of generated code
       if(userBuffer && shortVectors.count(type) != 0 && reportedArgs.insert(type).second)
         kslicer::PrintError("ISPC: '" + type + "' takes 16 bytes in ISPC; buffers of it are padded only for members of the class (std::vector), "
@@ -1218,29 +1321,23 @@ void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
   a_kernelsJson["ConvertedBuffersISPC"] = std::vector<nlohmann::json>();
   for(const auto& buff : convertedBuffers)
     a_kernelsJson["ConvertedBuffersISPC"].push_back(nlohmann::json{{"Name", buff.first}, {"Type", buff.second}});
-  std::set<std::string> usedConverted; // converters are written only for structs which are converted: ISPC header declares only structs of 'export' functions
-  for(const auto& buff : convertedBuffers)
-    usedConverted.insert(buff.second);
   for(auto& var : a_kernelsJson["ClassVars"]) // POD members of such structs in UBO
   {
-    var["ConvertedISPC"] = var.contains("Type") && convertedTypes.count(var["Type"].get<std::string>()) != 0 && !var["IsArray"].get<bool>();
+    auto pMember = a_codeInfo->allDataMembers.find(var["Name"].get<std::string>());
+    var["ConvertedISPC"] = pMember != a_codeInfo->allDataMembers.end() && !pMember->second.ispcConvType.empty() && !var["IsArray"].get<bool>();
     if(var["ConvertedISPC"].get<bool>())
-      usedConverted.insert(var["Type"].get<std::string>());
+      useRecordsOf(pMember->second);
   }
-  for(bool changed = true; changed; ) // nested structs of converted ones
+  a_kernelsJson["ConvertersISPC"] = std::vector<nlohmann::json>(); // only for converted structs: ISPC header declares only structs of 'export' functions
+  for(const auto& rec : convertedRecords)
   {
-    changed = false;
-    for(const auto& decl : a_kernelsJson["ClassDecls"])
-    {
-      if(!decl["ConvertISPC"].get<bool>() || usedConverted.count(decl["Type"].get<std::string>()) == 0)
-        continue;
-      for(const auto& field : decl["FieldsISPC"])
-        if(field["Convert"].get<bool>() && usedConverted.insert(field["TypeName"].get<std::string>()).second)
-          changed = true;
-    }
+    nlohmann::json recJson;
+    recJson["Type"]       = rec.name;
+    recJson["FieldsISPC"] = std::vector<nlohmann::json>();
+    for(const auto& field : rec.fields)
+      recJson["FieldsISPC"].push_back(nlohmann::json{{"Name", field.name}, {"ArraySize", field.arraySize}, {"Convert", field.convert}});
+    a_kernelsJson["ConvertersISPC"].push_back(recJson);
   }
-  for(auto& decl : a_kernelsJson["ClassDecls"])
-    decl["ConvertISPC"] = decl["ConvertISPC"].get<bool>() && usedConverted.count(decl["Type"].get<std::string>()) != 0;
   a_kernelsJson["TexArraysISPC"]     = std::vector<std::string>(texArrays.begin(), texArrays.end());
   a_kernelsJson["WaveChunkISPC"] = m_waveChunk;
   a_kernelsJson["MegaChunkISPC"] = m_megaChunk;
@@ -1278,10 +1375,18 @@ void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
       if(globalPtrFuncsDone.find(text) != globalPtrFuncsDone.end())
         continue;
       globalPtrFuncsDone.insert(text);
-      if(text.find("{") == std::string::npos)
+      const size_t bodyPos = text.find("{");
+      if(bodyPos == std::string::npos)
         globalPtrFuncDecls.push_back("static inline " + text);
       else
+      {
+        std::string decl = text.substr(0, bodyPos); // a copy may call another copy which is written after it
+        while(!decl.empty() && (decl.back() == ' ' || decl.back() == '\n'))
+          decl.pop_back();
+        if(globalPtrFuncsDone.insert(decl + ";").second)
+          globalPtrFuncDecls.push_back("static inline " + decl + ";");
         globalPtrFuncs.push_back("static inline " + text);
+      }
     }
   }
   globalPtrFuncDecls.insert(globalPtrFuncDecls.end(), globalPtrFuncs.begin(), globalPtrFuncs.end());

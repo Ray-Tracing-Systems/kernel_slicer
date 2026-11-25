@@ -620,6 +620,17 @@ kslicer::DataMemberInfo kslicer::ExtractMemberInfo(const std::string& a_name, co
   if(pRecordType != nullptr)
     member.pTypeDeclIfRecord = pRecordType->getDecl();
 
+  // ISPC: structs with 2- and 3-component vectors in member vectors and POD members are converted to ISPC layout
+  //
+  if(member.isContainer && typeDecl != nullptr && clang::isa<clang::ClassTemplateSpecializationDecl>(typeDecl) && !kslicer::IsHashMapContainer(member.containerType))
+  {
+    auto specDecl = clang::dyn_cast<clang::ClassTemplateSpecializationDecl>(typeDecl);
+    if(specDecl->getTemplateArgs().size() > 0 && specDecl->getTemplateArgs()[0].getKind() == clang::TemplateArgument::Type)
+      member.ispcConvType = kslicer::CollectRecordsISPC(specDecl->getTemplateArgs()[0].getAsType(), member.ispcRecords);
+  }
+  else if(!member.isContainer && !member.isArray)
+    member.ispcConvType = kslicer::CollectRecordsISPC(qt, member.ispcRecords);
+
   return member;
 }
 

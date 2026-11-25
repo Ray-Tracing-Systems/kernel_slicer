@@ -1,3 +1,4 @@
+#include <set>
 #include "kslicer.h"
 #include "initial_pass.h"
 #include "template_rendering.h"
@@ -932,4 +933,67 @@ kslicer::ShaderFeatures kslicer::GetStorageFeaturesFromDataMember(const kslicer:
   res.useHalfType     = features.useHalfType;
   res.useByteType     = features.useByteType;
   return res;
+}
+
+namespace
+{
+  bool IsShortVectorRecordISPC(const clang::RecordDecl* a_record)
+  {
+    static const std::set<std::string> shortVectors = {"float2", "float3", "int2", "int3", "uint2", "uint3"};
+    return shortVectors.count(a_record->getNameAsString()) != 0;
+  }
+
+  bool HasShortVectorsISPC_Impl(clang::QualType a_type, int a_depth)
+  {
+    if(a_depth > 16)
+      return false;
+    const clang::QualType qt = a_type.getCanonicalType();
+    if(const auto* pArray = llvm::dyn_cast<clang::ConstantArrayType>(qt.getTypePtr()))
+      return HasShortVectorsISPC_Impl(pArray->getElementType(), a_depth + 1);
+    const clang::RecordDecl* pRecord = qt->getAsRecordDecl();
+    if(pRecord == nullptr)
+      return false;
+    if(IsShortVectorRecordISPC(pRecord))
+      return true;
+    const clang::RecordDecl* pDef = pRecord->getDefinition();
+    if(pDef == nullptr)
+      return false;
+    for(const auto* field : pDef->fields())
+      if(HasShortVectorsISPC_Impl(field->getType(), a_depth + 1))
+        return true;
+    return false;
+  }
+}
+
+bool kslicer::HasShortVectorsISPC(clang::QualType a_type) { return HasShortVectorsISPC_Impl(a_type, 0); }
+
+std::string kslicer::CollectRecordsISPC(clang::QualType a_type, std::vector<ISPCRecordInfo>& a_out)
+{
+  const clang::QualType qt = a_type.getNonReferenceType().getCanonicalType();
+  const clang::RecordDecl* pRecord = qt->getAsRecordDecl();
+  if(pRecord == nullptr || IsShortVectorRecordISPC(pRecord) || pRecord->getDefinition() == nullptr || !HasShortVectorsISPC(qt))
+    return "";
+  const std::string name = pRecord->getNameAsString();
+  for(const auto& rec : a_out)
+    if(rec.name == name)
+      return name;
+
+  ISPCRecordInfo rec;
+  rec.name = name;
+  for(const auto* field : pRecord->getDefinition()->fields())
+  {
+    clang::QualType fieldType = field->getType().getCanonicalType();
+    ISPCFieldInfo info;
+    info.name = field->getNameAsString();
+    if(const auto* pArray = llvm::dyn_cast<clang::ConstantArrayType>(fieldType.getTypePtr()))
+    {
+      info.arraySize = pArray->getSize().getZExtValue();
+      fieldType      = pArray->getElementType().getCanonicalType();
+    }
+    info.typeName = CollectRecordsISPC(fieldType, a_out); // nested struct to convert
+    info.convert  = !info.typeName.empty();
+    rec.fields.push_back(info);
+  }
+  a_out.push_back(rec); // after nested ones
+  return name;
 }

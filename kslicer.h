@@ -540,6 +540,8 @@ namespace kslicer
 
     clang::TypeDecl* pTypeDeclIfRecord = nullptr;
     clang::TypeDecl* pContainerDataTypeDeclIfRecord = nullptr;
+    std::string ispcConvType;                          ///<! ISPC: struct of the member (or of elements of std::vector) which has another layout in ISPC, see ISPCRecordInfo
+    std::vector<struct ISPCRecordInfo> ispcRecords;    ///<! ISPC: this struct and nested structs which are converted field by field
 
     bool IsUsedTexture() const { return isContainer && IsTextureContainer(containerType); }  // && isContainer && kslicer::IsTexture(containerType); }
   };
@@ -710,6 +712,22 @@ namespace kslicer
   /**
   \brief declaration of types and constant inside main class
   */
+  /// ISPC: 2- and 3-component vectors take 16 bytes, structs with them (also nested, in arrays) have another layout and are converted field by field
+  struct ISPCFieldInfo
+  {
+    std::string name;
+    std::string typeName;      ///<! name of struct for 'convert' fields
+    uint64_t    arraySize = 0; ///<! 0 if the field is not an array
+    bool        convert   = false;
+  };
+  struct ISPCRecordInfo
+  {
+    std::string                name;
+    std::vector<ISPCFieldInfo> fields;
+  };
+  bool HasShortVectorsISPC(clang::QualType a_type);                                       ///<! the type is or contains float2, float3, int2, ...
+  std::string CollectRecordsISPC(clang::QualType a_type, std::vector<ISPCRecordInfo>& a_out); ///<! name of struct to convert ('' if none), it and nested ones are added to a_out
+
   struct DeclInClass
   {
     std::string        name;

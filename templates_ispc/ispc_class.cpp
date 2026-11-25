@@ -26,15 +26,12 @@ using {{Decl.Type}} = {{MainClassName}}::{{Decl.Type}}; // for passing this data
 // another layout in ISPC and member vectors of them are copied to ISPC field by field
 //
 template<typename A, typename B>
-static inline void ISPCConvertField(const A& a_src, B& a_dst) { std::memcpy(&a_dst, &a_src, std::min(sizeof(A), sizeof(B))); }
-## for Decl in ClassDecls
-{% if Decl.ConvertISPC %}
+static inline void ISPCConvertField(const A& a_src, B& a_dst) { std::memcpy((void*)&a_dst, (const void*)&a_src, std::min(sizeof(A), sizeof(B))); }
+## for Decl in ConvertersISPC
 static inline void ISPCConvert(const {{Decl.Type}}& a_src, ispc::{{Decl.Type}}& a_dst);
 static inline void ISPCConvert(const ispc::{{Decl.Type}}& a_src, {{Decl.Type}}& a_dst);
-{% endif %}
 ## endfor
-## for Decl in ClassDecls
-{% if Decl.ConvertISPC %}
+## for Decl in ConvertersISPC
 
 static inline void ISPCConvert(const {{Decl.Type}}& a_src, ispc::{{Decl.Type}}& a_dst)
 {
@@ -59,7 +56,6 @@ static inline void ISPCConvert(const ispc::{{Decl.Type}}& a_src, {{Decl.Type}}& 
   {% endif %}
   {% endfor %}
 }
-{% endif %}
 ## endfor
 
 template<typename A, typename B>
@@ -92,7 +88,7 @@ static inline std::vector< std::array<float,4> > ISPCPadded16(const std::vector<
   for(size_t i = 0; i < a_data.size(); i++)
   {
     res[i] = {0.0f, 0.0f, 0.0f, 0.0f};
-    std::memcpy(res[i].data(), &a_data[i], N*sizeof(float));
+    std::memcpy(res[i].data(), (const void*)&a_data[i], N*sizeof(float));
   }
   return res;
 }
@@ -108,14 +104,14 @@ static inline void ISPCPadTo16(const std::vector<T>& a_data, std::vector< std::a
   constexpr size_t N = sizeof(T)/sizeof(uint32_t);
   a_padded.resize(a_data.size());
   for(size_t i = 0; i < a_data.size(); i++)
-    std::memcpy(a_padded[i].data(), &a_data[i], N*sizeof(uint32_t));
+    std::memcpy(a_padded[i].data(), (const void*)&a_data[i], N*sizeof(uint32_t));
 }
 template<typename T>
 static inline void ISPCUnpadFrom16(const std::vector< std::array<uint32_t,4> >& a_padded, std::vector<T>& a_data)
 {
   constexpr size_t N = sizeof(T)/sizeof(uint32_t);
   for(size_t i = 0; i < a_data.size() && i < a_padded.size(); i++)
-    std::memcpy(&a_data[i], a_padded[i].data(), N*sizeof(uint32_t));
+    std::memcpy((void*)&a_data[i], a_padded[i].data(), N*sizeof(uint32_t));
 }
 
 /// descriptions of textures of 'std::vector<std::shared_ptr<ICombinedImageSampler>>' or 'std::vector<const ICombinedImageSampler*>' for ISPC
@@ -484,12 +480,12 @@ void {{MainClassName}}_ISPC::UpdatePlainMembers()
   {% endfor %}
 ## for Var in ClassVars
   {% if Var.IsArray %}
-  memcpy(m_uboData.{{Var.Name}},{{Var.Name}},sizeof({{Var.Name}}));
+  memcpy((void*)m_uboData.{{Var.Name}}, (const void*){{Var.Name}}, sizeof({{Var.Name}}));
   {% else if Var.ConvertedISPC %}
   ISPCConvert({{Var.Name}}, m_uboData.{{Var.Name}});
   {% else %}
   static_assert(sizeof(m_uboData.{{Var.Name}}) >= sizeof({{Var.Name}}), "'{{Var.Name}}' has different layout in ISPC");
-  memcpy(&m_uboData.{{Var.Name}}, &{{Var.Name}}, sizeof({{Var.Name}})); // LiteMath and ISPC types are different, ISPC float3 is 16 bytes
+  memcpy((void*)&m_uboData.{{Var.Name}}, (const void*)&{{Var.Name}}, sizeof({{Var.Name}})); // LiteMath and ISPC types are different, ISPC float3 is 16 bytes
   {% endif %}
 ## endfor
 ## for Var in ClassVectorVars 
@@ -509,11 +505,11 @@ void {{MainClassName}}_ISPC::ReadPlainMembers()
   {% for Var in ClassVars %}
   {% if not Var.IsConst %}
   {% if Var.IsArray %}
-  memcpy({{Var.Name}}, m_uboData.{{Var.Name}}, sizeof({{Var.Name}}));
+  memcpy((void*){{Var.Name}}, (const void*)m_uboData.{{Var.Name}}, sizeof({{Var.Name}})); // void*: GCC -Wclass-memaccess for LiteMath types
   {% else if Var.ConvertedISPC %}
   ISPCConvert(m_uboData.{{Var.Name}}, {{Var.Name}});
   {% else %}
-  memcpy(&{{Var.Name}}, &m_uboData.{{Var.Name}}, sizeof({{Var.Name}}));
+  memcpy((void*)&{{Var.Name}}, (const void*)&m_uboData.{{Var.Name}}, sizeof({{Var.Name}}));
   {% endif %}
   {% endif %} {#/* end of if not var.IsConst */#}
   {% endfor %}
