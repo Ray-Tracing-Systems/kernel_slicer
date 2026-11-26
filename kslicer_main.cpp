@@ -1763,9 +1763,9 @@ int main(int argc, const char **argv)
     if((p != kernelsOptionsAll.end() || pDefaultOpts != kernelsOptionsAll.end()) && !emptyConfig)
     {
       auto pOption = (p != kernelsOptionsAll.end()) ? p : pDefaultOpts;
-      if(pOption != kernelsOptionsAll.end())
+      if(pOption != kernelsOptionsAll.end() && pOption->is_object()) // operator[] on null would turn it into object: then options of "all" are not used for this kernel later
       {
-        if((*pOption)["ExcludeFunctions"] != nullptr){
+        if(pOption->contains("ExcludeFunctions") && (*pOption)["ExcludeFunctions"] != nullptr){
         for(auto excludeFunc : (*pOption)["ExcludeFunctions"].items()) {
           std::string name = excludeFunc.value();
           for(auto p = k.second.usedMemberFunctions.begin(); p!=  k.second.usedMemberFunctions.end(); ++p) {
@@ -1776,7 +1776,7 @@ int main(int argc, const char **argv)
           }
         }}
         
-        if((*pOption)["ExcludeData"] != nullptr){
+        if(pOption->contains("ExcludeData") && (*pOption)["ExcludeData"] != nullptr){
         for(auto excludeData : (*pOption)["ExcludeData"].items()) {
           std::string name = excludeData.value();
           auto p = k.second.usedContainers.find(name);
