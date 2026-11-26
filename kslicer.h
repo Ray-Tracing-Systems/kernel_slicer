@@ -129,6 +129,19 @@ namespace kslicer
   };
 
   /**
+  \brief '-compact_ds 1': read-only member vectors with the same element type are joined to a single buffer in shaders,
+         'm_vec[i]' ==> 'kgen_data1f[ubo[0].m_vec_offset + (i)]'; on host each vector is a part of the joined buffer ('m_vdata.m_vecBuffer' is the joined buffer, 'm_vdata.m_vecOffset' is the part)
+  */
+  struct CompactBufferGroup
+  {
+    std::string name;                 ///<! 'kgen_data1f', 'kgen_data1ui_geometry': name of the joined buffer in shaders and in 'm_vdata'
+    std::string shaderType;           ///<! type of elements in shaders, 'float', 'uint', 'MaterialData'
+    std::string appendGroup;          ///<! group of 'CommitAppendedData()' of all vectors of the joined buffer, empty if 'CommitAppendedData()' is not used
+    bool        scalarLayout = false; ///<! see DataMemberInfo::containerScalarLayout
+    std::vector<std::string> members; ///<! member vectors sorted by name
+  };
+
+  /**
   \brief functions with input pointers which access global memory; they should be rewritten for GLSL.
 
          GLSL don't support pointers or passing buffers inside functions, so ... we have to insert all actual arguments inside function source code
@@ -951,6 +964,13 @@ namespace kslicer
     virtual std::string GlobalPtrOffsetText(const kslicer::GlobalPtrMatch& a_match);                                 ///<! offset of pointer inside buffer for function call
     virtual std::string GlobalBufferAccessText(const std::string& a_buffer, const std::string& a_index);              ///<! 'a_buffer[a_index]'
     virtual std::string ShitPointerBuffer(const kslicer::ArgMatch& a_pointer);                                      ///<! buffer of pointer argument in function copy: global buffer for GLSL, argument for Slang
+    
+    // '-compact_ds 1': read-only member vectors joined to a single buffer, 'm_vec[i]' ==> 'kgen_data1f[ubo[0].m_vec_offset + (i)]'
+    //
+    const CompactBufferGroup* CompactGroupOfBuffer(const std::string& a_buffer) const; ///<! joined buffer of member vector, nullptr for kernel argument or other vector
+    std::string CompactBufferName(const std::string& a_buffer) const;                                   ///<! 'm_vec' ==> 'kgen_data1f', other names are not changed
+    bool CompactVectorSubscriptText(const clang::CXXOperatorCallExpr* a_expr, std::string& a_out);       ///<! 'm_vec[i]' ==> 'kgen_data1f[ubo[0].m_vec_offset + (i)]'
+    bool RewriteCompactVectorSubscript(clang::CXXOperatorCallExpr* a_expr);
     bool RewriteLocalGlobalPtrDecl  (clang::VarDecl* a_decl);       ///<! 'const float* p = &m_vec[e];'   ==> 'uint pOffset = e;'
     bool RewriteGlobalPtrAccess     (clang::Expr* a_expr);          ///<! 'p[i]', '*p', 'p->x'           ==> 'm_vec[pOffset + i]', ...
     bool CheckLocalGlobalPtrUse     (clang::DeclRefExpr* a_expr);   ///<! error for other uses of local pointer variable 
@@ -1978,6 +1998,12 @@ namespace kslicer
     kslicer::uset<std::string> appendRewriteGroups; ///<! 'appendRewriteGroups' from config: vectors of these groups are copied entirely by every 'CommitAppendedData()' 
     bool hasLocalContainers = false;
 
+    bool compactDS = false;
+    std::vector<CompactBufferGroup>      compactGroups;
+    kslicer::umap<std::string, uint32_t> compactGroupOfMember; ///<! member vector name ==> index in 'compactGroups'
+    const CompactBufferGroup* FindCompactGroup(const std::string& a_memberName) const;
+    void MakeCompactBufferGroups(const nlohmann::json& a_kernelOptions); ///<! ==> compactGroups, '_offset' members in dataMembers; call after ProcessNeuralNetworks
+
     struct HashMapInfo
     {
       std::string name;          ///<! member name, 'm_items'
@@ -2119,6 +2145,12 @@ namespace kslicer
   GlobalPtrMatch MatchGlobalPointer(const clang::Expr* a_expr, const KernelInfo& k, const clang::CompilerInstance& a_compiler);
   GlobalPtrMatch MatchLocalGlobalPointerVar(const clang::VarDecl* a_var, const KernelInfo& k, const clang::CompilerInstance& a_compiler); ///<! local pointer variable to buffer
   std::string    LocalGlobalPointerOffsetName(const clang::VarDecl* a_var);                                                          ///<! 'p' ==> 'pOffset'
+
+  /**
+  \brief 'nonConstantData' of kernel options which is applied to buffers of kernel 'a_kernelName' in shaders: options of the kernel or of "all"/"default" if the kernel has empty entry;
+         null if options don't change constness of buffers. 'a_entryWillBeAdded': the kernel has no entry yet, but an empty entry is added before shaders are generated.
+  */
+  nlohmann::json NonConstantDataOfKernel(const nlohmann::json& a_kernelOptions, const std::string& a_kernelName, bool a_entryWillBeAdded = false);
 
   /**
   \brief Find all functions which get pointers to global memory from other such functions (pointer is passed further) and add them to 'a_shittyFunctions'.

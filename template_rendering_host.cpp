@@ -959,6 +959,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
       json local;
       local["Name"]           = v.name;
+      local["CompactGroup"]   = (a_classInfo.FindCompactGroup(v.name) == nullptr) ? std::string("") : a_classInfo.FindCompactGroup(v.name)->name; // '-compact_ds 1'
       local["SizeOffset"]     = p1->second.offsetInTargetBuffer;
       local["CapacityOffset"] = p2->second.offsetInTargetBuffer;
       local["TypeOfData"]     = kslicer::CleanTypeName(v.containerDataType);
@@ -1044,6 +1045,25 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
   }
 
+  // '-compact_ds 1': read-only vectors joined to a single buffer, in shaders and in descriptor sets, see MakeCompactBufferGroups
+  //
+  data["CompactGroups"] = std::vector<json>();
+  for(const auto& compactGroup : a_classInfo.compactGroups)
+  {
+    json group;
+    group["Name"]        = compactGroup.name;
+    group["AppendGroup"] = -1;
+    group["Vectors"]     = std::vector<json>();
+    for(const auto& vec : data["ClassVectorVars"])
+    {
+      if(vec["CompactGroup"].get<std::string>() != compactGroup.name)
+        continue;
+      group["Vectors"].push_back(vec);
+      group["AppendGroup"] = vec["AppendGroup"];
+    }
+    data["CompactGroups"].push_back(group);
+  }
+
   if(hasCommitAppended)
   {
     for(int groupId = 0; groupId < int(appendGroupNames.size()); groupId++)
@@ -1056,6 +1076,10 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       for(const auto& vec : data["AppendVectors"])
         if(vec["AppendGroup"].get<int>() == groupId)
           group["Vectors"].push_back(vec);
+      group["CompactGroups"] = std::vector<std::string>(); // joined buffers ('-compact_ds 1') of vectors of this group
+      for(const auto& compactGroup : data["CompactGroups"])
+        if(compactGroup["AppendGroup"].get<int>() == groupId)
+          group["CompactGroups"].push_back(compactGroup["Name"]);
       data["AppendGroups"].push_back(group);
     }
     for(const auto& groupName : a_classInfo.appendRewriteGroups)
@@ -1263,13 +1287,20 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
       actualSize++;
     }
 
+    kslicer::uset<std::string> compactGroupsAdded;
     for(const auto& container : k.usedContainers) // TODO: add support fo textures (!!!)
     {
       if(container.second.bindWithRef) // do not pass it to shader via descriptor set because we pass it with separate buffer reference
         continue;
 
+      const auto* pCompact = a_classInfo.FindCompactGroup(container.second.name); // '-compact_ds 1': one binding for joined buffer, in place of its first vector
+      if(pCompact != nullptr && compactGroupsAdded.find(pCompact->name) != compactGroupsAdded.end())
+        continue;
+      if(pCompact != nullptr)
+        compactGroupsAdded.insert(pCompact->name);
+
       json argData;
-      argData["Name"]  = container.second.name;
+      argData["Name"]  = (pCompact != nullptr) ? pCompact->name : container.second.name;
       argData["Flags"] = "VK_SHADER_STAGE_COMPUTE_BIT";
       argData["Id"]    = actualSize;
       argData["Count"] = "1";
@@ -1614,6 +1645,31 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
     std::vector<std::string> localContainersPreCFName;
     std::set<std::string>    localContainersPreCFNameSet;
 
+    // '-compact_ds 1': read-only member vectors of a joined buffer are bound once, as the joined buffer, in place of the first of them (as in shaders)
+    //
+    auto addCompactGroupArg = [&](json& a_local, uint32_t& a_realId, kslicer::uset<std::string>& a_added, const kslicer::CompactBufferGroup& a_group)
+    {
+      if(a_added.find(a_group.name) != a_added.end())
+        return;
+      a_added.insert(a_group.name);
+      json arg;
+      arg["Id"]            = a_realId;
+      arg["Name"]          = "m_vdata." + a_group.name;
+      arg["NameOriginal"]  = a_group.name;
+      arg["AppendGroup"]   = -1;
+      auto pTracked = appendGroupOfVector.find(a_group.members[0]);
+      if(pTracked != appendGroupOfVector.end())
+        arg["AppendGroup"] = pTracked->second;
+      arg["Offset"]        = 0;
+      arg["IsTexture"]     = false;
+      arg["IsAccelStruct"] = false;
+      arg["IsTextureArray"]= false;
+      totalBuffersUsed++;
+      a_local["Args"].push_back(arg);
+      a_local["ArgNames"].push_back(a_group.name);
+      a_realId++;
+    };
+
     for(size_t i=mainFunc.startDSNumber; i<mainFunc.endDSNumber; i++)
     {
       auto& dsArgs = a_classInfo.allDescriptorSetsInfo[i];
@@ -1636,6 +1692,7 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
           local["EnableBlockExpansion"] = pFoundKernel->second.be.enabled;
 
       uint32_t realId = 0;
+      kslicer::uset<std::string> compactGroupsAdded;
       for(size_t j=0;j<dsArgs.descriptorSetsInfo.size();j++)
       {
         if(!internalKernel && !isServeceKernel && !a_classInfo.pShaderCC->IsISPC() && pFoundKernel)
@@ -1652,6 +1709,14 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
 
         if(accesedWithBufferRef)
           continue;
+
+        const auto* pCompact = a_classInfo.FindCompactGroup(dsArgs.descriptorSetsInfo[j].name); // vectors used by megakernel; vectors passed to kernels by pointer are bound with offset
+        const bool megakernelDS = pFoundKernel && pFoundKernel->second.isMega; // 'isMegaKernel' is false for megakernels: they are not in 'kernels'
+        if(pCompact != nullptr && megakernelDS && dsArgs.descriptorSetsInfo[j].argType == kslicer::KERN_CALL_ARG_TYPE::ARG_REFERENCE_CLASS_VECTOR)
+        {
+          addCompactGroupArg(local, realId, compactGroupsAdded, *pCompact);
+          continue;
+        }
 
         std::string dsArgName  = kslicer::GetDSArgName(mainFunc.Name, dsArgs.descriptorSetsInfo[j], a_classInfo.megakernelRTV && (mainFunc.pattern == PATTERN_TP::PATTERN_RTV));
         auto posBegin = dsArgName.find("m_vdata.");
@@ -1745,6 +1810,13 @@ nlohmann::json kslicer::PrepareJsonForAllCPP(const MainClassInfo& a_classInfo, c
         {
           if(container.second.bindWithRef) // do not pass it to shader via descriptor set because we pass it with separate buffer reference
             continue;
+
+          const auto* pCompact = a_classInfo.FindCompactGroup(container.second.name);
+          if(pCompact != nullptr)
+          {
+            addCompactGroupArg(local, realId, compactGroupsAdded, *pCompact);
+            continue;
+          }
 
           json arg;
           arg["Id"]            = realId;

@@ -64,6 +64,9 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdatePlainMembersInternal()
   {% else %}
   m_uboData.{{Var.Name}}_size     = uint32_t( {{Var.Name}}{{Var.AccessSymb}}size() );     assert( {{Var.Name}}{{Var.AccessSymb}}size() < maxAllowedSize );
   m_uboData.{{Var.Name}}_capacity = uint32_t( {{Var.Name}}{{Var.AccessSymb}}capacity() ); assert( {{Var.Name}}{{Var.AccessSymb}}capacity() < maxAllowedSize );
+  {% if Var.CompactGroup != "" %}
+  m_uboData.{{Var.Name}}_offset   = uint32_t( m_vdata.{{Var.Name}}Offset/sizeof({{Var.TypeOfData}}) ); // part of '{{Var.CompactGroup}}' ('-compact_ds 1')
+  {% endif %}
   {% endif %}
 ## endfor
 }
@@ -210,7 +213,7 @@ void {{MainClassName}}{{MainClassSuffix}}::UpdateVectorMembers(std::shared_ptr<v
     a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}Buffer, 0, {{Var.Name}}_coopvec.data(), {{Var.Name}}_coopvec.size()*sizeof({{Var.Name}}_coopvec[0]) );
   {% else %}
   if({{Var.Name}}{{Var.AccessSymb}}size() > 0)
-    a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}Buffer, 0, {{Var.Name}}{{Var.AccessSymb}}data(), {{Var.Name}}{{Var.AccessSymb}}size()*sizeof({{Var.TypeOfData}}) );
+    a_pCopyEngine->UpdateBuffer(m_vdata.{{Var.Name}}Buffer, m_vdata.{{Var.Name}}Offset, {{Var.Name}}{{Var.AccessSymb}}data(), {{Var.Name}}{{Var.AccessSymb}}size()*sizeof({{Var.TypeOfData}}) );
   {% endif %}
   {% endfor %}
 }
@@ -227,13 +230,13 @@ void {{MainClassName}}{{MainClassSuffix}}::{{UpdateFun.Name}}(size_t a_first, si
   }
   {% endif %}
   if({{UpdateFun.VectorName}}.size() != 0 && m_pLastCopyHelper != nullptr)
-    m_pLastCopyHelper->UpdateBuffer(m_vdata.{{UpdateFun.VectorName}}Buffer, a_first*sizeof({{UpdateFun.TypeOfData}}), {{UpdateFun.VectorName}}.data() + a_first, a_size*sizeof({{UpdateFun.TypeOfData}}) );
+    m_pLastCopyHelper->UpdateBuffer(m_vdata.{{UpdateFun.VectorName}}Buffer, m_vdata.{{UpdateFun.VectorName}}Offset + a_first*sizeof({{UpdateFun.TypeOfData}}), {{UpdateFun.VectorName}}.data() + a_first, a_size*sizeof({{UpdateFun.TypeOfData}}) );
 }
 {%else%}
 void {{MainClassName}}{{MainClassSuffix}}::{{UpdateFun.Name}}()
 {
   if({{UpdateFun.VectorName}}.size() != 0 && m_pLastCopyHelper != nullptr)
-    m_pLastCopyHelper->UpdateBuffer(m_vdata.{{UpdateFun.VectorName}}Buffer, 0, {{UpdateFun.VectorName}}.data(), {{UpdateFun.VectorName}}.size()*sizeof({{UpdateFun.TypeOfData}}) );
+    m_pLastCopyHelper->UpdateBuffer(m_vdata.{{UpdateFun.VectorName}}Buffer, m_vdata.{{UpdateFun.VectorName}}Offset, {{UpdateFun.VectorName}}.data(), {{UpdateFun.VectorName}}.size()*sizeof({{UpdateFun.TypeOfData}}) );
 }
 {%endif%}
 {% endfor %}

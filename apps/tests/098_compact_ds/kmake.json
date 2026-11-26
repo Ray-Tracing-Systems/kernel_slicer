@@ -1,0 +1,19 @@
+{
+    "mainClass": "TestCompactDS",
+    "options": {
+        "-compact_ds": 1,
+        "-const_shit": 1, // read-only buffers are passed to functions
+        "end": ""
+    },
+    "kernels": {
+        "all": {"nonConstantData": {"a_out": 1, "a_val": 1, "m_written": 1, "m_copy": 1}}
+    },
+    "source": [
+        "test_class.cpp"
+    ],
+    "includeProcess": [],
+    "includeIgnore": [
+        "../../LiteMath"
+    ],
+    "end": ""
+}

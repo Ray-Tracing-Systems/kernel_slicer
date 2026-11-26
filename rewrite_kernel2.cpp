@@ -30,7 +30,9 @@ std::string kslicer::FunctionRewriter2::GlobalPtrOffsetText(const kslicer::Globa
 {
   std::string res;
   if(a_match.localVar != nullptr)
-    res = kslicer::LocalGlobalPointerOffsetName(a_match.localVar);
+    res = kslicer::LocalGlobalPointerOffsetName(a_match.localVar); // already includes offset inside of joined buffer, see RewriteLocalGlobalPtrDecl
+  else if(CompactGroupOfBuffer(a_match.container) != nullptr)
+    res = m_codeInfo->pShaderCC->UBOAccess(a_match.container + "_offset");
   for(const clang::Expr* offsetExpr : a_match.offsetExprs)
   {
     const std::string offset = "(" + RecursiveRewrite(offsetExpr) + ")";
@@ -42,6 +44,56 @@ std::string kslicer::FunctionRewriter2::GlobalPtrOffsetText(const kslicer::Globa
 std::string kslicer::FunctionRewriter2::GlobalBufferAccessText(const std::string& a_buffer, const std::string& a_index)
 {
   return a_buffer + "[" + a_index + "]";
+}
+
+const kslicer::CompactBufferGroup* kslicer::FunctionRewriter2::CompactGroupOfBuffer(const std::string& a_buffer) const
+{
+  if(m_codeInfo->compactGroups.empty())
+    return nullptr;
+  if(m_pCurrKernel != nullptr)
+  {
+    for(const auto& arg : m_pCurrKernel->args) // kernel argument with the same name as member vector
+      if(arg.name == a_buffer)
+        return nullptr;
+  }
+  return m_codeInfo->FindCompactGroup(a_buffer);
+}
+
+std::string kslicer::FunctionRewriter2::CompactBufferName(const std::string& a_buffer) const
+{
+  const auto* pGroup = CompactGroupOfBuffer(a_buffer);
+  return (pGroup == nullptr) ? a_buffer : pGroup->name;
+}
+
+bool kslicer::FunctionRewriter2::CompactVectorSubscriptText(const clang::CXXOperatorCallExpr* a_expr, std::string& a_out)
+{
+  if(m_codeInfo->compactGroups.empty() || a_expr == nullptr || a_expr->getOperator() != clang::OO_Subscript || a_expr->getNumArgs() != 2)
+    return false;
+  const clang::Expr* base = a_expr->getArg(0)->IgnoreParenImpCasts();
+  if(!clang::isa<clang::MemberExpr>(base))
+    return false;
+  const auto pField = clang::dyn_cast<clang::FieldDecl>(clang::dyn_cast<clang::MemberExpr>(base)->getMemberDecl());
+  if(pField == nullptr)
+    return false;
+  const std::string className = kslicer::CleanTypeName(pField->getParent()->getNameAsString()); // only members of main class (and its base classes) are joined
+  if(className != m_codeInfo->mainClassName && m_codeInfo->mainClassNames.find(className) == m_codeInfo->mainClassNames.end())
+    return false;
+  const std::string memberName = pField->getNameAsString();
+  const auto* pGroup = m_codeInfo->FindCompactGroup(memberName);
+  if(pGroup == nullptr)
+    return false;
+  a_out = pGroup->name + "[" + m_codeInfo->pShaderCC->UBOAccess(memberName + "_offset") + " + (" + RecursiveRewrite(a_expr->getArg(1)) + ")]";
+  return true;
+}
+
+bool kslicer::FunctionRewriter2::RewriteCompactVectorSubscript(clang::CXXOperatorCallExpr* a_expr)
+{
+  std::string text;
+  if(!WasNotRewrittenYet(a_expr) || !CompactVectorSubscriptText(a_expr, text))
+    return false;
+  ReplaceText(a_expr->getSourceRange(), text);
+  MarkRewritten(a_expr);
+  return true;
 }
 
 std::string kslicer::FunctionRewriter2::ShitPointerBuffer(const kslicer::ArgMatch& a_pointer)
@@ -123,7 +175,7 @@ bool kslicer::FunctionRewriter2::RewriteGlobalPtrAccess(clang::Expr* a_expr)
     auto match = kslicer::MatchGlobalPointer(base, *m_pCurrKernel, m_compiler);
     if(!match.valid || match.localVar == nullptr)
       return false;
-    buffer = match.container;
+    buffer = CompactBufferName(match.container);
     offset = GlobalPtrOffsetText(match);
   }
   else                                                        // pointer argument of function copy for global memory
@@ -781,6 +833,8 @@ bool kslicer::FunctionRewriter2::DetectAndRewriteShallowPattern(const clang::Stm
     const clang::CXXOperatorCallExpr* opCall = clang::dyn_cast<clang::CXXOperatorCallExpr>(expr);
     if(opCall->getNumArgs() != 2)                 // unary operators, 'it->second' for example
       return false;
+    if(CompactVectorSubscriptText(opCall, a_out)) // 'm_vec[i]' of joined buffer ('-compact_ds 1')
+      return true;
     if(kslicer::GetHashMapSubscript(opCall) != nullptr) // 'm_items[key]' needs full rewrite
       return false;
     const clang::Expr* lhs = kslicer::RemoveImplicitCast(opCall->getArg(0));

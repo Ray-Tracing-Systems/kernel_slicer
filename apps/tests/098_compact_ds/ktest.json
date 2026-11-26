@@ -1,0 +1,7 @@
+{
+    "variants": [
+        {"name": "slang",         "backend": "slang", "kmake": "kmake.json",        "megakernel": true},
+        {"name": "slang_append",  "backend": "slang", "kmake": "kmake_append.json", "megakernel": true},
+        {"name": "slang_nocompact", "backend": "slang", "kmake": "kmake.json", "options": {"-compact_ds": 0}}
+    ]
+}

@@ -65,6 +65,7 @@ follows the test configs and the code.
 | `composition` | Main class with composed classes (`composClasses`) | ✅ | ✅ | ❔ | ❔ | 018, 019 |
 | `update_plain_data` | `UpdateMembersPlainData()`: upload only POD members | ✅ | ✅ | ❔ | ✅ | 068 |
 | `commit_appended` | `CommitAppendedData()`: upload only appended elements (`appendGroups`) | ✅ | ✅ | ❔ | ❔ | 064, 065 |
+| `compact_ds` | `-compact_ds 1`: read-only member vectors (not in `nonConstantData`) with the same element type are joined to one buffer in shaders, fewer bindings in descriptor sets ¹¹ | 🧪 | ❌ | ❔ | ❔ | 098 |
 
 ⁰ No test yet. See [concepts.md](concepts.md#execution-strategies-from-one-source).
 
@@ -76,6 +77,11 @@ of structures with such fields (also nested) are passed as copies in ISPC layout
 too (021); buffers of them passed by pointer from arguments of control functions are reported as an error (025): use scalars
 or `float4`.
 Headers of `include/` written in C++ need `-ispc_process_include 1`.
+
+¹¹ `m_vec[i]` ==> `kgen_data1f[ubo[0].m_vec_offset + (i)]`. A vector is joined only if it is read-only in all kernels which use it:
+not listed in `nonConstantData` of their kernel options (or of `"all"`); vectors which are passed to functions by pointer need
+`-const_shit 1`. With `CommitAppendedData()` joined vectors are from the same append group. Hash maps, textures, buffer
+references, virtual objects, LiteNN weights and members of composed classes are not joined.
 
 ### Algorithms and service functions
 

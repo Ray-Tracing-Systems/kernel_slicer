@@ -1,0 +1,23 @@
+{
+    "mainClass": "TestCompactDS",
+    "options": {
+        "-compact_ds": 1,
+        "-const_shit": 1, // read-only buffers are passed to functions
+        "end": ""
+    },
+    "kernels": {
+        "all": {"nonConstantData": {"a_out": 1, "a_val": 1, "m_written": 1, "m_copy": 1}}
+    },
+    "appendGroups" : {              // vectors of a joined buffer are always in the same group: 'kgen_data1ui' is in 'geom', 'kgen_data1f' is in 'otherGroup'
+        "geom" : ["m_fA", "m_uA", "m_uB"]
+    },
+    "appendRewriteGroups" : ["otherGroup"],
+    "source": [
+        "test_class.cpp"
+    ],
+    "includeProcess": [],
+    "includeIgnore": [
+        "../../LiteMath"
+    ],
+    "end": ""
+}

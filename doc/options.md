@@ -100,6 +100,7 @@ Complete command lines for every sample and test are in `.vscode/launch_slang.js
 | `-const_ubo 1` | `0` | Kernels never write class members: the uniform data buffer is declared read-only in shaders |
 | `-uniform_ubo 1` | `0` | Use a Vulkan uniform buffer instead of a storage buffer for class data |
 | `-sortubo 1` | `0` | Sort scalar class members in the uniform data structure by size |
+| `-compact_ds 1` | `0` | Join read-only member vectors (not in `nonConstantData`) with the same element type to one buffer in shaders (`kgen_data1f`, `kgen_data1ui`, ...), so descriptor sets have fewer bindings; `m_vec[i]` becomes `kgen_data1f[ubo[0].m_vec_offset + (i)]`. Slang only, see [features](features.md) (`compact_ds`) |
 | `-halfTex 1` | `0` | Use 16-bit float formats for float textures |
 | `-forceEnableHalf`, `-forceEnableInt8`, `-forceEnableInt16`, `-forceEnableInt64` | auto | Force requesting the corresponding shader arithmetic type features |
 | `-force8bitStorage`, `-force16bitStorage` | auto | Force requesting 8/16-bit storage features (they are detected automatically from member types) |

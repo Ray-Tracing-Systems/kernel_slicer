@@ -99,7 +99,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, 
   physicalDeviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
   physicalDeviceProperties.pNext = &subgroupProperties;
   vkGetPhysicalDeviceProperties2(m_physicalDevice, &physicalDeviceProperties);
-  {% if HaveLocalContainers %}
+  {% if HaveLocalContainers or length(CompactGroups) > 0 %}
   m_minStorageBufferOffsetAlignment = physicalDeviceProperties.properties.limits.minStorageBufferOffsetAlignment; 
   {% endif %}
   {% if EnableTimeStamps %}
@@ -397,8 +397,14 @@ void {{MainClassName}}{{MainClassSuffix}}::DeleteDeviceData()
   {% if UseSeparateUBO %}
   vkDestroyBuffer(m_device, m_uboArgsBuffer, nullptr);
   {% endif %}
+  {% for Group in CompactGroups %}
+  vkDestroyBuffer(m_device, m_vdata.{{Group.Name}}Buffer, nullptr);
+  m_vdata.{{Group.Name}}Buffer = VK_NULL_HANDLE;
+  {% endfor %}
   {% for Buffer in ClassVectorVars %}
+  {% if Buffer.CompactGroup == "" %}
   vkDestroyBuffer(m_device, m_vdata.{{Buffer.Name}}Buffer, nullptr);
+  {% endif %}
   {% if Buffer.IsVFHBuffer and Buffer.VFHLevel >= 2 %}
   vkDestroyBuffer(m_device, m_vdata.{{Buffer.Name}}_dataSBuffer, nullptr);
   vkDestroyBuffer(m_device, m_vdata.{{Buffer.Name}}_dataVBuffer, nullptr);
@@ -1116,11 +1122,18 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
   memberVectorsWithDevAddr.push_back(m_vdata.{{Var.Name}}Buffer);
   {% else if HasCommitAppendedFunc and Var.AppendId >= 0 %}
   // '{{Var.Name}}' is created in CreateAppendGroupBuffers({{Var.AppendGroup}}): each group of CommitAppendedData() has its own allocation
+  {% else if Var.CompactGroup != "" %}
+  // '{{Var.Name}}' is a part of '{{Var.CompactGroup}}', see CreateCompactBuffer_{{Var.CompactGroup}}()
   {% else %}
   m_vdata.{{Var.Name}}Buffer = vk_utils::createBuffer(m_device, {{Var.Name}}{{Var.AccessSymb}}capacity()*sizeof({{Var.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT{% if existsIn(Var, "IsGPIndexBuffer") and Var.IsGPIndexBuffer %} | VK_BUFFER_USAGE_INDEX_BUFFER_BIT{% endif %});
   memberVectors.push_back(m_vdata.{{Var.Name}}Buffer);
   {% endif %}
   {% endfor %}
+  {% if not HasCommitAppendedFunc %}
+  {% for Group in CompactGroups %}
+  memberVectors.push_back(CreateCompactBuffer_{{Group.Name}}());
+  {% endfor %}
+  {% endif %}
   {% for Var in ClassTextureVars %}
   {% if not Var.IsRenderTarget %}
   m_vdata.{{Var.Name}}Texture = CreateTexture2D({{Var.Name}}{{Var.AccessSymb}}width(), {{Var.Name}}{{Var.AccessSymb}}height(), VkFormat({{Var.Format}}), {{Var.Usage}});
@@ -1205,6 +1218,31 @@ void {{MainClassName}}{{MainClassSuffix}}::InitDeviceData()
   InitIndirectDescriptorSets();
   {% endif %}
 }
+{% for Group in CompactGroups %}
+
+VkBuffer {{MainClassName}}{{MainClassSuffix}}::CreateCompactBuffer_{{Group.Name}}()
+{
+  // '-compact_ds 1': read-only vectors are parts of a single buffer, which is bound once in descriptor sets;
+  // shaders get offsets of parts in elements via class data ('ubo[0].m_vec_offset', see UpdatePlainMembers)
+  //
+  size_t offset = 0;
+  {% for Vec in Group.Vectors %}
+  offset = kslicer_compact_offset(offset, size_t(m_minStorageBufferOffsetAlignment), sizeof({{Vec.TypeOfData}}));
+  m_vdata.{{Vec.Name}}Offset = offset;
+  {% if HasCommitAppendedFunc %}
+  offset += std::max<size_t>(m_appendVectors[{{Vec.AppendId}}].gpuCapacity, 1)*sizeof({{Vec.TypeOfData}});
+  {% else %}
+  offset += std::max<size_t>({{Vec.Name}}{{Vec.AccessSymb}}capacity(), 1)*sizeof({{Vec.TypeOfData}});
+  {% endif %}
+  {% endfor %}
+  m_vdata.{{Group.Name}}Buffer = vk_utils::createBuffer(m_device, offset, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  m_vdata.{{Group.Name}}Offset = 0;
+  {% for Vec in Group.Vectors %}
+  m_vdata.{{Vec.Name}}Buffer = m_vdata.{{Group.Name}}Buffer;
+  {% endfor %}
+  return m_vdata.{{Group.Name}}Buffer;
+}
+{% endfor %}
 {% if HasCommitAppendedFunc %}
 
 void {{MainClassName}}{{MainClassSuffix}}::CreateAppendGroupBuffers(uint32_t a_groupId, bool a_withReserve)
@@ -1227,10 +1265,17 @@ void {{MainClassName}}{{MainClassSuffix}}::CreateAppendGroupBuffers(uint32_t a_g
         state.size         = {{Vec.Name}}{{Vec.AccessSymb}}size();
         state.capacity     = {{Vec.Name}}{{Vec.AccessSymb}}capacity();
         state.gpuCapacity  = gpuCapacity;
+        {% if Vec.CompactGroup != "" %}
+        // '{{Vec.Name}}' is a part of '{{Vec.CompactGroup}}', which is created below
+        {% else %}
         m_vdata.{{Vec.Name}}Buffer = vk_utils::createBuffer(m_device, gpuCapacity*sizeof({{Vec.TypeOfData}}), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
         m_vdata.{{Vec.Name}}Offset = 0;
         buffers.push_back(m_vdata.{{Vec.Name}}Buffer);
+        {% endif %}
       }
+      {% endfor %}
+      {% for CompactName in Group.CompactGroups %}
+      buffers.push_back(CreateCompactBuffer_{{CompactName}}());
       {% endfor %}
     }
     break;
@@ -1248,8 +1293,14 @@ void {{MainClassName}}{{MainClassSuffix}}::DeleteAppendGroupBuffers(uint32_t a_g
   {% for Group in AppendGroups %}
     case {{Group.Id}}: // '{{Group.Name}}'
     {% for Vec in Group.Vectors %}
+    {% if Vec.CompactGroup == "" %}
     vkDestroyBuffer(m_device, m_vdata.{{Vec.Name}}Buffer, nullptr);
+    {% endif %}
     m_vdata.{{Vec.Name}}Buffer = VK_NULL_HANDLE;
+    {% endfor %}
+    {% for CompactName in Group.CompactGroups %}
+    vkDestroyBuffer(m_device, m_vdata.{{CompactName}}Buffer, nullptr);
+    m_vdata.{{CompactName}}Buffer = VK_NULL_HANDLE;
     {% endfor %}
     break;
   {% endfor %}
@@ -1308,7 +1359,7 @@ void {{MainClassName}}{{MainClassSuffix}}::CommitAppendedData(std::shared_ptr<vk
     {% endif %}
     const size_t offset = (first*sizeof({{Vec.TypeOfData}})) & ~size_t(3); // copy offset must be a multiple of 4
     if(size > first)
-      a_pCopyHelper->UpdateBuffer(m_vdata.{{Vec.Name}}Buffer, offset, ((const char*){{Vec.Name}}{{Vec.AccessSymb}}data()) + offset, size*sizeof({{Vec.TypeOfData}}) - offset);
+      a_pCopyHelper->UpdateBuffer(m_vdata.{{Vec.Name}}Buffer, m_vdata.{{Vec.Name}}Offset + offset, ((const char*){{Vec.Name}}{{Vec.AccessSymb}}data()) + offset, size*sizeof({{Vec.TypeOfData}}) - offset);
     state.size      = size;
     state.capacity  = {{Vec.Name}}{{Vec.AccessSymb}}capacity();
     state.dirtyFrom = size_t(-1);

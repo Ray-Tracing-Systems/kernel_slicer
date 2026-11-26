@@ -534,10 +534,6 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
 {
   auto pShaderRewriter = a_classInfo.pShaderFuncRewriter;
 
-  auto pDefaultOpts = kernelOptions.find("all");
-  if(pDefaultOpts == kernelOptions.end())
-    pDefaultOpts = kernelOptions.find("default");
-
   kslicer::umap<std::string, DataMemberInfo> dataMembersCached;
   dataMembersCached.reserve(a_classInfo.dataMembers.size());
   for(const auto& member : a_classInfo.dataMembers)
@@ -859,10 +855,40 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
     bool usedCombinedImageSamplers = false;
     json rtxNames = std::vector<json>();
     json kernelHashMaps = std::vector<json>();
+    kslicer::uset<std::string> compactGroupsAdded;
     for(const auto& container : k.usedContainers)
     {
       if(container.second.bindWithRef) // do not pass it to shader via descriptor set because we pass it with separate buffer reference
         continue;
+
+      const auto* pCompact = a_classInfo.FindCompactGroup(container.second.name); // '-compact_ds 1': joined buffer is declared in place of its first vector (the same in descriptor set)
+      if(pCompact != nullptr)
+      {
+        if(compactGroupsAdded.find(pCompact->name) == compactGroupsAdded.end())
+        {
+          compactGroupsAdded.insert(pCompact->name);
+          json argj;
+          argj["Type"]          = pCompact->shaderType;
+          argj["Name"]          = pCompact->name;
+          argj["IsUBO"]         = false;
+          argj["IsImage"]       = false;
+          argj["IsImageArray"]  = false;
+          argj["IsAccelStruct"] = false;
+          argj["IsPointer"]     = true;
+          argj["IsMember"]      = true;
+          argj["IsSingle"]      = false;
+          argj["IsConst"]       = true;
+          argj["WithBuffRef"]   = false;
+          argj["ScalarLayout"]  = pCompact->scalarLayout;
+          argj["IsVFHBuffer"]   = false;
+          argj["VFHLevel"]      = 0;
+          argj["NameISPC"]      = pCompact->name;
+          argj["SizeOffset"]    = 0;
+          args.push_back(argj);
+          MArgsSize++;
+        }
+        continue;
+      }
 
       auto pVecMember     = dataMembersCached.find(container.second.name);
       auto pVecSizeMember = dataMembersCached.find(container.second.name + "_size");
@@ -1114,29 +1140,18 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
       int a = 2;
     }
 
-    if(kernelOptions != nullptr) {
-      if(kernelOptions.find(k.name) != kernelOptions.end()) {
+    const nlohmann::json nonConstData = kslicer::NonConstantDataOfKernel(kernelOptions, k.name); // the same is used for '-compact_ds 1' (MakeCompactBufferGroups)
+    if(nonConstData != nullptr) {
+      for(auto& arg : args) {
+        if(arg["Name"] == nullptr)
+          continue;
         
-        auto thisKernelOptions = kernelOptions[k.name];
-        if(thisKernelOptions == nullptr && pDefaultOpts != kernelOptions.end())
-          thisKernelOptions = (*pDefaultOpts);
-
-        if(thisKernelOptions["nonConstantData"] != nullptr) {
-          auto nonConstData = thisKernelOptions["nonConstantData"];
-          for(auto& arg : args) {
-            if(arg["Name"] == nullptr)
-              continue;
-            
-            std::string name = (arg["SrcName"] != nullptr) ? arg["SrcName"].get<std::string>() : arg["Name"].get<std::string>();
-
-            if(nonConstData[name.c_str()] != nullptr) {
-              bool isConst = (nonConstData[name.c_str()].get<int>() == 0);
-              arg["IsConst"] = isConst;
-            }
-            else 
-              arg["IsConst"] = true;
-          }
-        }
+        std::string name = (arg["SrcName"] != nullptr) ? arg["SrcName"].get<std::string>() : arg["Name"].get<std::string>();
+        auto pFlag = nonConstData.find(name);
+        if(pFlag != nonConstData.end() && !pFlag->is_null())
+          arg["IsConst"] = (pFlag->get<int>() == 0);
+        else 
+          arg["IsConst"] = true;
       }
     }
 

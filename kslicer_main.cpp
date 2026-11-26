@@ -546,6 +546,17 @@ int main(int argc, const char **argv)
   if(params.find("-const_shit") != params.end())
     inputCodeInfo.shitIsAlwaysConst = (atoi(params["-const_shit"].c_str()) != 0);
 
+  if(params.find("-compact_ds") != params.end()) // join read-only member vectors with the same element type to a single buffer in shaders
+  {
+    inputCodeInfo.compactDS = (atoi(params["-compact_ds"].c_str()) != 0);
+    const bool slangVulkan  = (shaderCCName == "slang" || shaderCCName == "SLANG" || shaderCCName == "Slang");
+    if(inputCodeInfo.compactDS && !slangVulkan)
+    {
+      std::cout << "[kslicer]: WARNING, '-compact_ds 1' is supported only for '-shaderCC slang', option is ignored" << std::endl;
+      inputCodeInfo.compactDS = false;
+    }
+  }
+
   if(params.find("-atomicf_emul") != params.end())
   {
     const int requestedMode = atoi(params["-atomicf_emul"].c_str());
@@ -1512,6 +1523,7 @@ int main(int argc, const char **argv)
   inputCodeInfo.ProcessMemberTypesAligment(inputCodeInfo.dataMembers, firstPassData.rv.GetOtherTypeDecls(), compiler.getASTContext()); // ==> inputCodeInfo.dataMembers
   inputCodeInfo.ProcessHashMaps(compiler.getASTContext());                                                                              // ==> inputCodeInfo.hashMaps
   inputCodeInfo.ProcessNeuralNetworks(compiler.getASTContext());                                                                        // ==> inputCodeInfo.nnLayersOfWeights
+  inputCodeInfo.MakeCompactBufferGroups(inputOptions.contains("kernels") ? inputOptions["kernels"] : nlohmann::json()); // ==> inputCodeInfo.compactGroups ('-compact_ds 1')
 
   std::sort(inputCodeInfo.dataMembers.begin(), inputCodeInfo.dataMembers.end(), kslicer::DataMemberInfo_ByAligment()); // sort by aligment in GLSL
 

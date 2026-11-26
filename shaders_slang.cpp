@@ -821,8 +821,8 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
         if(found != size_t(-1) && SLANG_SUPPORT_POINTER_ADD_IN_ARGS && IsUserFunction(fDecl)) // pointer to global memory ==> (buffer, offset); library functions get only buffer
         {
           auto match = kslicer::MatchGlobalPointer(call->getArg(i), *m_pCurrKernel, m_compiler);
-          std::string bufferText = match.container;
-          if(!match.valid || (match.localVar == nullptr && match.offsetExprs.empty())) // 'm_vec.data()' or kernel argument
+          std::string bufferText = CompactBufferName(match.container);
+          if(!match.valid || (match.localVar == nullptr && match.offsetExprs.empty() && CompactGroupOfBuffer(match.container) == nullptr)) // 'm_vec.data()' or kernel argument
             bufferText = RecursiveRewrite(arg);
           rewrittenRes += bufferText + ", " + (match.valid ? GlobalPtrOffsetText(match) : std::string("0"));
         }
@@ -1017,6 +1017,8 @@ static bool IsMatrixType(const std::string& a_typeName) // TODO: make it more 's
 bool kslicer::SlangRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr) 
 { 
   if(RewriteHashMapSubscript(expr)) // 'm_items[key]' ==> 'm_items[hmap_m_items_insert(key)].val'
+    return true;
+  if(RewriteCompactVectorSubscript(expr)) // 'm_vec[i]' ==> 'kgen_data1f[ubo[0].m_vec_offset + (i)]' ('-compact_ds 1')
     return true;
   if(expr->getNumArgs() == 2 && GetHashMapSubscript(expr->getArg(0)) != nullptr && WasNotRewrittenYet(expr))
   {

@@ -107,6 +107,19 @@ static_assert(offsetof({{Var.SlotType}}, key) == sizeof({{Var.ValueType}}), "{{V
 {% endif %}
 {% endfor %}
 {% endif %}
+{% if length(CompactGroups) > 0 %}
+
+// '-compact_ds 1': offset of next vector inside of joined buffer, a multiple of both 'minStorageBufferOffsetAlignment' (the vector may be bound separately)
+// and element size (shaders address elements: 'kgen_data1f[ubo[0].m_vec_offset + i]')
+//
+static inline size_t kslicer_compact_offset(size_t a_offset, size_t a_minAlign, size_t a_elemSize)
+{
+  size_t step = a_elemSize;
+  while(step % a_minAlign != 0)
+    step += a_elemSize;
+  return (a_offset + step - 1)/step*step;
+}
+{% endif %}
 
 struct {{MainClassName}}{{MainClassSuffix}}_UBO_Data
 {
@@ -381,6 +394,9 @@ protected:
   {% endif %}
   {% endif %}
 
+  {% for Group in CompactGroups %}
+  virtual VkBuffer CreateCompactBuffer_{{Group.Name}}(); ///< '-compact_ds 1': creates joined buffer of read-only vectors, sets their buffers and offsets in 'm_vdata'
+  {% endfor %}
   VkBufferMemoryBarrier BarrierForClearFlags(VkBuffer a_buffer);
   VkBufferMemoryBarrier BarrierForSingleBuffer(VkBuffer a_buffer);
   void BarriersForSeveralBuffers(VkBuffer* a_inBuffers, VkBufferMemoryBarrier* a_outBarriers, uint32_t a_buffersNum);
@@ -434,6 +450,10 @@ protected:
 
   struct MembersDataGPU
   {
+    {% for Group in CompactGroups %}
+    VkBuffer {{Group.Name}}Buffer = VK_NULL_HANDLE; ///<! '-compact_ds 1': {% for Vec in Group.Vectors %}'{{Vec.Name}}' {% endfor %}are parts of this buffer
+    size_t   {{Group.Name}}Offset = 0;
+    {% endfor %}
     {% for Vector in VectorMembers %}
     VkBuffer {{Vector.Name}}Buffer = VK_NULL_HANDLE;
     size_t   {{Vector.Name}}Offset = 0;
@@ -713,8 +733,10 @@ public:
   std::vector<std::string>                          m_tsIdToKernelName;
   {% endif %}
   uint32_t m_subgroupSize = 1; 
-  {% if HaveLocalContainers %}
+  {% if HaveLocalContainers or length(CompactGroups) > 0 %}
   VkDeviceSize m_minStorageBufferOffsetAlignment = 16; 
+  {% endif %}
+  {% if HaveLocalContainers %}
   void PrefixSummAligned(uint32_t* a_array, uint32_t a_num);
   {% endif %}
 };
