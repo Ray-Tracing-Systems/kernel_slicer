@@ -1,0 +1,42 @@
+{
+    "mainClass": "TestClass",
+    "options": {
+        "-pattern": "rtv",
+        "-compact_ds": 1,
+        "-const_shit": 1,
+        "end": ""
+    },
+    // for '-compact_ds' (ktest variants *_compact*): only buffers written by kernels are listed, other member vectors are read-only
+    "kernels": {
+        "all": {
+            "nonConstantData": {
+                "out_pakedXY": 1,
+                "rayPosAndNear": 1,
+                "rayDirAndFar": 1,
+                "accumColor": 1,
+                "accumuThoroughput": 1,
+                "accumThoroughput": 1,
+                "out_hit": 1,
+                "out_bars": 1,
+                "out_mid": 1,
+                "out_color": 1,
+                "a_accumColor": 1,
+                "mid": 1,
+                "pGen": 1,
+                "m_randomGens": 1
+            }
+        }
+    },
+    "source": [
+        "test_class.cpp"
+    ],
+    "includeProcess": [],
+    "includeIgnore": [
+        "../LiteMath",
+        "../LiteMathAux"
+    ],
+    "defines": {
+        "KERNEL_SLICER": ""
+    },
+    "end": ""
+}

@@ -2,6 +2,10 @@
     "variants": [
         {"name": "slang", "backend": "slang", "kmake": "kmake.json"},
         {"name": "glsl", "backend": "glsl", "kmake": "kmake.json"},
-        {"name": "ispc", "backend": "ispc", "kmake": "kmake.json"}
+        {"name": "ispc", "backend": "ispc", "kmake": "kmake.json"},
+        {"name": "slang_compact1", "backend": "slang", "kmake": "kmake_compact.json", "options": {"-compact_ds": 1}},
+        {"name": "slang_compact2", "backend": "slang", "kmake": "kmake_compact.json", "options": {"-compact_ds": 2}},
+        {"name": "glsl_compact1", "backend": "glsl", "kmake": "kmake_compact.json", "options": {"-compact_ds": 1}},
+        {"name": "glsl_compact2", "backend": "glsl", "kmake": "kmake_compact.json", "options": {"-compact_ds": 2}}
     ]
 }

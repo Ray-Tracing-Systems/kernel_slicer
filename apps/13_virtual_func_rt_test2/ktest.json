@@ -2,6 +2,8 @@
     "variants": [
         {"name": "glsl", "backend": "glsl", "kmake": "kmake.json", "megakernel": true},
         {"name": "slang", "backend": "slang", "kmake": "kmake.json", "megakernel": true,
-         "skip": "virtual functions hierarchies are implemented only in GLSL back-end (undefined identifier IMaterial) (found 2026-11-05)"}
+         "skip": "virtual functions hierarchies are implemented only in GLSL back-end (undefined identifier IMaterial) (found 2026-11-05)"},
+        {"name": "glsl_compact1", "backend": "glsl", "kmake": "kmake_compact.json", "megakernel": true, "options": {"-compact_ds": 1}},
+        {"name": "glsl_compact2", "backend": "glsl", "kmake": "kmake_compact.json", "megakernel": true, "options": {"-compact_ds": 2}}
     ]
 }

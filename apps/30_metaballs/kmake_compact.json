@@ -1,0 +1,33 @@
+{
+    "mainClass": "Metaballs",
+    "options": {
+        "-shaderCC": "slang",
+        "-timestamps": "1",
+        "-reorderLoops": "YX",
+        "-compact_ds": 1,
+        "-const_shit": 1,
+        "end": ""
+    },
+    // for '-compact_ds' (ktest variants *_compact*): only buffers written by kernels are listed, other member vectors are read-only
+    "kernels": {
+        "all": {
+            "nonConstantData": {
+                "a_hdr": 1,
+                "a_out": 1,
+                "m_hdr": 1
+            }
+        }
+    },
+    "baseClasses": [],
+    "composClasses": {},
+    "source": [
+        "metaballs.cpp"
+    ],
+    "includeProcess": [],
+    "includeIgnore": [
+        "../LiteMath",
+        "../LiteMathAux",
+        "../../TINYSTL"
+    ],
+    "end": ""
+}

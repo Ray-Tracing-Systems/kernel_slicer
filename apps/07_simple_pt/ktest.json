@@ -2,6 +2,10 @@
     "variants": [
         {"name": "slang", "backend": "slang", "kmake": "kmake.json", "megakernel": true},
         {"name": "glsl", "backend": "glsl", "kmake": "kmake.json", "options": {"-pattern": "rtv"}, "megakernel": true},
-        {"name": "ispc", "backend": "ispc", "kmake": "kmake.json", "options": {"-ispc_process_include": 1}, "megakernel": true}
+        {"name": "ispc", "backend": "ispc", "kmake": "kmake.json", "options": {"-ispc_process_include": 1}, "megakernel": true},
+        {"name": "slang_compact1", "backend": "slang", "kmake": "kmake_compact.json", "megakernel": true, "options": {"-compact_ds": 1}},
+        {"name": "slang_compact2", "backend": "slang", "kmake": "kmake_compact.json", "megakernel": true, "options": {"-compact_ds": 2}},
+        {"name": "glsl_compact1", "backend": "glsl", "kmake": "kmake_compact.json", "options": {"-pattern": "rtv", "-compact_ds": 1}, "megakernel": true},
+        {"name": "glsl_compact2", "backend": "glsl", "kmake": "kmake_compact.json", "options": {"-pattern": "rtv", "-compact_ds": 2}, "megakernel": true}
     ]
 }
