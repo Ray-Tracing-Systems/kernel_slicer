@@ -1898,8 +1898,13 @@ int main(int argc, const char **argv)
     json["HasGetTimeFunc"]      = jsonCPP["HasGetTimeFunc"];
     json["ClassVars"]           = jsonCPP["ClassVars"];
     json["ClassVectorVars"]     = jsonCPP["ClassVectorVars"];
+    json["VectorMembers"]       = jsonCPP["VectorMembers"];   // composed classes: vectors of the implementation ('HasPrefix')
+    json["HasPrefixData"]       = jsonCPP["HasPrefixData"];
+    json["PrefixDataName"]      = jsonCPP["PrefixDataName"];
+    json["PrefixDataClass"]     = jsonCPP["PrefixDataClass"];
     json["MainFunctions"]       = jsonCPP["MainFunctions"];
     json["MainInclude"]         = jsonCPP["MainInclude"];
+    json["AdditionalIncludes"]  = jsonCPP["AdditionalIncludes"]; // '-cpp_include', 'additionaIncludes'
     json["MainRawName"]         = rawname; // 'mainClassFileName' may point to merged '*_temp.cpp' file
     json["DefinesISPC"]         = std::vector<std::string>(); // 'defines' of config: code of functions is copied with its '#if' blocks
     for(const auto& def : defines)

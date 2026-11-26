@@ -1,3 +1,4 @@
+#include <cctype>
 #include "kslicer.h"
 #include "template_rendering.h"
 #include "clang/Lex/Lexer.h"
@@ -26,6 +27,13 @@ std::string kslicer::ISPCRewriter::RewriteStdVectorTypeStr(const std::string& a_
   ReplaceFirst(typeStr, m_codeInfo->mainClassName + "::", "");
   ReplaceFirst(typeStr, "struct float4x4", "float4x4");       // small inconvinience in math library
   ReplaceFirst(typeStr, "class ", "");                        // 'class EyeRayData': ISPC has only structures
+  for(size_t pos = typeStr.find("::"); pos != std::string::npos; pos = typeStr.find("::")) // 'struct bioh::Node' ==> 'struct Node':
+  {                                                                                         // structures of all namespaces are written without them
+    size_t first = pos;
+    while(first > 0 && (std::isalnum((unsigned char)typeStr[first-1]) || typeStr[first-1] == '_'))
+      first--;
+    typeStr.erase(first, pos + 2 - first);
+  }
   if(typeStr == "_Bool")
     typeStr = "bool";
   if(isConst)
@@ -398,6 +406,27 @@ bool kslicer::ISPCRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr
     }
   }
 
+  // 'Func(a)' inside a member function of a composed class (implicit 'this') ==> 'm_pImpl_Func(a)', as in Slang/GLSL
+  //
+  if(f->getMethodDecl() != nullptr && WasNotRewrittenYet(f))
+  {
+    auto pThis = clang::dyn_cast<clang::CXXThisExpr>(f->getImplicitObjectArgument()->IgnoreParenImpCasts());
+    const auto pPrefix = m_codeInfo->composPrefix.find(kslicer::CleanTypeName(f->getObjectType().getAsString()));
+    if(pThis != nullptr && pThis->isImplicit() && pPrefix != m_codeInfo->composPrefix.end())
+    {
+      std::string resCallText = pPrefix->second + "_" + f->getMethodDecl()->getNameAsString() + "(";
+      for(unsigned i=0;i<f->getNumArgs(); i++)
+      {
+        resCallText += RecursiveRewrite(f->getArg(i));
+        if(i!=f->getNumArgs()-1)
+          resCallText += ", ";
+      }
+      resCallText += ")";
+      ReplaceText(f->getSourceRange(), resCallText);
+      MarkRewritten(f);
+    }
+  }
+
   return true; 
 } 
 
@@ -681,6 +710,19 @@ bool kslicer::ISPCRewriter::VisitVarDecl_Impl(clang::VarDecl* decl)
     m_rewriter.ReplaceText(decl->getLocation(), decl->getNameAsString().size(), ISPCSafeName(decl->getNameAsString()));
   if(decl->isLocalVarDecl() && WasNotRewrittenYet(decl->getInit()))
     RemoveLiteNamespaceQualifier(decl); // 'const LiteMath::float4x4 m' ==> 'const float4x4 m'
+
+  // '[[threadlocal]] T a[N];' ==> 'T a[N];': a local array is private to the program instance in ISPC (GPU back ends move it to global scope)
+  //
+  if(decl->isLocalVarDecl())
+  {
+    for(const clang::Attr* attr : decl->attrs())
+    {
+      if(kslicer::GetRangeSourceCode(attr->getRange(), m_compiler) != "threadlocal")
+        continue;
+      const clang::SourceLocation nameLoc = attr->getRange().getBegin();  // 'threadlocal' of '[[threadlocal]]'
+      m_rewriter.ReplaceText(clang::SourceRange(nameLoc.getLocWithOffset(-2), nameLoc.getLocWithOffset(12)), "");
+    }
+  }
 
   // block expansion: variables of the block (shared arrays and variables of single thread code) are 'uniform',
   // as well as local variables of uniform overloads of functions called from this code
@@ -1219,6 +1261,10 @@ void kslicer::ISPCCompiler::GenerateShaders(nlohmann::json& a_kernelsJson, const
       const bool converted    = isMemberBuff && pMember != a_codeInfo->allDataMembers.end() && !pMember->second.ispcConvType.empty();
       arg["PaddedISPC"]    = padded;
       arg["ConvertedISPC"] = converted;
+      arg["PrefixISPC"]    = isMemberBuff && pMember != a_codeInfo->allDataMembers.end() && pMember->second.hasPrefix; // vector of composed class: the host has a pointer to it
+      if(arg["PrefixISPC"].get<bool>() && (padded || converted) && reportedArgs.insert(arg["Name"].get<std::string>()).second)
+        kslicer::PrintError("ISPC: member vector '" + arg["Name"].get<std::string>() + "' of a composed class has 2- or 3-component vectors (16 bytes in ISPC), "
+                            "padding of such vectors of composed classes is not supported yet, use float4/uint4");
       if(padded)
         paddedBuffers.insert(arg["Name"].get<std::string>());
       if(converted)

@@ -408,6 +408,7 @@ static inline float3 operator*(float4x4 m, float3 v) { return mul4x3(m, v); } //
 static inline float2 to_float2(float4 v) { return make_float2(v.x, v.y); }
 static inline float2 to_float2(float3 v) { return make_float2(v.x, v.y); }
 static inline uint   as_uint(float x)  { return intbits(x); }
+static inline uint   bitCount(uint x)  { return (uint)popcnt((int32)x); }  // LiteMath::bitCount (number of set bits)
 static inline int    as_int(float x)   { return (int)intbits(x); }
 
 /////////////////////////////////////////////////////////////////////

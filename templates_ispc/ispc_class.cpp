@@ -11,6 +11,9 @@
 #include <omp.h>
 
 #include "{{MainInclude}}"
+{% for Include in AdditionalIncludes %}
+#include "{{Include}}"
+{% endfor %}
 #if defined(__GNUC__) && !defined(__clang__) && !defined(__aarch64__) && !defined(__fp16)
 #define __fp16 _Float16 // ISPC header declares 'float16' as '__fp16' (clang), GCC on x86 names this type '_Float16'
 #endif
@@ -219,6 +222,31 @@ protected:
 
   virtual void UpdatePlainMembers();
   virtual void ReadPlainMembers();
+  {% if HasPrefixData %}
+
+  // composed class ('composClasses'): kernels use the data of its implementation directly
+  //
+  {% for Vector in VectorMembers %}
+  {% if Vector.HasPrefix %}
+  {{Vector.Type}}* {{Vector.Name}} = nullptr;
+  {% endif %}
+  {% endfor %}
+  {{PrefixDataClass}}* UpdatePrefixPointers()
+  {
+    auto pUnderlyingImpl = dynamic_cast<{{PrefixDataClass}}*>({{PrefixDataName}}->UnderlyingImpl(0));
+    if(pUnderlyingImpl == nullptr)
+    {
+      std::cout << "[{{MainClassName}}_ISPC]: '{{PrefixDataName}}' is not '{{PrefixDataClass}}' (composed class of this ISPC implementation)" << std::endl;
+      exit(1);
+    }
+    {% for Vector in VectorMembers %}
+    {% if Vector.HasPrefix %}
+    {{Vector.Name}} = &pUnderlyingImpl->{{Vector.CleanName}};
+    {% endif %}
+    {% endfor %}
+    return pUnderlyingImpl;
+  }
+  {% endif %}
   {% if HasGraphics %}
 
   // graphics pipeline (LiteRS): draw commands of control functions call 'Draw' of 'LiteRS::Pipeline::backend'
@@ -469,6 +497,9 @@ protected:
 void {{MainClassName}}_ISPC::UpdatePlainMembers()
 {
   const size_t maxAllowedSize = std::numeric_limits<uint32_t>::max();
+  {% if HasPrefixData %}
+  auto pUnderlyingImpl = UpdatePrefixPointers();
+  {% endif %}
   {% for Buff in PaddedBuffersISPC %}
   ISPCPadTo16({{Buff}}, m_padded_{{Buff}});
   {% endfor %}
@@ -479,7 +510,10 @@ void {{MainClassName}}_ISPC::UpdatePlainMembers()
   ISPCTextureDescs({{TexArray}}, m_texDesc_{{TexArray}});
   {% endfor %}
 ## for Var in ClassVars
-  {% if Var.IsArray %}
+  {% if existsIn(Var, "HasPrefix") and Var.HasPrefix %}
+  static_assert(sizeof(m_uboData.{{Var.Name}}) >= sizeof(pUnderlyingImpl->{{Var.CleanName}}), "'{{Var.Name}}' has different layout in ISPC");
+  memcpy((void*)&m_uboData.{{Var.Name}}, (const void*)&pUnderlyingImpl->{{Var.CleanName}}, sizeof(pUnderlyingImpl->{{Var.CleanName}})); // member of composed class
+  {% else if Var.IsArray %}
   memcpy((void*)m_uboData.{{Var.Name}}, (const void*){{Var.Name}}, sizeof({{Var.Name}}));
   {% else if Var.ConvertedISPC %}
   ISPCConvert({{Var.Name}}, m_uboData.{{Var.Name}});
@@ -496,6 +530,9 @@ void {{MainClassName}}_ISPC::UpdatePlainMembers()
 
 void {{MainClassName}}_ISPC::ReadPlainMembers()
 {
+  {% if HasPrefixData %}
+  auto pUnderlyingImpl = UpdatePrefixPointers();
+  {% endif %}
   {% for Buff in PaddedBuffersISPC %}
   ISPCUnpadFrom16(m_padded_{{Buff}}, {{Buff}});
   {% endfor %}
@@ -504,7 +541,9 @@ void {{MainClassName}}_ISPC::ReadPlainMembers()
   {% endfor %}
   {% for Var in ClassVars %}
   {% if not Var.IsConst %}
-  {% if Var.IsArray %}
+  {% if existsIn(Var, "HasPrefix") and Var.HasPrefix %}
+  memcpy((void*)&pUnderlyingImpl->{{Var.CleanName}}, (const void*)&m_uboData.{{Var.Name}}, sizeof(pUnderlyingImpl->{{Var.CleanName}})); // member of composed class
+  {% else if Var.IsArray %}
   memcpy((void*){{Var.Name}}, (const void*)m_uboData.{{Var.Name}}, sizeof({{Var.Name}})); // void*: GCC -Wclass-memaccess for LiteMath types
   {% else if Var.ConvertedISPC %}
   ISPCConvert(m_uboData.{{Var.Name}}, {{Var.Name}});
