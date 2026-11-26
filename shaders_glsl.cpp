@@ -844,7 +844,7 @@ bool kslicer::GLSLRewriter::VisitArraySubscriptExpr_Impl(clang::ArraySubscriptEx
       if(isBufferReferenceAccess)
         textRes = std::string("all_references.") + globalPointer.actual + "." + globalPointer.actual + "[" + rightText + " + " + leftText + "Offset]";
       else
-        textRes = globalPointer.actual + "[" + rightText + " + " + leftText + "Offset]";
+        textRes = CompactBufferName(globalPointer.actual) + "[" + rightText + " + " + leftText + "Offset]";
       ReplaceText(arrayExpr->getSourceRange(), textRes); // process shitty global pointers
       MarkRewritten(right);
       break;
@@ -886,6 +886,9 @@ bool kslicer::GLSLRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr
 
 bool kslicer::GLSLRewriter::VisitCXXOperatorCallExpr_Impl(clang::CXXOperatorCallExpr* expr)
 {
+  if(RewriteCompactVectorSubscript(expr)) // 'm_vec[i]' ==> 'kgen_data1f[ubo.m_vec_offset + (i)]' ('-compact_ds 1')
+    return true;
+
   if(m_kernelMode)
     return VisitCXXOperatorCallExprKernel(expr);
 

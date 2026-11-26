@@ -65,7 +65,7 @@ follows the test configs and the code.
 | `composition` | Main class with composed classes (`composClasses`) | ✅ | ✅ | ❔ | ❔ | 018, 019 |
 | `update_plain_data` | `UpdateMembersPlainData()`: upload only POD members | ✅ | ✅ | ❔ | ✅ | 068 |
 | `commit_appended` | `CommitAppendedData()`: upload only appended elements (`appendGroups`) | ✅ | ✅ | ❔ | ❔ | 064, 065 |
-| `compact_ds` | `-compact_ds 1`: read-only member vectors (not in `nonConstantData`) with the same element type are joined to one buffer in shaders, fewer bindings in descriptor sets ¹¹ | 🧪 | ❌ | ❔ | ❔ | 098 |
+| `compact_ds` | `-compact_ds 1`: read-only member vectors (not in `nonConstantData`) with the same element type are joined to one buffer in shaders, fewer bindings in descriptor sets ¹¹ | 🧪 | 🧪 | ❔ | ❔ | 098 |
 
 ⁰ No test yet. See [concepts.md](concepts.md#execution-strategies-from-one-source).
 

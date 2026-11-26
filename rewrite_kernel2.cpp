@@ -98,7 +98,7 @@ bool kslicer::FunctionRewriter2::RewriteCompactVectorSubscript(clang::CXXOperato
 
 std::string kslicer::FunctionRewriter2::ShitPointerBuffer(const kslicer::ArgMatch& a_pointer)
 {
-  return a_pointer.actual;
+  return CompactBufferName(a_pointer.actual); // '-compact_ds 1': offset of the vector is a part of pointer offset, see GlobalPtrOffsetText
 }
 
 const kslicer::ArgMatch* kslicer::FunctionRewriter2::FindShitPointer(const clang::Expr* a_expr, std::vector<const clang::Expr*>* a_pAdds) const

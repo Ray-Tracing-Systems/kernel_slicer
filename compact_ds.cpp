@@ -35,17 +35,23 @@ const kslicer::CompactBufferGroup* kslicer::MainClassInfo::FindCompactGroup(cons
   return &compactGroups[p->second];
 }
 
-// 'float' ==> '1f', 'uint2' ==> '2ui', 'int4' ==> '4i', 'MaterialData' ==> '_MaterialData'
+// 'float' ==> '1f', 'uint2' ==> '2ui', 'int4' ==> '4i' (GLSL: 'vec4' ==> '4f', 'uvec2' ==> '2ui'), 'MaterialData' ==> '_MaterialData'
 //
 static std::string CompactBufferSuffix(const std::string& a_shaderType)
 {
   static const std::vector< std::pair<std::string, std::string> > baseTypes = { {"float", "f"}, {"uint", "ui"}, {"int", "i"}, {"half", "h"}, {"double", "d"} };
+  static const std::vector< std::pair<std::string, std::string> > glslTypes = { {"vec", "f"}, {"uvec", "ui"}, {"ivec", "i"}, {"f16vec", "h"}, {"dvec", "d"} };
   for(const auto& base : baseTypes)
   {
     if(a_shaderType == base.first)
       return "1" + base.second;
     if(a_shaderType.size() == base.first.size() + 1 && a_shaderType.find(base.first) == 0 && a_shaderType.back() >= '2' && a_shaderType.back() <= '4')
       return std::string(1, a_shaderType.back()) + base.second;
+  }
+  for(const auto& vec : glslTypes)
+  {
+    if(a_shaderType.size() == vec.first.size() + 1 && a_shaderType.find(vec.first) == 0 && a_shaderType.back() >= '2' && a_shaderType.back() <= '4')
+      return std::string(1, a_shaderType.back()) + vec.second;
   }
 
   std::string res = "_";
