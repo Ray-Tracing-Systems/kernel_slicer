@@ -29,7 +29,7 @@ int    SQR(int x)    { return x * x; }
 uint   SQR(uint x)   { return x * x; }
 
 bool  isfinite(float x)            { return !isinf(x); }
-float copysign(float mag, float s) { return abs(mag)*sign(s); }
+float copysign(float mag, float s) { return asfloat((asuint(mag) & 0x7FFFFFFFu) | (asuint(s) & 0x80000000u)); } // sign bit of s, as in C (sign(s) would give 0 for s = 0)
 #ifndef INFINITY
 #define INFINITY asfloat(0x7F800000u)
 #endif

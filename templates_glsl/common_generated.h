@@ -38,7 +38,7 @@
 #define half3 f16vec3
 #define half4 f16vec4
 bool  isfinite(float x)            { return !isinf(x); }
-float copysign(float mag, float s) { return abs(mag)*sign(s); }
+float copysign(float mag, float s) { return uintBitsToFloat((floatBitsToUint(mag) & 0x7FFFFFFFu) | (floatBitsToUint(s) & 0x80000000u)); } // sign bit of s, as in C (sign(s) would give 0 for s = 0)
 #ifndef INFINITY
 #define INFINITY uintBitsToFloat(0x7F800000u)
 #endif
