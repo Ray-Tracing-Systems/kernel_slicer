@@ -48,7 +48,7 @@ namespace
       if(fDecl == nullptr || fDecl->getQualifiedNameAsString().rfind("LiteNN::", 0) != 0)
         return true;
       const std::string fname = fDecl->getNameAsString();
-      if(fname != "LinearForward" && fname != "LinearForward_ReLU")
+      if(fname != "LinearForward" && fname != "LinearForward_ReLU" && fname != "MLPForward4LeakyReLU")
         return true;
 
       const std::string weights = MemberVectorName(call->getArg(0));
@@ -69,7 +69,10 @@ namespace
       const std::string layers = MemberVectorName(call->getArg(1));
       if(layers == "")
       {
-        kslicer::PrintError("LiteNN::" + fname + ": layer must be an element of member vector, 'm_layers[i]'", call->getSourceRange(), m_sm);
+        kslicer::PrintError("LiteNN::" + fname +
+                            (fname == "MLPForward4LeakyReLU" ? ": layers must be a member vector, 'm_layers.data()'" :
+                                                             ": layer must be an element of member vector, 'm_layers[i]'"),
+                            call->getSourceRange(), m_sm);
         return true;
       }
       if(rowMajorWeights.count(weights) != 0)

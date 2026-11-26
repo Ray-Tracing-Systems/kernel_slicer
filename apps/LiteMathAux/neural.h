@@ -106,6 +106,31 @@ namespace LiteNN
     LinearForward_ReLU(a_weights, a_layer.matOffs, a_layer.biasOffs, a_in, a_inDim, a_out, a_outDim);
   }
 
+  // Four equal-width hidden layers with a 0.01 LeakyReLU, followed by a linear layer.
+  // The Slang implementation keeps the hidden activations in FP16 cooperative vectors.
+  template<uint32_t InDim, uint32_t HiddenDim, uint32_t OutDim>
+  static inline void MLPForward4LeakyReLU(const half* a_weights, const Layer* a_layers,
+                                         const float* a_in, float* a_out)
+  {
+    float hidden[2][HiddenDim];
+    const auto activate = [](float* values)
+    {
+      const auto quantize = [](float value) { return LiteMath::f16tof32(LiteMath::f32tof16(value)); };
+      const float slope = quantize(0.01f);
+      for(uint32_t i = 0; i < HiddenDim; i++)
+        values[i] = values[i] > 0.0f ? values[i] : quantize(values[i] * slope);
+    };
+
+    LinearForward(a_weights, a_layers[0], a_in, InDim, hidden[0], HiddenDim);
+    activate(hidden[0]);
+    for(uint32_t i = 1; i < 4; i++)
+    {
+      LinearForward(a_weights, a_layers[i], hidden[(i - 1) % 2], HiddenDim, hidden[i % 2], HiddenDim);
+      activate(hidden[i % 2]);
+    }
+    LinearForward(a_weights, a_layers[4], hidden[1], HiddenDim, a_out, OutDim);
+  }
+
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ////////////////////////////// block level functions (block expansion kernels) /////////////////////////////
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////

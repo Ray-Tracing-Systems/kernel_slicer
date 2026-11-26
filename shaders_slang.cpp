@@ -650,6 +650,16 @@ bool kslicer::SlangRewriter::VisitCallExpr_Impl(clang::CallExpr* call)
         text += RecursiveRewrite(call->getArg(i)) + ", ";
       text += RecursiveRewrite(call->getArg(inArg)) + ", " + RecursiveRewrite(call->getArg(inArg + 2)) + ")";
     }
+    else if(fname == "MLPForward4LeakyReLU")
+    {
+      m_codeInfo->globalShaderFeatures.useCoopVec      = true;
+      m_codeInfo->globalShaderFeatures.useHalfType     = true;
+      m_codeInfo->globalShaderFeatures.use16BitStorage = true;
+      const auto* sizes = fDecl->getTemplateSpecializationArgs();
+      text = "LiteNN_MLPForward4LeakyReLU<" + std::to_string(sizes->get(0).getAsIntegral().getExtValue()) +
+             ", " + std::to_string(sizes->get(1).getAsIntegral().getExtValue()) +
+             ", " + std::to_string(sizes->get(2).getAsIntegral().getExtValue()) + ">(" + CompleteFunctionCallRewrite(call);
+    }
     else
       text = "LiteNN_" + fname + "(" + CompleteFunctionCallRewrite(call);
     ReplaceText(call->getSourceRange(), text);

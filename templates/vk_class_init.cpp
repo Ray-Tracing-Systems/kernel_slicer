@@ -110,6 +110,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, 
   auto queueAllFID = vk_utils::getQueueFamilyIndex(m_physicalDevice, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT);
   {% endif %}
   {% for ScnObj in SceneMembers %}
+  {
   uint32_t userRestrictions[4];
   this->SceneRestrictions(userRestrictions);
   uint32_t maxMeshes            = userRestrictions[0];
@@ -125,6 +126,7 @@ void {{MainClassName}}{{MainClassSuffix}}::InitVulkanObjects(VkDevice a_device, 
   {% if ScnObj.HasIntersectionShader or ForceProxy %}
   {{ScnObj.Name}} = std::make_shared<RTX_Proxy>({{ScnObj.Name}}Old, {{ScnObj.Name}}{% if ScnObj.HasIntersectionShader2 %}, true{% endif %}); // wrap both user and RTX implementation with proxy object 
   {% endif %}
+  }
   {% endfor %}
   {% if UseSubGroups %}
   if((m_ctx.subgroupProps.supportedOperations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) == 0)
