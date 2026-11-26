@@ -11,6 +11,9 @@
 #include "vk_context.h"
 std::shared_ptr<TestClass> CreateTestClass_Generated(int w, int h, vk_utils::VulkanContext a_ctx, size_t a_maxThreadsGenerated); 
 vk_utils::VulkanDeviceFeatures TestClass_Generated_ListRequiredDeviceFeatures();
+#ifdef USE_ISPC
+std::shared_ptr<TestClass> CreateTestClass_ISPC(int w, int h);
+#endif
 
 int main(int argc, const char** argv)
 {
@@ -21,7 +24,8 @@ int main(int argc, const char** argv)
   #endif
 
   ArgParser args(argc, argv);
-  bool onGPU = args.hasOption("--gpu");
+  bool onGPU  = args.hasOption("--gpu");
+  bool onISPC = args.hasOption("--ispc");
 
   std::shared_ptr<TestClass> pImpl = nullptr;
   if(onGPU)
@@ -31,6 +35,10 @@ int main(int argc, const char** argv)
     auto ctx            = vk_utils::globalContextInit(deviceFeatures, enableValidationLayers, a_preferredDeviceId);
     pImpl = CreateTestClass_Generated(WIN_WIDTH, WIN_HEIGHT, ctx, WIN_WIDTH*WIN_HEIGHT);
   }
+  #ifdef USE_ISPC
+  else if(onISPC)
+    pImpl = CreateTestClass_ISPC(WIN_WIDTH, WIN_HEIGHT);
+  #endif
   else
     pImpl = std::make_shared<TestClass>(WIN_WIDTH, WIN_HEIGHT);
   
@@ -42,6 +50,8 @@ int main(int argc, const char** argv)
     
   if(onGPU)
     LiteImage::SaveBMP("zout_gpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
+  else if(onISPC)
+    LiteImage::SaveBMP("zout_ispc.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   else
     LiteImage::SaveBMP("zout_cpu.bmp", pixelData.data(), WIN_WIDTH, WIN_HEIGHT);
   

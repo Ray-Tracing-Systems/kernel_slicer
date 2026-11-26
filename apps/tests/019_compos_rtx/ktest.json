@@ -3,6 +3,7 @@
         {"name": "slang_cs", "backend": "slang", "kmake": "kmake.json", "options": {"-composInterface": "ISceneObject", "-composImplementation": "BFRayTrace"}, "megakernel": true},
         {"name": "slang_rtx", "backend": "slang", "kmake": "kmake.json", "megakernel": true},
         {"name": "glsl", "backend": "glsl", "kmake": "kmake.json", "options": {"-composInterface": "ISceneObject", "-composImplementation": "BFRayTrace", "-pattern": "rtv"}, "megakernel": true},
-        {"name": "glsl_rtx", "backend": "glsl", "kmake": "kmake.json", "options": {"-pattern": "rtv"}, "megakernel": true}
+        {"name": "glsl_rtx", "backend": "glsl", "kmake": "kmake.json", "options": {"-pattern": "rtv"}, "megakernel": true},
+        {"name": "ispc", "backend": "ispc", "kmake": "kmake.json", "options": {"-composInterface": "ISceneObject", "-composImplementation": "BFRayTrace", "-pattern": "rtv", "-ispc_process_include": 1}, "megakernel": true}
     ]
 }

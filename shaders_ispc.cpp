@@ -388,8 +388,9 @@ bool kslicer::ISPCRewriter::VisitCXXMemberCallExpr_Impl(clang::CXXMemberCallExpr
         kslicer::PrintError(std::string("Unsuppoted std::vector method") + fname, f->getSourceRange(), m_compiler.getSourceManager());
       }
     }
-    else if(isRTX && WasNotRewrittenYet(f)) // 'm_pAccelStruct->RayQuery_NearestHit(a,b)' ==> 'm_pAccelStruct_RayQuery_NearestHit(a,b)', see 'templates_ispc/generated.ispc'
-    {
+    else if((isRTX || isPrefixed) && WasNotRewrittenYet(f) && GetRangeSourceCode(f->getSourceRange(), m_compiler).find("->") != std::string::npos)
+    { // 'm_pAccelStruct->RayQuery_NearestHit(a,b)' ==> 'm_pAccelStruct_RayQuery_NearestHit(a,b)' (Embree, see 'templates_ispc/generated.ispc',
+      // or a function of the composed class), 'm_pImpl->Func(a)' of any composed interface ==> 'm_pImpl_Func(a)'
       const std::string exprContent = GetRangeSourceCode(f->getSourceRange(), m_compiler);
       const std::string memberNameA = exprContent.substr(0, exprContent.find("->"));
 
