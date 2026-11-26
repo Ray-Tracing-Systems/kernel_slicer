@@ -62,7 +62,7 @@ const kslicer::CompactBufferGroup* kslicer::FunctionRewriter2::CompactGroupOfBuf
 std::string kslicer::FunctionRewriter2::CompactBufferName(const std::string& a_buffer) const
 {
   const auto* pGroup = CompactGroupOfBuffer(a_buffer);
-  return (pGroup == nullptr) ? a_buffer : pGroup->name;
+  return (pGroup == nullptr) ? a_buffer : pGroup->BufferOf(a_buffer);
 }
 
 bool kslicer::FunctionRewriter2::CompactVectorSubscriptText(const clang::CXXOperatorCallExpr* a_expr, std::string& a_out)
@@ -82,7 +82,7 @@ bool kslicer::FunctionRewriter2::CompactVectorSubscriptText(const clang::CXXOper
   const auto* pGroup = m_codeInfo->FindCompactGroup(memberName);
   if(pGroup == nullptr)
     return false;
-  a_out = pGroup->name + "[" + m_codeInfo->pShaderCC->UBOAccess(memberName + "_offset") + " + (" + RecursiveRewrite(a_expr->getArg(1)) + ")]";
+  a_out = pGroup->BufferOf(memberName) + "[" + m_codeInfo->pShaderCC->UBOAccess(memberName + "_offset") + " + (" + RecursiveRewrite(a_expr->getArg(1)) + ")]";
   return true;
 }
 

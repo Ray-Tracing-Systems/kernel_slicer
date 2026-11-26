@@ -548,13 +548,13 @@ int main(int argc, const char **argv)
 
   if(params.find("-compact_ds") != params.end()) // join read-only member vectors with the same element type to a single buffer in shaders
   {
-    inputCodeInfo.compactDS = (atoi(params["-compact_ds"].c_str()) != 0);
+    inputCodeInfo.compactDS = std::max(0, std::min(2, atoi(params["-compact_ds"].c_str())));
     const bool slangVulkan  = (shaderCCName == "slang" || shaderCCName == "SLANG" || shaderCCName == "Slang");
     const bool glslVulkan   = (shaderCCName == "glsl"  || shaderCCName == "GLSL");
     if(inputCodeInfo.compactDS && !slangVulkan && !glslVulkan)
     {
       std::cout << "[kslicer]: WARNING, '-compact_ds 1' is supported only for '-shaderCC slang' and '-shaderCC glsl', option is ignored" << std::endl;
-      inputCodeInfo.compactDS = false;
+      inputCodeInfo.compactDS = 0;
     }
   }
 

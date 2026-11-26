@@ -84,6 +84,11 @@ layout(binding = {{loop.index}}, set = {% if Kernel.IsGraphics %}{{Kernel.DSetId
 {% if Arg.NeedUintAlias %}
 layout(binding = {{loop.index}}, set = {% if Kernel.IsGraphics %}{{Kernel.DSetId}}{% else %}0{% endif %}) buffer data{{loop.index}}_asUint { uint {{Arg.Name}}_asUint[]; }; // the same buffer viewed as 'uint' for CAS in float atomics emulation
 {% endif %}
+{% if existsIn(Arg, "HasViews") and Arg.HasViews %}
+{% for View in Arg.Views %}
+layout(binding = {{loop.parent.index}}, set = {% if Kernel.IsGraphics %}{{Kernel.DSetId}}{% else %}0{% endif %}{% if Arg.ScalarLayout %}, scalar{% endif %}) readonly buffer data{{loop.parent.index}}_{{loop.index}} { {{View.Type}} {{View.Name}}[]; }; // the same buffer viewed as '{{View.Type}}'
+{% endfor %}
+{% endif %}
 {% endif %} {# /* Arg.IsImage */ #}
 {% endif %} {# /* not Arg.IsUBO */ #}
 {% endfor %}

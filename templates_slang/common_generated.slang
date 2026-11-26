@@ -19,9 +19,14 @@ layout (constant_id = {{KSpec.Id}}) const int {{KSpec.Name}} = {{KSpec.Id}}; //
 {% else if Arg.IsAccelStruct %}
 {% if Kernel.UseCombinedImageSampler or Kernel.IsGraphics %}[[vk::binding({{loop.index}}, {{Kernel.DSetId}})]] {% endif %}RaytracingAccelerationStructure {{Arg.Name}};
 {% else %}
-{% if Kernel.UseCombinedImageSampler or Arg.NeedUintAlias or Kernel.IsGraphics %}[[vk::binding({{loop.index}}, {{Kernel.DSetId}})]] {% endif %}{%if not Arg.IsConst and not Kernel.IsGraphics%}RW{% endif %}StructuredBuffer<{{Arg.Type}}{% if existsIn(Arg, "ScalarLayout") and Arg.ScalarLayout %}, ScalarDataLayout{% endif %}> {{Arg.Name}}; // 
+{% if Kernel.UseCombinedImageSampler or Arg.NeedUintAlias or Kernel.IsGraphics or (existsIn(Arg, "HasViews") and Arg.HasViews) %}[[vk::binding({{loop.index}}, {{Kernel.DSetId}})]] {% endif %}{%if not Arg.IsConst and not Kernel.IsGraphics%}RW{% endif %}StructuredBuffer<{{Arg.Type}}{% if existsIn(Arg, "ScalarLayout") and Arg.ScalarLayout %}, ScalarDataLayout{% endif %}> {{Arg.Name}}; // 
 {% if Arg.NeedUintAlias %}
 [[vk::binding({{loop.index}}, {{Kernel.DSetId}})]] RWStructuredBuffer<uint> {{Arg.Name}}_asUint; // the same buffer viewed as 'uint' for CAS in float atomics emulation
+{% endif %}
+{% if existsIn(Arg, "HasViews") and Arg.HasViews %}
+{% for View in Arg.Views %}
+[[vk::binding({{loop.parent.index}}, {{Kernel.DSetId}})]] StructuredBuffer<{{View.Type}}{% if Arg.ScalarLayout %}, ScalarDataLayout{% endif %}> {{View.Name}}; // the same buffer viewed as '{{View.Type}}'
+{% endfor %}
 {% endif %}
 {% endif %} {# /* Arg.IsImage */ #}
 {% endif %} {# /* not Arg.IsUBO */ #}

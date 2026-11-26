@@ -60,6 +60,23 @@ static std::string CompactBufferSuffix(const std::string& a_shaderType)
   return res;
 }
 
+// '-compact_ds 2': 'float', 'int' and 'uint' vectors and 2D, 4D vectors of them are joined to buffer of 'uint', 'uint2', 'uint4' (Slang and GLSL type names);
+// 3D vectors are not joined because of their layout
+//
+static bool Is32BitComponentType(const std::string& a_shaderType, std::string& a_uintType)
+{
+  static const kslicer::umap<std::string, std::string> uintTypes = { {"float",  "uint"},  {"int",   "uint"},  {"uint",  "uint"},
+                                                                     {"float2", "uint2"}, {"int2",  "uint2"}, {"uint2", "uint2"},
+                                                                     {"float4", "uint4"}, {"int4",  "uint4"}, {"uint4", "uint4"},
+                                                                     {"vec2",   "uvec2"}, {"ivec2", "uvec2"}, {"uvec2", "uvec2"},
+                                                                     {"vec4",   "uvec4"}, {"ivec4", "uvec4"}, {"uvec4", "uvec4"} };
+  auto p = uintTypes.find(a_shaderType);
+  if(p == uintTypes.end())
+    return false;
+  a_uintType = p->second;
+  return true;
+}
+
 void kslicer::MainClassInfo::MakeCompactBufferGroups(const nlohmann::json& a_kernelOptions)
 {
   compactGroups.clear();
@@ -162,31 +179,61 @@ void kslicer::MainClassInfo::MakeCompactBufferGroups(const nlohmann::json& a_ker
     }
 
     const std::string shaderType = pShaderFuncRewriter->RewriteStdVectorTypeStr(pShaderCC->ProcessBufferType(member.containerDataType));
-    const std::string key        = appendGroup + "|" + shaderType;
+    std::string uintType = "";
+    const bool  mergeTypes = (compactDS >= 2) && Is32BitComponentType(shaderType, uintType);
+    const std::string key  = appendGroup + "|" + (mergeTypes ? uintType : shaderType);
     auto pGroup = groupByKey.find(key);
     if(pGroup == groupByKey.end())
     {
       CompactBufferGroup group;
-      group.name         = "kgen_data" + CompactBufferSuffix(shaderType) + (appendGroup.empty() ? std::string("") : "_" + appendGroup);
-      group.shaderType   = shaderType;
+      group.shaderType   = mergeTypes ? uintType : shaderType; // name and type are set below for joined buffer of several types
       group.appendGroup  = appendGroup;
       group.scalarLayout = member.containerScalarLayout;
       pGroup = groupByKey.insert(std::make_pair(key, group)).first;
       keysInOrder.push_back(key);
     }
     pGroup->second.members.push_back(name);
+    pGroup->second.bufferOfMember[name] = shaderType; // type of the vector in shaders, replaced by name of buffer (view) below
+    pGroup->second.scalarLayout = pGroup->second.scalarLayout || member.containerScalarLayout;
   }
 
-  // (4) only groups of two and more vectors reduce number of bindings
+  // (4) only groups of two and more vectors reduce number of bindings;
+  //     vectors of different types ('-compact_ds 2') are read through views of the buffer of 'uint', vectors of the type of buffer read it directly
   //
   for(const auto& key : keysInOrder)
   {
-    const auto& group = groupByKey[key];
+    auto& group = groupByKey[key];
     if(group.members.size() < 2)
       continue;
-    if(allDataMembers.find(group.name) != allDataMembers.end())
+
+    kslicer::uset<std::string> types;
+    for(const auto& name : group.members)
+      types.insert(group.bufferOfMember[name]);
+    if(types.size() == 1)
+      group.shaderType = *types.begin();
+    
+    const std::string appendSuffix = group.appendGroup.empty() ? std::string("") : "_" + group.appendGroup;
+    group.name = "kgen_data" + CompactBufferSuffix(group.shaderType) + appendSuffix;
+    for(const auto& name : group.members)
     {
-      std::cout << "  [kslicer]: ERROR, '-compact_ds': class member '" << group.name.c_str() << "' has the same name as joined buffer, rename it" << std::endl;
+      const std::string type = group.bufferOfMember[name];
+      if(type == group.shaderType)
+      {
+        group.bufferOfMember[name] = group.name;
+        continue;
+      }
+      const std::string viewName = "kgen_data" + CompactBufferSuffix(type) + appendSuffix;
+      group.bufferOfMember[name] = viewName;
+      if(std::find(group.views.begin(), group.views.end(), std::make_pair(type, viewName)) == group.views.end())
+        group.views.push_back(std::make_pair(type, viewName));
+    }
+
+    bool nameClash = (allDataMembers.find(group.name) != allDataMembers.end());
+    for(const auto& view : group.views)
+      nameClash = nameClash || (allDataMembers.find(view.second) != allDataMembers.end());
+    if(nameClash)
+    {
+      std::cout << "  [kslicer]: ERROR, '-compact_ds': class member has the same name as joined buffer '" << group.name.c_str() << "' (or its view), rename it" << std::endl;
       continue;
     }
     for(const auto& name : group.members)
@@ -201,7 +248,10 @@ void kslicer::MainClassInfo::MakeCompactBufferGroups(const nlohmann::json& a_ker
     std::cout << "  compact_ds: " << group.name.c_str() << " (" << group.shaderType.c_str() << ") <== ";
     for(const auto& name : group.members)
     {
-      std::cout << name.c_str() << " ";
+      if(group.BufferOf(name) != group.name)
+        std::cout << name.c_str() << "(" << group.BufferOf(name).c_str() << ") ";
+      else
+        std::cout << name.c_str() << " ";
       kslicer::DataMemberInfo offset;
       offset.type            = "uint";
       offset.sizeInBytes     = sizeof(unsigned int);

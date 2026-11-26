@@ -139,6 +139,13 @@ namespace kslicer
     std::string appendGroup;          ///<! group of 'CommitAppendedData()' of all vectors of the joined buffer, empty if 'CommitAppendedData()' is not used
     bool        scalarLayout = false; ///<! see DataMemberInfo::containerScalarLayout
     std::vector<std::string> members; ///<! member vectors sorted by name
+    
+    // '-compact_ds 2': vectors of 'float', 'int' and 'uint' (or of their 2D and 4D vectors) are joined to a buffer of 'uint' ('uint2', 'uint4'),
+    // shaders read them through views of this buffer of other types at the same binding: 'kgen_data1f' is 'float' view of 'kgen_data1ui'
+    //
+    std::vector< std::pair<std::string, std::string> > views; ///<! {shader type, name in shaders} of other views of the buffer
+    kslicer::umap<std::string, std::string> bufferOfMember;   ///<! member vector ==> 'name' or name of one of 'views'
+    const std::string& BufferOf(const std::string& a_member) const { auto p = bufferOfMember.find(a_member); return (p == bufferOfMember.end()) ? name : p->second; }
   };
 
   /**
@@ -1998,7 +2005,7 @@ namespace kslicer
     kslicer::uset<std::string> appendRewriteGroups; ///<! 'appendRewriteGroups' from config: vectors of these groups are copied entirely by every 'CommitAppendedData()' 
     bool hasLocalContainers = false;
 
-    bool compactDS = false;
+    int  compactDS = 0; ///<! '-compact_ds 1': read-only member vectors of the same type are joined; '-compact_ds 2': also 'float', 'int' and 'uint' (of the same number of components)
     std::vector<CompactBufferGroup>      compactGroups;
     kslicer::umap<std::string, uint32_t> compactGroupOfMember; ///<! member vector name ==> index in 'compactGroups'
     const CompactBufferGroup* FindCompactGroup(const std::string& a_memberName) const;

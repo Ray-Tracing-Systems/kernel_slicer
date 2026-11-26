@@ -2,9 +2,13 @@
     "variants": [
         {"name": "slang",           "backend": "slang", "kmake": "kmake.json",        "megakernel": true},
         {"name": "slang_append",    "backend": "slang", "kmake": "kmake_append.json", "megakernel": true},
+        {"name": "slang_types",     "backend": "slang", "kmake": "kmake.json",        "megakernel": true, "options": {"-compact_ds": 2}},
+        {"name": "slang_types_append", "backend": "slang", "kmake": "kmake_append.json", "megakernel": true, "options": {"-compact_ds": 2}},
         {"name": "slang_nocompact", "backend": "slang", "kmake": "kmake.json", "options": {"-compact_ds": 0}},
         {"name": "glsl",            "backend": "glsl",  "kmake": "kmake.json",        "megakernel": true},
         {"name": "glsl_append",     "backend": "glsl",  "kmake": "kmake_append.json", "megakernel": true},
+        {"name": "glsl_types",      "backend": "glsl",  "kmake": "kmake.json",        "megakernel": true, "options": {"-compact_ds": 2}},
+        {"name": "glsl_types_append", "backend": "glsl", "kmake": "kmake_append.json", "megakernel": true, "options": {"-compact_ds": 2}},
         {"name": "glsl_nocompact",  "backend": "glsl",  "kmake": "kmake.json", "options": {"-compact_ds": 0}}
     ]
 }

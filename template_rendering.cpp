@@ -884,6 +884,15 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
           argj["VFHLevel"]      = 0;
           argj["NameISPC"]      = pCompact->name;
           argj["SizeOffset"]    = 0;
+          argj["HasViews"]      = !pCompact->views.empty(); // '-compact_ds 2': the same buffer of other types at the same binding
+          argj["Views"]         = std::vector<json>();
+          for(const auto& view : pCompact->views)
+          {
+            json viewj;
+            viewj["Type"] = view.first;
+            viewj["Name"] = view.second;
+            argj["Views"].push_back(viewj);
+          }
           args.push_back(argj);
           MArgsSize++;
         }

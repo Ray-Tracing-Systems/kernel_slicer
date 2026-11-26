@@ -24,6 +24,7 @@ struct MaterialData
 // (bound with offset inside of the joined buffer), memcpy from a joined vector, IPV and RTV kernels (also megakernel);
 // texture 'm_texA' is bound after joined buffers: bindings of descriptor set layouts must be the same as in shaders.
 // 'kmake_append.json' does the same with CommitAppendedData(): a joined buffer is inside of a single append group.
+// Variants '*_types' use '-compact_ds 2': vectors of 'float', 'int' and 'uint' are joined to one buffer of 'uint' (views of other types).
 class TestCompactDS
 {
 public:
