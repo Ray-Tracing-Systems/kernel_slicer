@@ -170,6 +170,8 @@ void kslicer::MainClassInfo::MakeCompactBufferGroups(const nlohmann::json& a_ker
                              nnLayersOfWeights.find(name) == nnLayersOfWeights.end() && !isLayers && graphics.indexBuffers.find(name) == graphics.indexBuffers.end();
     if(!plainVector || usedInShaders.find(name) == usedInShaders.end() || notCompactable.find(name) != notCompactable.end())
       continue;
+    if(usedProbably.find(name) != usedProbably.end()) // used in implementations of virtual functions: they are rewritten before (ProcessVFH)
+      continue;
 
     std::string appendGroup = "";
     if(hasCommitAppended)

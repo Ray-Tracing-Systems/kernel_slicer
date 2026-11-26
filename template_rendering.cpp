@@ -1156,6 +1156,11 @@ json kslicer::PrepareJsonForKernels(MainClassInfo& a_classInfo,
           continue;
         
         std::string name = (arg["SrcName"] != nullptr) ? arg["SrcName"].get<std::string>() : arg["Name"].get<std::string>();
+        auto pMember = a_classInfo.allDataMembers.find(name);
+        const bool internalBuffer = (arg.contains("IsThreadFlags") && arg["IsThreadFlags"].get<bool>()) ||                                   // RTV exit flags, written by kernels
+                                    (pMember != a_classInfo.allDataMembers.end() && pMember->second.usage == DATA_USAGE::USAGE_SLICER_REDUCTION); // 'tmpred*' of reductions
+        if(internalBuffer) // not known to user, so they are never listed in "nonConstantData"
+          continue;
         auto pFlag = nonConstData.find(name);
         if(pFlag != nonConstData.end() && !pFlag->is_null())
           arg["IsConst"] = (pFlag->get<int>() == 0);
