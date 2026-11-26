@@ -233,6 +233,19 @@ public:
           func.hasPrefix   = true;
           func.prefixName  = pPrefix->second;
         }
+        // a composed class may be a hierarchy: the merged function list holds the most derived implementation,
+        // which is what a (virtual) call on the composed object executes
+        auto pMerged = m_patternImpl.allMemberFunctions.find(func.name);
+        if(pMerged != m_patternImpl.allMemberFunctions.end() && pMerged->second != func.astNode)
+        {
+          const std::string msrc = kslicer::GetRangeSourceCode(pMerged->second->getSourceRange(), m_compiler);
+          if(msrc.find("{") != std::string::npos)
+          {
+            func.astNode  = pMerged->second;
+            func.srcRange = func.astNode->getSourceRange();
+            func.srcHash  = kslicer::GetHashOfSourceRange(func.srcRange);
+          }
+        }
       }
       else if(func.isVirtual && typeName != m_patternImpl.mainClassName && m_patternImpl.mainClassNames.find(typeName) == m_patternImpl.mainClassNames.end()) 
       {

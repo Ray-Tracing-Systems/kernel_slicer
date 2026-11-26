@@ -63,6 +63,7 @@ follows the test configs and the code.
 | `timestamps` | GPU time of kernels, `GetExecutionTime` (`-timestamps 1`) | ✅ | ✅ | ❔ | ❔ | app 05, app 28 |
 | `setters` | Setter functions that pass GPU objects to the class | ✅ | ✅ | ❔ | ❔ | 004, 005 |
 | `composition` | Main class with composed classes (`composClasses`) | ✅ | ✅ | ❔ | ❔ | 018, 019 |
+| `composition_inheritance` | The composed implementation is derived from base classes (data, functions and virtual overrides are merged up to the interface) | ✅ | ✅ | ❔ | ❔ | 099 |
 | `update_plain_data` | `UpdateMembersPlainData()`: upload only POD members | ✅ | ✅ | ❔ | ✅ | 068 |
 | `commit_appended` | `CommitAppendedData()`: upload only appended elements (`appendGroups`) | ✅ | ✅ | ❔ | ❔ | 064, 065 |
 

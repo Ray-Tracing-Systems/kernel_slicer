@@ -917,6 +917,7 @@ int main(int argc, const char **argv)
   }
 
   kslicer::InitialPassASTConsumer firstPassData(cfNames, mainClassName, composClassNames, compiler, inputCodeInfo);
+  firstPassData.rv.m_composImplName = composeImplName;
   // TODO: move this inside constructor ... 
   {
     for(size_t i=0;i<baseClases.size();i++) 
@@ -968,6 +969,15 @@ int main(int argc, const char **argv)
 
   if(pComposAPI != firstPassData.rv.m_composedClassInfo.end() && pComposImpl != firstPassData.rv.m_composedClassInfo.end()) // if compos classes are found
   {
+    // inheritance in the composed implementation: merge its base classes (nearest first, a derived class always
+    // overrides its bases), then compose the merged class; base class names get the same prefix as the implementation
+    for(const auto& baseName : firstPassData.rv.m_composImplBases)
+    {
+      kslicer::PerformInheritanceMerge(pComposImpl->second, firstPassData.rv.m_composedClassInfo[baseName]);
+      composClassNames.push_back(baseName);
+      myComposClassNames.insert(baseName);
+    }
+
     std::string composMemberName = kslicer::PerformClassComposition(firstPassData.rv.mci, pComposAPI->second, pComposImpl->second);     // perform class composition
     for(const auto& name : composClassNames)
       inputCodeInfo.composPrefix[name] = composMemberName;

@@ -144,11 +144,57 @@ bool kslicer::InitialPassRecursiveASTVisitor::VisitCXXRecordDecl(CXXRecordDecl* 
   else if(pBase != m_baseClassInfo.end())
     pBase->second.astNode = record;
   else if(pCompos != m_composedClassInfo.end())
+  {
     pCompos->second.astNode = record;
+    if(typeName == m_composImplName && m_composImplBases.empty())
+      RegisterComposedBases(record);
+  }
   else if(!record->isPOD())
     m_classList.push_back(record); // rememer for futher processing of complex classes
 
   return true;
+}
+
+// Inheritance in composed classes: the base classes of the implementation of a composed interface (up to the
+// interface or any other already registered composed class) are registered as composed classes too, so that
+// their data members and member functions are merged into the implementation later (see PerformInheritanceMerge
+// in kslicer_main.cpp). Base classes are usually parsed before the derived class, so their already visited
+// fields and methods are processed here; methods defined out of class later are visited as usual.
+//
+void kslicer::InitialPassRecursiveASTVisitor::RegisterComposedBases(const CXXRecordDecl* a_record)
+{
+  std::vector<const CXXRecordDecl*> queue = {a_record};
+  for(size_t i = 0; i < queue.size(); i++)
+  {
+    for(const auto& base : queue[i]->bases())
+    {
+      const CXXRecordDecl* baseDecl = base.getType()->getAsCXXRecordDecl();
+      if(baseDecl == nullptr || !baseDecl->hasDefinition())
+        continue;
+      baseDecl = baseDecl->getDefinition();
+      const auto pType = kslicer::GetTypeForDecl(baseDecl);
+      if(pType == nullptr)
+        continue;
+      const std::string baseName = ClearTypeName(pType->getLocallyUnqualifiedSingleStepDesugaredType().getAsString());
+      if(m_composedClassInfo.find(baseName) != m_composedClassInfo.end()) // the interface (or already registered): stop here
+        continue;
+
+      m_composedClassInfo[baseName] = ClassInfo(baseName);
+      m_composedClassInfo[baseName].astNode = baseDecl;
+      m_composImplBases.push_back(baseName);
+      std::cout << "  found base class of composed implementation: " << baseName.c_str() << std::endl;
+
+      for(FieldDecl* fd : baseDecl->fields())
+        VisitFieldDecl(fd);
+      for(CXXMethodDecl* method : baseDecl->methods())
+      {
+        const FunctionDecl* def = method->getDefinition();
+        CXXMethodDecl* use = (def != nullptr) ? const_cast<CXXMethodDecl*>(clang::cast<CXXMethodDecl>(def)) : method;
+        VisitCXXMethodDecl(use);
+      }
+      queue.push_back(baseDecl);
+    }
+  }
 }
 
 static kslicer::uset<std::string> ListExcludedTypes()

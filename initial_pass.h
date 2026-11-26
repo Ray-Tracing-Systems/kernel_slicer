@@ -78,6 +78,8 @@ namespace kslicer
 
     ClassInfo mci; // main class info
     kslicer::umap<std::string, ClassInfo>  m_composedClassInfo;
+    std::string                            m_composImplName;  ///< implementation of the composed interface (set before parsing)
+    std::vector<std::string>               m_composImplBases; ///< base classes of the implementation (nearest first), up to the interface
     kslicer::umap<std::string, ClassInfo>  m_baseClassInfo;
 
     std::vector<const clang::CXXRecordDecl*> m_classList;
@@ -87,6 +89,7 @@ namespace kslicer
 
   private:
     bool ProcessKernelDef(const CXXMethodDecl *f,  kslicer::umap<std::string, KernelInfo>& a_funcList, const std::string& a_className);
+    void RegisterComposedBases(const CXXRecordDecl* a_record);
 
     CompilerInstance&     m_compiler;
     const ASTContext&     m_astContext;
